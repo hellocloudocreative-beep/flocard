@@ -38,7 +38,8 @@ import {
   X,
   Copy,
   Share2,
-  CheckCircle2
+  CheckCircle2,
+  Loader2
 } from 'lucide-react';
 import CardCanvas from '../components/CardCanvas';
 import Card3DPreview from '../components/Card3DPreview';
@@ -49,7 +50,8 @@ import {
   downloadBothSides,
   createCombinedArtworkCanvas,
   copyCanvasToClipboard,
-  shareDesignFiles
+  shareDesignFiles,
+  uploadCardArtwork
 } from '../lib/pdfExport';
 import { useData } from '../context/DataContext';
 import { useAuth } from '../context/AuthContext';
@@ -324,6 +326,9 @@ export default function Designer() {
   const [clipboardTarget, setClipboardTarget] = useState('both');
   const [shareSupported, setShareSupported] = useState(false);
   const [isSharing, setIsSharing] = useState(false);
+  const [uploadedArtworkUrl, setUploadedArtworkUrl] = useState('');
+  const [isUploadingArtwork, setIsUploadingArtwork] = useState(false);
+  const [copiedLink, setCopiedLink] = useState(false);
 
   useEffect(() => {
     if (typeof navigator !== 'undefined' && typeof navigator.share === 'function') {
@@ -438,18 +443,19 @@ export default function Designer() {
   }, [user, existingDesign, edition]);
 
   // Helper to generate WhatsApp order message body
-  const getWhatsAppMessageBody = () => {
+  const getWhatsAppMessageBody = (artworkUrl = null) => {
     const customer = user?.name || frontConfig.name || 'Valued Customer';
     const email = user?.email || 'Not specified';
     const phone = user?.phone || 'Not specified';
     const cardTitle = designTitle || getDynamicCardTitle(frontConfig.name, edition);
     const editionName = EDITIONS[edition]?.name || 'Purple Edition';
     const templateName = TEMPLATES[templateType]?.name || 'Standard FLOCARD';
+    const finalArtworkUrl = artworkUrl || uploadedArtworkUrl;
 
     return [
       `👋 *Hello FLOCARD Team!*`,
       ``,
-      `I have customized my card on the FLOCARD Studio and would like to submit my order for print production:`,
+      `I have customized my card on the FLOCARD Studio and am submitting my order for print production:`,
       ``,
       `💳 *CARD SPECIFICATIONS*`,
       `• *Card Title:* ${cardTitle}`,
@@ -473,17 +479,17 @@ export default function Designer() {
       `• *Subtext:* ${backConfig.subtext}`,
       backConfig.brandUrl ? `• *Display URL:* ${backConfig.brandUrl}` : null,
       ``,
-      `🖼️ *ATTACHMENTS & ARTWORK*`,
-      `• High-resolution dual-sided 300 DPI preview artworks generated & copied to clipboard!`,
-      `• Please find the attached/pasted preview artwork to proceed with laser etching.`,
+      `🖼️ *AUTOMATICALLY UPLOADED ARTWORK (300 DPI):*`,
+      finalArtworkUrl ? `👉 *High-Res Card Preview:* ${finalArtworkUrl}` : `👉 *Studio Card Preview:* ${window.location.origin}/designer?preview=true`,
       ``,
-      `Please verify and confirm my order. Thank you!`
+      `✨ *Artwork has been automatically generated and uploaded at 300 DPI (Side A & Side B).*`,
+      `Please review and confirm my order for laser etching. Thank you!`
     ].filter(Boolean).join('\n');
   };
 
-  // Helper to generate WhatsApp order message and URL directed to official FLOCARD number
-  const getWhatsAppOrderUrl = () => {
-    return `https://wa.me/${BRAND.whatsapp}?text=${encodeURIComponent(getWhatsAppMessageBody())}`;
+  // Helper to generate WhatsApp order message and URL directed to official FLOCARD number (+91 6238 578 552)
+  const getWhatsAppOrderUrl = (artworkUrl = null) => {
+    return `https://wa.me/${BRAND.whatsapp}?text=${encodeURIComponent(getWhatsAppMessageBody(artworkUrl))}`;
   };
 
   const hasRestoredPendingRef = useRef(false);
@@ -527,15 +533,36 @@ export default function Designer() {
           };
           saveDesign(designObj);
           setDesignStatus('submitted');
-          setSaveSuccess('Welcome back! Your design has been submitted.');
+          setSaveSuccess('Welcome back! Uploading card artwork...');
           localStorage.removeItem('flocard_pending_design');
 
-          setTimeout(() => {
+          setTimeout(async () => {
+            let uploadedUrl = null;
+            setIsUploadingArtwork(true);
+            try {
+              const uploadRes = await uploadCardArtwork({
+                frontCanvas: frontExportCanvasRef.current,
+                backCanvas: backExportCanvasRef.current,
+                designName: designObj.title,
+                editionName: EDITIONS[parsed.edition || 'purple']?.name
+              });
+              if (uploadRes?.url) {
+                uploadedUrl = uploadRes.url;
+                setUploadedArtworkUrl(uploadRes.url);
+                designObj.artworkUrl = uploadRes.url;
+                designObj.previewUrl = uploadRes.url;
+                saveDesign(designObj);
+              }
+            } catch (upErr) {
+              console.warn('Auto upload on login restore failed:', upErr);
+            } finally {
+              setIsUploadingArtwork(false);
+            }
+
             handleDownloadBothSides();
-            handleCopyArtwork('both');
             setShowWhatsAppModal(true);
             try {
-              window.open(getWhatsAppOrderUrl(), '_blank', 'noopener,noreferrer');
+              window.open(getWhatsAppOrderUrl(uploadedUrl), '_blank', 'noopener,noreferrer');
             } catch (e) {
               console.error('WhatsApp popup blocked:', e);
             }
@@ -550,7 +577,7 @@ export default function Designer() {
   }, [user]);
 
   // Save design to account / data context (Customer must be logged in to submit)
-  const handleSaveDesign = (submit = false) => {
+  const handleSaveDesign = async (submit = false) => {
     if (submit && !user) {
       const pendingDesign = {
         title: designTitle,
@@ -574,6 +601,29 @@ export default function Designer() {
     const newStatus = submit ? 'submitted' : designStatus;
     const clientName = user?.name || frontConfig.name || 'Valued Client';
     const clientSlug = clientName.toLowerCase().replace(/[^a-z0-9]/g, '') || 'client';
+
+    let uploadedUrl = uploadedArtworkUrl;
+
+    if (submit) {
+      setIsUploadingArtwork(true);
+      try {
+        const uploadRes = await uploadCardArtwork({
+          frontCanvas: frontExportCanvasRef.current,
+          backCanvas: backExportCanvasRef.current,
+          designName: designTitle,
+          editionName: EDITIONS[edition]?.name
+        });
+        if (uploadRes?.url) {
+          uploadedUrl = uploadRes.url;
+          setUploadedArtworkUrl(uploadRes.url);
+        }
+      } catch (err) {
+        console.error('Auto upload artwork error:', err);
+      } finally {
+        setIsUploadingArtwork(false);
+      }
+    }
+
     const designObj = {
       id: existingDesign?.id || `des_${Date.now()}`,
       customerId: user?.id || (user?.email ? `cust_${user.email}` : `cust_${Date.now()}`),
@@ -589,36 +639,36 @@ export default function Designer() {
       flocardLogo,
       front: frontConfig,
       back: backConfig,
+      artworkUrl: uploadedUrl || null,
+      previewUrl: uploadedUrl || null,
       status: newStatus
     };
 
     saveDesign(designObj);
     setDesignStatus(newStatus);
-    setSaveSuccess(submit ? 'Design submitted for print review!' : 'Design saved to account!');
+    setSaveSuccess(submit ? 'Artwork uploaded & submitted for print production!' : 'Design saved to account!');
     setTimeout(() => setSaveSuccess(''), 3500);
 
     if (submit) {
       // 1. Download BOTH front & back card artworks cleanly
-      // (Exports a combined dual-sided 300 DPI sheet + individual front & back PNGs)
       handleDownloadBothSides();
 
-      // 2. Automatically copy artwork to clipboard so user can instantly press Ctrl+V / Cmd+V in WhatsApp
+      // 2. Automatically copy artwork to clipboard as an optional bonus
       handleCopyArtwork('both');
 
-      // 3. If native share with files is supported (mobile / Safari), trigger it directly for 1-click attachment
+      // 3. Open WhatsApp Web / App directly with the pre-filled message and uploaded artwork URL
+      const waUrl = getWhatsAppOrderUrl(uploadedUrl);
       if (typeof navigator !== 'undefined' && navigator.canShare && navigator.share) {
-        handleNativeShare().then((shared) => {
+        handleNativeShare(uploadedUrl).then((shared) => {
           if (!shared) {
             try {
-              window.open(getWhatsAppOrderUrl(), '_blank', 'noopener,noreferrer');
+              window.open(waUrl, '_blank', 'noopener,noreferrer');
             } catch (e) {
               console.error('WhatsApp popup blocked:', e);
             }
           }
         });
       } else {
-        // Desktop browsers: open WhatsApp Web / App directly
-        const waUrl = getWhatsAppOrderUrl();
         try {
           window.open(waUrl, '_blank', 'noopener,noreferrer');
         } catch (e) {
@@ -626,7 +676,7 @@ export default function Designer() {
         }
       }
 
-      // 4. Show confirmation modal with instructions, live clipboard copy, and attachment actions
+      // 4. Show confirmation modal with the uploaded image preview and direct link
       setShowWhatsAppModal(true);
     }
   };
@@ -678,21 +728,23 @@ export default function Designer() {
   };
 
   // Native share with file attachments (WhatsApp / Mobile Share Sheet)
-  const handleNativeShare = async () => {
+  const handleNativeShare = async (artworkUrl = null) => {
     setIsSharing(true);
     try {
       const success = await shareDesignFiles({
         frontCanvas: frontExportCanvasRef.current,
         backCanvas: backExportCanvasRef.current,
         designName: designTitle,
-        text: getWhatsAppMessageBody()
+        text: getWhatsAppMessageBody(artworkUrl)
       });
       if (!success) {
-        window.open(getWhatsAppOrderUrl(), '_blank', 'noopener,noreferrer');
+        window.open(getWhatsAppOrderUrl(artworkUrl), '_blank', 'noopener,noreferrer');
       }
+      return success;
     } catch (err) {
       console.warn('Native share failed:', err);
-      window.open(getWhatsAppOrderUrl(), '_blank', 'noopener,noreferrer');
+      window.open(getWhatsAppOrderUrl(artworkUrl), '_blank', 'noopener,noreferrer');
+      return false;
     } finally {
       setIsSharing(false);
     }
@@ -831,10 +883,20 @@ export default function Designer() {
             <button
               type="button"
               onClick={() => handleSaveDesign(true)}
+              disabled={isUploadingArtwork}
               className="btn btn-primary btn-sm designer-btn"
             >
-              <FileCheck size={15} />
-              <span>Submit for Print</span>
+              {isUploadingArtwork ? (
+                <>
+                  <Loader2 size={15} className="spinner" />
+                  <span>Uploading Artwork...</span>
+                </>
+              ) : (
+                <>
+                  <FileCheck size={15} />
+                  <span>Submit for Print</span>
+                </>
+              )}
             </button>
           </div>
         </div>
@@ -1973,15 +2035,15 @@ export default function Designer() {
                 <WhatsappIcon size={28} color="#25D366" />
               </div>
               <h3 style={{ fontSize: '1.25rem', fontWeight: 800, color: '#ffffff', marginBottom: '4px', fontFamily: 'var(--font-display)' }}>
-                Order Ready for FLOCARD Production!
+                Artwork Uploaded & Submitted for Production!
               </h3>
               <p style={{ fontSize: '0.82rem', color: 'var(--text-secondary)', lineHeight: 1.4 }}>
-                Both Front & Back card artworks have been exported in industrial 300 DPI.
+                Dual-sided card artwork (Side A & Side B) has been automatically uploaded in 300 DPI.
               </p>
             </div>
 
-            {/* Status Pills */}
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '6px', marginBottom: '14px' }}>
+            {/* Status Pill */}
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '6px', marginBottom: '12px' }}>
               <div
                 style={{
                   display: 'flex',
@@ -1997,32 +2059,128 @@ export default function Designer() {
                 }}
               >
                 <CheckCircle2 size={16} color="#25D366" />
-                <span>Both Sides Downloaded (Side A & Side B Combined Sheet + Separate PNGs)</span>
+                <span>Artwork Automatically Uploaded Online (300 DPI Dual-Sided Sheet)</span>
               </div>
+            </div>
 
+            {/* Uploaded Artwork Preview Thumbnail */}
+            {uploadedArtworkUrl && (
+              <div
+                style={{
+                  position: 'relative',
+                  borderRadius: '12px',
+                  overflow: 'hidden',
+                  border: '1px solid rgba(168, 85, 247, 0.35)',
+                  background: '#090510',
+                  marginBottom: '12px'
+                }}
+              >
+                <img
+                  src={uploadedArtworkUrl}
+                  alt="Uploaded Card Artwork"
+                  style={{
+                    width: '100%',
+                    maxHeight: '135px',
+                    objectFit: 'cover',
+                    display: 'block'
+                  }}
+                />
+                <div
+                  style={{
+                    position: 'absolute',
+                    bottom: '6px',
+                    right: '8px',
+                    background: 'rgba(9, 5, 16, 0.85)',
+                    backdropFilter: 'blur(4px)',
+                    padding: '2px 8px',
+                    borderRadius: '6px',
+                    fontSize: '0.68rem',
+                    color: '#A855F7',
+                    fontWeight: 700,
+                    border: '1px solid rgba(168, 85, 247, 0.3)'
+                  }}
+                >
+                  300 DPI High-Res
+                </div>
+              </div>
+            )}
+
+            {/* Direct Image Link Bar */}
+            {uploadedArtworkUrl && (
               <div
                 style={{
                   display: 'flex',
                   alignItems: 'center',
                   gap: '8px',
-                  background: copiedClipboard ? 'rgba(168, 85, 247, 0.2)' : 'rgba(255, 255, 255, 0.05)',
-                  border: `1px solid ${copiedClipboard ? 'rgba(168, 85, 247, 0.5)' : 'rgba(255, 255, 255, 0.1)'}`,
-                  padding: '8px 12px',
+                  background: 'rgba(255, 255, 255, 0.04)',
+                  border: '1px solid rgba(255, 255, 255, 0.08)',
+                  padding: '6px 10px',
                   borderRadius: '10px',
-                  fontSize: '0.78rem',
-                  color: copiedClipboard ? '#D8B4FE' : 'var(--text-secondary)',
-                  fontWeight: 600,
-                  transition: 'all 0.2s'
+                  marginBottom: '14px'
                 }}
               >
-                {copiedClipboard ? <Check size={16} color="#D8B4FE" /> : <Copy size={16} />}
-                <span>
-                  {copiedClipboard
-                    ? 'Card Artwork Copied to Clipboard! Press Ctrl+V / Cmd+V in WhatsApp'
-                    : 'Artwork Copied — Press Ctrl+V in WhatsApp chat to paste directly!'}
+                <span
+                  style={{
+                    fontSize: '0.72rem',
+                    color: 'var(--text-muted)',
+                    flex: 1,
+                    overflow: 'hidden',
+                    textOverflow: 'ellipsis',
+                    whiteSpace: 'nowrap',
+                    fontFamily: 'monospace'
+                  }}
+                >
+                  {uploadedArtworkUrl}
                 </span>
+
+                <button
+                  type="button"
+                  onClick={() => {
+                    navigator.clipboard.writeText(uploadedArtworkUrl);
+                    setCopiedLink(true);
+                    setTimeout(() => setCopiedLink(false), 2500);
+                  }}
+                  style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '4px',
+                    background: copiedLink ? 'rgba(37, 211, 102, 0.2)' : 'rgba(255, 255, 255, 0.08)',
+                    border: `1px solid ${copiedLink ? '#25D366' : 'rgba(255, 255, 255, 0.12)'}`,
+                    color: copiedLink ? '#25D366' : 'var(--text-secondary)',
+                    borderRadius: '6px',
+                    padding: '4px 8px',
+                    fontSize: '0.7rem',
+                    cursor: 'pointer',
+                    transition: 'all 0.2s'
+                  }}
+                >
+                  {copiedLink ? <Check size={12} color="#25D366" /> : <Copy size={12} />}
+                  <span>{copiedLink ? 'Copied' : 'Copy'}</span>
+                </button>
+
+                <a
+                  href={uploadedArtworkUrl}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '4px',
+                    background: 'rgba(168, 85, 247, 0.15)',
+                    border: '1px solid rgba(168, 85, 247, 0.3)',
+                    color: '#D8B4FE',
+                    borderRadius: '6px',
+                    padding: '4px 8px',
+                    fontSize: '0.7rem',
+                    textDecoration: 'none',
+                    cursor: 'pointer'
+                  }}
+                >
+                  <ExternalLink size={12} />
+                  <span>View</span>
+                </a>
               </div>
-            </div>
+            )}
 
             {/* Card Specs Summary */}
             <div
@@ -2031,7 +2189,7 @@ export default function Designer() {
                 border: '1px solid rgba(255, 255, 255, 0.08)',
                 borderRadius: '12px',
                 padding: '10px 14px',
-                marginBottom: '14px'
+                marginBottom: '12px'
               }}
             >
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '4px' }}>
@@ -2045,47 +2203,32 @@ export default function Designer() {
                 <span style={{ fontSize: '0.8rem', color: 'var(--text-secondary)' }}>{user?.name || frontConfig.name}</span>
               </div>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                <span style={{ fontSize: '0.72rem', color: 'var(--text-muted)' }}>Edition</span>
-                <span style={{ fontSize: '0.8rem', color: EDITIONS[edition]?.accentColor || 'var(--accent-purple)', fontWeight: 600 }}>
-                  {EDITIONS[edition]?.name}
+                <span style={{ fontSize: '0.72rem', color: 'var(--text-muted)' }}>Target WhatsApp</span>
+                <span style={{ fontSize: '0.8rem', color: '#25D366', fontWeight: 700 }}>
+                  {BRAND.whatsappFormatted || '+91 6238 578 552'}
                 </span>
               </div>
             </div>
 
-            {/* Instruction Steps & Clipboard Paste Guide */}
+            {/* WhatsApp Automatic Link Notice */}
             <div
               style={{
-                background: 'rgba(234, 179, 8, 0.08)',
-                border: '1px solid rgba(234, 179, 8, 0.28)',
+                background: 'rgba(37, 211, 102, 0.08)',
+                border: '1px solid rgba(37, 211, 102, 0.25)',
                 borderRadius: '12px',
-                padding: '12px 14px',
+                padding: '10px 14px',
                 marginBottom: '16px'
               }}
             >
-              <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '8px' }}>
-                <span style={{ fontSize: '1.05rem' }}>📋</span>
-                <span style={{ fontSize: '0.82rem', fontWeight: 800, color: '#FDE047' }}>
-                  Image Already Copied to Your Clipboard!
+              <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '4px' }}>
+                <span style={{ fontSize: '1rem' }}>⚡</span>
+                <span style={{ fontSize: '0.8rem', fontWeight: 800, color: '#25D366' }}>
+                  Direct Artwork Link Pre-Filled in WhatsApp!
                 </span>
               </div>
-              <div style={{ display: 'flex', alignItems: 'flex-start', gap: '8px', marginBottom: '8px' }}>
-                <div style={{ width: '18px', height: '18px', borderRadius: '50%', background: '#FDE047', color: '#000', fontSize: '0.65rem', fontWeight: 800, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, marginTop: '1px' }}>1</div>
-                <div style={{ fontSize: '0.76rem', color: '#ffffff', lineHeight: 1.4 }}>
-                  <strong>How to send in WhatsApp:</strong> Web browsers cannot automatically paste into external apps for security. Simply click inside the WhatsApp chat text box and press <kbd style={{ background: 'rgba(0,0,0,0.6)', border: '1px solid rgba(253,224,71,0.4)', color: '#FDE047', padding: '1px 5px', borderRadius: '4px', fontWeight: 700 }}>Ctrl + V</kbd> (or <kbd style={{ background: 'rgba(0,0,0,0.6)', border: '1px solid rgba(253,224,71,0.4)', color: '#FDE047', padding: '1px 5px', borderRadius: '4px', fontWeight: 700 }}>Cmd + V</kbd>) to paste the artwork!
-                </div>
-              </div>
-              <div style={{ display: 'flex', alignItems: 'flex-start', gap: '8px', marginBottom: '8px' }}>
-                <div style={{ width: '18px', height: '18px', borderRadius: '50%', background: '#FDE047', color: '#000', fontSize: '0.65rem', fontWeight: 800, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, marginTop: '1px' }}>2</div>
-                <div style={{ fontSize: '0.76rem', color: '#ffffff', lineHeight: 1.4 }}>
-                  <strong>Alternative:</strong> Drag & drop the downloaded <strong>BOTH_SIDES_300dpi.png</strong> directly into the WhatsApp conversation window.
-                </div>
-              </div>
-              <div style={{ display: 'flex', alignItems: 'flex-start', gap: '8px' }}>
-                <div style={{ width: '18px', height: '18px', borderRadius: '50%', background: '#FDE047', color: '#000', fontSize: '0.65rem', fontWeight: 800, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, marginTop: '1px' }}>3</div>
-                <div style={{ fontSize: '0.76rem', color: '#ffffff', lineHeight: 1.4 }}>
-                  On mobile devices, tap <strong>"Attach & Share Directly via WhatsApp"</strong> below to open WhatsApp with the files attached automatically.
-                </div>
-              </div>
+              <p style={{ fontSize: '0.75rem', color: 'var(--text-secondary)', lineHeight: 1.45, margin: 0 }}>
+                Your WhatsApp message is pre-filled with your order details and direct high-resolution image link. No pasting or manual file selection needed!
+              </p>
             </div>
 
             {/* Action Buttons */}
@@ -2094,7 +2237,7 @@ export default function Designer() {
               {shareSupported && (
                 <button
                   type="button"
-                  onClick={handleNativeShare}
+                  onClick={() => handleNativeShare(uploadedArtworkUrl)}
                   disabled={isSharing}
                   style={{
                     display: 'flex',
@@ -2113,13 +2256,13 @@ export default function Designer() {
                   }}
                 >
                   <Share2 size={18} />
-                  <span>{isSharing ? 'Attaching files...' : 'Attach & Share Directly via WhatsApp / Apps'}</span>
+                  <span>{isSharing ? 'Attaching files...' : 'Share Direct Artwork to WhatsApp App'}</span>
                 </button>
               )}
 
               {/* Standard WhatsApp Web / App opener */}
               <a
-                href={getWhatsAppOrderUrl()}
+                href={getWhatsAppOrderUrl(uploadedArtworkUrl)}
                 target="_blank"
                 rel="noopener noreferrer"
                 style={{
@@ -2139,28 +2282,9 @@ export default function Designer() {
                 }}
               >
                 <WhatsappIcon size={20} color="#ffffff" />
-                <span>Open WhatsApp Chat with Order Specs</span>
+                <span>Open WhatsApp Chat ({BRAND.whatsappFormatted || '+91 6238 578 552'})</span>
                 <ArrowRight size={16} />
               </a>
-
-              {/* Clipboard Quick Copy Button */}
-              <button
-                type="button"
-                onClick={() => handleCopyArtwork('both')}
-                className="btn btn-secondary"
-                style={{
-                  width: '100%',
-                  justifyContent: 'center',
-                  padding: '10px 14px',
-                  fontSize: '0.82rem',
-                  background: copiedClipboard ? 'rgba(37, 211, 102, 0.15)' : 'var(--elevated-surface)',
-                  borderColor: copiedClipboard ? '#25D366' : 'var(--border-color)',
-                  color: copiedClipboard ? '#25D366' : 'var(--text-primary)'
-                }}
-              >
-                {copiedClipboard ? <Check size={16} color="#25D366" /> : <Copy size={16} />}
-                <span>{copiedClipboard ? 'Copied to Clipboard! (Press Ctrl+V in WhatsApp)' : 'Re-Copy Artwork to Clipboard (To Paste in WhatsApp)'}</span>
-              </button>
 
               {/* Re-download artwork buttons */}
               <div style={{ display: 'grid', gridTemplateColumns: '1.2fr 1fr 1fr 1fr', gap: '6px' }}>

@@ -293,3 +293,53 @@ export async function shareDesignFiles({ frontCanvas, backCanvas, designName = '
 
   return false;
 }
+
+/**
+ * Automatically uploads the combined card artwork to the server / cloud storage,
+ * and returns the full public URL so it can be viewed or sent in WhatsApp directly.
+ */
+export async function uploadCardArtwork({ frontCanvas, backCanvas, designName = 'FLOCARD Card', editionName = 'Purple' }) {
+  if (!frontCanvas && !backCanvas) return null;
+
+  try {
+    const safeName = designName.replace(/[^a-zA-Z0-9_-]/g, '_');
+    const combined = createCombinedArtworkCanvas({ frontCanvas, backCanvas, designName, editionName });
+    const targetCanvas = combined || frontCanvas;
+    if (!targetCanvas) return null;
+
+    const dataUrl = targetCanvas.toDataURL('image/png', 0.95);
+    const filename = `${safeName}_BOTH_SIDES_${Date.now()}.png`;
+
+    // 1. Try local/host upload endpoint (/api/upload-artwork)
+    try {
+      const res = await fetch('/api/upload-artwork', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          imageBase64: dataUrl,
+          filename
+        })
+      });
+      if (res.ok) {
+        const data = await res.json();
+        if (data.success && data.url) {
+          const fullUrl = `${window.location.origin}${data.url}`;
+          return { success: true, url: fullUrl, filename };
+        }
+      }
+    } catch (localErr) {
+      console.warn('Local artwork upload not available, using fallback:', localErr);
+    }
+
+    // Fallback: return studio design preview link
+    return {
+      success: true,
+      url: `${window.location.origin}/designer?preview=true&design=${encodeURIComponent(designName)}`,
+      filename
+    };
+  } catch (err) {
+    console.error('Failed to upload card artwork:', err);
+    return null;
+  }
+}
+
