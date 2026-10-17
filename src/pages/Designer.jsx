@@ -605,12 +605,25 @@ export default function Designer() {
       // 2. Automatically copy artwork to clipboard so user can instantly press Ctrl+V / Cmd+V in WhatsApp
       handleCopyArtwork('both');
 
-      // 3. Open WhatsApp chat with prefilled order details
-      const waUrl = getWhatsAppOrderUrl();
-      try {
-        window.open(waUrl, '_blank', 'noopener,noreferrer');
-      } catch (e) {
-        console.error('WhatsApp popup blocked:', e);
+      // 3. If native share with files is supported (mobile / Safari), trigger it directly for 1-click attachment
+      if (typeof navigator !== 'undefined' && navigator.canShare && navigator.share) {
+        handleNativeShare().then((shared) => {
+          if (!shared) {
+            try {
+              window.open(getWhatsAppOrderUrl(), '_blank', 'noopener,noreferrer');
+            } catch (e) {
+              console.error('WhatsApp popup blocked:', e);
+            }
+          }
+        });
+      } else {
+        // Desktop browsers: open WhatsApp Web / App directly
+        const waUrl = getWhatsAppOrderUrl();
+        try {
+          window.open(waUrl, '_blank', 'noopener,noreferrer');
+        } catch (e) {
+          console.error('WhatsApp popup blocked:', e);
+        }
       }
 
       // 4. Show confirmation modal with instructions, live clipboard copy, and attachment actions
@@ -2039,32 +2052,38 @@ export default function Designer() {
               </div>
             </div>
 
-            {/* Instruction Steps */}
+            {/* Instruction Steps & Clipboard Paste Guide */}
             <div
               style={{
-                background: 'rgba(37, 211, 102, 0.05)',
-                border: '1px solid rgba(37, 211, 102, 0.18)',
+                background: 'rgba(234, 179, 8, 0.08)',
+                border: '1px solid rgba(234, 179, 8, 0.28)',
                 borderRadius: '12px',
-                padding: '10px 12px',
+                padding: '12px 14px',
                 marginBottom: '16px'
               }}
             >
-              <div style={{ display: 'flex', alignItems: 'flex-start', gap: '8px', marginBottom: '6px' }}>
-                <div style={{ width: '18px', height: '18px', borderRadius: '50%', background: '#25D366', color: '#000', fontSize: '0.65rem', fontWeight: 800, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, marginTop: '1px' }}>1</div>
-                <div style={{ fontSize: '0.76rem', color: '#ffffff', lineHeight: 1.35 }}>
-                  <strong>How to attach in WhatsApp:</strong> Simply press <strong>Ctrl+V</strong> (or <strong>Cmd+V</strong>) in the WhatsApp text box to paste the copied card artwork directly.
+              <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '8px' }}>
+                <span style={{ fontSize: '1.05rem' }}>📋</span>
+                <span style={{ fontSize: '0.82rem', fontWeight: 800, color: '#FDE047' }}>
+                  Image Already Copied to Your Clipboard!
+                </span>
+              </div>
+              <div style={{ display: 'flex', alignItems: 'flex-start', gap: '8px', marginBottom: '8px' }}>
+                <div style={{ width: '18px', height: '18px', borderRadius: '50%', background: '#FDE047', color: '#000', fontSize: '0.65rem', fontWeight: 800, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, marginTop: '1px' }}>1</div>
+                <div style={{ fontSize: '0.76rem', color: '#ffffff', lineHeight: 1.4 }}>
+                  <strong>How to send in WhatsApp:</strong> Web browsers cannot automatically paste into external apps for security. Simply click inside the WhatsApp chat text box and press <kbd style={{ background: 'rgba(0,0,0,0.6)', border: '1px solid rgba(253,224,71,0.4)', color: '#FDE047', padding: '1px 5px', borderRadius: '4px', fontWeight: 700 }}>Ctrl + V</kbd> (or <kbd style={{ background: 'rgba(0,0,0,0.6)', border: '1px solid rgba(253,224,71,0.4)', color: '#FDE047', padding: '1px 5px', borderRadius: '4px', fontWeight: 700 }}>Cmd + V</kbd>) to paste the artwork!
                 </div>
               </div>
-              <div style={{ display: 'flex', alignItems: 'flex-start', gap: '8px', marginBottom: '6px' }}>
-                <div style={{ width: '18px', height: '18px', borderRadius: '50%', background: '#25D366', color: '#000', fontSize: '0.65rem', fontWeight: 800, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, marginTop: '1px' }}>2</div>
-                <div style={{ fontSize: '0.76rem', color: '#ffffff', lineHeight: 1.35 }}>
-                  Alternatively, drag & drop the downloaded <strong>BOTH_SIDES_300dpi.png</strong> file into the chat.
+              <div style={{ display: 'flex', alignItems: 'flex-start', gap: '8px', marginBottom: '8px' }}>
+                <div style={{ width: '18px', height: '18px', borderRadius: '50%', background: '#FDE047', color: '#000', fontSize: '0.65rem', fontWeight: 800, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, marginTop: '1px' }}>2</div>
+                <div style={{ fontSize: '0.76rem', color: '#ffffff', lineHeight: 1.4 }}>
+                  <strong>Alternative:</strong> Drag & drop the downloaded <strong>BOTH_SIDES_300dpi.png</strong> directly into the WhatsApp conversation window.
                 </div>
               </div>
               <div style={{ display: 'flex', alignItems: 'flex-start', gap: '8px' }}>
-                <div style={{ width: '18px', height: '18px', borderRadius: '50%', background: '#25D366', color: '#000', fontSize: '0.65rem', fontWeight: 800, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, marginTop: '1px' }}>3</div>
-                <div style={{ fontSize: '0.76rem', color: '#ffffff', lineHeight: 1.35 }}>
-                  Click below to open WhatsApp with your pre-filled specifications and finalize print queueing!
+                <div style={{ width: '18px', height: '18px', borderRadius: '50%', background: '#FDE047', color: '#000', fontSize: '0.65rem', fontWeight: 800, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, marginTop: '1px' }}>3</div>
+                <div style={{ fontSize: '0.76rem', color: '#ffffff', lineHeight: 1.4 }}>
+                  On mobile devices, tap <strong>"Attach & Share Directly via WhatsApp"</strong> below to open WhatsApp with the files attached automatically.
                 </div>
               </div>
             </div>

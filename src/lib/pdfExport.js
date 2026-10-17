@@ -249,25 +249,31 @@ export async function copyCanvasToClipboard(canvas) {
  * Uses Web Share API to share design files directly to WhatsApp or native apps.
  * On mobile and supported desktops, this attaches the real image files directly!
  */
-export async function shareDesignFiles({ frontCanvas, backCanvas, designName = 'FLOCARD Card', text = '' }) {
+export async function shareDesignFiles({ frontCanvas, backCanvas, designName = 'FLOCARD Card', editionName = 'Purple', text = '' }) {
   if (!navigator.canShare || !navigator.share) {
     return false;
   }
 
   try {
     const files = [];
+    const safeName = designName.replace(/[^a-zA-Z0-9_-]/g, '_');
 
-    if (frontCanvas) {
-      const frontBlob = await new Promise(r => frontCanvas.toBlob(r, 'image/png', 1.0));
-      if (frontBlob) {
-        files.push(new File([frontBlob], `${designName.replace(/[^a-zA-Z0-9_-]/g, '_')}_front.png`, { type: 'image/png' }));
+    // 1. Generate Combined Dual-Sided Artwork (Guarantees BOTH sides attached in 1 image)
+    if (frontCanvas && backCanvas) {
+      const combined = createCombinedArtworkCanvas({ frontCanvas, backCanvas, designName, editionName });
+      if (combined) {
+        const combinedBlob = await new Promise(r => combined.toBlob(r, 'image/png', 1.0));
+        if (combinedBlob) {
+          files.push(new File([combinedBlob], `${safeName}_BOTH_SIDES_300dpi.png`, { type: 'image/png' }));
+        }
       }
     }
 
-    if (backCanvas) {
-      const backBlob = await new Promise(r => backCanvas.toBlob(r, 'image/png', 1.0));
-      if (backBlob) {
-        files.push(new File([backBlob], `${designName.replace(/[^a-zA-Z0-9_-]/g, '_')}_back.png`, { type: 'image/png' }));
+    // Fallback to front canvas if combined wasn't built
+    if (files.length === 0 && frontCanvas) {
+      const frontBlob = await new Promise(r => frontCanvas.toBlob(r, 'image/png', 1.0));
+      if (frontBlob) {
+        files.push(new File([frontBlob], `${safeName}_front.png`, { type: 'image/png' }));
       }
     }
 
