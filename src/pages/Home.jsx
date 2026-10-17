@@ -1,6 +1,6 @@
 /* ==========================================================================
    FLOCARD HOMEPAGE — CINEMATIC SPACE HORIZON & PRODUCT SHOWCASE
-   Faithfully implements the QUANTUM reference aesthetic adapted for FLOCARD.
+   Supports Dark & Light themes with seamless planetary aesthetics.
    ========================================================================== */
 
 import React, { useState } from 'react';
@@ -9,12 +9,12 @@ import Card3DPreview from '../components/Card3DPreview';
 import PhoneProfileMockup from '../components/PhoneProfileMockup';
 import { BRAND, EDITIONS, HOW_IT_WORKS_STEPS } from '../lib/constants';
 import { useData } from '../context/DataContext';
+import { useTheme } from '../context/ThemeContext';
 
 export default function Home() {
   const { profiles } = useData();
+  const { isLight } = useTheme();
   const akhilProfile = profiles.find(p => p.slug === 'akhil') || profiles[0];
-  const [activeEditionPreview, setActiveEditionPreview] = useState('purple');
-  const [simulatedTap, setSimulatedTap] = useState(false);
 
   return (
     <div className="homepage-wrapper" style={{ overflowX: 'hidden' }}>
@@ -30,31 +30,33 @@ export default function Home() {
           display: 'flex',
           flexDirection: 'column',
           justifyContent: 'center',
-          paddingTop: 'calc(var(--header-height) + 20px)',
-          paddingBottom: '60px',
+          paddingTop: 'calc(var(--header-height) + 24px)',
+          paddingBottom: '80px',
           overflow: 'hidden'
         }}
       >
-        {/* Planetary Cosmic Background Image */}
+        {/* Planetary Cosmic Background Image (Theme-Aware) */}
         <div
           style={{
             position: 'absolute',
             inset: 0,
-            backgroundImage: 'url(/assets/hero-bg.jpg)',
+            backgroundImage: isLight ? 'url(/assets/hero-bg-light.jpg)' : 'url(/assets/hero-bg.jpg)',
             backgroundSize: 'cover',
             backgroundPosition: 'center top',
-            opacity: 0.75,
-            zIndex: 0
+            opacity: isLight ? 0.95 : 0.75,
+            zIndex: 0,
+            transition: 'background-image 0.4s ease, opacity 0.4s ease'
           }}
         />
 
-        {/* Deep Violet & Obsidian Atmospheric Gradients */}
+        {/* Atmospheric Gradients */}
         <div
           style={{
             position: 'absolute',
             inset: 0,
-            background: 'linear-gradient(180deg, rgba(8, 6, 13, 0.4) 0%, rgba(8, 6, 13, 0.2) 40%, rgba(8, 6, 13, 0.95) 90%, #08060D 100%)',
-            zIndex: 1
+            background: 'var(--hero-bg-overlay)',
+            zIndex: 1,
+            transition: 'background 0.3s ease'
           }}
         />
 
@@ -67,18 +69,19 @@ export default function Home() {
             transform: 'translateX(-50%)',
             width: '800px',
             height: '400px',
-            background: 'radial-gradient(ellipse, rgba(168, 85, 247, 0.3) 0%, rgba(107, 0, 255, 0.15) 45%, transparent 75%)',
-            filter: 'blur(40px)',
+            background: 'var(--hero-glow)',
+            filter: 'blur(45px)',
             zIndex: 1,
-            pointerEvents: 'none'
+            pointerEvents: 'none',
+            transition: 'background 0.3s ease'
           }}
         />
 
         <div className="container" style={{ position: 'relative', zIndex: 3 }}>
           {/* Eyebrow badge */}
           <div style={{ textAlign: 'center', marginBottom: '18px' }}>
-            <div className="badge-tag" style={{ padding: '6px 16px' }}>
-              <Sparkles size={12} color="var(--accent-purple)" />
+            <div className="badge-tag" style={{ padding: '6px 18px', fontSize: '0.78rem' }}>
+              <Sparkles size={13} color="var(--primary-purple)" />
               <span>{BRAND.heroEyebrow}</span>
             </div>
           </div>
@@ -91,7 +94,8 @@ export default function Home() {
                 fontWeight: 800,
                 letterSpacing: '-0.025em',
                 lineHeight: 1.08,
-                textTransform: 'uppercase'
+                textTransform: 'uppercase',
+                color: 'var(--text-primary)'
               }}
             >
               YOUR IDENTITY.{' '}
@@ -121,10 +125,10 @@ export default function Home() {
               justifyContent: 'center',
               gap: '16px',
               flexWrap: 'wrap',
-              marginBottom: '44px'
+              marginBottom: '48px'
             }}
           >
-            <a href="/designer" className="btn btn-primary btn-lg">
+            <a href="/designer" className="btn btn-primary btn-lg" style={{ boxShadow: '0 6px 24px rgba(107, 0, 255, 0.4)' }}>
               <span>Design Your Card</span>
               <ArrowRight size={18} />
             </a>
@@ -134,7 +138,7 @@ export default function Home() {
             </a>
           </div>
 
-          {/* Hero Cards Artwork Display (Front & Back Pair in Perspective) */}
+          {/* Hero Cards Artwork Display (Front & Back Pair Side-by-Side) */}
           <div
             className="hero-cards-showcase"
             style={{
@@ -145,20 +149,22 @@ export default function Home() {
               flexWrap: 'wrap',
               alignItems: 'center',
               justifyContent: 'center',
-              gap: '32px'
+              gap: '36px'
             }}
           >
             {/* Front Card Preview */}
             <div
-              className="hero-card-left animate-float"
+              className="hero-card-left"
               style={{
-                transform: 'rotate(-4deg) translateY(-10px)',
+                filter: isLight 
+                  ? 'drop-shadow(0 20px 45px rgba(76, 29, 149, 0.18))' 
+                  : 'drop-shadow(0 20px 45px rgba(0, 0, 0, 0.7))',
                 transition: 'all 0.4s ease'
               }}
             >
               <Card3DPreview
                 edition="purple"
-                width={380}
+                width={390}
                 initialSide="front"
                 allowFlip={true}
               />
@@ -166,16 +172,17 @@ export default function Home() {
 
             {/* Back Card Preview (showing real scannable QR code to akhil profile) */}
             <div
-              className="hero-card-right animate-float"
+              className="hero-card-right"
               style={{
-                transform: 'rotate(3deg) translateY(10px)',
-                animationDelay: '1.5s',
+                filter: isLight 
+                  ? 'drop-shadow(0 20px 45px rgba(76, 29, 149, 0.18))' 
+                  : 'drop-shadow(0 20px 45px rgba(0, 0, 0, 0.7))',
                 transition: 'all 0.4s ease'
               }}
             >
               <Card3DPreview
                 edition="purple"
-                width={380}
+                width={390}
                 initialSide="back"
                 allowFlip={true}
               />
@@ -191,11 +198,13 @@ export default function Home() {
         style={{
           borderTop: '1px solid var(--border-color)',
           borderBottom: '1px solid var(--border-color)',
-          background: 'rgba(13, 9, 21, 0.85)',
+          background: 'var(--elevated-surface)',
           backdropFilter: 'blur(16px)',
+          WebkitBackdropFilter: 'blur(16px)',
           padding: '32px 0',
           position: 'relative',
-          zIndex: 4
+          zIndex: 4,
+          transition: 'background-color 0.25s ease, border-color 0.25s ease'
         }}
       >
         <div className="container">
@@ -206,19 +215,19 @@ export default function Home() {
                   width: '46px',
                   height: '46px',
                   borderRadius: '50%',
-                  background: 'rgba(107, 0, 255, 0.2)',
-                  border: '1px solid rgba(168, 85, 247, 0.35)',
+                  background: 'rgba(107, 0, 255, 0.15)',
+                  border: '1px solid var(--border-highlight)',
                   display: 'flex',
                   alignItems: 'center',
                   justifyContent: 'center',
-                  color: 'var(--accent-purple)',
+                  color: 'var(--primary-purple)',
                   flexShrink: 0
                 }}
               >
                 <Radio size={22} />
               </div>
               <div>
-                <h4 style={{ fontSize: '0.98rem', fontWeight: 700, color: '#ffffff' }}>NFC Enabled</h4>
+                <h4 style={{ fontSize: '0.98rem', fontWeight: 700, color: 'var(--text-primary)' }}>NFC Enabled</h4>
                 <p style={{ fontSize: '0.82rem', color: 'var(--text-secondary)' }}>One tap sharing</p>
               </div>
             </div>
@@ -241,7 +250,7 @@ export default function Home() {
                 <Sparkles size={22} />
               </div>
               <div>
-                <h4 style={{ fontSize: '0.98rem', fontWeight: 700, color: '#ffffff' }}>Premium Design</h4>
+                <h4 style={{ fontSize: '0.98rem', fontWeight: 700, color: 'var(--text-primary)' }}>Premium Design</h4>
                 <p style={{ fontSize: '0.82rem', color: 'var(--text-secondary)' }}>Gold, Platinum & Purple</p>
               </div>
             </div>
@@ -252,19 +261,19 @@ export default function Home() {
                   width: '46px',
                   height: '46px',
                   borderRadius: '50%',
-                  background: 'rgba(59, 130, 246, 0.18)',
-                  border: '1px solid rgba(59, 130, 246, 0.35)',
+                  background: 'rgba(59, 130, 246, 0.15)',
+                  border: '1px solid rgba(59, 130, 246, 0.3)',
                   display: 'flex',
                   alignItems: 'center',
                   justifyContent: 'center',
-                  color: '#60a5fa',
+                  color: '#3b82f6',
                   flexShrink: 0
                 }}
               >
                 <Smartphone size={22} />
               </div>
               <div>
-                <h4 style={{ fontSize: '0.98rem', fontWeight: 700, color: '#ffffff' }}>Digital Profile</h4>
+                <h4 style={{ fontSize: '0.98rem', fontWeight: 700, color: 'var(--text-primary)' }}>Digital Profile</h4>
                 <p style={{ fontSize: '0.82rem', color: 'var(--text-secondary)' }}>Everything in one link</p>
               </div>
             </div>
@@ -280,14 +289,14 @@ export default function Home() {
                   display: 'flex',
                   alignItems: 'center',
                   justifyContent: 'center',
-                  color: '#34d399',
+                  color: '#10b981',
                   flexShrink: 0
                 }}
               >
                 <ShieldCheck size={22} />
               </div>
               <div>
-                <h4 style={{ fontSize: '0.98rem', fontWeight: 700, color: '#ffffff' }}>Professional Identity</h4>
+                <h4 style={{ fontSize: '0.98rem', fontWeight: 700, color: 'var(--text-primary)' }}>Professional Identity</h4>
                 <p style={{ fontSize: '0.82rem', color: 'var(--text-secondary)' }}>Make a lasting impression</p>
               </div>
             </div>
@@ -320,7 +329,7 @@ export default function Home() {
               <div className="badge-tag" style={{ marginBottom: '12px' }}>
                 OUR COLLECTION
               </div>
-              <h2 style={{ fontSize: 'clamp(2rem, 3.5vw, 3rem)', textTransform: 'uppercase' }}>
+              <h2 style={{ fontSize: 'clamp(2rem, 3.5vw, 3rem)', textTransform: 'uppercase', color: 'var(--text-primary)' }}>
                 CHOOSE <span className="text-gradient-purple">YOUR STYLE</span>
               </h2>
               <p style={{ fontSize: '1rem', color: 'var(--text-secondary)', marginTop: '8px', maxWidth: '520px' }}>
@@ -344,7 +353,7 @@ export default function Home() {
                 display: 'flex',
                 flexDirection: 'column',
                 justifyContent: 'space-between',
-                transition: 'transform 0.3s ease, border-color 0.3s ease'
+                transition: 'transform 0.3s ease, border-color 0.3s ease, box-shadow 0.3s ease'
               }}
               onMouseEnter={(e) => {
                 e.currentTarget.style.borderColor = 'rgba(212, 175, 55, 0.6)';
@@ -359,7 +368,7 @@ export default function Home() {
                 <div style={{ marginBottom: '24px' }}>
                   <Card3DPreview edition="gold" width={320} allowFlip={true} />
                 </div>
-                <h3 style={{ fontSize: '1.35rem', color: '#ffffff', textTransform: 'uppercase', marginBottom: '8px' }}>
+                <h3 style={{ fontSize: '1.35rem', color: 'var(--text-primary)', textTransform: 'uppercase', marginBottom: '8px' }}>
                   {EDITIONS.gold.name}
                 </h3>
                 <p style={{ fontSize: '0.88rem', color: 'var(--text-secondary)', lineHeight: 1.5, marginBottom: '20px' }}>
@@ -380,7 +389,7 @@ export default function Home() {
                 display: 'flex',
                 flexDirection: 'column',
                 justifyContent: 'space-between',
-                transition: 'transform 0.3s ease, border-color 0.3s ease'
+                transition: 'transform 0.3s ease, border-color 0.3s ease, box-shadow 0.3s ease'
               }}
               onMouseEnter={(e) => {
                 e.currentTarget.style.borderColor = 'rgba(226, 232, 240, 0.5)';
@@ -395,7 +404,7 @@ export default function Home() {
                 <div style={{ marginBottom: '24px' }}>
                   <Card3DPreview edition="platinum" width={320} allowFlip={true} />
                 </div>
-                <h3 style={{ fontSize: '1.35rem', color: '#ffffff', textTransform: 'uppercase', marginBottom: '8px' }}>
+                <h3 style={{ fontSize: '1.35rem', color: 'var(--text-primary)', textTransform: 'uppercase', marginBottom: '8px' }}>
                   {EDITIONS.platinum.name}
                 </h3>
                 <p style={{ fontSize: '0.88rem', color: 'var(--text-secondary)', lineHeight: 1.5, marginBottom: '20px' }}>
@@ -416,10 +425,12 @@ export default function Home() {
                 display: 'flex',
                 flexDirection: 'column',
                 justifyContent: 'space-between',
-                borderColor: 'rgba(168, 85, 247, 0.5)',
-                background: 'linear-gradient(180deg, rgba(23, 16, 32, 0.9) 0%, rgba(32, 11, 59, 0.4) 100%)',
+                borderColor: isLight ? 'rgba(107, 0, 255, 0.35)' : 'rgba(168, 85, 247, 0.5)',
+                background: isLight 
+                  ? '#FFFFFF' 
+                  : 'linear-gradient(180deg, rgba(23, 16, 32, 0.9) 0%, rgba(32, 11, 59, 0.4) 100%)',
                 position: 'relative',
-                transition: 'transform 0.3s ease'
+                transition: 'transform 0.3s ease, box-shadow 0.3s ease'
               }}
               onMouseEnter={(e) => (e.currentTarget.style.transform = 'translateY(-6px)')}
               onMouseLeave={(e) => (e.currentTarget.style.transform = 'translateY(0)')}
@@ -429,7 +440,7 @@ export default function Home() {
                   position: 'absolute',
                   top: '16px',
                   right: '16px',
-                  background: 'linear-gradient(135deg, var(--primary-purple), var(--accent-purple))',
+                  background: 'linear-gradient(135deg, var(--primary-purple), var(--deep-violet))',
                   padding: '4px 12px',
                   borderRadius: 'var(--radius-full)',
                   fontSize: '0.72rem',
@@ -438,7 +449,7 @@ export default function Home() {
                   alignItems: 'center',
                   gap: '4px',
                   color: '#ffffff',
-                  boxShadow: '0 4px 12px rgba(107, 0, 255, 0.4)'
+                  boxShadow: '0 4px 12px rgba(107, 0, 255, 0.35)'
                 }}
               >
                 <Sparkles size={11} />
@@ -449,7 +460,7 @@ export default function Home() {
                 <div style={{ marginBottom: '24px' }}>
                   <Card3DPreview edition="purple" width={320} allowFlip={true} />
                 </div>
-                <h3 style={{ fontSize: '1.35rem', color: '#ffffff', textTransform: 'uppercase', marginBottom: '8px' }}>
+                <h3 style={{ fontSize: '1.35rem', color: 'var(--text-primary)', textTransform: 'uppercase', marginBottom: '8px' }}>
                   {EDITIONS.purple.name}
                 </h3>
                 <p style={{ fontSize: '0.88rem', color: 'var(--text-secondary)', lineHeight: 1.5, marginBottom: '20px' }}>
@@ -471,8 +482,11 @@ export default function Home() {
       <section
         style={{
           padding: '90px 0',
-          background: 'linear-gradient(180deg, var(--bg-main) 0%, var(--bg-secondary) 100%)',
-          position: 'relative'
+          background: 'var(--bg-secondary)',
+          borderTop: '1px solid var(--border-color)',
+          borderBottom: '1px solid var(--border-color)',
+          position: 'relative',
+          transition: 'background-color 0.25s ease'
         }}
       >
         <div className="container">
@@ -490,7 +504,7 @@ export default function Home() {
               <div className="badge-tag" style={{ marginBottom: '12px' }}>
                 HOW IT WORKS
               </div>
-              <h2 style={{ fontSize: 'clamp(2rem, 3.5vw, 3rem)', textTransform: 'uppercase' }}>
+              <h2 style={{ fontSize: 'clamp(2rem, 3.5vw, 3rem)', textTransform: 'uppercase', color: 'var(--text-primary)' }}>
                 SIMPLE. SMART. <span className="text-gradient-purple">POWERFUL.</span>
               </h2>
               <p style={{ fontSize: '1rem', color: 'var(--text-secondary)', marginTop: '8px', maxWidth: '540px' }}>
@@ -528,8 +542,7 @@ export default function Home() {
                       fontFamily: 'var(--font-display)',
                       fontSize: '1.75rem',
                       fontWeight: 800,
-                      color: 'var(--accent-purple)',
-                      opacity: 0.8
+                      color: 'var(--primary-purple)'
                     }}
                   >
                     {stepItem.step}
@@ -539,19 +552,19 @@ export default function Home() {
                       width: '40px',
                       height: '40px',
                       borderRadius: '50%',
-                      background: 'rgba(107, 0, 255, 0.2)',
-                      border: '1px solid rgba(168, 85, 247, 0.3)',
+                      background: 'rgba(107, 0, 255, 0.12)',
+                      border: '1px solid var(--border-highlight)',
                       display: 'flex',
                       alignItems: 'center',
                       justifyContent: 'center',
-                      color: 'var(--light-lavender)'
+                      color: 'var(--primary-purple)'
                     }}
                   >
                     <Zap size={18} />
                   </div>
                 </div>
 
-                <h3 style={{ fontSize: '1.15rem', color: '#ffffff', marginBottom: '8px' }}>
+                <h3 style={{ fontSize: '1.15rem', color: 'var(--text-primary)', marginBottom: '8px' }}>
                   {stepItem.title}
                 </h3>
                 <p style={{ fontSize: '0.85rem', color: 'var(--text-secondary)', lineHeight: 1.55 }}>
@@ -597,7 +610,8 @@ export default function Home() {
                   fontSize: 'clamp(2.2rem, 3.8vw, 3.2rem)',
                   textTransform: 'uppercase',
                   lineHeight: 1.15,
-                  marginBottom: '18px'
+                  marginBottom: '18px',
+                  color: 'var(--text-primary)'
                 }}
               >
                 MORE THAN JUST A <span className="text-gradient-purple">BUSINESS CARD</span>
@@ -617,8 +631,8 @@ export default function Home() {
                   'Always accessible, edit anytime without re-printing card'
                 ].map((item, idx) => (
                   <div key={idx} style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-                    <CheckCircle2 size={18} color="var(--accent-purple)" style={{ flexShrink: 0 }} />
-                    <span style={{ fontSize: '0.95rem', color: '#ffffff' }}>{item}</span>
+                    <CheckCircle2 size={18} color="var(--primary-purple)" style={{ flexShrink: 0 }} />
+                    <span style={{ fontSize: '0.95rem', color: 'var(--text-primary)' }}>{item}</span>
                   </div>
                 ))}
               </div>
@@ -645,7 +659,7 @@ export default function Home() {
       <section
         style={{
           padding: '80px 0',
-          background: 'linear-gradient(180deg, #0d0915 0%, #08060d 100%)',
+          background: 'var(--bg-secondary)',
           borderTop: '1px solid var(--border-color)',
           borderBottom: '1px solid var(--border-color)'
         }}
@@ -654,21 +668,19 @@ export default function Home() {
           <div className="badge-tag" style={{ marginBottom: '14px' }}>
             NFC HARDWARE SIMULATOR
           </div>
-          <h2 style={{ fontSize: 'clamp(1.8rem, 3vw, 2.6rem)', textTransform: 'uppercase', marginBottom: '14px' }}>
+          <h2 style={{ fontSize: 'clamp(1.8rem, 3vw, 2.6rem)', textTransform: 'uppercase', marginBottom: '14px', color: 'var(--text-primary)' }}>
             TEST THE <span className="text-gradient-purple">ONE-TAP EXPERIENCE</span>
           </h2>
           <p style={{ color: 'var(--text-secondary)', maxWidth: '580px', margin: '0 auto 32px' }}>
-            Curious how NFC tap works? Click the simulator below to experience how a physical card connects instantly via permanent routing link <code style={{ color: 'var(--light-lavender)' }}>/t/flc-akhil-992</code>!
+            Curious how NFC tap works? Click the simulator below to experience how a physical card connects instantly via permanent routing link <code style={{ color: 'var(--primary-purple)', fontWeight: 600 }}>/t/flc-akhil-992</code>!
           </p>
 
           <div
+            className="glass-panel"
             style={{
               maxWidth: '500px',
               margin: '0 auto',
-              background: 'rgba(23, 16, 32, 0.9)',
-              border: '1px solid var(--border-color)',
-              borderRadius: 'var(--radius-lg)',
-              padding: '32px',
+              padding: '36px',
               position: 'relative'
             }}
           >
@@ -678,23 +690,23 @@ export default function Home() {
                   width: '70px',
                   height: '70px',
                   borderRadius: '50%',
-                  background: 'linear-gradient(135deg, var(--primary-purple), var(--accent-purple))',
+                  background: 'linear-gradient(135deg, var(--primary-purple), var(--deep-violet))',
                   display: 'flex',
                   alignItems: 'center',
                   justifyContent: 'center',
                   margin: '0 auto',
-                  boxShadow: '0 0 30px rgba(107, 0, 255, 0.6)'
+                  boxShadow: '0 0 30px rgba(107, 0, 255, 0.45)'
                 }}
               >
                 <Radio size={32} color="#ffffff" className="animate-pulse-glow" />
               </div>
             </div>
 
-            <h4 style={{ fontSize: '1.15rem', color: '#ffffff', marginBottom: '8px' }}>
+            <h4 style={{ fontSize: '1.15rem', color: 'var(--text-primary)', marginBottom: '8px' }}>
               NFC Contactless Antenna Ready
             </h4>
             <p style={{ fontSize: '0.85rem', color: 'var(--text-secondary)', marginBottom: '24px' }}>
-              Permanent Redirect Tag: <strong style={{ color: 'var(--light-lavender)' }}>flc-akhil-992</strong>
+              Permanent Redirect Tag: <strong style={{ color: 'var(--primary-purple)' }}>flc-akhil-992</strong>
             </p>
 
             <a
@@ -728,7 +740,9 @@ export default function Home() {
             transform: 'translate(-50%, -50%)',
             width: '600px',
             height: '300px',
-            background: 'radial-gradient(ellipse, rgba(107, 0, 255, 0.3) 0%, transparent 70%)',
+            background: isLight 
+              ? 'radial-gradient(ellipse, rgba(167, 139, 250, 0.25) 0%, transparent 70%)'
+              : 'radial-gradient(ellipse, rgba(107, 0, 255, 0.3) 0%, transparent 70%)',
             filter: 'blur(50px)',
             pointerEvents: 'none'
           }}
@@ -740,7 +754,8 @@ export default function Home() {
               fontSize: 'clamp(2.2rem, 4.2vw, 3.8rem)',
               textTransform: 'uppercase',
               letterSpacing: '-0.02em',
-              marginBottom: '18px'
+              marginBottom: '18px',
+              color: 'var(--text-primary)'
             }}
           >
             READY TO ELEVATE <span className="text-gradient-purple">YOUR NETWORK?</span>

@@ -78,7 +78,7 @@ export default function Faq() {
                     alignItems: 'center',
                     justifyContent: 'space-between',
                     textAlign: 'left',
-                    color: '#ffffff',
+                    color: 'var(--text-primary)',
                     fontSize: '1.05rem',
                     fontWeight: 600,
                     cursor: 'pointer'

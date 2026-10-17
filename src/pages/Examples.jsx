@@ -42,9 +42,9 @@ export default function Examples() {
                 gap: '10px',
                 padding: '10px 20px',
                 borderRadius: 'var(--radius-full)',
-                background: selectedSlug === p.slug ? 'var(--primary-purple)' : 'rgba(23, 16, 32, 0.85)',
+                background: selectedSlug === p.slug ? 'var(--primary-purple)' : 'var(--elevated-surface)',
                 border: selectedSlug === p.slug ? '1px solid var(--accent-purple)' : '1px solid var(--border-color)',
-                color: '#ffffff',
+                color: selectedSlug === p.slug ? '#ffffff' : 'var(--text-primary)',
                 fontSize: '0.9rem',
                 fontWeight: 600,
                 cursor: 'pointer',
@@ -81,7 +81,7 @@ export default function Examples() {
             <h2 style={{ fontSize: '2.2rem', textTransform: 'uppercase', marginBottom: '12px' }}>
               {selectedProfile.name}
             </h2>
-            <div style={{ fontSize: '1.1rem', color: 'var(--light-lavender)', fontWeight: 600, marginBottom: '6px' }}>
+            <div style={{ fontSize: '1.1rem', color: 'var(--accent-purple)', fontWeight: 600, marginBottom: '6px' }}>
               {selectedProfile.role} at {selectedProfile.company}
             </div>
             <div style={{ fontSize: '0.88rem', color: 'var(--text-muted)', marginBottom: '20px' }}>

@@ -1,9 +1,10 @@
 /* ==========================================================================
    FLOCARD CARD DETAIL PAGE (Gold / Platinum / Custom Purple)
+   Theme-aware product specification and interactive 3D preview.
    ========================================================================== */
 
 import React from 'react';
-import { ArrowRight, Sparkles, Check, ShieldCheck, Cpu, Droplets, Zap, ArrowLeft } from 'lucide-react';
+import { ArrowRight, Cpu, Droplets, ShieldCheck, ArrowLeft } from 'lucide-react';
 import Card3DPreview from '../components/Card3DPreview';
 import { EDITIONS } from '../lib/constants';
 
@@ -42,7 +43,7 @@ export default function CardDetail({ editionKey = 'purple' }) {
           {/* Left: 3D Interactive Card Preview */}
           <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
             <Card3DPreview edition={editionKey} width={420} allowFlip={true} />
-            <p style={{ marginTop: '20px', fontSize: '0.82rem', color: 'var(--text-muted)', textAlign: 'center' }}>
+            <p style={{ marginTop: '24px', fontSize: '0.82rem', color: 'var(--text-muted)', textAlign: 'center' }}>
               Hover to tilt &bull; Click to flip front & back
             </p>
           </div>
@@ -53,11 +54,11 @@ export default function CardDetail({ editionKey = 'purple' }) {
               {edition.badge} EDITION
             </div>
 
-            <h1 style={{ fontSize: 'clamp(2.4rem, 4vw, 3.4rem)', textTransform: 'uppercase', marginBottom: '14px' }}>
+            <h1 style={{ fontSize: 'clamp(2.4rem, 4vw, 3.4rem)', textTransform: 'uppercase', marginBottom: '14px', color: 'var(--text-primary)' }}>
               {edition.name}
             </h1>
 
-            <p style={{ fontSize: '1.15rem', color: 'var(--light-lavender)', fontWeight: 600, marginBottom: '20px' }}>
+            <p style={{ fontSize: '1.15rem', color: 'var(--primary-purple)', fontWeight: 600, marginBottom: '20px' }}>
               {edition.tagline}
             </p>
 
@@ -68,29 +69,30 @@ export default function CardDetail({ editionKey = 'purple' }) {
             {/* Hardware highlights */}
             <div
               style={{
-                background: 'rgba(23, 16, 32, 0.8)',
+                background: 'var(--elevated-surface)',
                 border: '1px solid var(--border-color)',
                 borderRadius: 'var(--radius-md)',
                 padding: '20px',
-                marginBottom: '36px'
+                marginBottom: '36px',
+                boxShadow: 'var(--shadow-soft)'
               }}
             >
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px' }}>
                 <div>
                   <div style={{ fontSize: '0.72rem', color: 'var(--text-muted)', textTransform: 'uppercase' }}>Surface Finish</div>
-                  <div style={{ fontSize: '0.88rem', color: '#ffffff', fontWeight: 600, marginTop: '2px' }}>{edition.specs.finish}</div>
+                  <div style={{ fontSize: '0.88rem', color: 'var(--text-primary)', fontWeight: 600, marginTop: '2px' }}>{edition.specs.finish}</div>
                 </div>
                 <div>
                   <div style={{ fontSize: '0.72rem', color: 'var(--text-muted)', textTransform: 'uppercase' }}>NFC Chip</div>
-                  <div style={{ fontSize: '0.88rem', color: '#ffffff', fontWeight: 600, marginTop: '2px' }}>{edition.specs.chip}</div>
+                  <div style={{ fontSize: '0.88rem', color: 'var(--text-primary)', fontWeight: 600, marginTop: '2px' }}>{edition.specs.chip}</div>
                 </div>
                 <div>
                   <div style={{ fontSize: '0.72rem', color: 'var(--text-muted)', textTransform: 'uppercase' }}>Durability</div>
-                  <div style={{ fontSize: '0.88rem', color: '#ffffff', fontWeight: 600, marginTop: '2px' }}>{edition.specs.durability}</div>
+                  <div style={{ fontSize: '0.88rem', color: 'var(--text-primary)', fontWeight: 600, marginTop: '2px' }}>{edition.specs.durability}</div>
                 </div>
                 <div>
                   <div style={{ fontSize: '0.72rem', color: 'var(--text-muted)', textTransform: 'uppercase' }}>Storage</div>
-                  <div style={{ fontSize: '0.88rem', color: '#ffffff', fontWeight: 600, marginTop: '2px' }}>{edition.specs.capacity}</div>
+                  <div style={{ fontSize: '0.88rem', color: 'var(--text-primary)', fontWeight: 600, marginTop: '2px' }}>{edition.specs.capacity}</div>
                 </div>
               </div>
             </div>
@@ -111,30 +113,30 @@ export default function CardDetail({ editionKey = 'purple' }) {
         {/* Feature Highlights Grid */}
         <div className="grid-3">
           <div className="glass-panel" style={{ padding: '28px' }}>
-            <div style={{ width: '42px', height: '42px', borderRadius: '50%', background: 'rgba(107, 0, 255, 0.2)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--accent-purple)', marginBottom: '16px' }}>
+            <div style={{ width: '42px', height: '42px', borderRadius: '50%', background: 'rgba(107, 0, 255, 0.15)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--primary-purple)', marginBottom: '16px' }}>
               <Cpu size={20} />
             </div>
-            <h3 style={{ fontSize: '1.15rem', color: '#ffffff', marginBottom: '8px' }}>High-Speed Contactless</h3>
+            <h3 style={{ fontSize: '1.15rem', color: 'var(--text-primary)', marginBottom: '8px' }}>High-Speed Contactless</h3>
             <p style={{ fontSize: '0.85rem', color: 'var(--text-secondary)' }}>
               13.56 MHz frequency protocol with instantaneous NFC coupling on all iOS 13+ and Android devices.
             </p>
           </div>
 
           <div className="glass-panel" style={{ padding: '28px' }}>
-            <div style={{ width: '42px', height: '42px', borderRadius: '50%', background: 'rgba(16, 185, 129, 0.2)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#34d399', marginBottom: '16px' }}>
+            <div style={{ width: '42px', height: '42px', borderRadius: '50%', background: 'rgba(16, 185, 129, 0.15)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#10b981', marginBottom: '16px' }}>
               <Droplets size={20} />
             </div>
-            <h3 style={{ fontSize: '1.15rem', color: '#ffffff', marginBottom: '8px' }}>IP68 Weatherproof</h3>
+            <h3 style={{ fontSize: '1.15rem', color: 'var(--text-primary)', marginBottom: '8px' }}>IP68 Weatherproof</h3>
             <p style={{ fontSize: '0.85rem', color: 'var(--text-secondary)' }}>
               Hermetically sealed internal antenna protects against water submersion, sweat, friction, and humidity.
             </p>
           </div>
 
           <div className="glass-panel" style={{ padding: '28px' }}>
-            <div style={{ width: '42px', height: '42px', borderRadius: '50%', background: 'rgba(212, 175, 55, 0.2)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--gold-primary)', marginBottom: '16px' }}>
+            <div style={{ width: '42px', height: '42px', borderRadius: '50%', background: 'rgba(212, 175, 55, 0.15)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--gold-primary)', marginBottom: '16px' }}>
               <ShieldCheck size={20} />
             </div>
-            <h3 style={{ fontSize: '1.15rem', color: '#ffffff', marginBottom: '8px' }}>Permanent Dynamic URL</h3>
+            <h3 style={{ fontSize: '1.15rem', color: 'var(--text-primary)', marginBottom: '8px' }}>Permanent Dynamic URL</h3>
             <p style={{ fontSize: '0.85rem', color: 'var(--text-secondary)' }}>
               Reprogram destination links anytime in the cloud without ever replacing or reprinting your physical card.
             </p>

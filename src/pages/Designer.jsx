@@ -43,6 +43,7 @@ import { EDITIONS, TEMPLATES, BRAND } from '../lib/constants';
 import { exportCardPDF, downloadCanvasPNG } from '../lib/pdfExport';
 import { useData } from '../context/DataContext';
 import { useAuth } from '../context/AuthContext';
+import { useTheme } from '../context/ThemeContext';
 import { WhatsappIcon } from '../components/SocialIcons';
 
 export const FONT_OPTIONS = [
@@ -107,10 +108,10 @@ function InteractiveFontPicker({
           alignItems: 'center',
           justifyContent: 'space-between',
           padding: '7px 10px',
-          background: 'rgba(23, 16, 32, 0.95)',
+          background: 'var(--card-surface)',
           border: isFieldHovered ? '1px solid #10B981' : isOpen ? '1px solid var(--accent-purple)' : '1px solid var(--border-color)',
           borderRadius: '8px',
-          color: '#ffffff',
+          color: 'var(--text-primary)',
           cursor: 'pointer',
           textAlign: 'left',
           transition: 'all 0.15s ease'
@@ -130,10 +131,10 @@ function InteractiveFontPicker({
             left: 0,
             right: 0,
             zIndex: 120,
-            background: 'rgba(16, 11, 23, 0.98)',
+            background: 'var(--card-surface)',
             border: '1px solid var(--border-color)',
             borderRadius: '10px',
-            boxShadow: '0 12px 32px rgba(0, 0, 0, 0.9)',
+            boxShadow: 'var(--card-shadow)',
             padding: '6px',
             maxHeight: '220px',
             overflowY: 'auto',
@@ -165,7 +166,7 @@ function InteractiveFontPicker({
                 }}
               >
                 <div style={{ display: 'flex', flexDirection: 'column' }}>
-                  <span style={{ fontFamily: `"${font.id}", sans-serif`, fontSize: '0.84rem', fontWeight: 600, color: '#ffffff' }}>
+                  <span style={{ fontFamily: `"${font.id}", sans-serif`, fontSize: '0.84rem', fontWeight: 600, color: 'var(--text-primary)' }}>
                     {font.name}
                   </span>
                   <span style={{ fontSize: '0.62rem', color: 'var(--text-muted)' }}>
@@ -184,6 +185,7 @@ function InteractiveFontPicker({
 
 export default function Designer() {
   const { user, isAdmin } = useAuth();
+  const { isLight } = useTheme();
   const { saveDesign, designs, studioBackground, updateStudioBackground, resetStudioBg } = useData();
 
   // URL query params support (e.g. /designer?edition=gold&template=customer_logo)
@@ -651,7 +653,7 @@ export default function Designer() {
             gap: '16px',
             marginBottom: '24px',
             padding: '16px 20px',
-            background: 'rgba(23, 16, 32, 0.85)',
+            background: 'var(--glass-panel-bg)',
             border: '1px solid var(--border-color)',
             borderRadius: 'var(--radius-md)',
             backdropFilter: 'blur(12px)'
@@ -673,7 +675,7 @@ export default function Designer() {
                   background: 'transparent',
                   border: 'none',
                   borderBottom: '1px solid var(--border-color)',
-                  color: '#ffffff',
+                  color: 'var(--text-primary)',
                   fontFamily: 'var(--font-display)',
                   fontWeight: 700,
                   fontSize: '1.1rem',
@@ -771,11 +773,11 @@ export default function Designer() {
                     type="button"
                     onClick={() => handleTemplateChange(tmpl.id)}
                     style={{
-                      background: templateType === tmpl.id ? 'rgba(107, 0, 255, 0.35)' : 'rgba(23, 16, 32, 0.7)',
+                      background: templateType === tmpl.id ? 'rgba(107, 0, 255, 0.25)' : 'var(--elevated-surface)',
                       border: templateType === tmpl.id ? '2px solid var(--accent-purple)' : '1px solid var(--border-color)',
                       borderRadius: 'var(--radius-sm)',
                       padding: '10px 8px',
-                      color: templateType === tmpl.id ? '#ffffff' : 'var(--text-secondary)',
+                      color: templateType === tmpl.id ? 'var(--text-primary)' : 'var(--text-secondary)',
                       fontSize: '0.78rem',
                       fontWeight: 600,
                       cursor: 'pointer',
@@ -784,7 +786,7 @@ export default function Designer() {
                     }}
                   >
                     <div style={{ fontWeight: 700, marginBottom: '2px' }}>{tmpl.name}</div>
-                    <div style={{ fontSize: '0.68rem', color: templateType === tmpl.id ? 'var(--light-lavender)' : 'var(--text-muted)' }}>
+                    <div style={{ fontSize: '0.68rem', color: templateType === tmpl.id ? 'var(--accent-purple)' : 'var(--text-muted)' }}>
                       {tmpl.pdfPages}
                     </div>
                   </button>
@@ -804,11 +806,11 @@ export default function Designer() {
                     type="button"
                     onClick={() => handleEditionChange(key)}
                     style={{
-                      background: edition === key ? 'rgba(107, 0, 255, 0.3)' : 'rgba(23, 16, 32, 0.7)',
+                      background: edition === key ? 'rgba(107, 0, 255, 0.25)' : 'var(--elevated-surface)',
                       border: edition === key ? `2px solid ${item.accentColor}` : '1px solid var(--border-color)',
                       borderRadius: 'var(--radius-sm)',
                       padding: '8px 4px',
-                      color: edition === key ? '#ffffff' : 'var(--text-secondary)',
+                      color: edition === key ? 'var(--text-primary)' : 'var(--text-secondary)',
                       fontSize: '0.78rem',
                       fontWeight: 600,
                       cursor: 'pointer',
@@ -837,7 +839,7 @@ export default function Designer() {
               style={{
                 display: 'grid',
                 gridTemplateColumns: 'repeat(4, 1fr)',
-                background: 'rgba(23, 16, 32, 0.9)',
+                background: 'var(--elevated-surface)',
                 borderRadius: '8px',
                 padding: '3px',
                 border: '1px solid var(--border-color)',
@@ -889,7 +891,7 @@ export default function Designer() {
             {activeTab === 'logos' && (
               <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
                 {/* 1. Customer Logo Section */}
-                <div style={{ background: 'rgba(23, 16, 32, 0.7)', padding: '14px', borderRadius: '10px', border: '1px solid var(--border-color)' }}>
+                <div style={{ background: 'var(--elevated-surface)', padding: '14px', borderRadius: '10px', border: '1px solid var(--border-color)' }}>
                   <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '10px' }}>
                     <div style={{ fontSize: '0.82rem', fontWeight: 700, color: '#ffffff' }}>Customer Logo (Front)</div>
                     <span style={{ fontSize: '0.68rem', color: templateType === 'customer_logo' ? 'var(--accent-purple)' : 'var(--text-muted)' }}>
@@ -1079,7 +1081,7 @@ export default function Designer() {
                 </div>
 
                 {/* 2. Official FLOCARD Logo Section - NON-EDITABLE */}
-                <div style={{ background: 'rgba(23, 16, 32, 0.7)', padding: '14px', borderRadius: '10px', border: '1px solid var(--border-color)' }}>
+                <div style={{ background: 'var(--elevated-surface)', padding: '14px', borderRadius: '10px', border: '1px solid var(--border-color)' }}>
                   <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
                     <div style={{ fontSize: '0.82rem', fontWeight: 700, color: '#ffffff', display: 'flex', alignItems: 'center', gap: '6px' }}>
                       <Lock size={12} style={{ color: 'var(--accent-purple)' }} />
@@ -1137,7 +1139,7 @@ export default function Designer() {
                             padding: '6px',
                             borderRadius: '6px',
                             border: frontConfig.fontSize === size ? '1px solid var(--accent-purple)' : '1px solid var(--border-color)',
-                            background: frontConfig.fontSize === size ? 'rgba(107, 0, 255, 0.25)' : 'rgba(23, 16, 32, 0.8)',
+                            background: frontConfig.fontSize === size ? 'rgba(107, 0, 255, 0.25)' : 'var(--elevated-surface)',
                             color: '#ffffff',
                             fontSize: '0.75rem',
                             fontWeight: 600,
@@ -1279,7 +1281,7 @@ export default function Designer() {
 
                 <div
                   style={{
-                    background: 'rgba(23, 16, 32, 0.7)',
+                    background: 'var(--elevated-surface)',
                     padding: '12px',
                     borderRadius: '8px',
                     border: '1px solid var(--border-color)',
@@ -1347,7 +1349,9 @@ export default function Designer() {
               minHeight: '540px',
               position: 'relative',
               overflow: 'hidden',
-              backgroundImage: `radial-gradient(circle at 50% 50%, rgba(8, 6, 13, 0.45), #08060d), url(${studioBackground})`,
+              backgroundImage: isLight
+                ? `radial-gradient(circle at 50% 50%, rgba(248, 247, 252, 0.65), #f1edfa), url(${studioBackground})`
+                : `radial-gradient(circle at 50% 50%, rgba(8, 6, 13, 0.45), #08060d), url(${studioBackground})`,
               backgroundSize: 'cover',
               backgroundPosition: 'center'
             }}
@@ -1361,7 +1365,7 @@ export default function Designer() {
                 display: 'flex',
                 alignItems: 'center',
                 gap: '10px',
-                background: 'rgba(23, 16, 32, 0.95)',
+                background: 'var(--glass-panel-bg)',
                 border: '1px solid var(--border-color)',
                 borderRadius: 'var(--radius-full)',
                 padding: '4px 14px',
@@ -1536,9 +1540,9 @@ export default function Designer() {
                     ? 'rgba(16, 185, 129, 0.15)'
                     : designStatus === 'submitted' || designStatus === 'in_review'
                       ? 'rgba(245, 158, 11, 0.15)'
-                      : 'rgba(23, 16, 32, 0.8)',
+                      : 'var(--elevated-surface)',
                   border: '1px solid var(--border-color)',
-                  color: designStatus === 'approved' ? '#34d399' : designStatus === 'submitted' ? '#fbbf24' : '#ffffff'
+                  color: designStatus === 'approved' ? '#10b981' : designStatus === 'submitted' ? '#d97706' : 'var(--text-primary)'
                 }}
               >
                 <div
@@ -1719,7 +1723,7 @@ export default function Designer() {
               <Lock size={26} />
             </div>
 
-            <h3 style={{ fontSize: '1.25rem', fontWeight: 800, color: '#ffffff', marginBottom: '8px', fontFamily: 'var(--font-display)' }}>
+            <h3 style={{ fontSize: '1.25rem', fontWeight: 800, color: 'var(--text-primary)', marginBottom: '8px', fontFamily: 'var(--font-display)' }}>
               Sign In to Submit Design
             </h3>
             <p style={{ fontSize: '0.86rem', color: 'var(--text-secondary)', lineHeight: 1.55, marginBottom: '24px' }}>

@@ -39,7 +39,7 @@ export default function HowItWorks() {
               >
                 {s.step}
               </div>
-              <h3 style={{ fontSize: '1.25rem', color: '#ffffff', marginBottom: '10px' }}>
+              <h3 style={{ fontSize: '1.25rem', color: 'var(--text-primary)', marginBottom: '10px' }}>
                 {s.title}
               </h3>
               <p style={{ fontSize: '0.88rem', color: 'var(--text-secondary)', lineHeight: 1.6 }}>
@@ -54,15 +54,14 @@ export default function HowItWorks() {
           className="glass-panel"
           style={{
             padding: '44px 36px',
-            marginBottom: '60px',
-            background: 'linear-gradient(135deg, rgba(23, 16, 32, 0.95) 0%, rgba(32, 11, 59, 0.4) 100%)'
+            marginBottom: '60px'
           }}
         >
           <div style={{ maxWidth: '800px' }}>
             <div className="badge-tag" style={{ marginBottom: '12px' }}>
               CORE HARDWARE
             </div>
-            <h2 style={{ fontSize: '2rem', textTransform: 'uppercase', marginBottom: '16px' }}>
+            <h2 style={{ fontSize: '2rem', textTransform: 'uppercase', marginBottom: '16px', color: 'var(--text-primary)' }}>
               High-Frequency Electromagnetic Induction
             </h2>
             <p style={{ color: 'var(--text-secondary)', fontSize: '1rem', lineHeight: 1.6, marginBottom: '24px' }}>
@@ -71,15 +70,15 @@ export default function HowItWorks() {
 
             <div className="grid-3" style={{ marginTop: '28px' }}>
               <div>
-                <h4 style={{ color: 'var(--light-lavender)', fontSize: '0.95rem', marginBottom: '6px' }}>1. Zero Battery Required</h4>
+                <h4 style={{ color: 'var(--primary-purple)', fontSize: '0.95rem', marginBottom: '6px' }}>1. Zero Battery Required</h4>
                 <p style={{ fontSize: '0.82rem', color: 'var(--text-secondary)' }}>Card operates purely via wireless induction from the reader device.</p>
               </div>
               <div>
-                <h4 style={{ color: 'var(--light-lavender)', fontSize: '0.95rem', marginBottom: '6px' }}>2. Instant Safari & Chrome</h4>
+                <h4 style={{ color: 'var(--primary-purple)', fontSize: '0.95rem', marginBottom: '6px' }}>2. Instant Safari & Chrome</h4>
                 <p style={{ fontSize: '0.82rem', color: 'var(--text-secondary)' }}>Native iOS and Android notifications trigger automatically with zero app downloads.</p>
               </div>
               <div>
-                <h4 style={{ color: 'var(--light-lavender)', fontSize: '0.95rem', marginBottom: '6px' }}>3. Dynamic Cloud Routing</h4>
+                <h4 style={{ color: 'var(--primary-purple)', fontSize: '0.95rem', marginBottom: '6px' }}>3. Dynamic Cloud Routing</h4>
                 <p style={{ fontSize: '0.82rem', color: 'var(--text-secondary)' }}>The card links to your permanent URL. Update your links, socials, or job title anytime.</p>
               </div>
             </div>
@@ -88,27 +87,27 @@ export default function HowItWorks() {
 
         {/* Device Compatibility Matrix */}
         <div className="glass-panel" style={{ padding: '36px' }}>
-          <h3 style={{ fontSize: '1.4rem', textTransform: 'uppercase', marginBottom: '18px', textAlign: 'center' }}>
+          <h3 style={{ fontSize: '1.4rem', textTransform: 'uppercase', marginBottom: '18px', textAlign: 'center', color: 'var(--text-primary)' }}>
             Universal Device Compatibility
           </h3>
 
           <div className="grid-2" style={{ gap: '32px' }}>
-            <div style={{ background: 'rgba(23, 16, 32, 0.8)', padding: '24px', borderRadius: '16px', border: '1px solid var(--border-color)' }}>
+            <div style={{ background: 'var(--elevated-surface)', padding: '24px', borderRadius: '16px', border: '1px solid var(--border-color)' }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '12px' }}>
-                <Smartphone size={24} color="var(--accent-purple)" />
-                <h4 style={{ fontSize: '1.15rem', color: '#ffffff' }}>Apple iOS Compatibility</h4>
+                <Smartphone size={24} color="var(--primary-purple)" />
+                <h4 style={{ fontSize: '1.15rem', color: 'var(--text-primary)' }}>Apple iOS Compatibility</h4>
               </div>
               <ul style={{ listStyle: 'none', display: 'flex', flexDirection: 'column', gap: '8px', fontSize: '0.88rem', color: 'var(--text-secondary)' }}>
-                <li>&bull; <strong>iPhone XR, XS, 11, 12, 13, 14, 15, 16, 17+</strong>: Automatic background NFC tag reading enabled by default.</li>
-                <li>&bull; <strong>iPhone 7, 8, X</strong>: NFC reader available in Control Center.</li>
-                <li>&bull; <strong>Older Models & iPads</strong>: Built-in camera scans the high-contrast back QR code seamlessly.</li>
+                <li>&bull; <strong style={{ color: 'var(--text-primary)' }}>iPhone XR, XS, 11, 12, 13, 14, 15, 16, 17+</strong>: Automatic background NFC tag reading enabled by default.</li>
+                <li>&bull; <strong style={{ color: 'var(--text-primary)' }}>iPhone 7, 8, X</strong>: NFC reader available in Control Center.</li>
+                <li>&bull; <strong style={{ color: 'var(--text-primary)' }}>Older Models & iPads</strong>: Built-in camera scans the high-contrast back QR code seamlessly.</li>
               </ul>
             </div>
 
-            <div style={{ background: 'rgba(23, 16, 32, 0.8)', padding: '24px', borderRadius: '16px', border: '1px solid var(--border-color)' }}>
+            <div style={{ background: 'var(--elevated-surface)', padding: '24px', borderRadius: '16px', border: '1px solid var(--border-color)' }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '12px' }}>
-                <Smartphone size={24} color="var(--accent-purple)" />
-                <h4 style={{ fontSize: '1.15rem', color: '#ffffff' }}>Android Compatibility</h4>
+                <Smartphone size={24} color="var(--primary-purple)" />
+                <h4 style={{ fontSize: '1.15rem', color: 'var(--text-primary)' }}>Android Compatibility</h4>
               </div>
               <ul style={{ listStyle: 'none', display: 'flex', flexDirection: 'column', gap: '8px', fontSize: '0.88rem', color: 'var(--text-secondary)' }}>
                 <li>&bull; <strong>Samsung, Google Pixel, OnePlus, Xiaomi, Oppo, Vivo</strong>: All modern NFC models (over 95% of active devices).</li>

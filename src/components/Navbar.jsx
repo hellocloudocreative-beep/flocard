@@ -1,17 +1,19 @@
 /* ==========================================================================
    FLOCARD NAVIGATION BAR
-   Responsive header with mobile drawer, brand logo, and quick role switcher.
+   Supports Dark & Light themes, mobile drawer, brand logo switching,
+   interactive theme toggle, and account status.
    ========================================================================== */
 
 import React, { useState, useEffect } from 'react';
-import { Menu, X, ArrowRight, User, Shield, LogOut, Sparkles, SlidersHorizontal } from 'lucide-react';
+import { Menu, X, ArrowRight, User, LogOut, Sun, Moon, ChevronDown } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
+import { useTheme } from '../context/ThemeContext';
 
 export default function Navbar({ currentPath = '/' }) {
   const [mobileOpen, setMobileOpen] = useState(false);
   const [scrolled, setScrolled] = useState(false);
-  const { user, isAdmin, isCustomer, logout, switchPersona } = useAuth();
-  const [showPersonaMenu, setShowPersonaMenu] = useState(false);
+  const { user, logout } = useAuth();
+  const { theme, isDark, isLight, toggleTheme } = useTheme();
 
   useEffect(() => {
     const handleScroll = () => {
@@ -53,11 +55,12 @@ export default function Navbar({ currentPath = '/' }) {
           right: 0,
           height: 'var(--header-height)',
           zIndex: 100,
-          transition: 'all 0.3s ease',
-          background: scrolled ? 'rgba(8, 6, 13, 0.88)' : 'transparent',
+          transition: 'background-color 0.3s ease, border-color 0.3s ease, box-shadow 0.3s ease',
+          background: scrolled ? 'var(--header-bg)' : 'transparent',
           backdropFilter: scrolled ? 'blur(16px)' : 'none',
           WebkitBackdropFilter: scrolled ? 'blur(16px)' : 'none',
-          borderBottom: scrolled ? '1px solid rgba(48, 36, 61, 0.6)' : '1px solid transparent'
+          borderBottom: scrolled ? '1px solid var(--header-border)' : '1px solid transparent',
+          boxShadow: scrolled ? 'var(--shadow-soft)' : 'none'
         }}
       >
         <div
@@ -69,7 +72,7 @@ export default function Navbar({ currentPath = '/' }) {
             justifyContent: 'space-between'
           }}
         >
-          {/* Brand Logo */}
+          {/* Brand Logo - Theme-Aware */}
           <a
             href="/"
             style={{
@@ -80,7 +83,7 @@ export default function Navbar({ currentPath = '/' }) {
             }}
           >
             <img
-              src="/assets/logo-light.png"
+              src={isLight ? "/assets/logo-dark.png" : "/assets/logo-light.png"}
               alt="FLOCARD"
               style={{ height: '28px', width: 'auto', display: 'block', objectFit: 'contain' }}
               onError={(e) => {
@@ -94,11 +97,11 @@ export default function Navbar({ currentPath = '/' }) {
                 fontWeight: 800,
                 fontSize: '1.45rem',
                 letterSpacing: '-0.02em',
-                color: '#ffffff',
+                color: 'var(--text-primary)',
                 display: 'none'
               }}
             >
-              <span style={{ color: 'var(--accent-purple)' }}>FLO</span>CARD
+              <span style={{ color: 'var(--primary-purple)' }}>FLO</span>CARD
             </span>
           </a>
 
@@ -120,13 +123,13 @@ export default function Navbar({ currentPath = '/' }) {
                   style={{
                     fontSize: '0.92rem',
                     fontWeight: 500,
-                    color: active ? 'var(--light-lavender)' : 'var(--text-secondary)',
+                    color: active ? 'var(--nav-active-color)' : 'var(--nav-link-color)',
                     transition: 'color 0.2s ease',
                     position: 'relative',
                     padding: '6px 0'
                   }}
-                  onMouseEnter={(e) => (e.target.style.color = '#ffffff')}
-                  onMouseLeave={(e) => (e.target.style.color = active ? 'var(--light-lavender)' : 'var(--text-secondary)')}
+                  onMouseEnter={(e) => (e.target.style.color = 'var(--nav-hover-color)')}
+                  onMouseLeave={(e) => (e.target.style.color = active ? 'var(--nav-active-color)' : 'var(--nav-link-color)')}
                 >
                   {link.label}
                   {active && (
@@ -137,7 +140,7 @@ export default function Navbar({ currentPath = '/' }) {
                         left: 0,
                         right: 0,
                         height: '2px',
-                        background: 'var(--accent-purple)',
+                        background: 'var(--primary-purple)',
                         borderRadius: '2px'
                       }}
                     />
@@ -153,39 +156,75 @@ export default function Navbar({ currentPath = '/' }) {
             style={{
               display: 'flex',
               alignItems: 'center',
-              gap: '14px'
+              gap: '12px'
             }}
           >
+            {/* Theme Toggle Button */}
+            <button
+              type="button"
+              onClick={toggleTheme}
+              aria-label={isDark ? "Switch to Light Theme" : "Switch to Dark Theme"}
+              title={isDark ? "Switch to Light Theme" : "Switch to Dark Theme"}
+              style={{
+                background: 'var(--theme-toggle-bg)',
+                border: '1px solid var(--border-color)',
+                color: 'var(--theme-toggle-color)',
+                borderRadius: 'var(--radius-full)',
+                width: '40px',
+                height: '40px',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                cursor: 'pointer',
+                transition: 'all 0.25s ease',
+                boxShadow: 'var(--shadow-soft)'
+              }}
+              onMouseEnter={(e) => {
+                e.currentTarget.style.transform = 'scale(1.05)';
+                e.currentTarget.style.borderColor = 'var(--primary-purple)';
+              }}
+              onMouseLeave={(e) => {
+                e.currentTarget.style.transform = 'scale(1)';
+                e.currentTarget.style.borderColor = 'var(--border-color)';
+              }}
+            >
+              {isDark ? <Sun size={18} /> : <Moon size={18} />}
+            </button>
+
             {/* Customer Account & Sign In */}
             {user ? (
               <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
                 <a
                   href="/account"
                   style={{
-                    background: 'rgba(23, 16, 32, 0.9)',
-                    border: '1px solid var(--border-color)',
+                    background: 'var(--btn-sec-bg)',
+                    border: '1px solid var(--btn-sec-border)',
                     borderRadius: 'var(--radius-full)',
                     padding: '7px 14px',
-                    color: 'var(--light-lavender)',
+                    color: 'var(--text-primary)',
                     display: 'flex',
                     alignItems: 'center',
                     gap: '8px',
                     fontSize: '0.84rem',
                     fontWeight: 600,
                     textDecoration: 'none',
-                    transition: 'all 0.2s ease'
+                    transition: 'all 0.2s ease',
+                    boxShadow: 'var(--shadow-soft)'
                   }}
+                  onMouseEnter={(e) => (e.currentTarget.style.borderColor = 'var(--primary-purple)')}
+                  onMouseLeave={(e) => (e.currentTarget.style.borderColor = 'var(--btn-sec-border)')}
                 >
-                  <User size={14} color="var(--accent-purple)" />
+                  <User size={14} color="var(--primary-purple)" />
                   <span>{user.name ? user.name.split(' ')[0] : 'Account'}</span>
+                  <ChevronDown size={13} color="var(--text-muted)" />
                 </a>
                 <button
                   type="button"
                   onClick={logout}
                   title="Sign Out"
                   style={{
-                    background: 'rgba(23, 16, 32, 0.7)',
-                    border: '1px solid var(--border-color)',
+                    background: 'var(--btn-sec-bg)',
+                    border: '1px solid var(--btn-sec-border)',
                     borderRadius: 'var(--radius-full)',
                     padding: '7px 10px',
                     color: 'var(--text-muted)',
@@ -196,7 +235,7 @@ export default function Navbar({ currentPath = '/' }) {
                     transition: 'all 0.2s ease'
                   }}
                   onMouseEnter={(e) => { e.currentTarget.style.color = '#EF4444'; e.currentTarget.style.borderColor = 'rgba(239, 68, 68, 0.4)'; }}
-                  onMouseLeave={(e) => { e.currentTarget.style.color = 'var(--text-muted)'; e.currentTarget.style.borderColor = 'var(--border-color)'; }}
+                  onMouseLeave={(e) => { e.currentTarget.style.color = 'var(--text-muted)'; e.currentTarget.style.borderColor = 'var(--btn-sec-border)'; }}
                 >
                   <LogOut size={13} />
                 </button>
@@ -205,23 +244,24 @@ export default function Navbar({ currentPath = '/' }) {
               <a
                 href="/login"
                 style={{
-                  background: 'rgba(107, 0, 255, 0.15)',
-                  border: '1px solid rgba(107, 0, 255, 0.45)',
+                  background: 'var(--btn-sec-bg)',
+                  border: '1px solid var(--btn-sec-border)',
                   borderRadius: 'var(--radius-full)',
                   padding: '7px 16px',
-                  color: '#ffffff',
+                  color: 'var(--text-primary)',
                   display: 'flex',
                   alignItems: 'center',
                   gap: '6px',
                   fontSize: '0.84rem',
                   fontWeight: 600,
                   textDecoration: 'none',
-                  transition: 'all 0.2s ease'
+                  transition: 'all 0.2s ease',
+                  boxShadow: 'var(--shadow-soft)'
                 }}
-                onMouseEnter={(e) => { e.currentTarget.style.background = 'rgba(107, 0, 255, 0.3)'; }}
-                onMouseLeave={(e) => { e.currentTarget.style.background = 'rgba(107, 0, 255, 0.15)'; }}
+                onMouseEnter={(e) => { e.currentTarget.style.borderColor = 'var(--primary-purple)'; }}
+                onMouseLeave={(e) => { e.currentTarget.style.borderColor = 'var(--btn-sec-border)'; }}
               >
-                <User size={14} color="var(--accent-purple)" />
+                <User size={14} color="var(--primary-purple)" />
                 <span>Sign In</span>
               </a>
             )}
@@ -233,24 +273,48 @@ export default function Navbar({ currentPath = '/' }) {
             </a>
           </div>
 
-          {/* Mobile Menu Button */}
-          <button
-            type="button"
-            className="mobile-menu-btn"
-            onClick={() => setMobileOpen(!mobileOpen)}
-            aria-label="Toggle navigation menu"
-            style={{
-              display: 'none',
-              background: 'rgba(23, 16, 32, 0.9)',
-              border: '1px solid var(--border-color)',
-              color: '#ffffff',
-              padding: '8px',
-              borderRadius: '8px',
-              cursor: 'pointer'
-            }}
-          >
-            {mobileOpen ? <X size={22} /> : <Menu size={22} />}
-          </button>
+          {/* Mobile Right Controls: Theme Toggle + Menu Button */}
+          <div className="mobile-actions" style={{ display: 'none', alignItems: 'center', gap: '8px' }}>
+            <button
+              type="button"
+              onClick={toggleTheme}
+              aria-label={isDark ? "Switch to Light Theme" : "Switch to Dark Theme"}
+              style={{
+                background: 'var(--theme-toggle-bg)',
+                border: '1px solid var(--border-color)',
+                color: 'var(--theme-toggle-color)',
+                borderRadius: '8px',
+                width: '38px',
+                height: '38px',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                cursor: 'pointer'
+              }}
+            >
+              {isDark ? <Sun size={17} /> : <Moon size={17} />}
+            </button>
+
+            <button
+              type="button"
+              className="mobile-menu-btn"
+              onClick={() => setMobileOpen(!mobileOpen)}
+              aria-label="Toggle navigation menu"
+              style={{
+                background: 'var(--btn-sec-bg)',
+                border: '1px solid var(--border-color)',
+                color: 'var(--text-primary)',
+                padding: '8px',
+                borderRadius: '8px',
+                cursor: 'pointer',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center'
+              }}
+            >
+              {mobileOpen ? <X size={22} /> : <Menu size={22} />}
+            </button>
+          </div>
         </div>
       </header>
 
@@ -261,7 +325,7 @@ export default function Navbar({ currentPath = '/' }) {
           style={{
             position: 'fixed',
             inset: 0,
-            background: 'rgba(8, 6, 13, 0.97)',
+            background: isLight ? 'rgba(248, 247, 252, 0.98)' : 'rgba(8, 6, 13, 0.98)',
             backdropFilter: 'blur(20px)',
             WebkitBackdropFilter: 'blur(20px)',
             zIndex: 99,
@@ -272,7 +336,45 @@ export default function Navbar({ currentPath = '/' }) {
             overflowY: 'auto'
           }}
         >
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+            {/* Quick theme switcher in mobile drawer */}
+            <div
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'space-between',
+                padding: '12px 16px',
+                background: 'var(--elevated-surface)',
+                borderRadius: '12px',
+                border: '1px solid var(--border-color)',
+                marginBottom: '8px'
+              }}
+            >
+              <span style={{ fontSize: '0.88rem', fontWeight: 600, color: 'var(--text-primary)' }}>
+                Theme: {isLight ? 'Light Mode' : 'Dark Mode'}
+              </span>
+              <button
+                type="button"
+                onClick={toggleTheme}
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '6px',
+                  background: 'var(--primary-purple)',
+                  color: '#ffffff',
+                  border: 'none',
+                  borderRadius: 'var(--radius-full)',
+                  padding: '6px 14px',
+                  fontSize: '0.78rem',
+                  fontWeight: 600,
+                  cursor: 'pointer'
+                }}
+              >
+                {isDark ? <Sun size={14} /> : <Moon size={14} />}
+                <span>Switch to {isDark ? 'Light' : 'Dark'}</span>
+              </button>
+            </div>
+
             {navLinks.map((link) => (
               <a
                 key={link.href}
@@ -282,16 +384,16 @@ export default function Navbar({ currentPath = '/' }) {
                   fontSize: '1.25rem',
                   fontFamily: 'var(--font-display)',
                   fontWeight: 600,
-                  color: currentPath === link.href ? 'var(--light-lavender)' : '#ffffff',
+                  color: currentPath === link.href ? 'var(--primary-purple)' : 'var(--text-primary)',
                   padding: '8px 0',
-                  borderBottom: '1px solid rgba(48, 36, 61, 0.4)'
+                  borderBottom: '1px solid var(--border-color)'
                 }}
               >
                 {link.label}
               </a>
             ))}
 
-            <div style={{ height: '10px' }} />
+            <div style={{ height: '6px' }} />
 
             {/* Portal Links on Mobile */}
             {user ? (
@@ -303,13 +405,13 @@ export default function Navbar({ currentPath = '/' }) {
                     display: 'flex',
                     alignItems: 'center',
                     gap: '10px',
-                    color: 'var(--light-lavender)',
+                    color: 'var(--text-primary)',
                     fontSize: '1.05rem',
                     fontWeight: 600,
                     textDecoration: 'none'
                   }}
                 >
-                  <User size={18} color="var(--accent-purple)" />
+                  <User size={18} color="var(--primary-purple)" />
                   <span>My Account ({user.name || 'Member'})</span>
                 </a>
                 <button
@@ -341,13 +443,13 @@ export default function Navbar({ currentPath = '/' }) {
                     display: 'flex',
                     alignItems: 'center',
                     gap: '10px',
-                    color: '#ffffff',
+                    color: 'var(--text-primary)',
                     fontSize: '1.05rem',
                     fontWeight: 600,
                     textDecoration: 'none'
                   }}
                 >
-                  <User size={18} color="var(--accent-purple)" />
+                  <User size={18} color="var(--primary-purple)" />
                   <span>Customer Sign In</span>
                 </a>
                 <a
@@ -393,7 +495,7 @@ export default function Navbar({ currentPath = '/' }) {
           .desktop-nav, .desktop-actions {
             display: none !important;
           }
-          .mobile-menu-btn {
+          .mobile-actions {
             display: flex !important;
           }
         }

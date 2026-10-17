@@ -1,9 +1,16 @@
 /* ==========================================================================
-   FLOCARD DESIGN SYSTEM — LUXURY COSMIC PURPLE & OBSIDIAN
+   FLOCARD DESIGN SYSTEM — DUAL THEME ENGINE (DARK DEFAULT & LIGHT SECONDARY)
+   - Dark Theme: Luxury Cosmic Obsidian & Deep Violet (Default)
+   - Light Theme: Premium Lavender Cloud & Radiant Purple (Secondary)
    ========================================================================== */
 
-:root {
-  /* Brand Palette */
+/* --------------------------------------------------------------------------
+   1. TOKENS & COLOR PALETTES
+   -------------------------------------------------------------------------- */
+
+:root,
+html[data-theme="dark"] {
+  /* Brand Foundations */
   --bg-main: #08060d;
   --bg-secondary: #0d0915;
   --bg-tertiary: #120c1d;
@@ -16,6 +23,7 @@
   --deep-violet: #4c1d95;
   --accent-purple: #a855f7;
   --light-lavender: #d8b4fe;
+  --soft-purple: #c084fc;
   --neon-violet: #8b5cf6;
   
   --gold-primary: #d4af37;
@@ -27,12 +35,41 @@
   --text-secondary: #b9aec9;
   --text-muted: #7c728e;
   --border-color: #30243d;
-  --border-highlight: rgba(168, 85, 247, 0.3);
+  --border-highlight: rgba(168, 85, 247, 0.35);
 
-  --success: #10b981;
-  --warning: #f59e0b;
-  --danger: #ef4444;
-  --info: #3b82f6;
+  --glass-bg: rgba(16, 11, 25, 0.75);
+  --glass-panel-bg: rgba(23, 16, 32, 0.85);
+  --header-bg: rgba(8, 6, 13, 0.88);
+  --header-border: rgba(48, 36, 61, 0.6);
+  --footer-bg: #06040a;
+  
+  --input-bg: rgba(23, 16, 32, 0.9);
+  --input-focus-bg: rgba(31, 22, 44, 0.95);
+  --shadow-soft: 0 8px 32px -4px rgba(107, 0, 255, 0.25);
+  --shadow-card: 0 20px 50px rgba(0, 0, 0, 0.6);
+
+  --badge-bg: rgba(107, 0, 255, 0.18);
+  --badge-border: rgba(168, 85, 247, 0.35);
+  --badge-text: #d8b4fe;
+
+  --btn-sec-bg: rgba(23, 16, 32, 0.85);
+  --btn-sec-text: #ffffff;
+  --btn-sec-border: var(--border-color);
+  --btn-sec-hover: var(--elevated-surface-hover);
+
+  --pill-bg: rgba(23, 16, 32, 0.9);
+  --pill-text: #ffffff;
+  --pill-border: var(--border-color);
+
+  --hero-bg-overlay: linear-gradient(180deg, rgba(8, 6, 13, 0.4) 0%, rgba(8, 6, 13, 0.2) 40%, rgba(8, 6, 13, 0.95) 90%, #08060D 100%);
+  --hero-glow: radial-gradient(ellipse, rgba(168, 85, 247, 0.3) 0%, rgba(107, 0, 255, 0.15) 45%, transparent 75%);
+
+  --nav-active-color: #d8b4fe;
+  --nav-link-color: var(--text-secondary);
+  --nav-hover-color: #ffffff;
+
+  --theme-toggle-bg: rgba(23, 16, 32, 0.8);
+  --theme-toggle-color: #d8b4fe;
 
   /* Typography */
   --font-heading: 'Sora', 'Space Grotesk', -apple-system, BlinkMacSystemFont, sans-serif;
@@ -46,10 +83,81 @@
   --radius-md: 14px;
   --radius-lg: 20px;
   --radius-full: 9999px;
-
-  /* Standard Business Card ratio (85.6 x 54 mm = 1.585) */
   --card-aspect: 1.585;
+
+  /* Status Colors */
+  --success: #10b981;
+  --warning: #f59e0b;
+  --danger: #ef4444;
+  --info: #3b82f6;
 }
+
+/* Light Theme — Brand Colors based on official guidelines */
+html[data-theme="light"] {
+  --bg-main: #F8F7FC;
+  --bg-secondary: #F1EDFA;
+  --bg-tertiary: #E8E1F5;
+  --card-surface: #FFFFFF;
+  --elevated-surface: #F1EDFA;
+  --elevated-surface-hover: #E7DFF4;
+
+  --primary-purple: #6B00FF;
+  --primary-purple-glow: rgba(107, 0, 255, 0.22);
+  --deep-violet: #4C1D95;
+  --accent-purple: #6B00FF;
+  --light-lavender: #6B00FF;
+  --soft-purple: #A78BFA;
+  --neon-violet: #6B00FF;
+
+  --gold-primary: #B8860B;
+  --gold-glow: rgba(184, 134, 11, 0.2);
+  --platinum-primary: #475569;
+  --platinum-glow: rgba(71, 85, 105, 0.2);
+
+  --text-primary: #171321;
+  --text-secondary: #625B70;
+  --text-muted: #898197;
+  --border-color: #E5DDF2;
+  --border-highlight: rgba(107, 0, 255, 0.25);
+
+  --glass-bg: rgba(255, 255, 255, 0.88);
+  --glass-panel-bg: rgba(255, 255, 255, 0.94);
+  --header-bg: rgba(255, 255, 255, 0.88);
+  --header-border: #E5DDF2;
+  --footer-bg: #F1EDFA;
+  
+  --input-bg: #FFFFFF;
+  --input-focus-bg: #FFFFFF;
+  --shadow-soft: 0 8px 30px rgba(76, 29, 149, 0.08);
+  --shadow-card: 0 20px 45px rgba(76, 29, 149, 0.10);
+
+  --badge-bg: #EDE7F6;
+  --badge-border: #D8B4FE;
+  --badge-text: #6B00FF;
+
+  --btn-sec-bg: #FFFFFF;
+  --btn-sec-text: #171321;
+  --btn-sec-border: #E5DDF2;
+  --btn-sec-hover: #F1EDFA;
+
+  --pill-bg: #FFFFFF;
+  --pill-text: #171321;
+  --pill-border: #E5DDF2;
+
+  --hero-bg-overlay: linear-gradient(180deg, rgba(248, 247, 252, 0.3) 0%, rgba(248, 247, 252, 0.1) 40%, rgba(248, 247, 252, 0.95) 90%, #F8F7FC 100%);
+  --hero-glow: radial-gradient(ellipse, rgba(167, 139, 250, 0.28) 0%, rgba(107, 0, 255, 0.10) 45%, transparent 75%);
+
+  --nav-active-color: #6B00FF;
+  --nav-link-color: #625B70;
+  --nav-hover-color: #171321;
+
+  --theme-toggle-bg: #F1EDFA;
+  --theme-toggle-color: #6B00FF;
+}
+
+/* --------------------------------------------------------------------------
+   2. GLOBAL RESET & BASE STYLES
+   -------------------------------------------------------------------------- */
 
 *, *::before, *::after {
   box-sizing: border-box;
@@ -64,6 +172,7 @@ html {
   scroll-behavior: smooth;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
+  transition: background-color 0.25s ease, color 0.25s ease;
 }
 
 body {
@@ -76,6 +185,15 @@ body {
   background-attachment: fixed;
   overflow-x: hidden;
   line-height: 1.6;
+  transition: background-color 0.25s ease;
+}
+
+html[data-theme="light"] body {
+  background-color: #F8F7FC;
+  background-image: 
+    radial-gradient(ellipse 80% 50% at 50% -20%, rgba(167, 139, 250, 0.18), transparent 70%),
+    radial-gradient(circle at 10% 20%, rgba(241, 237, 250, 0.6), transparent 40%),
+    radial-gradient(circle at 90% 80%, rgba(107, 0, 255, 0.05), transparent 45%);
 }
 
 /* Scrollbar Customization */
@@ -95,6 +213,10 @@ body {
 
 ::-webkit-scrollbar-thumb:hover {
   background: var(--accent-purple);
+}
+
+html[data-theme="light"] ::-webkit-scrollbar-thumb {
+  background: #D8B4FE;
 }
 
 /* Typography styles */
@@ -120,7 +242,10 @@ button, input, select, textarea {
   font-family: inherit;
 }
 
-/* Layout Utilities */
+/* --------------------------------------------------------------------------
+   3. LAYOUT UTILITIES
+   -------------------------------------------------------------------------- */
+
 .container {
   width: 100%;
   max-width: var(--container-max);
@@ -137,7 +262,10 @@ button, input, select, textarea {
   }
 }
 
-/* Buttons */
+/* --------------------------------------------------------------------------
+   4. BUTTONS
+   -------------------------------------------------------------------------- */
+
 .btn {
   display: inline-flex;
   align-items: center;
@@ -162,9 +290,9 @@ button, input, select, textarea {
 
 .btn-primary {
   background: linear-gradient(135deg, var(--primary-purple) 0%, #852eff 100%);
-  color: #ffffff;
+  color: #ffffff !important;
   box-shadow: 0 4px 20px rgba(107, 0, 255, 0.45);
-  border: 1px solid rgba(216, 180, 254, 0.2);
+  border: 1px solid rgba(216, 180, 254, 0.25);
 }
 
 .btn-primary:hover {
@@ -174,29 +302,41 @@ button, input, select, textarea {
 }
 
 .btn-secondary {
-  background: rgba(23, 16, 32, 0.85);
-  color: #ffffff;
-  border: 1px solid var(--border-color);
+  background: var(--btn-sec-bg);
+  color: var(--btn-sec-text) !important;
+  border: 1px solid var(--btn-sec-border);
   backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  box-shadow: var(--shadow-soft);
 }
 
 .btn-secondary:hover {
-  background: var(--elevated-surface-hover);
-  border-color: var(--accent-purple);
-  color: #ffffff;
+  background: var(--btn-sec-hover);
+  border-color: var(--primary-purple);
+  color: var(--primary-purple) !important;
   transform: translateY(-2px);
 }
 
 .btn-outline {
   background: transparent;
-  color: var(--light-lavender);
-  border: 1px solid rgba(168, 85, 247, 0.4);
+  color: var(--accent-purple);
+  border: 1px solid var(--border-highlight);
 }
 
 .btn-outline:hover {
-  background: rgba(107, 0, 255, 0.15);
-  border-color: var(--accent-purple);
-  color: #ffffff;
+  background: rgba(107, 0, 255, 0.1);
+  border-color: var(--primary-purple);
+  color: var(--primary-purple);
+}
+
+html[data-theme="light"] .btn-outline {
+  border-color: #D8B4FE;
+  color: #6B00FF;
+}
+
+html[data-theme="light"] .btn-outline:hover {
+  background: #F1EDFA;
+  border-color: #6B00FF;
 }
 
 .btn-sm {
@@ -211,9 +351,18 @@ button, input, select, textarea {
   min-height: 52px;
 }
 
-/* Gradient Text */
+/* --------------------------------------------------------------------------
+   5. GRADIENT TEXT & BADGES
+   -------------------------------------------------------------------------- */
+
 .text-gradient-purple {
   background: linear-gradient(135deg, #ffffff 30%, var(--light-lavender) 70%, var(--accent-purple) 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+}
+
+html[data-theme="light"] .text-gradient-purple {
+  background: linear-gradient(135deg, #6B00FF 0%, #8B5CF6 55%, #4C1D95 100%);
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
 }
@@ -223,6 +372,13 @@ button, input, select, textarea {
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
   filter: drop-shadow(0 0 16px rgba(168, 85, 247, 0.4));
+}
+
+html[data-theme="light"] .text-gradient-glow {
+  background: linear-gradient(135deg, #6B00FF 0%, #8B5CF6 60%, #4C1D95 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  filter: drop-shadow(0 2px 14px rgba(107, 0, 255, 0.2));
 }
 
 .badge-tag {
@@ -235,28 +391,42 @@ button, input, select, textarea {
   font-weight: 700;
   letter-spacing: 0.08em;
   text-transform: uppercase;
-  background: rgba(107, 0, 255, 0.18);
-  border: 1px solid rgba(168, 85, 247, 0.35);
-  color: var(--light-lavender);
+  background: var(--badge-bg);
+  border: 1px solid var(--badge-border);
+  color: var(--badge-text);
+  transition: all 0.2s ease;
 }
 
-/* Glassmorphism Card Panels */
+/* --------------------------------------------------------------------------
+   6. GLASSMORPHISM & SURFACE PANELS
+   -------------------------------------------------------------------------- */
+
 .glass-panel {
-  background: rgba(16, 11, 25, 0.75);
+  background: var(--glass-panel-bg);
   backdrop-filter: blur(16px);
   -webkit-backdrop-filter: blur(16px);
   border: 1px solid var(--border-color);
   border-radius: var(--radius-lg);
   position: relative;
   overflow: hidden;
+  box-shadow: var(--shadow-soft);
+  transition: background-color 0.25s ease, border-color 0.25s ease, box-shadow 0.25s ease;
 }
 
 .glass-panel-glow {
-  border-color: rgba(168, 85, 247, 0.35);
+  border-color: var(--border-highlight);
   box-shadow: 0 8px 32px -4px rgba(107, 0, 255, 0.25);
 }
 
-/* Form Controls */
+html[data-theme="light"] .glass-panel-glow {
+  border-color: rgba(107, 0, 255, 0.2);
+  box-shadow: 0 10px 30px rgba(76, 29, 149, 0.08);
+}
+
+/* --------------------------------------------------------------------------
+   7. FORM CONTROLS
+   -------------------------------------------------------------------------- */
+
 .form-group {
   display: flex;
   flex-direction: column;
@@ -274,7 +444,7 @@ button, input, select, textarea {
 .form-input, .form-select, .form-textarea {
   width: 100%;
   padding: 12px 16px;
-  background: rgba(23, 16, 32, 0.9);
+  background: var(--input-bg);
   border: 1px solid var(--border-color);
   border-radius: var(--radius-md);
   color: var(--text-primary);
@@ -284,16 +454,19 @@ button, input, select, textarea {
 }
 
 .form-input:focus, .form-select:focus, .form-textarea:focus {
-  border-color: var(--accent-purple);
-  box-shadow: 0 0 0 3px rgba(107, 0, 255, 0.25);
-  background: rgba(31, 22, 44, 0.95);
+  border-color: var(--primary-purple);
+  box-shadow: 0 0 0 3px rgba(107, 0, 255, 0.2);
+  background: var(--input-focus-bg);
 }
 
 .form-input::placeholder, .form-textarea::placeholder {
   color: var(--text-muted);
 }
 
-/* Grid Utilities */
+/* --------------------------------------------------------------------------
+   8. GRID UTILITIES
+   -------------------------------------------------------------------------- */
+
 .grid-2 {
   display: grid;
   grid-template-columns: repeat(2, 1fr);
@@ -328,7 +501,10 @@ button, input, select, textarea {
   }
 }
 
-/* Animation utilities */
+/* --------------------------------------------------------------------------
+   9. ANIMATIONS
+   -------------------------------------------------------------------------- */
+
 @keyframes floatSlow {
   0%, 100% {
     transform: translateY(0px) rotate(0deg);
@@ -361,4 +537,113 @@ button, input, select, textarea {
   .animate-float, .animate-pulse-glow {
     animation: none !important;
   }
+}
+
+/* --------------------------------------------------------------------------
+   10. PUBLIC DIGITAL PROFILES THEME ADAPTATION
+   -------------------------------------------------------------------------- */
+.public-profile-root.is-light {
+  background: #F8F7FC !important;
+}
+.public-profile-root.is-light .profile-ambient-glow {
+  background: radial-gradient(ellipse at 50% -10%, rgba(167, 139, 250, 0.25) 0%, rgba(241, 237, 250, 0.4) 45%, transparent 70%) !important;
+}
+.public-profile-root.is-light .profile-main-card {
+  background: #FFFFFF !important;
+  border-color: #E5DDF2 !important;
+  box-shadow: 0 25px 70px -15px rgba(76, 29, 149, 0.12), 0 0 0 1px rgba(168, 85, 247, 0.12) !important;
+}
+.public-profile-root.is-light .profile-brand-text,
+.public-profile-root.is-light .profile-name {
+  color: #171321 !important;
+}
+.public-profile-root.is-light .profile-role {
+  color: #4C1D95 !important;
+}
+.public-profile-root.is-light .profile-company {
+  color: #625B70 !important;
+}
+.public-profile-root.is-light .profile-bio {
+  color: #625B70 !important;
+}
+.public-profile-root.is-light .profile-options-btn {
+  background: #F1EDFA !important;
+  border-color: #E5DDF2 !important;
+  color: #625B70 !important;
+}
+.public-profile-root.is-light .profile-dropdown {
+  background: #FFFFFF !important;
+  border-color: #E5DDF2 !important;
+  box-shadow: 0 12px 30px rgba(76, 29, 149, 0.12) !important;
+}
+.public-profile-root.is-light .profile-dropdown button {
+  color: #171321 !important;
+}
+.public-profile-root.is-light .contact-action-btn {
+  background: #F1EDFA !important;
+  border-color: #E5DDF2 !important;
+  color: #6B00FF !important;
+}
+.public-profile-root.is-light .contact-action-label {
+  color: #625B70 !important;
+}
+.public-profile-root.is-light .profile-btn-save {
+  background: linear-gradient(135deg, #6B00FF 0%, #4C1D95 100%) !important;
+  color: #FFFFFF !important;
+  box-shadow: 0 8px 24px rgba(107, 0, 255, 0.35) !important;
+}
+.public-profile-root.is-light .profile-btn-save svg {
+  fill: #FFFFFF !important;
+}
+.public-profile-root.is-light .profile-btn-share {
+  background: #F1EDFA !important;
+  color: #171321 !important;
+  border-color: #E5DDF2 !important;
+}
+.public-profile-root.is-light .profile-tabs-bar {
+  background: #F1EDFA !important;
+  border-color: #E5DDF2 !important;
+}
+.public-profile-root.is-light .profile-tab-inactive {
+  color: #625B70 !important;
+}
+.public-profile-root.is-light .portfolio-card-item {
+  background: #F8F7FC !important;
+  border-color: #E5DDF2 !important;
+  box-shadow: 0 4px 14px rgba(76, 29, 149, 0.05);
+}
+.public-profile-root.is-light .portfolio-card-title {
+  color: #171321 !important;
+}
+.public-profile-root.is-light .portfolio-card-desc {
+  color: #625B70 !important;
+}
+.public-profile-root.is-light .profile-about-block {
+  background: #F8F7FC !important;
+  border-color: #E5DDF2 !important;
+}
+.public-profile-root.is-light .profile-about-text {
+  color: #625B70 !important;
+}
+.public-profile-root.is-light .profile-detail-label {
+  color: #898197 !important;
+}
+.public-profile-root.is-light .profile-detail-val {
+  color: #171321 !important;
+}
+.public-profile-root.is-light .profile-service-card {
+  background: #F8F7FC !important;
+  border-color: #E5DDF2 !important;
+}
+.public-profile-root.is-light .profile-service-title {
+  color: #171321 !important;
+}
+.public-profile-root.is-light .profile-service-desc {
+  color: #625B70 !important;
+}
+.public-profile-root.is-light .profile-footer-divider {
+  background: #E5DDF2 !important;
+}
+.public-profile-root.is-light .profile-footer-text {
+  color: #898197 !important;
 }

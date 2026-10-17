@@ -28,6 +28,7 @@ import AccountProfile from './pages/account/AccountProfile';
 import AdminDashboard from './pages/admin/AdminDashboard';
 import { AuthProvider } from './context/AuthContext';
 import { DataProvider } from './context/DataContext';
+import { ThemeProvider } from './context/ThemeContext';
 
 export default function App() {
   const [currentPath, setCurrentPath] = useState(window.location.pathname);
@@ -208,14 +209,16 @@ export default function App() {
   }
 
   return (
-    <AuthProvider>
-      <DataProvider>
-        <div className="flocard-app-root">
-          {showHeaderFooter && <Navbar currentPath={path} />}
-          {content}
-          {showHeaderFooter && <Footer />}
-        </div>
-      </DataProvider>
-    </AuthProvider>
+    <ThemeProvider>
+      <AuthProvider>
+        <DataProvider>
+          <div className="flocard-app-root">
+            {showHeaderFooter && <Navbar currentPath={path} />}
+            {content}
+            {showHeaderFooter && <Footer />}
+          </div>
+        </DataProvider>
+      </AuthProvider>
+    </ThemeProvider>
   );
 }

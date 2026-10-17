@@ -62,7 +62,7 @@ export default function DigitalProfiles() {
                     <Check size={14} />
                   </div>
                   <div>
-                    <h4 style={{ color: '#ffffff', fontSize: '1rem', fontWeight: 600 }}>{feat.title}</h4>
+                    <h4 style={{ color: 'var(--text-primary)', fontSize: '1rem', fontWeight: 600 }}>{feat.title}</h4>
                     <p style={{ color: 'var(--text-secondary)', fontSize: '0.85rem', marginTop: '2px' }}>{feat.desc}</p>
                   </div>
                 </div>

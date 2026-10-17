@@ -162,34 +162,46 @@ export default function Card3DPreview({
         />
       </div>
 
-      {/* Floating Flip Trigger Button */}
+      {/* Floating Flip Trigger Button - Centered pill matching reference design */}
       {allowFlip && (
         <button
           type="button"
           onClick={toggleFlip}
           className="btn-flip-hint"
-          aria-label="Flip card view"
+          aria-label={`Flip to ${activeSide === 'front' ? 'back' : 'front'} view`}
           style={{
             position: 'absolute',
-            bottom: '-14px',
-            right: '16px',
-            background: 'rgba(23, 16, 32, 0.9)',
-            border: '1px solid var(--border-color)',
-            color: 'var(--light-lavender)',
+            bottom: '-16px',
+            left: '50%',
+            transform: 'translateX(-50%)',
+            background: 'var(--pill-bg)',
+            border: '1px solid var(--pill-border)',
+            color: 'var(--pill-text)',
             borderRadius: 'var(--radius-full)',
-            padding: '6px 14px',
-            fontSize: '0.75rem',
+            padding: '7px 16px',
+            fontSize: '0.78rem',
+            fontWeight: 600,
             display: 'flex',
             alignItems: 'center',
-            gap: '6px',
-            backdropFilter: 'blur(8px)',
+            gap: '7px',
+            backdropFilter: 'blur(12px)',
+            WebkitBackdropFilter: 'blur(12px)',
             cursor: 'pointer',
             zIndex: 10,
-            boxShadow: '0 4px 14px rgba(0,0,0,0.4)',
-            transition: 'all 0.2s ease'
+            boxShadow: 'var(--shadow-soft)',
+            transition: 'all 0.2s ease',
+            whiteSpace: 'nowrap'
+          }}
+          onMouseEnter={(e) => {
+            e.currentTarget.style.borderColor = 'var(--primary-purple)';
+            e.currentTarget.style.transform = 'translateX(-50%) translateY(-2px)';
+          }}
+          onMouseLeave={(e) => {
+            e.currentTarget.style.borderColor = 'var(--pill-border)';
+            e.currentTarget.style.transform = 'translateX(-50%) translateY(0)';
           }}
         >
-          <RotateCw size={13} />
+          <RotateCw size={13} color="var(--primary-purple)" />
           <span>Flip to {activeSide === 'front' ? 'Back' : 'Front'}</span>
         </button>
       )}

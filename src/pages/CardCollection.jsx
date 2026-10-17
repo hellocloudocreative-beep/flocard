@@ -1,15 +1,18 @@
 /* ==========================================================================
    FLOCARD CARD COLLECTION & SPECIFICATION COMPARISON
+   Theme-aware product collection and hardware comparison matrix.
    ========================================================================== */
 
 import React, { useState } from 'react';
-import { ArrowRight, Sparkles, Check, Cpu, Shield, Zap, RefreshCw } from 'lucide-react';
+import { ArrowRight, Sparkles, Check } from 'lucide-react';
 import Card3DPreview from '../components/Card3DPreview';
 import { EDITIONS } from '../lib/constants';
+import { useTheme } from '../context/ThemeContext';
 
 export default function CardCollection() {
   const [filter, setFilter] = useState('all');
   const [templateType, setTemplateType] = useState('standard');
+  const { isLight } = useTheme();
 
   const editionKeys = filter === 'all' ? ['purple', 'gold', 'platinum'] : [filter];
 
@@ -21,7 +24,7 @@ export default function CardCollection() {
           <div className="badge-tag" style={{ marginBottom: '14px' }}>
             ENGINEERED HARDWARE
           </div>
-          <h1 style={{ fontSize: 'clamp(2.4rem, 4.5vw, 3.6rem)', textTransform: 'uppercase', marginBottom: '16px' }}>
+          <h1 style={{ fontSize: 'clamp(2.4rem, 4.5vw, 3.6rem)', textTransform: 'uppercase', marginBottom: '16px', color: 'var(--text-primary)' }}>
             THE FLOCARD <span className="text-gradient-purple">COLLECTION</span>
           </h1>
           <p style={{ fontSize: '1.1rem', color: 'var(--text-secondary)' }}>
@@ -34,11 +37,12 @@ export default function CardCollection() {
             <div
               style={{
                 display: 'inline-flex',
-                background: 'rgba(23, 16, 32, 0.95)',
+                background: 'var(--elevated-surface)',
                 padding: '4px',
                 borderRadius: 'var(--radius-full)',
                 border: '1px solid var(--border-color)',
-                gap: '4px'
+                gap: '4px',
+                boxShadow: 'var(--shadow-soft)'
               }}
             >
               <button
@@ -81,11 +85,12 @@ export default function CardCollection() {
             <div
               style={{
                 display: 'inline-flex',
-                background: 'rgba(23, 16, 32, 0.9)',
+                background: 'var(--elevated-surface)',
                 padding: '4px',
                 borderRadius: 'var(--radius-full)',
                 border: '1px solid var(--border-color)',
-                gap: '4px'
+                gap: '4px',
+                boxShadow: 'var(--shadow-soft)'
               }}
             >
               {[
@@ -132,8 +137,9 @@ export default function CardCollection() {
                   flexDirection: 'column',
                   justifyContent: 'space-between',
                   background: isPurple
-                    ? 'linear-gradient(180deg, rgba(23, 16, 32, 0.95) 0%, rgba(32, 11, 59, 0.5) 100%)'
-                    : 'rgba(16, 11, 25, 0.85)',
+                    ? (isLight ? '#FFFFFF' : 'linear-gradient(180deg, rgba(23, 16, 32, 0.95) 0%, rgba(32, 11, 59, 0.5) 100%)')
+                    : 'var(--card-surface)',
+                  borderColor: isPurple ? (isLight ? 'rgba(107, 0, 255, 0.35)' : 'rgba(168, 85, 247, 0.5)') : 'var(--border-color)',
                   position: 'relative'
                 }}
               >
@@ -143,7 +149,7 @@ export default function CardCollection() {
                       position: 'absolute',
                       top: '16px',
                       right: '16px',
-                      background: 'linear-gradient(135deg, var(--primary-purple), var(--accent-purple))',
+                      background: 'linear-gradient(135deg, var(--primary-purple), var(--deep-violet))',
                       color: '#ffffff',
                       fontSize: '0.72rem',
                       fontWeight: 700,
@@ -151,7 +157,8 @@ export default function CardCollection() {
                       borderRadius: 'var(--radius-full)',
                       display: 'flex',
                       alignItems: 'center',
-                      gap: '4px'
+                      gap: '4px',
+                      boxShadow: '0 4px 12px rgba(107, 0, 255, 0.35)'
                     }}
                   >
                     <Sparkles size={11} />
@@ -165,7 +172,7 @@ export default function CardCollection() {
                   </div>
 
                   <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '8px' }}>
-                    <h3 style={{ fontSize: '1.4rem', color: '#ffffff', textTransform: 'uppercase' }}>
+                    <h3 style={{ fontSize: '1.4rem', color: 'var(--text-primary)', textTransform: 'uppercase' }}>
                       {item.name}
                     </h3>
                   </div>
@@ -175,20 +182,20 @@ export default function CardCollection() {
                   </p>
 
                   <div style={{ borderTop: '1px solid var(--border-color)', paddingTop: '16px', marginBottom: '24px' }}>
-                    <div style={{ fontSize: '0.75rem', fontWeight: 700, color: 'var(--light-lavender)', textTransform: 'uppercase', marginBottom: '10px' }}>
+                    <div style={{ fontSize: '0.75rem', fontWeight: 700, color: 'var(--primary-purple)', textTransform: 'uppercase', marginBottom: '10px' }}>
                       Key Specifications
                     </div>
                     <ul style={{ listStyle: 'none', display: 'flex', flexDirection: 'column', gap: '8px', fontSize: '0.82rem', color: 'var(--text-secondary)' }}>
                       <li style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                        <Check size={14} color="var(--accent-purple)" />
+                        <Check size={14} color="var(--primary-purple)" />
                         <span>{item.specs.material}</span>
                       </li>
                       <li style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                        <Check size={14} color="var(--accent-purple)" />
+                        <Check size={14} color="var(--primary-purple)" />
                         <span>{item.specs.chip}</span>
                       </li>
                       <li style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                        <Check size={14} color="var(--accent-purple)" />
+                        <Check size={14} color="var(--primary-purple)" />
                         <span>{item.specs.durability}</span>
                       </li>
                     </ul>
@@ -210,7 +217,8 @@ export default function CardCollection() {
                     style={{
                       textAlign: 'center',
                       fontSize: '0.82rem',
-                      color: 'var(--light-lavender)',
+                      color: 'var(--primary-purple)',
+                      fontWeight: 600,
                       padding: '6px'
                     }}
                   >
@@ -225,7 +233,7 @@ export default function CardCollection() {
         {/* Technical Specification Matrix */}
         <div className="glass-panel" style={{ padding: '40px' }}>
           <div style={{ marginBottom: '28px' }}>
-            <h3 style={{ fontSize: '1.5rem', textTransform: 'uppercase', marginBottom: '8px' }}>
+            <h3 style={{ fontSize: '1.5rem', textTransform: 'uppercase', marginBottom: '8px', color: 'var(--text-primary)' }}>
               HARDWARE & TECHNOLOGY COMPARISON
             </h3>
             <p style={{ color: 'var(--text-secondary)', fontSize: '0.92rem' }}>
@@ -236,7 +244,7 @@ export default function CardCollection() {
           <div style={{ overflowX: 'auto' }}>
             <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left', minWidth: '600px' }}>
               <thead>
-                <tr style={{ borderBottom: '1px solid var(--border-color)', color: 'var(--light-lavender)', fontSize: '0.82rem', textTransform: 'uppercase', letterSpacing: '0.08em' }}>
+                <tr style={{ borderBottom: '1px solid var(--border-color)', color: 'var(--primary-purple)', fontSize: '0.82rem', textTransform: 'uppercase', letterSpacing: '0.08em' }}>
                   <th style={{ padding: '14px 16px' }}>Feature</th>
                   <th style={{ padding: '14px 16px' }}>Purple Edition</th>
                   <th style={{ padding: '14px 16px' }}>Gold Edition</th>
@@ -244,47 +252,47 @@ export default function CardCollection() {
                 </tr>
               </thead>
               <tbody style={{ fontSize: '0.88rem', color: 'var(--text-secondary)' }}>
-                <tr style={{ borderBottom: '1px solid rgba(48, 36, 61, 0.4)' }}>
-                  <td style={{ padding: '14px 16px', color: '#ffffff', fontWeight: 600 }}>Surface Material</td>
-                  <td style={{ padding: '14px 16px', color: 'var(--accent-purple)' }}>Matte Obsidian + UV Gloss</td>
+                <tr style={{ borderBottom: '1px solid var(--border-color)' }}>
+                  <td style={{ padding: '14px 16px', color: 'var(--text-primary)', fontWeight: 600 }}>Surface Material</td>
+                  <td style={{ padding: '14px 16px', color: 'var(--primary-purple)', fontWeight: 600 }}>Matte Obsidian + UV Gloss</td>
                   <td style={{ padding: '14px 16px' }}>Obsidian + 24K Gold Foil</td>
                   <td style={{ padding: '14px 16px' }}>Satin Alloy Stainless Steel</td>
                 </tr>
-                <tr style={{ borderBottom: '1px solid rgba(48, 36, 61, 0.4)' }}>
-                  <td style={{ padding: '14px 16px', color: '#ffffff', fontWeight: 600 }}>NFC Microchip</td>
+                <tr style={{ borderBottom: '1px solid var(--border-color)' }}>
+                  <td style={{ padding: '14px 16px', color: 'var(--text-primary)', fontWeight: 600 }}>NFC Microchip</td>
                   <td style={{ padding: '14px 16px' }}>NXP NTAG216 (High-Freq)</td>
                   <td style={{ padding: '14px 16px' }}>NXP NTAG216 (High-Freq)</td>
                   <td style={{ padding: '14px 16px' }}>NXP NTAG216 (High-Freq)</td>
                 </tr>
-                <tr style={{ borderBottom: '1px solid rgba(48, 36, 61, 0.4)' }}>
-                  <td style={{ padding: '14px 16px', color: '#ffffff', fontWeight: 600 }}>Memory Storage</td>
+                <tr style={{ borderBottom: '1px solid var(--border-color)' }}>
+                  <td style={{ padding: '14px 16px', color: 'var(--text-primary)', fontWeight: 600 }}>Memory Storage</td>
                   <td style={{ padding: '14px 16px' }}>888 Bytes EEPROM</td>
                   <td style={{ padding: '14px 16px' }}>888 Bytes EEPROM</td>
                   <td style={{ padding: '14px 16px' }}>888 Bytes EEPROM</td>
                 </tr>
-                <tr style={{ borderBottom: '1px solid rgba(48, 36, 61, 0.4)' }}>
-                  <td style={{ padding: '14px 16px', color: '#ffffff', fontWeight: 600 }}>Operating Frequency</td>
+                <tr style={{ borderBottom: '1px solid var(--border-color)' }}>
+                  <td style={{ padding: '14px 16px', color: 'var(--text-primary)', fontWeight: 600 }}>Operating Frequency</td>
                   <td style={{ padding: '14px 16px' }}>13.56 MHz (ISO 14443A)</td>
                   <td style={{ padding: '14px 16px' }}>13.56 MHz (ISO 14443A)</td>
                   <td style={{ padding: '14px 16px' }}>13.56 MHz (ISO 14443A)</td>
                 </tr>
-                <tr style={{ borderBottom: '1px solid rgba(48, 36, 61, 0.4)' }}>
-                  <td style={{ padding: '14px 16px', color: '#ffffff', fontWeight: 600 }}>Dynamic QR Code</td>
+                <tr style={{ borderBottom: '1px solid var(--border-color)' }}>
+                  <td style={{ padding: '14px 16px', color: 'var(--text-primary)', fontWeight: 600 }}>Dynamic QR Code</td>
                   <td style={{ padding: '14px 16px' }}>Scannable Vector (Violet)</td>
                   <td style={{ padding: '14px 16px' }}>Scannable Vector (Gold)</td>
                   <td style={{ padding: '14px 16px' }}>Scannable Vector (Chrome)</td>
                 </tr>
-                <tr style={{ borderBottom: '1px solid rgba(48, 36, 61, 0.4)' }}>
-                  <td style={{ padding: '14px 16px', color: '#ffffff', fontWeight: 600 }}>Water Resistance</td>
+                <tr style={{ borderBottom: '1px solid var(--border-color)' }}>
+                  <td style={{ padding: '14px 16px', color: 'var(--text-primary)', fontWeight: 600 }}>Water Resistance</td>
                   <td style={{ padding: '14px 16px' }}>IP68 Submersible</td>
                   <td style={{ padding: '14px 16px' }}>IP68 Submersible</td>
                   <td style={{ padding: '14px 16px' }}>IP68 Submersible</td>
                 </tr>
                 <tr>
-                  <td style={{ padding: '14px 16px', color: '#ffffff', fontWeight: 600 }}>App Required?</td>
-                  <td style={{ padding: '14px 16px', color: 'var(--success)' }}>No App Needed</td>
-                  <td style={{ padding: '14px 16px', color: 'var(--success)' }}>No App Needed</td>
-                  <td style={{ padding: '14px 16px', color: 'var(--success)' }}>No App Needed</td>
+                  <td style={{ padding: '14px 16px', color: 'var(--text-primary)', fontWeight: 600 }}>App Required?</td>
+                  <td style={{ padding: '14px 16px', color: 'var(--success)', fontWeight: 600 }}>No App Needed</td>
+                  <td style={{ padding: '14px 16px', color: 'var(--success)', fontWeight: 600 }}>No App Needed</td>
+                  <td style={{ padding: '14px 16px', color: 'var(--success)', fontWeight: 600 }}>No App Needed</td>
                 </tr>
               </tbody>
             </table>

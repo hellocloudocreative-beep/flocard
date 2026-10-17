@@ -20,7 +20,7 @@ export default function AccountDashboard() {
             <div style={{ width: '64px', height: '64px', borderRadius: '50%', background: 'rgba(107, 0, 255, 0.15)', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 20px', color: 'var(--accent-purple)' }}>
               <User size={30} />
             </div>
-            <h2 style={{ fontSize: '1.6rem', color: '#ffffff', marginBottom: '10px' }}>Customer Portal</h2>
+            <h2 style={{ fontSize: '1.6rem', color: 'var(--text-primary)', marginBottom: '10px' }}>Customer Portal</h2>
             <p style={{ color: 'var(--text-secondary)', fontSize: '0.92rem', marginBottom: '28px', lineHeight: 1.6 }}>
               Please sign in with your email and password to access your active NFC cards, saved designs, and tap analytics.
             </p>
@@ -52,7 +52,7 @@ export default function AccountDashboard() {
           style={{
             padding: '32px',
             marginBottom: '32px',
-            background: 'linear-gradient(135deg, rgba(23, 16, 32, 0.95) 0%, rgba(32, 11, 59, 0.4) 100%)',
+            background: 'var(--card-surface)',
             display: 'flex',
             justifyContent: 'space-between',
             alignItems: 'center',
@@ -80,11 +80,11 @@ export default function AccountDashboard() {
               <div className="badge-tag" style={{ marginBottom: '6px' }}>
                 CUSTOMER PORTAL
               </div>
-              <h1 style={{ fontSize: '1.75rem', color: '#ffffff' }}>
+              <h1 style={{ fontSize: '1.75rem', color: 'var(--text-primary)' }}>
                 Welcome back, {user?.name || 'Partner'}
               </h1>
               <p style={{ fontSize: '0.88rem', color: 'var(--text-secondary)' }}>
-                Managing digital profile <strong style={{ color: 'var(--light-lavender)' }}>flocard.in/p/{userProfile?.slug}</strong>
+                Managing digital profile <strong style={{ color: 'var(--accent-purple)' }}>flocard.in/p/{userProfile?.slug}</strong>
               </p>
             </div>
           </div>
@@ -118,7 +118,7 @@ export default function AccountDashboard() {
               <span style={{ fontSize: '0.82rem', color: 'var(--text-muted)', textTransform: 'uppercase', fontWeight: 600 }}>Total Profile Views</span>
               <Eye size={18} color="var(--accent-purple)" />
             </div>
-            <div style={{ fontSize: '2rem', fontWeight: 800, color: '#ffffff', fontFamily: 'var(--font-display)' }}>
+            <div style={{ fontSize: '2rem', fontWeight: 800, color: 'var(--text-primary)', fontFamily: 'var(--font-display)' }}>
               {userProfile?.viewsCount || 1420}
             </div>
             <p style={{ fontSize: '0.78rem', color: 'var(--success)', marginTop: '4px' }}>
@@ -131,10 +131,10 @@ export default function AccountDashboard() {
               <span style={{ fontSize: '0.82rem', color: 'var(--text-muted)', textTransform: 'uppercase', fontWeight: 600 }}>Active NFC Cards</span>
               <Radio size={18} color="var(--accent-purple)" />
             </div>
-            <div style={{ fontSize: '2rem', fontWeight: 800, color: '#ffffff', fontFamily: 'var(--font-display)' }}>
+            <div style={{ fontSize: '2rem', fontWeight: 800, color: 'var(--text-primary)', fontFamily: 'var(--font-display)' }}>
               {userCards.length || 1}
             </div>
-            <p style={{ fontSize: '0.78rem', color: 'var(--light-lavender)', marginTop: '4px' }}>
+            <p style={{ fontSize: '0.78rem', color: 'var(--accent-purple)', marginTop: '4px' }}>
               Encrypted NTAG216 chip
             </p>
           </div>
@@ -144,7 +144,7 @@ export default function AccountDashboard() {
               <span style={{ fontSize: '0.82rem', color: 'var(--text-muted)', textTransform: 'uppercase', fontWeight: 600 }}>Saved Card Designs</span>
               <Layers size={18} color="var(--accent-purple)" />
             </div>
-            <div style={{ fontSize: '2rem', fontWeight: 800, color: '#ffffff', fontFamily: 'var(--font-display)' }}>
+            <div style={{ fontSize: '2rem', fontWeight: 800, color: 'var(--text-primary)', fontFamily: 'var(--font-display)' }}>
               {userDesigns.length || 1}
             </div>
             <p style={{ fontSize: '0.78rem', color: 'var(--text-secondary)', marginTop: '4px' }}>
@@ -158,7 +158,7 @@ export default function AccountDashboard() {
           {/* Active Card */}
           <div className="glass-panel" style={{ padding: '28px' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
-              <h3 style={{ fontSize: '1.15rem', color: '#ffffff', textTransform: 'uppercase' }}>
+              <h3 style={{ fontSize: '1.15rem', color: 'var(--text-primary)', textTransform: 'uppercase' }}>
                 Active NFC Card
               </h3>
               <span className="badge-tag" style={{ background: 'rgba(16, 185, 129, 0.2)', color: '#34d399', borderColor: 'rgba(16, 185, 129, 0.4)' }}>
@@ -170,14 +170,14 @@ export default function AccountDashboard() {
               <Card3DPreview edition={userCards[0]?.edition || 'purple'} width={310} allowFlip={true} />
             </div>
 
-            <div style={{ background: 'rgba(23, 16, 32, 0.8)', padding: '14px', borderRadius: '10px', fontSize: '0.82rem', color: 'var(--text-secondary)' }}>
+            <div style={{ background: 'var(--elevated-surface)', padding: '14px', borderRadius: '10px', fontSize: '0.82rem', color: 'var(--text-secondary)' }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '6px' }}>
                 <span>Card Identifier:</span>
-                <strong style={{ color: '#ffffff' }}>{userCards[0]?.cardCode || 'flc-akhil-992'}</strong>
+                <strong style={{ color: 'var(--text-primary)' }}>{userCards[0]?.cardCode || 'flc-akhil-992'}</strong>
               </div>
               <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '6px' }}>
                 <span>Tap Tally:</span>
-                <strong style={{ color: 'var(--light-lavender)' }}>{userCards[0]?.tapCount || 142} scans</strong>
+                <strong style={{ color: 'var(--accent-purple)' }}>{userCards[0]?.tapCount || 142} scans</strong>
               </div>
               <div style={{ display: 'flex', justifyContent: 'space-between' }}>
                 <span>Permanent Link:</span>
@@ -191,7 +191,7 @@ export default function AccountDashboard() {
           {/* Quick Actions & Navigation */}
           <div className="glass-panel" style={{ padding: '28px', display: 'flex', flexDirection: 'column', justifyContent: 'space-between' }}>
             <div>
-              <h3 style={{ fontSize: '1.15rem', color: '#ffffff', textTransform: 'uppercase', marginBottom: '16px' }}>
+              <h3 style={{ fontSize: '1.15rem', color: 'var(--text-primary)', textTransform: 'uppercase', marginBottom: '16px' }}>
                 Manage Account
               </h3>
 
@@ -204,7 +204,7 @@ export default function AccountDashboard() {
                   <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
                     <Layers size={18} color="var(--accent-purple)" />
                     <div style={{ textAlign: 'left' }}>
-                      <div style={{ fontWeight: 600, color: '#ffffff' }}>My Saved Designs</div>
+                      <div style={{ fontWeight: 600, color: 'var(--text-primary)' }}>My Saved Designs</div>
                       <div style={{ fontSize: '0.75rem', color: 'var(--text-secondary)' }}>View, edit, or export print artwork</div>
                     </div>
                   </div>
@@ -219,7 +219,7 @@ export default function AccountDashboard() {
                   <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
                     <User size={18} color="var(--accent-purple)" />
                     <div style={{ textAlign: 'left' }}>
-                      <div style={{ fontWeight: 600, color: '#ffffff' }}>Edit Digital Profile</div>
+                      <div style={{ fontWeight: 600, color: 'var(--text-primary)' }}>Edit Digital Profile</div>
                       <div style={{ fontSize: '0.75rem', color: 'var(--text-secondary)' }}>Update contact info, bio, & portfolio</div>
                     </div>
                   </div>
@@ -234,7 +234,7 @@ export default function AccountDashboard() {
                   <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
                     <Sparkles size={18} color="var(--accent-purple)" />
                     <div style={{ textAlign: 'left' }}>
-                      <div style={{ fontWeight: 600, color: '#ffffff' }}>Profile URL & Settings</div>
+                      <div style={{ fontWeight: 600, color: 'var(--text-primary)' }}>Profile URL & Settings</div>
                       <div style={{ fontSize: '0.75rem', color: 'var(--text-secondary)' }}>Customize slug and security settings</div>
                     </div>
                   </div>

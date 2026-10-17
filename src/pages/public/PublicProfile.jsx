@@ -27,11 +27,16 @@ import {
 import { LinkedinIcon, InstagramIcon } from '../../components/SocialIcons';
 import QRCode from 'qrcode';
 import { useData } from '../../context/DataContext';
+import { useTheme } from '../../context/ThemeContext';
 import { downloadVCard } from '../../lib/vcard';
 
 export default function PublicProfile({ slug = 'akhil' }) {
   const { getProfileBySlug, profiles } = useData();
+  const { isLight: visitorIsLight } = useTheme();
   const profile = (getProfileBySlug && getProfileBySlug(slug)) || profiles.find(p => p.slug === slug) || profiles[0];
+
+  // Requirement 6: Profile owner's saved setting takes precedence if specified; otherwise visitor theme
+  const isLight = profile?.themeMode ? profile.themeMode === 'light' : visitorIsLight;
 
   const [activeTab, setActiveTab] = useState('portfolio'); // 'portfolio' | 'about' | 'services'
   const [copied, setCopied] = useState(false);
@@ -47,11 +52,11 @@ export default function PublicProfile({ slug = 'akhil' }) {
       width: 320,
       margin: 1,
       color: {
-        dark: '#A855F7',
-        light: '#0D0915'
+        dark: isLight ? '#4C1D95' : '#A855F7',
+        light: isLight ? '#FFFFFF' : '#0D0915'
       }
     }).then(setQrDataUrl).catch(console.error);
-  }, [currentUrl]);
+  }, [currentUrl, isLight]);
 
   const handleShare = () => {
     if (navigator.share) {
@@ -89,10 +94,10 @@ export default function PublicProfile({ slug = 'akhil' }) {
 
   return (
     <div
-      className="public-profile-root"
+      className={`public-profile-root ${isLight ? 'is-light' : ''}`}
       style={{
         minHeight: '100vh',
-        background: '#08060D',
+        background: isLight ? '#F8F7FC' : '#08060D',
         display: 'flex',
         flexDirection: 'column',
         alignItems: 'center',
@@ -104,6 +109,7 @@ export default function PublicProfile({ slug = 'akhil' }) {
     >
       {/* Ambient Cosmic Purple Glow in Background */}
       <div
+        className="profile-ambient-glow"
         style={{
           position: 'absolute',
           top: 0,
@@ -119,6 +125,7 @@ export default function PublicProfile({ slug = 'akhil' }) {
 
       {/* Main Luxury Profile Container Card */}
       <div
+        className="profile-main-card"
         style={{
           width: '100%',
           maxWidth: '470px',
@@ -146,7 +153,7 @@ export default function PublicProfile({ slug = 'akhil' }) {
           {/* Official FLOCARD Brand Logo */}
           <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
             <img
-              src="/assets/logo-light.png"
+              src={isLight ? '/assets/logo-dark.png' : '/assets/logo-light.png'}
               alt="FLOCARD"
               style={{ height: '22px', width: 'auto', display: 'block' }}
               onError={(e) => {
@@ -154,6 +161,7 @@ export default function PublicProfile({ slug = 'akhil' }) {
               }}
             />
             <span
+              className="profile-brand-text"
               style={{
                 fontFamily: 'var(--font-heading, Sora)',
                 fontWeight: 800,
@@ -172,6 +180,7 @@ export default function PublicProfile({ slug = 'akhil' }) {
               type="button"
               onClick={() => setShowMenuDropdown(!showMenuDropdown)}
               aria-label="Profile Options"
+              className="profile-options-btn"
               style={{
                 width: '36px',
                 height: '36px',
@@ -340,6 +349,7 @@ export default function PublicProfile({ slug = 'akhil' }) {
           {/* Details Column */}
           <div style={{ flex: 1, minWidth: 0, textAlign: 'left' }}>
             <h1
+              className="profile-name"
               style={{
                 fontFamily: "var(--font-heading, 'Sora', sans-serif)",
                 fontSize: '1.45rem',
@@ -354,6 +364,7 @@ export default function PublicProfile({ slug = 'akhil' }) {
             </h1>
 
             <div
+              className="profile-role"
               style={{
                 fontSize: '0.92rem',
                 fontWeight: 600,
@@ -365,6 +376,7 @@ export default function PublicProfile({ slug = 'akhil' }) {
             </div>
 
             <div
+              className="profile-company"
               style={{
                 display: 'inline-flex',
                 alignItems: 'center',
@@ -389,12 +401,13 @@ export default function PublicProfile({ slug = 'akhil' }) {
 
             {profile.bio && (
               <p
+                className="profile-bio"
                 style={{
                   fontSize: '0.78rem',
                   color: '#82758F',
                   lineHeight: 1.42,
                   marginTop: '6px',
-                  marginBotom: 0
+                  marginBottom: 0
                 }}
               >
                 {profile.bio}
@@ -641,6 +654,7 @@ export default function PublicProfile({ slug = 'akhil' }) {
           <button
             type="button"
             onClick={() => downloadVCard(profile)}
+            className="profile-btn-save"
             style={{
               background: '#FFFFFF',
               color: '#191522',
@@ -666,6 +680,7 @@ export default function PublicProfile({ slug = 'akhil' }) {
           <button
             type="button"
             onClick={handleShare}
+            className="profile-btn-share"
             style={{
               background: '#1B1425',
               color: '#FFFFFF',
@@ -689,6 +704,7 @@ export default function PublicProfile({ slug = 'akhil' }) {
 
         {/* Profile Content Tabs (Segmented Pill Bar) */}
         <div
+          className="profile-tabs-bar"
           style={{
             display: 'flex',
             background: '#15101D',
@@ -710,6 +726,7 @@ export default function PublicProfile({ slug = 'akhil' }) {
                 key={tab.id}
                 type="button"
                 onClick={() => setActiveTab(tab.id)}
+                className={active ? 'profile-tab-active' : 'profile-tab-inactive'}
                 style={{
                   flex: 1,
                   padding: '8px 0',

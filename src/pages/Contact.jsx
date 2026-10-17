@@ -44,7 +44,7 @@ export default function Contact() {
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(340px, 1fr))', gap: '48px', alignItems: 'start' }}>
           {/* Contact Details Card */}
           <div className="glass-panel" style={{ padding: '36px' }}>
-            <h3 style={{ fontSize: '1.35rem', color: '#ffffff', marginBottom: '16px' }}>
+            <h3 style={{ fontSize: '1.35rem', color: 'var(--text-primary)', marginBottom: '16px' }}>
               Direct Information
             </h3>
             <p style={{ fontSize: '0.92rem', color: 'var(--text-secondary)', lineHeight: 1.6, marginBottom: '32px' }}>
@@ -58,7 +58,7 @@ export default function Contact() {
                 </div>
                 <div>
                   <div style={{ fontSize: '0.78rem', color: 'var(--text-muted)', textTransform: 'uppercase' }}>Email Inquiries</div>
-                  <div style={{ fontSize: '0.95rem', color: '#ffffff', fontWeight: 600 }}>{BRAND.supportEmail}</div>
+                  <div style={{ fontSize: '0.95rem', color: 'var(--text-primary)', fontWeight: 600 }}>{BRAND.supportEmail}</div>
                 </div>
               </div>
 
@@ -68,7 +68,7 @@ export default function Contact() {
                 </div>
                 <div>
                   <div style={{ fontSize: '0.78rem', color: 'var(--text-muted)', textTransform: 'uppercase' }}>Headquarters</div>
-                  <div style={{ fontSize: '0.95rem', color: '#ffffff', fontWeight: 600 }}>Bengaluru, Karnataka, India</div>
+                  <div style={{ fontSize: '0.95rem', color: 'var(--text-primary)', fontWeight: 600 }}>Bengaluru, Karnataka, India</div>
                 </div>
               </div>
 
@@ -78,7 +78,7 @@ export default function Contact() {
                 </div>
                 <div>
                   <div style={{ fontSize: '0.78rem', color: 'var(--text-muted)', textTransform: 'uppercase' }}>Corporate Orders</div>
-                  <div style={{ fontSize: '0.95rem', color: '#ffffff', fontWeight: 600 }}>Bulk provisioning for 20 to 10,000+ staff</div>
+                  <div style={{ fontSize: '0.95rem', color: 'var(--text-primary)', fontWeight: 600 }}>Bulk provisioning for 20 to 10,000+ staff</div>
                 </div>
               </div>
             </div>
@@ -86,14 +86,14 @@ export default function Contact() {
 
           {/* Contact Form */}
           <form onSubmit={handleSubmit} className="glass-panel" style={{ padding: '36px' }}>
-            <h3 style={{ fontSize: '1.35rem', color: '#ffffff', marginBottom: '24px' }}>
+            <h3 style={{ fontSize: '1.35rem', color: 'var(--text-primary)', marginBottom: '24px' }}>
               Send an Inquiry
             </h3>
 
             {submitted ? (
               <div style={{ textAlign: 'center', padding: '40px 20px' }}>
                 <CheckCircle2 size={48} color="var(--success)" style={{ margin: '0 auto 16px' }} />
-                <h4 style={{ fontSize: '1.3rem', color: '#ffffff', marginBottom: '8px' }}>Message Received!</h4>
+                <h4 style={{ fontSize: '1.3rem', color: 'var(--text-primary)', marginBottom: '8px' }}>Message Received!</h4>
                 <p style={{ color: 'var(--text-secondary)', fontSize: '0.9rem' }}>
                   Thank you for reaching out. A FLOCARD specialist will respond within 24 hours.
                 </p>

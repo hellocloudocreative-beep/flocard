@@ -6,12 +6,14 @@
 
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '../../context/AuthContext';
+import { useTheme } from '../../context/ThemeContext';
 import PasswordStrength from '../../components/spectrum/PasswordStrength';
 import MorphButton from '../../components/spectrum/MorphButton';
 import { Mail, Lock, User, Building, AlertCircle, ArrowRight, ArrowLeft, CheckCircle2, LogOut, Sparkles } from 'lucide-react';
 
 export default function Login({ view = 'login' }) {
   const { user, loginCustomer, registerCustomer, logout, loading: authLoading } = useAuth();
+  const { isLight } = useTheme();
   
   // URL tab query support (e.g. /login?tab=signup)
   const urlParams = new URLSearchParams(typeof window !== 'undefined' ? window.location.search : '');
@@ -160,11 +162,11 @@ export default function Login({ view = 'login' }) {
         style={{
           width: '100%',
           maxWidth: '460px',
-          backgroundColor: 'rgba(21, 16, 29, 0.95)',
+          backgroundColor: 'var(--card-surface)',
           borderRadius: '24px',
-          border: '1px solid var(--border-color, #30223F)',
+          border: '1px solid var(--border-color)',
           padding: '38px 34px',
-          boxShadow: '0 25px 70px -15px rgba(107, 0, 255, 0.25)',
+          boxShadow: 'var(--card-shadow)',
           backdropFilter: 'blur(20px)',
           WebkitBackdropFilter: 'blur(20px)',
           position: 'relative',
@@ -176,7 +178,7 @@ export default function Login({ view = 'login' }) {
         <div style={{ textAlign: 'center', marginBottom: '26px' }}>
           <a href="/" style={{ display: 'inline-block', marginBottom: '14px', textDecoration: 'none' }}>
             <img
-              src="/assets/logo-light.png"
+              src={isLight ? '/assets/logo-dark.png' : '/assets/logo-light.png'}
               alt="FLOCARD"
               style={{ height: '30px', width: 'auto', display: 'block', margin: '0 auto' }}
               onError={(e) => {
@@ -189,7 +191,7 @@ export default function Login({ view = 'login' }) {
                 fontFamily: 'var(--font-display, Sora)',
                 fontWeight: 800,
                 fontSize: '1.5rem',
-                color: '#ffffff',
+                color: 'var(--text-primary)',
                 display: 'none'
               }}
             >
@@ -201,7 +203,7 @@ export default function Login({ view = 'login' }) {
             style={{
               fontSize: '1.5rem',
               fontWeight: 800,
-              color: '#FFFFFF',
+              color: 'var(--text-primary)',
               fontFamily: 'var(--font-heading, Sora)',
               letterSpacing: '-0.02em',
               margin: '0 0 6px 0'
@@ -250,7 +252,7 @@ export default function Login({ view = 'login' }) {
                 {user.name ? user.name.charAt(0).toUpperCase() : 'U'}
               </div>
               <div style={{ flex: 1, minWidth: 0 }}>
-                <div style={{ fontSize: '0.88rem', fontWeight: 700, color: '#FFFFFF', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                <div style={{ fontSize: '0.88rem', fontWeight: 700, color: 'var(--text-primary)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                   {user.name || 'Signed In Customer'}
                 </div>
                 <div style={{ fontSize: '0.74rem', color: 'var(--text-secondary)' }}>
@@ -286,8 +288,8 @@ export default function Login({ view = 'login' }) {
           <div
             style={{
               display: 'flex',
-              backgroundColor: 'rgba(27, 20, 37, 0.95)',
-              border: '1px solid var(--border-color, #30223F)',
+              backgroundColor: 'var(--elevated-surface)',
+              border: '1px solid var(--border-color)',
               borderRadius: '12px',
               padding: '4px',
               gap: '4px',
@@ -382,7 +384,7 @@ export default function Login({ view = 'login' }) {
         {tab === 'login' && (
           <form onSubmit={handleLoginSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '18px' }}>
             <div>
-              <label style={{ display: 'block', fontSize: '0.8rem', fontWeight: 600, color: '#FFFFFF', marginBottom: '7px' }}>
+              <label style={{ display: 'block', fontSize: '0.8rem', fontWeight: 600, color: 'var(--text-primary)', marginBottom: '7px' }}>
                 Email Address
               </label>
               <div style={{ position: 'relative' }}>
@@ -400,9 +402,9 @@ export default function Login({ view = 'login' }) {
                     borderRadius: '10px',
                     border: '1px solid var(--border-color, #30223F)',
                     fontSize: '0.9rem',
-                    color: '#FFFFFF',
+                    color: 'var(--text-primary)',
                     outline: 'none',
-                    backgroundColor: 'rgba(27, 20, 37, 0.85)',
+                    backgroundColor: 'var(--elevated-surface)',
                     boxSizing: 'border-box',
                     transition: 'all 0.2s ease'
                   }}
@@ -420,7 +422,7 @@ export default function Login({ view = 'login' }) {
 
             <div>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '7px' }}>
-                <label style={{ fontSize: '0.8rem', fontWeight: 600, color: '#FFFFFF' }}>
+                <label style={{ fontSize: '0.8rem', fontWeight: 600, color: 'var(--text-primary)' }}>
                   Password
                 </label>
                 <button
@@ -456,9 +458,9 @@ export default function Login({ view = 'login' }) {
                     borderRadius: '10px',
                     border: '1px solid var(--border-color, #30223F)',
                     fontSize: '0.9rem',
-                    color: '#FFFFFF',
+                    color: 'var(--text-primary)',
                     outline: 'none',
-                    backgroundColor: 'rgba(27, 20, 37, 0.85)',
+                    backgroundColor: 'var(--elevated-surface)',
                     boxSizing: 'border-box',
                     transition: 'all 0.2s ease'
                   }}
@@ -489,8 +491,8 @@ export default function Login({ view = 'login' }) {
               style={{
                 marginTop: '6px',
                 padding: '10px 12px',
-                background: 'rgba(23, 16, 32, 0.7)',
-                border: '1px dashed var(--border-color, #30223F)',
+                background: 'var(--elevated-surface)',
+                border: '1px dashed var(--border-color)',
                 borderRadius: '8px',
                 display: 'flex',
                 alignItems: 'center',
@@ -524,7 +526,7 @@ export default function Login({ view = 'login' }) {
         {tab === 'signup' && (
           <form onSubmit={handleSignupSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '15px' }}>
             <div>
-              <label style={{ display: 'block', fontSize: '0.8rem', fontWeight: 600, color: '#FFFFFF', marginBottom: '6px' }}>
+              <label style={{ display: 'block', fontSize: '0.8rem', fontWeight: 600, color: 'var(--text-primary)', marginBottom: '6px' }}>
                 Full Name
               </label>
               <div style={{ position: 'relative' }}>
@@ -542,9 +544,9 @@ export default function Login({ view = 'login' }) {
                     borderRadius: '10px',
                     border: '1px solid var(--border-color, #30223F)',
                     fontSize: '0.88rem',
-                    color: '#FFFFFF',
+                    color: 'var(--text-primary)',
                     outline: 'none',
-                    backgroundColor: 'rgba(27, 20, 37, 0.85)',
+                    backgroundColor: 'var(--elevated-surface)',
                     boxSizing: 'border-box'
                   }}
                   onFocus={(e) => {
@@ -560,7 +562,7 @@ export default function Login({ view = 'login' }) {
             </div>
 
             <div>
-              <label style={{ display: 'block', fontSize: '0.8rem', fontWeight: 600, color: '#FFFFFF', marginBottom: '6px' }}>
+              <label style={{ display: 'block', fontSize: '0.8rem', fontWeight: 600, color: 'var(--text-primary)', marginBottom: '6px' }}>
                 Email Address
               </label>
               <div style={{ position: 'relative' }}>
@@ -578,9 +580,9 @@ export default function Login({ view = 'login' }) {
                     borderRadius: '10px',
                     border: '1px solid var(--border-color, #30223F)',
                     fontSize: '0.88rem',
-                    color: '#FFFFFF',
+                    color: 'var(--text-primary)',
                     outline: 'none',
-                    backgroundColor: 'rgba(27, 20, 37, 0.85)',
+                    backgroundColor: 'var(--elevated-surface)',
                     boxSizing: 'border-box'
                   }}
                   onFocus={(e) => {
@@ -596,7 +598,7 @@ export default function Login({ view = 'login' }) {
             </div>
 
             <div>
-              <label style={{ display: 'block', fontSize: '0.8rem', fontWeight: 600, color: '#FFFFFF', marginBottom: '6px' }}>
+              <label style={{ display: 'block', fontSize: '0.8rem', fontWeight: 600, color: 'var(--text-primary)', marginBottom: '6px' }}>
                 Company / Brand (Optional)
               </label>
               <div style={{ position: 'relative' }}>
@@ -612,9 +614,9 @@ export default function Login({ view = 'login' }) {
                     borderRadius: '10px',
                     border: '1px solid var(--border-color, #30223F)',
                     fontSize: '0.88rem',
-                    color: '#FFFFFF',
+                    color: 'var(--text-primary)',
                     outline: 'none',
-                    backgroundColor: 'rgba(27, 20, 37, 0.85)',
+                    backgroundColor: 'var(--elevated-surface)',
                     boxSizing: 'border-box'
                   }}
                   onFocus={(e) => {
@@ -630,7 +632,7 @@ export default function Login({ view = 'login' }) {
             </div>
 
             <div>
-              <label style={{ display: 'block', fontSize: '0.8rem', fontWeight: 600, color: '#FFFFFF', marginBottom: '6px' }}>
+              <label style={{ display: 'block', fontSize: '0.8rem', fontWeight: 600, color: 'var(--text-primary)', marginBottom: '6px' }}>
                 Password (min 6 characters)
               </label>
               <div style={{ position: 'relative' }}>
@@ -648,9 +650,9 @@ export default function Login({ view = 'login' }) {
                     borderRadius: '10px',
                     border: '1px solid var(--border-color, #30223F)',
                     fontSize: '0.88rem',
-                    color: '#FFFFFF',
+                    color: 'var(--text-primary)',
                     outline: 'none',
-                    backgroundColor: 'rgba(27, 20, 37, 0.85)',
+                    backgroundColor: 'var(--elevated-surface)',
                     boxSizing: 'border-box'
                   }}
                   onFocus={(e) => {
@@ -682,7 +684,7 @@ export default function Login({ view = 'login' }) {
         {tab === 'forgot' && (
           <form onSubmit={handleForgotSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
             <div>
-              <label style={{ display: 'block', fontSize: '0.8rem', fontWeight: 600, color: '#FFFFFF', marginBottom: '6px' }}>
+              <label style={{ display: 'block', fontSize: '0.8rem', fontWeight: 600, color: 'var(--text-primary)', marginBottom: '6px' }}>
                 Your Registered Email
               </label>
               <div style={{ position: 'relative' }}>
@@ -699,9 +701,9 @@ export default function Login({ view = 'login' }) {
                     borderRadius: '10px',
                     border: '1px solid var(--border-color, #30223F)',
                     fontSize: '0.88rem',
-                    color: '#FFFFFF',
+                    color: 'var(--text-primary)',
                     outline: 'none',
-                    backgroundColor: 'rgba(27, 20, 37, 0.85)',
+                    backgroundColor: 'var(--elevated-surface)',
                     boxSizing: 'border-box'
                   }}
                   onFocus={(e) => {
