@@ -255,7 +255,7 @@ export const StorageEngine = {
 
     const customerName = design.customerName || design.front?.name || 'Valued Client';
     const email = design.customerEmail || `${customerName.toLowerCase().replace(/[^a-z0-9]/g, '') || 'client'}@example.com`;
-    const phone = design.customerPhone || '+91 98460 12345';
+    const phone = design.customerPhone || '+91 6238 578 552';
     const company = design.company || design.front?.company || 'FLOCARD Enterprise';
     const logoUrl = design.customerLogo?.url || (typeof design.customerLogo === 'string' ? design.customerLogo : null) || design.front?.customLogo || null;
 
@@ -423,9 +423,9 @@ export const StorageEngine = {
       bio: `${order.customerName} is a ${order.role || 'Professional'} at ${order.company || 'FLOCARD Network'}. Connect directly via my NFC digital business card.`,
       avatar: order.customerLogo || null,
       logo: order.customerLogo || null,
-      phone: order.customerPhone || '+91 98460 12345',
+      phone: order.customerPhone || '+91 6238 578 552',
       email: order.customerEmail || `${finalSlug}@example.com`,
-      whatsapp: (order.customerPhone || '9846012345').replace(/[^0-9]/g, ''),
+      whatsapp: (order.customerPhone || '916238578552').replace(/[^0-9]/g, ''),
       location: 'Kochi, Kerala, India',
       website: `https://${finalSlug}.flocard.in`,
       theme: order.edition || 'purple',
@@ -434,7 +434,7 @@ export const StorageEngine = {
         website: `https://${finalSlug}.flocard.in`,
         linkedin: `https://linkedin.com/in/${finalSlug}`,
         instagram: `https://instagram.com/${finalSlug}`,
-        whatsapp: order.customerPhone || '+91 98460 12345'
+        whatsapp: order.customerPhone || '+91 6238 578 552'
       },
       services: [
         { id: 's1', name: 'Strategic Consultation', desc: 'Direct corporate collaboration and identity integration.' },
@@ -476,7 +476,7 @@ export const StorageEngine = {
         id: order.customerId || `cust_${Date.now()}`,
         name: order.customerName,
         email: order.customerEmail,
-        phone: order.customerPhone || '+91 98460 12345',
+        phone: order.customerPhone || '+91 6238 578 552',
         company: order.company || 'FLOCARD Partner',
         avatar: order.customerLogo || null,
         totalCards: 1,
