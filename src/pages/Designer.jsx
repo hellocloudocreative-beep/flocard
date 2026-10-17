@@ -34,14 +34,16 @@ import {
   Lock,
   Plus,
   Minus,
-  Type
+  Type,
+  X
 } from 'lucide-react';
 import CardCanvas from '../components/CardCanvas';
 import Card3DPreview from '../components/Card3DPreview';
-import { EDITIONS, TEMPLATES } from '../lib/constants';
+import { EDITIONS, TEMPLATES, BRAND } from '../lib/constants';
 import { exportCardPDF, downloadCanvasPNG } from '../lib/pdfExport';
 import { useData } from '../context/DataContext';
 import { useAuth } from '../context/AuthContext';
+import { WhatsappIcon } from '../components/SocialIcons';
 
 export const FONT_OPTIONS = [
   { id: 'Space Grotesk', name: 'Space Grotesk', style: 'Modern Tech & Bold' },
@@ -213,6 +215,14 @@ export default function Designer() {
   const [adminBgMessage, setAdminBgMessage] = useState('');
   const [hoveredFont, setHoveredFont] = useState(null); // { field: 'name' | 'role' | 'details' | 'tagline', font: string }
   const [showAuthModal, setShowAuthModal] = useState(false);
+  const [showWhatsAppModal, setShowWhatsAppModal] = useState(false);
+
+  // Helper to dynamically format card name as `<Username>'s FLOCARD (<Edition> Edition)`
+  const getDynamicCardTitle = (name, editionKey) => {
+    const raw = (name || user?.name || 'Customer').trim();
+    const edName = EDITIONS[editionKey]?.name || 'Purple Edition';
+    return `${raw}'s FLOCARD (${edName})`;
+  };
 
   // Responsive mobile scaling
   const [viewportWidth, setViewportWidth] = useState(
@@ -289,7 +299,7 @@ export default function Designer() {
   });
 
   const [designTitle, setDesignTitle] = useState(
-    existingDesign?.title || `${TEMPLATES[templateType]?.name} (${EDITIONS[edition]?.name})`
+    existingDesign?.title || getDynamicCardTitle(existingDesign?.front?.name || user?.name || 'AKHIL ANVAR', existingDesign?.edition || initialEdition)
   );
   const [designStatus, setDesignStatus] = useState(existingDesign?.status || 'draft');
 
@@ -297,15 +307,17 @@ export default function Designer() {
   const frontExportCanvasRef = useRef(null);
   const backExportCanvasRef = useRef(null);
 
-  // Switch edition: preserves template, logos, text, and updates colors to edition defaults
+  // Switch edition: dynamically updates card title, preserves template, logos, text, and updates colors
   const handleEditionChange = (newEdition) => {
     setEdition(newEdition);
+    setDesignTitle(getDynamicCardTitle(frontConfig.name, newEdition));
     const def = EDITIONS[newEdition]?.defaults || {};
     setCustomColors({
       primaryAccent: def.primaryAccent,
       secondaryAccent: def.secondaryAccent,
       nameColor: def.nameColor,
       roleColor: def.roleColor,
+      detailsColor: def.detailsColor || def.roleColor || '#D8B4FE',
       taglineColor: def.taglineColor,
       nfcColor: def.nfcColor,
       qrColor: def.qrColor
@@ -391,12 +403,70 @@ export default function Designer() {
     reader.readAsDataURL(file);
   };
 
+  // Auto-sync initial name and card title with logged in user if currently default
+  useEffect(() => {
+    if (user && !existingDesign) {
+      if ((frontConfig.name === 'AKHIL ANVAR' || !frontConfig.name) && user.name) {
+        setFrontConfig(prev => ({ ...prev, name: user.name }));
+        setDesignTitle(getDynamicCardTitle(user.name, edition));
+      }
+    }
+  }, [user, existingDesign, edition]);
+
+  // Helper to generate WhatsApp order message and URL directed to official FLOCARD number
+  const getWhatsAppOrderUrl = () => {
+    const customer = user?.name || frontConfig.name || 'Valued Customer';
+    const email = user?.email || 'Not specified';
+    const phone = user?.phone || 'Not specified';
+    const cardTitle = designTitle || getDynamicCardTitle(frontConfig.name, edition);
+    const editionName = EDITIONS[edition]?.name || 'Purple Edition';
+    const templateName = TEMPLATES[templateType]?.name || 'Standard FLOCARD';
+
+    const lines = [
+      `👋 *Hello FLOCARD Team!*`,
+      ``,
+      `I have customized my card on the FLOCARD Studio and would like to submit my order for print production:`,
+      ``,
+      `💳 *CARD SPECIFICATIONS*`,
+      `• *Card Title:* ${cardTitle}`,
+      `• *Edition:* ${editionName}`,
+      `• *Template:* ${templateName}`,
+      ``,
+      `👤 *CUSTOMER DETAILS*`,
+      `• *Name / Username:* ${customer}`,
+      `• *Email:* ${email}`,
+      `• *Phone:* ${phone}`,
+      ``,
+      `🎨 *FRONT DESIGN*`,
+      `• *Full Name:* ${frontConfig.name} (${frontConfig.fontFamily || 'Space Grotesk'})`,
+      `• *Role / Title:* ${frontConfig.role || 'N/A'} (${frontConfig.roleFontFamily || 'Inter'})`,
+      frontConfig.details ? `• *Details:* ${frontConfig.details} (${frontConfig.detailsFontFamily || 'Inter'})` : null,
+      frontConfig.showTagline && frontConfig.tagline ? `• *Tagline:* ${frontConfig.tagline}` : null,
+      customerLogo.url ? `• *Custom Logo:* Included on front` : null,
+      ``,
+      `🔗 *BACK DESIGN (NFC / QR)*`,
+      `• *QR Link:* ${backConfig.qrUrl}`,
+      `• *Subtext:* ${backConfig.subtext}`,
+      backConfig.brandUrl ? `• *Display URL:* ${backConfig.brandUrl}` : null,
+      ``,
+      `🖼️ *ATTACHMENTS*`,
+      `I am attaching the high-resolution Front and Back card preview images (PNG/PDF) to this message.`,
+      ``,
+      `Please verify and confirm my order. Thank you!`
+    ].filter(Boolean).join('\n');
+
+    return `https://wa.me/${BRAND.whatsapp}?text=${encodeURIComponent(lines)}`;
+  };
+
+  const hasRestoredPendingRef = useRef(false);
+
   // Auto-restore and submit pending design after login redirect
   useEffect(() => {
     const isSubmitQuery = urlParams.get('submit') === 'true';
-    if (isSubmitQuery && user) {
+    if (isSubmitQuery && user && !hasRestoredPendingRef.current) {
       const savedPending = localStorage.getItem('flocard_pending_design');
       if (savedPending) {
+        hasRestoredPendingRef.current = true;
         try {
           const parsed = JSON.parse(savedPending);
           if (parsed.front) setFrontConfig(parsed.front);
@@ -410,14 +480,14 @@ export default function Designer() {
 
           const clientName = user?.name || parsed.front?.name || 'Valued Client';
           const clientSlug = clientName.toLowerCase().replace(/[^a-z0-9]/g, '') || 'client';
-          saveDesign({
+          const designObj = {
             id: `des_${Date.now()}`,
             customerId: user?.id || (user?.email ? `cust_${user.email}` : `cust_${Date.now()}`),
             customerName: clientName,
             customerEmail: user?.email || `${clientSlug}@example.com`,
             customerPhone: user?.phone || '+91 98460 12345',
             company: user?.company || parsed.front?.company || 'FLOCARD Enterprise',
-            title: parsed.title || 'Submitted Design',
+            title: parsed.title || getDynamicCardTitle(clientName, parsed.edition || 'purple'),
             templateType: parsed.templateType || 'standard',
             edition: parsed.edition || 'purple',
             customColors: parsed.customColors,
@@ -426,10 +496,23 @@ export default function Designer() {
             front: parsed.front,
             back: parsed.back,
             status: 'submitted'
-          });
+          };
+          saveDesign(designObj);
           setDesignStatus('submitted');
-          setSaveSuccess('Welcome back! Your design has been submitted for print review.');
+          setSaveSuccess('Welcome back! Your design has been submitted.');
           localStorage.removeItem('flocard_pending_design');
+
+          setTimeout(() => {
+            handleExportPNG('front');
+            setTimeout(() => handleExportPNG('back'), 700);
+            setShowWhatsAppModal(true);
+            try {
+              window.open(getWhatsAppOrderUrl(), '_blank', 'noopener,noreferrer');
+            } catch (e) {
+              console.error('WhatsApp popup blocked:', e);
+            }
+          }, 600);
+
           setTimeout(() => setSaveSuccess(''), 4500);
         } catch (e) {
           console.error('Error restoring pending design:', e);
@@ -485,6 +568,24 @@ export default function Designer() {
     setDesignStatus(newStatus);
     setSaveSuccess(submit ? 'Design submitted for print review!' : 'Design saved to account!');
     setTimeout(() => setSaveSuccess(''), 3500);
+
+    if (submit) {
+      // 1. Download front card artwork (300 DPI PNG)
+      handleExportPNG('front');
+      // 2. Download back card artwork after short delay so browser doesn't block dual downloads
+      setTimeout(() => {
+        handleExportPNG('back');
+      }, 700);
+      // 3. Open WhatsApp chat with prefilled order details
+      const waUrl = getWhatsAppOrderUrl();
+      try {
+        window.open(waUrl, '_blank', 'noopener,noreferrer');
+      } catch (e) {
+        console.error('WhatsApp popup blocked:', e);
+      }
+      // 4. Show confirmation modal with instructions & re-download buttons
+      setShowWhatsAppModal(true);
+    }
   };
 
   // Export high-res PNG
@@ -560,26 +661,52 @@ export default function Designer() {
             <span className="badge-tag" style={{ flexShrink: 0 }}>
               {TEMPLATES[templateType]?.badge}
             </span>
-            <input
-              type="text"
-              value={designTitle}
-              onChange={(e) => setDesignTitle(e.target.value)}
-              className="designer-title-input"
-              style={{
-                background: 'transparent',
-                border: 'none',
-                borderBottom: '1px solid var(--border-color)',
-                color: '#ffffff',
-                fontFamily: 'var(--font-display)',
-                fontWeight: 700,
-                fontSize: '1.1rem',
-                outline: 'none',
-                padding: '4px 8px',
-                flex: 1,
-                minWidth: 0,
-                width: '100%'
-              }}
-            />
+            <div style={{ position: 'relative', display: 'flex', alignItems: 'center', flex: 1, minWidth: 0 }}>
+              <input
+                type="text"
+                value={designTitle}
+                onChange={(e) => setDesignTitle(e.target.value)}
+                className="designer-title-input"
+                placeholder="e.g. Username's FLOCARD (Purple Edition)"
+                title="Card Design Title (Click refresh icon to re-sync with your name & edition)"
+                style={{
+                  background: 'transparent',
+                  border: 'none',
+                  borderBottom: '1px solid var(--border-color)',
+                  color: '#ffffff',
+                  fontFamily: 'var(--font-display)',
+                  fontWeight: 700,
+                  fontSize: '1.1rem',
+                  outline: 'none',
+                  padding: '4px 28px 4px 8px',
+                  flex: 1,
+                  minWidth: 0,
+                  width: '100%'
+                }}
+              />
+              <button
+                type="button"
+                onClick={() => setDesignTitle(getDynamicCardTitle(frontConfig.name, edition))}
+                title="Sync title with name & edition"
+                style={{
+                  position: 'absolute',
+                  right: '4px',
+                  background: 'transparent',
+                  border: 'none',
+                  color: 'var(--text-muted)',
+                  cursor: 'pointer',
+                  padding: '4px',
+                  display: 'flex',
+                  alignItems: 'center',
+                  borderRadius: '4px',
+                  transition: 'color 0.2s'
+                }}
+                onMouseEnter={(e) => e.currentTarget.style.color = 'var(--accent-purple)'}
+                onMouseLeave={(e) => e.currentTarget.style.color = 'var(--text-muted)'}
+              >
+                <RefreshCw size={14} />
+              </button>
+            </div>
           </div>
 
           {/* Action buttons */}
@@ -979,7 +1106,11 @@ export default function Designer() {
                     type="text"
                     className="form-input"
                     value={frontConfig.name}
-                    onChange={(e) => setFrontConfig({ ...frontConfig, name: e.target.value })}
+                    onChange={(e) => {
+                      const newName = e.target.value;
+                      setFrontConfig({ ...frontConfig, name: newName });
+                      setDesignTitle(getDynamicCardTitle(newName, edition));
+                    }}
                     placeholder="e.g. AKHIL ANVAR"
                     style={{ marginBottom: '8px' }}
                   />
@@ -1057,7 +1188,7 @@ export default function Designer() {
                     className="form-input"
                     value={frontConfig.details || ''}
                     onChange={(e) => setFrontConfig({ ...frontConfig, details: e.target.value })}
-                    placeholder="e.g. DUBAI • BANGALORE • +91 98460 12345"
+                    placeholder="location • number • website • etc"
                     style={{ marginBottom: '8px' }}
                   />
                   <InteractiveFontPicker
@@ -1404,8 +1535,8 @@ export default function Designer() {
                   background: designStatus === 'approved'
                     ? 'rgba(16, 185, 129, 0.15)'
                     : designStatus === 'submitted' || designStatus === 'in_review'
-                    ? 'rgba(245, 158, 11, 0.15)'
-                    : 'rgba(23, 16, 32, 0.8)',
+                      ? 'rgba(245, 158, 11, 0.15)'
+                      : 'rgba(23, 16, 32, 0.8)',
                   border: '1px solid var(--border-color)',
                   color: designStatus === 'approved' ? '#34d399' : designStatus === 'submitted' ? '#fbbf24' : '#ffffff'
                 }}
@@ -1628,6 +1759,223 @@ export default function Designer() {
                 style={{ width: '100%', justifyContent: 'center', marginTop: '6px', fontSize: '0.8rem' }}
               >
                 Keep Editing Card
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* WhatsApp Order & Artwork Dispatch Modal */}
+      {showWhatsAppModal && (
+        <div
+          style={{
+            position: 'fixed',
+            top: 0,
+            left: 0,
+            right: 0,
+            bottom: 0,
+            background: 'rgba(5, 3, 10, 0.88)',
+            backdropFilter: 'blur(12px)',
+            WebkitBackdropFilter: 'blur(12px)',
+            zIndex: 9999,
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            padding: '20px'
+          }}
+        >
+          <div
+            className="glass-panel"
+            style={{
+              maxWidth: '480px',
+              width: '100%',
+              padding: '28px 24px',
+              borderRadius: '24px',
+              background: 'linear-gradient(145deg, rgba(23, 16, 32, 0.98), rgba(13, 9, 21, 0.98))',
+              border: '1px solid rgba(37, 211, 102, 0.45)',
+              boxShadow: '0 24px 60px rgba(0, 0, 0, 0.85), 0 0 40px rgba(37, 211, 102, 0.25)',
+              position: 'relative'
+            }}
+          >
+            {/* Close Button */}
+            <button
+              type="button"
+              onClick={() => setShowWhatsAppModal(false)}
+              aria-label="Close"
+              style={{
+                position: 'absolute',
+                top: '16px',
+                right: '16px',
+                background: 'rgba(255, 255, 255, 0.08)',
+                border: '1px solid rgba(255, 255, 255, 0.1)',
+                color: 'var(--text-muted)',
+                borderRadius: '50%',
+                width: '32px',
+                height: '32px',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                cursor: 'pointer',
+                transition: 'background 0.2s'
+              }}
+              onMouseEnter={(e) => e.currentTarget.style.background = 'rgba(255, 255, 255, 0.15)'}
+              onMouseLeave={(e) => e.currentTarget.style.background = 'rgba(255, 255, 255, 0.08)'}
+            >
+              <X size={16} />
+            </button>
+
+            {/* Header */}
+            <div style={{ textAlign: 'center', marginBottom: '18px' }}>
+              <div
+                style={{
+                  width: '58px',
+                  height: '58px',
+                  borderRadius: '50%',
+                  background: 'rgba(37, 211, 102, 0.15)',
+                  border: '1px solid #25D366',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  margin: '0 auto 12px',
+                  boxShadow: '0 0 24px rgba(37, 211, 102, 0.35)'
+                }}
+              >
+                <WhatsappIcon size={30} color="#25D366" />
+              </div>
+              <h3 style={{ fontSize: '1.25rem', fontWeight: 800, color: '#ffffff', marginBottom: '6px', fontFamily: 'var(--font-display)' }}>
+                Order Sent to FLOCARD!
+              </h3>
+              <p style={{ fontSize: '0.84rem', color: 'var(--text-secondary)', lineHeight: 1.5 }}>
+                Your custom card design has been registered and prepared for the FLOCARD production team.
+              </p>
+            </div>
+
+            {/* Card Specs Summary */}
+            <div
+              style={{
+                background: 'rgba(255, 255, 255, 0.03)',
+                border: '1px solid rgba(255, 255, 255, 0.08)',
+                borderRadius: '12px',
+                padding: '12px 16px',
+                marginBottom: '16px'
+              }}
+            >
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '6px' }}>
+                <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>Card Title</span>
+                <span style={{ fontSize: '0.82rem', fontWeight: 700, color: '#ffffff', textAlign: 'right', maxWidth: '260px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                  {designTitle}
+                </span>
+              </div>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '6px' }}>
+                <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>Customer</span>
+                <span style={{ fontSize: '0.82rem', color: 'var(--text-secondary)' }}>{user?.name || frontConfig.name}</span>
+              </div>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>Edition</span>
+                <span style={{ fontSize: '0.82rem', color: EDITIONS[edition]?.accentColor || 'var(--accent-purple)', fontWeight: 600 }}>
+                  {EDITIONS[edition]?.name}
+                </span>
+              </div>
+            </div>
+
+            {/* Instruction Steps */}
+            <div
+              style={{
+                background: 'rgba(37, 211, 102, 0.06)',
+                border: '1px solid rgba(37, 211, 102, 0.2)',
+                borderRadius: '12px',
+                padding: '12px 14px',
+                marginBottom: '18px'
+              }}
+            >
+              <div style={{ display: 'flex', alignItems: 'flex-start', gap: '10px', marginBottom: '8px' }}>
+                <div style={{ width: '18px', height: '18px', borderRadius: '50%', background: '#25D366', color: '#000', fontSize: '0.65rem', fontWeight: 800, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, marginTop: '2px' }}>1</div>
+                <div style={{ fontSize: '0.78rem', color: '#ffffff' }}>
+                  High-res Front & Back card images downloaded automatically to your device.
+                </div>
+              </div>
+              <div style={{ display: 'flex', alignItems: 'flex-start', gap: '10px', marginBottom: '8px' }}>
+                <div style={{ width: '18px', height: '18px', borderRadius: '50%', background: '#25D366', color: '#000', fontSize: '0.65rem', fontWeight: 800, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, marginTop: '2px' }}>2</div>
+                <div style={{ fontSize: '0.78rem', color: '#ffffff' }}>
+                  Click below to open WhatsApp with your design specifications pre-filled.
+                </div>
+              </div>
+              <div style={{ display: 'flex', alignItems: 'flex-start', gap: '10px' }}>
+                <div style={{ width: '18px', height: '18px', borderRadius: '50%', background: '#25D366', color: '#000', fontSize: '0.65rem', fontWeight: 800, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, marginTop: '2px' }}>3</div>
+                <div style={{ fontSize: '0.78rem', color: '#ffffff' }}>
+                  Attach the downloaded card images in the WhatsApp chat to complete print queueing!
+                </div>
+              </div>
+            </div>
+
+            {/* Action Buttons */}
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+              <a
+                href={getWhatsAppOrderUrl()}
+                target="_blank"
+                rel="noopener noreferrer"
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  gap: '8px',
+                  background: 'linear-gradient(135deg, #25D366 0%, #128C7E 100%)',
+                  color: '#ffffff',
+                  padding: '13px 18px',
+                  borderRadius: '12px',
+                  fontWeight: 700,
+                  fontSize: '0.92rem',
+                  textDecoration: 'none',
+                  boxShadow: '0 8px 24px rgba(37, 211, 102, 0.35)',
+                  cursor: 'pointer'
+                }}
+              >
+                <WhatsappIcon size={20} color="#ffffff" />
+                <span>Open WhatsApp to Send Details</span>
+                <ArrowRight size={16} />
+              </a>
+
+              {/* Re-download artwork buttons */}
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '6px' }}>
+                <button
+                  type="button"
+                  onClick={() => handleExportPNG('front')}
+                  className="btn btn-secondary"
+                  style={{ padding: '8px 4px', fontSize: '0.72rem', justifyContent: 'center' }}
+                  title="Download Front 300 DPI PNG"
+                >
+                  <Download size={13} />
+                  <span>Front PNG</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => handleExportPNG('back')}
+                  className="btn btn-secondary"
+                  style={{ padding: '8px 4px', fontSize: '0.72rem', justifyContent: 'center' }}
+                  title="Download Back 300 DPI PNG"
+                >
+                  <Download size={13} />
+                  <span>Back PNG</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={handleExportPDF}
+                  className="btn btn-secondary"
+                  style={{ padding: '8px 4px', fontSize: '0.72rem', justifyContent: 'center' }}
+                  title="Download Print-Ready PDF"
+                >
+                  <FileText size={13} />
+                  <span>Print PDF</span>
+                </button>
+              </div>
+
+              <button
+                type="button"
+                onClick={() => setShowWhatsAppModal(false)}
+                className="btn btn-outline"
+                style={{ width: '100%', justifyContent: 'center', marginTop: '4px', fontSize: '0.8rem' }}
+              >
+                Return to Studio
               </button>
             </div>
           </div>

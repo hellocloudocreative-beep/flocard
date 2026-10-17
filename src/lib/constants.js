@@ -7,6 +7,7 @@ export const BRAND = {
   tagline: 'One Tap. Every Connection.',
   domain: 'flocard.in',
   supportEmail: 'contact@flocard.in',
+  whatsapp: '919846012345',
   heroEyebrow: 'PREMIUM NFC BUSINESS CARDS',
   heroTitle: 'YOUR IDENTITY. ONE TAP AWAY.',
   heroSubtitle: 'Premium NFC business cards that connect your professional identity, portfolio, and contact details in one tap.',
