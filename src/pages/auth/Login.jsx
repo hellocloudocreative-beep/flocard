@@ -60,9 +60,10 @@ export default function Login({ view = 'login' }) {
     try {
       const res = await loginCustomer(loginEmail, loginPassword);
       if (res.success) {
-        setSuccessMessage('Signed in successfully! Redirecting to your account...');
+        const redirectTarget = urlParams.get('redirect') || '/account';
+        setSuccessMessage('Signed in successfully! Redirecting...');
         setTimeout(() => {
-          window.history.pushState({}, '', '/account');
+          window.history.pushState({}, '', redirectTarget);
           window.dispatchEvent(new PopStateEvent('popstate'));
         }, 600);
       } else {
@@ -100,9 +101,10 @@ export default function Login({ view = 'login' }) {
       });
 
       if (res.success) {
+        const redirectTarget = urlParams.get('redirect') || '/account';
         setSuccessMessage('Welcome to FLOCARD! Account created. Redirecting...');
         setTimeout(() => {
-          window.history.pushState({}, '', '/account');
+          window.history.pushState({}, '', redirectTarget);
           window.dispatchEvent(new PopStateEvent('popstate'));
         }, 700);
       } else {

@@ -54,6 +54,132 @@ export const FONT_OPTIONS = [
   { id: 'Montserrat', name: 'Montserrat', style: 'Geometric Bold' }
 ];
 
+function InteractiveFontPicker({
+  label,
+  value,
+  onChange,
+  fieldName,
+  hoveredFont,
+  setHoveredFont
+}) {
+  const [isOpen, setIsOpen] = useState(false);
+  const dropdownRef = useRef(null);
+
+  useEffect(() => {
+    const handleClickOutside = (e) => {
+      if (dropdownRef.current && !dropdownRef.current.contains(e.target)) {
+        setIsOpen(false);
+        setHoveredFont(prev => (prev?.field === fieldName ? null : prev));
+      }
+    };
+    if (isOpen) {
+      document.addEventListener('mousedown', handleClickOutside);
+    }
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, [isOpen, fieldName, setHoveredFont]);
+
+  const isFieldHovered = hoveredFont?.field === fieldName;
+  const displayFont = isFieldHovered ? hoveredFont.font : (value || 'Space Grotesk');
+
+  return (
+    <div ref={dropdownRef} style={{ position: 'relative', width: '100%', marginBottom: '8px' }}>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '4px' }}>
+        <span style={{ fontSize: '0.72rem', color: 'var(--text-muted)' }}>{label}</span>
+        {isFieldHovered ? (
+          <span style={{ fontSize: '0.66rem', color: '#10B981', fontWeight: 700 }}>
+            Hovering: {hoveredFont.font}
+          </span>
+        ) : (
+          <span style={{ fontSize: '0.7rem', color: 'var(--accent-purple)', fontWeight: 600 }}>
+            {value}
+          </span>
+        )}
+      </div>
+
+      <button
+        type="button"
+        onClick={() => setIsOpen(!isOpen)}
+        style={{
+          width: '100%',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'space-between',
+          padding: '7px 10px',
+          background: 'rgba(23, 16, 32, 0.95)',
+          border: isFieldHovered ? '1px solid #10B981' : isOpen ? '1px solid var(--accent-purple)' : '1px solid var(--border-color)',
+          borderRadius: '8px',
+          color: '#ffffff',
+          cursor: 'pointer',
+          textAlign: 'left',
+          transition: 'all 0.15s ease'
+        }}
+      >
+        <span style={{ fontFamily: `"${displayFont}", sans-serif`, fontSize: '0.84rem', fontWeight: 600 }}>
+          {displayFont}
+        </span>
+        <ChevronDown size={14} style={{ color: 'var(--text-muted)', transform: isOpen ? 'rotate(180deg)' : 'none', transition: 'transform 0.2s' }} />
+      </button>
+
+      {isOpen && (
+        <div
+          style={{
+            position: 'absolute',
+            top: 'calc(100% + 4px)',
+            left: 0,
+            right: 0,
+            zIndex: 120,
+            background: 'rgba(16, 11, 23, 0.98)',
+            border: '1px solid var(--border-color)',
+            borderRadius: '10px',
+            boxShadow: '0 12px 32px rgba(0, 0, 0, 0.9)',
+            padding: '6px',
+            maxHeight: '220px',
+            overflowY: 'auto',
+            backdropFilter: 'blur(16px)'
+          }}
+        >
+          {FONT_OPTIONS.map(font => {
+            const isSelected = value === font.id;
+            const isThisHovered = isFieldHovered && hoveredFont.font === font.id;
+            return (
+              <div
+                key={font.id}
+                onMouseEnter={() => setHoveredFont({ field: fieldName, font: font.id })}
+                onMouseLeave={() => setHoveredFont(null)}
+                onClick={() => {
+                  onChange(font.id);
+                  setHoveredFont(null);
+                  setIsOpen(false);
+                }}
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'space-between',
+                  padding: '7px 10px',
+                  borderRadius: '6px',
+                  background: isThisHovered ? 'rgba(168, 85, 247, 0.3)' : isSelected ? 'rgba(107, 0, 255, 0.2)' : 'transparent',
+                  cursor: 'pointer',
+                  transition: 'background 0.12s ease'
+                }}
+              >
+                <div style={{ display: 'flex', flexDirection: 'column' }}>
+                  <span style={{ fontFamily: `"${font.id}", sans-serif`, fontSize: '0.84rem', fontWeight: 600, color: '#ffffff' }}>
+                    {font.name}
+                  </span>
+                  <span style={{ fontSize: '0.62rem', color: 'var(--text-muted)' }}>
+                    {font.style}
+                  </span>
+                </div>
+                {isSelected && <Check size={14} color="var(--accent-purple)" />}
+              </div>
+            );
+          })}
+        </div>
+      )}
+    </div>
+  );
+}
+
 export default function Designer() {
   const { user, isAdmin } = useAuth();
   const { saveDesign, designs, studioBackground, updateStudioBackground, resetStudioBg } = useData();
@@ -80,11 +206,13 @@ export default function Designer() {
   const [zoom, setZoom] = useState(1);
   const [showGuides, setShowGuides] = useState(true);
   const [showBleed, setShowBleed] = useState(false);
-  const [activeTab, setActiveTab] = useState('fonts'); // 'fonts' | 'identity' | 'logos' | 'nfc' | 'qr'
+  const [activeTab, setActiveTab] = useState('identity'); // 'identity' | 'logos' | 'nfc' | 'qr'
   const [saveSuccess, setSaveSuccess] = useState('');
   const [isExporting, setIsExporting] = useState(false);
   const [logoWarning, setLogoWarning] = useState(false);
   const [adminBgMessage, setAdminBgMessage] = useState('');
+  const [hoveredFont, setHoveredFont] = useState(null); // { field: 'name' | 'role' | 'details' | 'tagline', font: string }
+  const [showAuthModal, setShowAuthModal] = useState(false);
 
   // Responsive mobile scaling
   const [viewportWidth, setViewportWidth] = useState(
@@ -111,6 +239,7 @@ export default function Designer() {
     secondaryAccent: existingDesign?.customColors?.secondaryAccent || currentEditionDefaults.secondaryAccent,
     nameColor: existingDesign?.customColors?.nameColor || currentEditionDefaults.nameColor,
     roleColor: existingDesign?.customColors?.roleColor || currentEditionDefaults.roleColor,
+    detailsColor: existingDesign?.customColors?.detailsColor || currentEditionDefaults.roleColor || '#D8B4FE',
     taglineColor: existingDesign?.customColors?.taglineColor || currentEditionDefaults.taglineColor,
     nfcColor: existingDesign?.customColors?.nfcColor || currentEditionDefaults.nfcColor,
     qrColor: existingDesign?.customColors?.qrColor || currentEditionDefaults.qrColor
@@ -135,6 +264,7 @@ export default function Designer() {
   const [frontConfig, setFrontConfig] = useState({
     name: existingDesign?.front?.name || (user?.name || 'AKHIL ANVAR'),
     role: existingDesign?.front?.role || 'CEO & FOUNDER',
+    details: existingDesign?.front?.details || '',
     tagline: existingDesign?.front?.tagline || 'One Tap Every Connection',
     showTagline: existingDesign?.front?.showTagline ?? true,
     showNfc: true,
@@ -145,6 +275,7 @@ export default function Designer() {
     alignment: existingDesign?.front?.alignment || 'left',
     fontFamily: existingDesign?.front?.fontFamily || 'Space Grotesk',
     roleFontFamily: existingDesign?.front?.roleFontFamily || 'Inter',
+    detailsFontFamily: existingDesign?.front?.detailsFontFamily || 'Inter',
     taglineFontFamily: existingDesign?.front?.taglineFontFamily || 'Inter'
   });
 
@@ -260,8 +391,75 @@ export default function Designer() {
     reader.readAsDataURL(file);
   };
 
-  // Save design to account / data context
+  // Auto-restore and submit pending design after login redirect
+  useEffect(() => {
+    const isSubmitQuery = urlParams.get('submit') === 'true';
+    if (isSubmitQuery && user) {
+      const savedPending = localStorage.getItem('flocard_pending_design');
+      if (savedPending) {
+        try {
+          const parsed = JSON.parse(savedPending);
+          if (parsed.front) setFrontConfig(parsed.front);
+          if (parsed.back) setBackConfig(parsed.back);
+          if (parsed.customColors) setCustomColors(parsed.customColors);
+          if (parsed.customerLogo) setCustomerLogo(parsed.customerLogo);
+          if (parsed.flocardLogo) setFlocardLogo(parsed.flocardLogo);
+          if (parsed.templateType) setTemplateType(parsed.templateType);
+          if (parsed.edition) setEdition(parsed.edition);
+          if (parsed.title) setDesignTitle(parsed.title);
+
+          const clientName = user?.name || parsed.front?.name || 'Valued Client';
+          const clientSlug = clientName.toLowerCase().replace(/[^a-z0-9]/g, '') || 'client';
+          saveDesign({
+            id: `des_${Date.now()}`,
+            customerId: user?.id || (user?.email ? `cust_${user.email}` : `cust_${Date.now()}`),
+            customerName: clientName,
+            customerEmail: user?.email || `${clientSlug}@example.com`,
+            customerPhone: user?.phone || '+91 98460 12345',
+            company: user?.company || parsed.front?.company || 'FLOCARD Enterprise',
+            title: parsed.title || 'Submitted Design',
+            templateType: parsed.templateType || 'standard',
+            edition: parsed.edition || 'purple',
+            customColors: parsed.customColors,
+            customerLogo: parsed.customerLogo,
+            flocardLogo: parsed.flocardLogo,
+            front: parsed.front,
+            back: parsed.back,
+            status: 'submitted'
+          });
+          setDesignStatus('submitted');
+          setSaveSuccess('Welcome back! Your design has been submitted for print review.');
+          localStorage.removeItem('flocard_pending_design');
+          setTimeout(() => setSaveSuccess(''), 4500);
+        } catch (e) {
+          console.error('Error restoring pending design:', e);
+        }
+      }
+    }
+  }, [user]);
+
+  // Save design to account / data context (Customer must be logged in to submit)
   const handleSaveDesign = (submit = false) => {
+    if (submit && !user) {
+      const pendingDesign = {
+        title: designTitle,
+        templateType,
+        edition,
+        customColors,
+        customerLogo,
+        flocardLogo,
+        front: frontConfig,
+        back: backConfig
+      };
+      try {
+        localStorage.setItem('flocard_pending_design', JSON.stringify(pendingDesign));
+      } catch (e) {
+        console.error('Failed to store pending design:', e);
+      }
+      setShowAuthModal(true);
+      return;
+    }
+
     const newStatus = submit ? 'submitted' : designStatus;
     const clientName = user?.name || frontConfig.name || 'Valued Client';
     const clientSlug = clientName.toLowerCase().replace(/[^a-z0-9]/g, '') || 'client';
@@ -314,9 +512,15 @@ export default function Designer() {
     }
   };
 
-  // Pack combined config for CardCanvas
+  // Pack combined config for CardCanvas with live hovered font preview support
   const combinedConfig = {
-    front: frontConfig,
+    front: {
+      ...frontConfig,
+      fontFamily: (hoveredFont?.field === 'name' ? hoveredFont.font : frontConfig.fontFamily) || 'Space Grotesk',
+      roleFontFamily: (hoveredFont?.field === 'role' ? hoveredFont.font : frontConfig.roleFontFamily) || 'Inter',
+      detailsFontFamily: (hoveredFont?.field === 'details' ? hoveredFont.font : frontConfig.detailsFontFamily) || 'Inter',
+      taglineFontFamily: (hoveredFont?.field === 'tagline' ? hoveredFont.font : frontConfig.taglineFontFamily) || 'Inter'
+    },
     back: backConfig,
     customColors,
     customerLogo,
@@ -501,11 +705,11 @@ export default function Designer() {
               </div>
             </div>
 
-            {/* Studio Navigation Tabs */}
+            {/* Studio Navigation Tabs (Text, Logos, NFC, QR) */}
             <div
               style={{
                 display: 'grid',
-                gridTemplateColumns: 'repeat(5, 1fr)',
+                gridTemplateColumns: 'repeat(4, 1fr)',
                 background: 'rgba(23, 16, 32, 0.9)',
                 borderRadius: '8px',
                 padding: '3px',
@@ -514,7 +718,6 @@ export default function Designer() {
               }}
             >
               {[
-                { id: 'fonts', label: 'Fonts', icon: Type },
                 { id: 'identity', label: 'Text', icon: FileText },
                 { id: 'logos', label: 'Logos', icon: ImageIcon },
                 { id: 'nfc', label: 'NFC', icon: Radio },
@@ -530,6 +733,7 @@ export default function Designer() {
                       setActiveTab(tab.id);
                       if (tab.id === 'qr') setSide('back');
                       else if (tab.id === 'logos' && templateType === 'customer_logo') setSide('front');
+                      else if (tab.id === 'identity') setSide('front');
                     }}
                     style={{
                       display: 'flex',
@@ -553,164 +757,6 @@ export default function Designer() {
                 );
               })}
             </div>
-
-            {/* TAB 1: TYPOGRAPHY & FONT SELECTION */}
-            {activeTab === 'fonts' && (
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
-                <div>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
-                    <label className="form-label" style={{ marginBottom: 0, fontWeight: 700 }}>
-                      Name Font Style
-                    </label>
-                    <span style={{ fontSize: '0.72rem', color: 'var(--accent-purple)', fontWeight: 600 }}>
-                      {frontConfig.fontFamily}
-                    </span>
-                  </div>
-                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '8px' }}>
-                    {FONT_OPTIONS.map(font => {
-                      const selected = (frontConfig.fontFamily || 'Space Grotesk') === font.id;
-                      return (
-                        <button
-                          key={font.id}
-                          type="button"
-                          onClick={() => setFrontConfig({ ...frontConfig, fontFamily: font.id })}
-                          style={{
-                            padding: '10px 12px',
-                            borderRadius: '8px',
-                            border: selected ? '1.5px solid var(--accent-purple)' : '1px solid var(--border-color)',
-                            background: selected ? 'rgba(107, 0, 255, 0.22)' : 'rgba(23, 16, 32, 0.8)',
-                            color: '#ffffff',
-                            textAlign: 'left',
-                            cursor: 'pointer',
-                            display: 'flex',
-                            flexDirection: 'column',
-                            gap: '3px',
-                            transition: 'all 0.15s ease'
-                          }}
-                        >
-                          <span style={{ fontFamily: `"${font.id}", sans-serif`, fontSize: '0.95rem', fontWeight: 700 }}>
-                            {font.name}
-                          </span>
-                          <span style={{ fontSize: '0.66rem', color: 'var(--text-muted)' }}>
-                            {font.style}
-                          </span>
-                        </button>
-                      );
-                    })}
-                  </div>
-                </div>
-
-                {/* Role / Subtitle Font Selection */}
-                <div>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
-                    <label className="form-label" style={{ marginBottom: 0, fontWeight: 700 }}>
-                      Role & Title Font
-                    </label>
-                    <span style={{ fontSize: '0.72rem', color: 'var(--accent-purple)', fontWeight: 600 }}>
-                      {frontConfig.roleFontFamily || 'Inter'}
-                    </span>
-                  </div>
-                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '8px' }}>
-                    {FONT_OPTIONS.map(font => {
-                      const selected = (frontConfig.roleFontFamily || 'Inter') === font.id;
-                      return (
-                        <button
-                          key={font.id}
-                          type="button"
-                          onClick={() => setFrontConfig({ ...frontConfig, roleFontFamily: font.id })}
-                          style={{
-                            padding: '8px 12px',
-                            borderRadius: '8px',
-                            border: selected ? '1.5px solid var(--accent-purple)' : '1px solid var(--border-color)',
-                            background: selected ? 'rgba(107, 0, 255, 0.22)' : 'rgba(23, 16, 32, 0.8)',
-                            color: '#ffffff',
-                            textAlign: 'left',
-                            cursor: 'pointer',
-                            display: 'flex',
-                            flexDirection: 'column',
-                            gap: '2px',
-                            transition: 'all 0.15s ease'
-                          }}
-                        >
-                          <span style={{ fontFamily: `"${font.id}", sans-serif`, fontSize: '0.86rem', fontWeight: 600 }}>
-                            {font.name}
-                          </span>
-                          <span style={{ fontSize: '0.64rem', color: 'var(--text-muted)' }}>
-                            {font.style}
-                          </span>
-                        </button>
-                      );
-                    })}
-                  </div>
-                </div>
-
-                {/* Tagline Font Selection */}
-                <div>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
-                    <label className="form-label" style={{ marginBottom: 0, fontWeight: 700 }}>
-                      Tagline / Statement Font
-                    </label>
-                    <span style={{ fontSize: '0.72rem', color: 'var(--accent-purple)', fontWeight: 600 }}>
-                      {frontConfig.taglineFontFamily || frontConfig.roleFontFamily || 'Inter'}
-                    </span>
-                  </div>
-                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '8px' }}>
-                    {FONT_OPTIONS.slice(0, 6).map(font => {
-                      const selected = (frontConfig.taglineFontFamily || 'Inter') === font.id;
-                      return (
-                        <button
-                          key={font.id}
-                          type="button"
-                          onClick={() => setFrontConfig({ ...frontConfig, taglineFontFamily: font.id })}
-                          style={{
-                            padding: '8px 10px',
-                            borderRadius: '8px',
-                            border: selected ? '1.5px solid var(--accent-purple)' : '1px solid var(--border-color)',
-                            background: selected ? 'rgba(107, 0, 255, 0.22)' : 'rgba(23, 16, 32, 0.8)',
-                            color: '#ffffff',
-                            textAlign: 'left',
-                            cursor: 'pointer',
-                            transition: 'all 0.15s ease'
-                          }}
-                        >
-                          <span style={{ fontFamily: `"${font.id}", sans-serif`, fontSize: '0.82rem', fontWeight: 500 }}>
-                            {font.name}
-                          </span>
-                        </button>
-                      );
-                    })}
-                  </div>
-                </div>
-
-                {/* Name Font Size */}
-                <div style={{ marginTop: '4px' }}>
-                  <label className="form-label" style={{ fontWeight: 700 }}>Name Size Scale</label>
-                  <div style={{ display: 'flex', gap: '8px' }}>
-                    {['small', 'medium', 'large'].map(size => (
-                      <button
-                        key={size}
-                        type="button"
-                        onClick={() => setFrontConfig({ ...frontConfig, fontSize: size })}
-                        style={{
-                          flex: 1,
-                          padding: '8px',
-                          borderRadius: '8px',
-                          border: frontConfig.fontSize === size ? '1.5px solid var(--accent-purple)' : '1px solid var(--border-color)',
-                          background: frontConfig.fontSize === size ? 'rgba(107, 0, 255, 0.25)' : 'rgba(23, 16, 32, 0.8)',
-                          color: '#ffffff',
-                          fontSize: '0.78rem',
-                          fontWeight: 600,
-                          textTransform: 'capitalize',
-                          cursor: 'pointer'
-                        }}
-                      >
-                        {size}
-                      </button>
-                    ))}
-                  </div>
-                </div>
-              </div>
-            )}
 
             {/* TAB 2: TWO INDEPENDENT LOGOS & SCALING */}
             {activeTab === 'logos' && (
@@ -923,62 +969,111 @@ export default function Designer() {
               </div>
             )}
 
-            {/* TAB 3: IDENTITY & TYPOGRAPHY */}
+            {/* TAB: IDENTITY & TYPOGRAPHY WITH LIVE HOVER FONT PREVIEW */}
             {activeTab === 'identity' && (
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+                {/* 1. Full Name */}
                 <div className="form-group" style={{ marginBottom: 0 }}>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '4px' }}>
-                    <label className="form-label" style={{ marginBottom: 0 }}>Full Name</label>
-                    <span style={{ fontSize: '0.72rem', color: 'var(--text-muted)' }}>Font: <strong style={{ color: 'var(--accent-purple)' }}>{frontConfig.fontFamily}</strong></span>
-                  </div>
+                  <label className="form-label" style={{ marginBottom: '6px' }}>Full Name</label>
                   <input
                     type="text"
                     className="form-input"
                     value={frontConfig.name}
                     onChange={(e) => setFrontConfig({ ...frontConfig, name: e.target.value })}
                     placeholder="e.g. AKHIL ANVAR"
-                    style={{ marginBottom: '6px' }}
+                    style={{ marginBottom: '8px' }}
                   />
-                  <select
-                    className="form-input"
+                  <InteractiveFontPicker
+                    label="Name Font Style (Hover to preview)"
                     value={frontConfig.fontFamily || 'Space Grotesk'}
-                    onChange={(e) => setFrontConfig({ ...frontConfig, fontFamily: e.target.value })}
-                    style={{ fontSize: '0.78rem', padding: '6px 10px', height: 'auto', background: 'rgba(23, 16, 32, 0.9)' }}
-                  >
-                    {FONT_OPTIONS.map(f => (
-                      <option key={f.id} value={f.id}>{f.name} ({f.style})</option>
-                    ))}
-                  </select>
+                    onChange={(fontId) => setFrontConfig({ ...frontConfig, fontFamily: fontId })}
+                    fieldName="name"
+                    hoveredFont={hoveredFont}
+                    setHoveredFont={setHoveredFont}
+                  />
+
+                  {/* Name Scale */}
+                  <div style={{ marginTop: '8px' }}>
+                    <div style={{ fontSize: '0.72rem', color: 'var(--text-muted)', marginBottom: '4px' }}>Name Font Size</div>
+                    <div style={{ display: 'flex', gap: '6px' }}>
+                      {['small', 'medium', 'large'].map(size => (
+                        <button
+                          key={size}
+                          type="button"
+                          onClick={() => setFrontConfig({ ...frontConfig, fontSize: size })}
+                          style={{
+                            flex: 1,
+                            padding: '6px',
+                            borderRadius: '6px',
+                            border: frontConfig.fontSize === size ? '1px solid var(--accent-purple)' : '1px solid var(--border-color)',
+                            background: frontConfig.fontSize === size ? 'rgba(107, 0, 255, 0.25)' : 'rgba(23, 16, 32, 0.8)',
+                            color: '#ffffff',
+                            fontSize: '0.75rem',
+                            fontWeight: 600,
+                            textTransform: 'capitalize',
+                            cursor: 'pointer'
+                          }}
+                        >
+                          {size}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
                 </div>
 
+                {/* 2. Title / Role */}
                 <div className="form-group" style={{ marginBottom: 0 }}>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '4px' }}>
-                    <label className="form-label" style={{ marginBottom: 0 }}>Title / Role</label>
-                    <span style={{ fontSize: '0.72rem', color: 'var(--text-muted)' }}>Font: <strong style={{ color: 'var(--accent-purple)' }}>{frontConfig.roleFontFamily || 'Inter'}</strong></span>
-                  </div>
+                  <label className="form-label" style={{ marginBottom: '6px' }}>Title / Role</label>
                   <input
                     type="text"
                     className="form-input"
                     value={frontConfig.role}
                     onChange={(e) => setFrontConfig({ ...frontConfig, role: e.target.value })}
                     placeholder="e.g. CEO & FOUNDER"
-                    style={{ marginBottom: '6px' }}
+                    style={{ marginBottom: '8px' }}
                   />
-                  <select
-                    className="form-input"
+                  <InteractiveFontPicker
+                    label="Role Font Style (Hover to preview)"
                     value={frontConfig.roleFontFamily || 'Inter'}
-                    onChange={(e) => setFrontConfig({ ...frontConfig, roleFontFamily: e.target.value })}
-                    style={{ fontSize: '0.78rem', padding: '6px 10px', height: 'auto', background: 'rgba(23, 16, 32, 0.9)' }}
-                  >
-                    {FONT_OPTIONS.map(f => (
-                      <option key={f.id} value={f.id}>{f.name} ({f.style})</option>
-                    ))}
-                  </select>
+                    onChange={(fontId) => setFrontConfig({ ...frontConfig, roleFontFamily: fontId })}
+                    fieldName="role"
+                    hoveredFont={hoveredFont}
+                    setHoveredFont={setHoveredFont}
+                  />
                 </div>
 
+                {/* 3. Details (New Text at Bottom of Role & Name) */}
                 <div className="form-group" style={{ marginBottom: 0 }}>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                    <label className="form-label">Tagline</label>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '6px' }}>
+                    <label className="form-label" style={{ marginBottom: 0 }}>
+                      Details (Bottom of Role & Name)
+                    </label>
+                    <span style={{ fontSize: '0.68rem', color: 'var(--accent-purple)', fontWeight: 600 }}>
+                      New Text
+                    </span>
+                  </div>
+                  <input
+                    type="text"
+                    className="form-input"
+                    value={frontConfig.details || ''}
+                    onChange={(e) => setFrontConfig({ ...frontConfig, details: e.target.value })}
+                    placeholder="e.g. DUBAI • BANGALORE • +91 98460 12345"
+                    style={{ marginBottom: '8px' }}
+                  />
+                  <InteractiveFontPicker
+                    label="Details Font Style (Hover to preview)"
+                    value={frontConfig.detailsFontFamily || frontConfig.roleFontFamily || 'Inter'}
+                    onChange={(fontId) => setFrontConfig({ ...frontConfig, detailsFontFamily: fontId })}
+                    fieldName="details"
+                    hoveredFont={hoveredFont}
+                    setHoveredFont={setHoveredFont}
+                  />
+                </div>
+
+                {/* 4. Tagline */}
+                <div className="form-group" style={{ marginBottom: 0 }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '6px' }}>
+                    <label className="form-label" style={{ marginBottom: 0 }}>Tagline Statement</label>
                     <input
                       type="checkbox"
                       checked={frontConfig.showTagline}
@@ -993,47 +1088,18 @@ export default function Designer() {
                         value={frontConfig.tagline}
                         onChange={(e) => setFrontConfig({ ...frontConfig, tagline: e.target.value })}
                         placeholder="One Tap Every Connection"
-                        style={{ marginBottom: '6px' }}
+                        style={{ marginBottom: '8px' }}
                       />
-                      <select
-                        className="form-input"
+                      <InteractiveFontPicker
+                        label="Tagline Font Style (Hover to preview)"
                         value={frontConfig.taglineFontFamily || 'Inter'}
-                        onChange={(e) => setFrontConfig({ ...frontConfig, taglineFontFamily: e.target.value })}
-                        style={{ fontSize: '0.78rem', padding: '6px 10px', height: 'auto', background: 'rgba(23, 16, 32, 0.9)' }}
-                      >
-                        {FONT_OPTIONS.map(f => (
-                          <option key={f.id} value={f.id}>{f.name} ({f.style})</option>
-                        ))}
-                      </select>
+                        onChange={(fontId) => setFrontConfig({ ...frontConfig, taglineFontFamily: fontId })}
+                        fieldName="tagline"
+                        hoveredFont={hoveredFont}
+                        setHoveredFont={setHoveredFont}
+                      />
                     </>
                   )}
-                </div>
-
-                {/* Typography Size */}
-                <div className="form-group" style={{ marginBottom: 0 }}>
-                  <label className="form-label">Name Font Size</label>
-                  <div style={{ display: 'flex', gap: '8px' }}>
-                    {['small', 'medium', 'large'].map(size => (
-                      <button
-                        key={size}
-                        type="button"
-                        onClick={() => setFrontConfig({ ...frontConfig, fontSize: size })}
-                        style={{
-                          flex: 1,
-                          padding: '6px',
-                          borderRadius: '6px',
-                          border: frontConfig.fontSize === size ? '1px solid var(--accent-purple)' : '1px solid var(--border-color)',
-                          background: frontConfig.fontSize === size ? 'rgba(107, 0, 255, 0.25)' : 'rgba(23, 16, 32, 0.8)',
-                          color: '#ffffff',
-                          fontSize: '0.78rem',
-                          textTransform: 'capitalize',
-                          cursor: 'pointer'
-                        }}
-                      >
-                        {size}
-                      </button>
-                    ))}
-                  </div>
                 </div>
               </div>
             )}
@@ -1473,15 +1539,135 @@ export default function Designer() {
         </div>
       </div>
 
+      {/* Customer Login Required Modal */}
+      {showAuthModal && (
+        <div
+          style={{
+            position: 'fixed',
+            top: 0,
+            left: 0,
+            right: 0,
+            bottom: 0,
+            background: 'rgba(5, 3, 10, 0.85)',
+            backdropFilter: 'blur(10px)',
+            WebkitBackdropFilter: 'blur(10px)',
+            zIndex: 9999,
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            padding: '20px'
+          }}
+        >
+          <div
+            className="glass-panel"
+            style={{
+              maxWidth: '440px',
+              width: '100%',
+              padding: '32px 28px',
+              borderRadius: '20px',
+              background: 'linear-gradient(145deg, rgba(23, 16, 32, 0.98), rgba(13, 9, 21, 0.98))',
+              border: '1px solid rgba(168, 85, 247, 0.4)',
+              boxShadow: '0 20px 50px rgba(0, 0, 0, 0.8), 0 0 40px rgba(107, 0, 255, 0.25)',
+              textAlign: 'center'
+            }}
+          >
+            <div
+              style={{
+                width: '56px',
+                height: '56px',
+                borderRadius: '50%',
+                background: 'rgba(107, 0, 255, 0.2)',
+                border: '1px solid var(--accent-purple)',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                margin: '0 auto 16px',
+                color: 'var(--accent-purple)'
+              }}
+            >
+              <Lock size={26} />
+            </div>
+
+            <h3 style={{ fontSize: '1.25rem', fontWeight: 800, color: '#ffffff', marginBottom: '8px', fontFamily: 'var(--font-display)' }}>
+              Sign In to Submit Design
+            </h3>
+            <p style={{ fontSize: '0.86rem', color: 'var(--text-secondary)', lineHeight: 1.55, marginBottom: '24px' }}>
+              Your design draft has been safely saved! To submit your card for high-resolution print review and production, please log in or create a customer account.
+            </p>
+
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+              <button
+                type="button"
+                onClick={() => {
+                  window.history.pushState({}, '', '/login?redirect=/designer&submit=true');
+                  window.dispatchEvent(new PopStateEvent('popstate'));
+                }}
+                className="btn btn-primary"
+                style={{ width: '100%', justifyContent: 'center', padding: '12px' }}
+              >
+                <span>Log In to Existing Account</span>
+                <ArrowRight size={16} />
+              </button>
+
+              <button
+                type="button"
+                onClick={() => {
+                  window.history.pushState({}, '', '/login?tab=signup&redirect=/designer&submit=true');
+                  window.dispatchEvent(new PopStateEvent('popstate'));
+                }}
+                className="btn btn-secondary"
+                style={{ width: '100%', justifyContent: 'center', padding: '12px' }}
+              >
+                <span>Create New Account</span>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => setShowAuthModal(false)}
+                className="btn btn-outline"
+                style={{ width: '100%', justifyContent: 'center', marginTop: '6px', fontSize: '0.8rem' }}
+              >
+                Keep Editing Card
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Responsive layout styles for mobile/tablet */}
       <style>{`
         @media (max-width: 1080px) {
           .designer-grid {
             grid-template-columns: 1fr !important;
             gap: 16px !important;
+            align-items: start !important;
           }
           .designer-canvas-center {
             order: -1;
+            position: sticky !important;
+            top: calc(var(--header-height, 70px) + 8px) !important;
+            z-index: 40 !important;
+            background: rgba(12, 9, 18, 0.96) !important;
+            backdrop-filter: blur(20px) !important;
+            -webkit-backdrop-filter: blur(20px) !important;
+            border: 1px solid rgba(168, 85, 247, 0.3) !important;
+            border-radius: 16px !important;
+            box-shadow: 0 12px 36px rgba(0, 0, 0, 0.85) !important;
+            padding: 12px 10px 14px !important;
+            min-height: auto !important;
+          }
+          .designer-canvas-viewport-box {
+            margin: 6px auto !important;
+          }
+          .canvas-view-toolbar {
+            position: relative !important;
+            top: auto !important;
+            margin: 0 auto 8px auto !important;
+            padding: 4px 8px !important;
+            transform: scale(0.92);
+          }
+          .canvas-spec-bar {
+            display: none !important;
           }
         }
         @media (max-width: 640px) {
@@ -1542,17 +1728,10 @@ export default function Designer() {
             padding: 4px 6px !important;
           }
           .designer-canvas-center {
-            padding: 16px 8px 24px !important;
+            padding: 10px 6px 12px !important;
             min-height: auto !important;
           }
           .canvas-spec-bar {
-            flex-direction: column !important;
-            gap: 4px !important;
-            font-size: 0.68rem !important;
-            text-align: center !important;
-            margin-top: 6px !important;
-          }
-          .canvas-spec-bar .spec-dot {
             display: none !important;
           }
           .designer-left-panel,

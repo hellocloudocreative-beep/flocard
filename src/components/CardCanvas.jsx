@@ -34,6 +34,7 @@ export default function CardCanvas({
     secondaryAccent: customColors.secondaryAccent || defaults.secondaryAccent || editionInfo.secondaryColor,
     nameColor: customColors.nameColor || defaults.nameColor || '#FFFFFF',
     roleColor: customColors.roleColor || defaults.roleColor || '#D8B4FE',
+    detailsColor: customColors.detailsColor || defaults.detailsColor || customColors.roleColor || defaults.roleColor || '#D8B4FE',
     taglineColor: customColors.taglineColor || defaults.taglineColor || '#B9AEC9',
     nfcColor: customColors.nfcColor || defaults.nfcColor || '#FFFFFF',
     qrColor: customColors.qrColor || defaults.qrColor || '#FFFFFF'
@@ -57,6 +58,7 @@ export default function CardCanvas({
   const front = {
     name: 'AKHIL ANVAR',
     role: 'CEO & FOUNDER',
+    details: '',
     tagline: 'One Tap Every Connection',
     showTagline: true,
     showNfc: true,
@@ -66,6 +68,7 @@ export default function CardCanvas({
     alignment: 'left',
     fontFamily: 'Space Grotesk',
     roleFontFamily: 'Inter',
+    detailsFontFamily: 'Inter',
     taglineFontFamily: 'Inter',
     ...(config.front || config)
   };
@@ -197,21 +200,29 @@ export default function CardCanvas({
             }
           }
 
-          // Name, Role, Tagline on bottom-left
+          // Name, Role, Details, Tagline on bottom-left
           ctx.fillStyle = colors.nameColor;
           ctx.font = `bold 44px "${front.fontFamily || 'Space Grotesk'}", sans-serif`;
-          ctx.fillText((front.name || 'YOUR NAME').toUpperCase(), Math.round(w * 0.08), h - 142);
+          ctx.fillText((front.name || 'YOUR NAME').toUpperCase(), Math.round(w * 0.08), front.details ? (h - 156) : (h - 142));
 
           ctx.fillStyle = colors.roleColor;
           ctx.font = `500 24px "${front.roleFontFamily || 'Inter'}", sans-serif`;
           ctx.letterSpacing = '8px';
-          ctx.fillText((front.role || 'R O L E').toUpperCase(), Math.round(w * 0.08), h - 92);
+          ctx.fillText((front.role || 'R O L E').toUpperCase(), Math.round(w * 0.08), front.details ? (h - 110) : (h - 92));
           ctx.letterSpacing = '0px';
+
+          if (front.details) {
+            ctx.fillStyle = colors.detailsColor || colors.roleColor;
+            ctx.font = `400 18px "${front.detailsFontFamily || front.roleFontFamily || 'Inter'}", sans-serif`;
+            ctx.letterSpacing = '2px';
+            ctx.fillText(front.details.toUpperCase(), Math.round(w * 0.08), h - 74);
+            ctx.letterSpacing = '0px';
+          }
 
           if (front.showTagline) {
             ctx.fillStyle = colors.taglineColor;
             ctx.font = `19px "${front.taglineFontFamily || front.roleFontFamily || 'Inter'}", sans-serif`;
-            ctx.fillText(front.tagline || 'One Tap Every Connection', Math.round(w * 0.08), h - 48);
+            ctx.fillText(front.tagline || 'One Tap Every Connection', Math.round(w * 0.08), h - 42);
           }
         } else {
           // Back: FLOCARD logo top-left
@@ -295,16 +306,24 @@ export default function CardCanvas({
             };
           }
 
-          // Name and Role bottom-left
+          // Name, Role, Details bottom-left
           ctx.fillStyle = colors.nameColor;
           ctx.font = `bold 44px "${front.fontFamily || 'Space Grotesk'}", sans-serif`;
-          ctx.fillText((front.name || 'YOUR NAME').toUpperCase(), Math.round(w * 0.08), h - 110);
+          ctx.fillText((front.name || 'YOUR NAME').toUpperCase(), Math.round(w * 0.08), front.details ? (h - 124) : (h - 110));
 
           ctx.fillStyle = colors.roleColor;
           ctx.font = `500 24px "${front.roleFontFamily || 'Inter'}", sans-serif`;
           ctx.letterSpacing = '8px';
-          ctx.fillText((front.role || 'R O L E').toUpperCase(), Math.round(w * 0.08), h - 65);
+          ctx.fillText((front.role || 'R O L E').toUpperCase(), Math.round(w * 0.08), front.details ? (h - 80) : (h - 65));
           ctx.letterSpacing = '0px';
+
+          if (front.details) {
+            ctx.fillStyle = colors.detailsColor || colors.roleColor;
+            ctx.font = `400 18px "${front.detailsFontFamily || front.roleFontFamily || 'Inter'}", sans-serif`;
+            ctx.letterSpacing = '2px';
+            ctx.fillText(front.details.toUpperCase(), Math.round(w * 0.08), h - 46);
+            ctx.letterSpacing = '0px';
+          }
 
           // FLOCARD Logo bottom-right (aligned under QR code)
           drawFlocardLogo(ctx, Math.round(w * 0.635), Math.round(h * 0.78), Math.round(w * 0.285), flocardLogo.size);
@@ -459,6 +478,23 @@ export default function CardCanvas({
                   >
                     {front.role || 'R O L E'}
                   </div>
+
+                  {front.details && (
+                    <div
+                      style={{
+                        fontFamily: front.detailsFontFamily ? `"${front.detailsFontFamily}", sans-serif` : (front.roleFontFamily ? `"${front.roleFontFamily}", sans-serif` : 'var(--font-sans)'),
+                        fontSize: '0.64rem',
+                        letterSpacing: '0.12em',
+                        fontWeight: 400,
+                        color: colors.detailsColor || colors.roleColor,
+                        marginTop: '4px',
+                        textTransform: 'uppercase',
+                        opacity: 0.95
+                      }}
+                    >
+                      {front.details}
+                    </div>
+                  )}
 
                   {front.showTagline && (
                     <div
@@ -731,6 +767,23 @@ export default function CardCanvas({
                   >
                     {front.role || 'R O L E'}
                   </div>
+
+                  {front.details && (
+                    <div
+                      style={{
+                        fontFamily: front.detailsFontFamily ? `"${front.detailsFontFamily}", sans-serif` : (front.roleFontFamily ? `"${front.roleFontFamily}", sans-serif` : 'var(--font-sans)'),
+                        fontSize: '0.64rem',
+                        letterSpacing: '0.12em',
+                        fontWeight: 400,
+                        color: colors.detailsColor || colors.roleColor,
+                        marginTop: '4px',
+                        textTransform: 'uppercase',
+                        opacity: 0.95
+                      }}
+                    >
+                      {front.details}
+                    </div>
+                  )}
                 </div>
 
                 {/* Back Bottom-Right: Official FLOCARD Logo (aligned under QR code) */}
