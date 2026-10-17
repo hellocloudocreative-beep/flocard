@@ -35,12 +35,22 @@ import {
   Plus,
   Minus,
   Type,
-  X
+  X,
+  Copy,
+  Share2,
+  CheckCircle2
 } from 'lucide-react';
 import CardCanvas from '../components/CardCanvas';
 import Card3DPreview from '../components/Card3DPreview';
 import { EDITIONS, TEMPLATES, BRAND } from '../lib/constants';
-import { exportCardPDF, downloadCanvasPNG } from '../lib/pdfExport';
+import {
+  exportCardPDF,
+  downloadCanvasPNG,
+  downloadBothSides,
+  createCombinedArtworkCanvas,
+  copyCanvasToClipboard,
+  shareDesignFiles
+} from '../lib/pdfExport';
 import { useData } from '../context/DataContext';
 import { useAuth } from '../context/AuthContext';
 import { useTheme } from '../context/ThemeContext';
@@ -309,6 +319,18 @@ export default function Designer() {
   const frontExportCanvasRef = useRef(null);
   const backExportCanvasRef = useRef(null);
 
+  // Clipboard & Web Share API states for automatic attachments & copy
+  const [copiedClipboard, setCopiedClipboard] = useState(false);
+  const [clipboardTarget, setClipboardTarget] = useState('both');
+  const [shareSupported, setShareSupported] = useState(false);
+  const [isSharing, setIsSharing] = useState(false);
+
+  useEffect(() => {
+    if (typeof navigator !== 'undefined' && typeof navigator.share === 'function') {
+      setShareSupported(true);
+    }
+  }, []);
+
   // Switch edition: dynamically updates card title, preserves template, logos, text, and updates colors
   const handleEditionChange = (newEdition) => {
     setEdition(newEdition);
@@ -415,8 +437,8 @@ export default function Designer() {
     }
   }, [user, existingDesign, edition]);
 
-  // Helper to generate WhatsApp order message and URL directed to official FLOCARD number
-  const getWhatsAppOrderUrl = () => {
+  // Helper to generate WhatsApp order message body
+  const getWhatsAppMessageBody = () => {
     const customer = user?.name || frontConfig.name || 'Valued Customer';
     const email = user?.email || 'Not specified';
     const phone = user?.phone || 'Not specified';
@@ -424,7 +446,7 @@ export default function Designer() {
     const editionName = EDITIONS[edition]?.name || 'Purple Edition';
     const templateName = TEMPLATES[templateType]?.name || 'Standard FLOCARD';
 
-    const lines = [
+    return [
       `👋 *Hello FLOCARD Team!*`,
       ``,
       `I have customized my card on the FLOCARD Studio and would like to submit my order for print production:`,
@@ -451,13 +473,17 @@ export default function Designer() {
       `• *Subtext:* ${backConfig.subtext}`,
       backConfig.brandUrl ? `• *Display URL:* ${backConfig.brandUrl}` : null,
       ``,
-      `🖼️ *ATTACHMENTS*`,
-      `I am attaching the high-resolution Front and Back card preview images (PNG/PDF) to this message.`,
+      `🖼️ *ATTACHMENTS & ARTWORK*`,
+      `• High-resolution dual-sided 300 DPI preview artworks generated & copied to clipboard!`,
+      `• Please find the attached/pasted preview artwork to proceed with laser etching.`,
       ``,
       `Please verify and confirm my order. Thank you!`
     ].filter(Boolean).join('\n');
+  };
 
-    return `https://wa.me/${BRAND.whatsapp}?text=${encodeURIComponent(lines)}`;
+  // Helper to generate WhatsApp order message and URL directed to official FLOCARD number
+  const getWhatsAppOrderUrl = () => {
+    return `https://wa.me/${BRAND.whatsapp}?text=${encodeURIComponent(getWhatsAppMessageBody())}`;
   };
 
   const hasRestoredPendingRef = useRef(false);
@@ -505,8 +531,8 @@ export default function Designer() {
           localStorage.removeItem('flocard_pending_design');
 
           setTimeout(() => {
-            handleExportPNG('front');
-            setTimeout(() => handleExportPNG('back'), 700);
+            handleDownloadBothSides();
+            handleCopyArtwork('both');
             setShowWhatsAppModal(true);
             try {
               window.open(getWhatsAppOrderUrl(), '_blank', 'noopener,noreferrer');
@@ -572,12 +598,13 @@ export default function Designer() {
     setTimeout(() => setSaveSuccess(''), 3500);
 
     if (submit) {
-      // 1. Download front card artwork (300 DPI PNG)
-      handleExportPNG('front');
-      // 2. Download back card artwork after short delay so browser doesn't block dual downloads
-      setTimeout(() => {
-        handleExportPNG('back');
-      }, 700);
+      // 1. Download BOTH front & back card artworks cleanly
+      // (Exports a combined dual-sided 300 DPI sheet + individual front & back PNGs)
+      handleDownloadBothSides();
+
+      // 2. Automatically copy artwork to clipboard so user can instantly press Ctrl+V / Cmd+V in WhatsApp
+      handleCopyArtwork('both');
+
       // 3. Open WhatsApp chat with prefilled order details
       const waUrl = getWhatsAppOrderUrl();
       try {
@@ -585,16 +612,76 @@ export default function Designer() {
       } catch (e) {
         console.error('WhatsApp popup blocked:', e);
       }
-      // 4. Show confirmation modal with instructions & re-download buttons
+
+      // 4. Show confirmation modal with instructions, live clipboard copy, and attachment actions
       setShowWhatsAppModal(true);
     }
   };
 
-  // Export high-res PNG
+  // Export high-res individual PNG
   const handleExportPNG = (exportSide) => {
     const canvas = exportSide === 'front' ? frontExportCanvasRef.current : backExportCanvasRef.current;
     if (canvas) {
       downloadCanvasPNG(canvas, `${designTitle.replace(/[^a-zA-Z0-9_-]/g, '_')}_${exportSide}_300dpi.png`);
+    }
+  };
+
+  // Download both sides (guaranteed combined dual-sided sheet + front + back)
+  const handleDownloadBothSides = () => {
+    downloadBothSides({
+      frontCanvas: frontExportCanvasRef.current,
+      backCanvas: backExportCanvasRef.current,
+      designName: designTitle,
+      editionName: EDITIONS[edition]?.name
+    });
+  };
+
+  // Copy card artwork to clipboard (both sides combined or individual)
+  const handleCopyArtwork = async (target = 'both') => {
+    let targetCanvas = null;
+    if (target === 'both') {
+      targetCanvas = createCombinedArtworkCanvas({
+        frontCanvas: frontExportCanvasRef.current,
+        backCanvas: backExportCanvasRef.current,
+        designName: designTitle,
+        editionName: EDITIONS[edition]?.name
+      });
+    } else if (target === 'front') {
+      targetCanvas = frontExportCanvasRef.current;
+    } else {
+      targetCanvas = backExportCanvasRef.current;
+    }
+
+    if (targetCanvas) {
+      const ok = await copyCanvasToClipboard(targetCanvas);
+      if (ok) {
+        setCopiedClipboard(true);
+        setClipboardTarget(target);
+        setTimeout(() => setCopiedClipboard(false), 3500);
+        return true;
+      }
+    }
+    return false;
+  };
+
+  // Native share with file attachments (WhatsApp / Mobile Share Sheet)
+  const handleNativeShare = async () => {
+    setIsSharing(true);
+    try {
+      const success = await shareDesignFiles({
+        frontCanvas: frontExportCanvasRef.current,
+        backCanvas: backExportCanvasRef.current,
+        designName: designTitle,
+        text: getWhatsAppMessageBody()
+      });
+      if (!success) {
+        window.open(getWhatsAppOrderUrl(), '_blank', 'noopener,noreferrer');
+      }
+    } catch (err) {
+      console.warn('Native share failed:', err);
+      window.open(getWhatsAppOrderUrl(), '_blank', 'noopener,noreferrer');
+    } finally {
+      setIsSharing(false);
     }
   };
 
@@ -1572,6 +1659,32 @@ export default function Designer() {
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
                   <button
                     type="button"
+                    onClick={handleDownloadBothSides}
+                    className="btn btn-secondary btn-sm"
+                    style={{
+                      width: '100%',
+                      justifyContent: 'flex-start',
+                      background: 'rgba(168, 85, 247, 0.12)',
+                      borderColor: 'rgba(168, 85, 247, 0.35)',
+                      color: 'var(--text-primary)'
+                    }}
+                  >
+                    <Download size={14} color="var(--accent-purple)" />
+                    <span style={{ fontWeight: 600 }}>Download Both Sides (Combined PNG)</span>
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => handleCopyArtwork('both')}
+                    className="btn btn-secondary btn-sm"
+                    style={{ width: '100%', justifyContent: 'flex-start' }}
+                  >
+                    {copiedClipboard ? <Check size={14} color="#10b981" /> : <Copy size={14} />}
+                    <span>{copiedClipboard ? 'Artwork Copied to Clipboard!' : 'Copy Artwork to Clipboard'}</span>
+                  </button>
+
+                  <button
+                    type="button"
                     onClick={() => handleExportPNG('front')}
                     className="btn btn-secondary btn-sm"
                     style={{ width: '100%', justifyContent: 'flex-start' }}
@@ -1829,29 +1942,73 @@ export default function Designer() {
             </button>
 
             {/* Header */}
-            <div style={{ textAlign: 'center', marginBottom: '18px' }}>
+            <div style={{ textAlign: 'center', marginBottom: '16px' }}>
               <div
                 style={{
-                  width: '58px',
-                  height: '58px',
+                  width: '56px',
+                  height: '56px',
                   borderRadius: '50%',
                   background: 'rgba(37, 211, 102, 0.15)',
                   border: '1px solid #25D366',
                   display: 'flex',
                   alignItems: 'center',
                   justifyContent: 'center',
-                  margin: '0 auto 12px',
+                  margin: '0 auto 10px',
                   boxShadow: '0 0 24px rgba(37, 211, 102, 0.35)'
                 }}
               >
-                <WhatsappIcon size={30} color="#25D366" />
+                <WhatsappIcon size={28} color="#25D366" />
               </div>
-              <h3 style={{ fontSize: '1.25rem', fontWeight: 800, color: '#ffffff', marginBottom: '6px', fontFamily: 'var(--font-display)' }}>
-                Order Sent to FLOCARD!
+              <h3 style={{ fontSize: '1.25rem', fontWeight: 800, color: '#ffffff', marginBottom: '4px', fontFamily: 'var(--font-display)' }}>
+                Order Ready for FLOCARD Production!
               </h3>
-              <p style={{ fontSize: '0.84rem', color: 'var(--text-secondary)', lineHeight: 1.5 }}>
-                Your custom card design has been registered and prepared for the FLOCARD production team.
+              <p style={{ fontSize: '0.82rem', color: 'var(--text-secondary)', lineHeight: 1.4 }}>
+                Both Front & Back card artworks have been exported in industrial 300 DPI.
               </p>
+            </div>
+
+            {/* Status Pills */}
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '6px', marginBottom: '14px' }}>
+              <div
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '8px',
+                  background: 'rgba(37, 211, 102, 0.12)',
+                  border: '1px solid rgba(37, 211, 102, 0.3)',
+                  padding: '8px 12px',
+                  borderRadius: '10px',
+                  fontSize: '0.78rem',
+                  color: '#25D366',
+                  fontWeight: 600
+                }}
+              >
+                <CheckCircle2 size={16} color="#25D366" />
+                <span>Both Sides Downloaded (Side A & Side B Combined Sheet + Separate PNGs)</span>
+              </div>
+
+              <div
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '8px',
+                  background: copiedClipboard ? 'rgba(168, 85, 247, 0.2)' : 'rgba(255, 255, 255, 0.05)',
+                  border: `1px solid ${copiedClipboard ? 'rgba(168, 85, 247, 0.5)' : 'rgba(255, 255, 255, 0.1)'}`,
+                  padding: '8px 12px',
+                  borderRadius: '10px',
+                  fontSize: '0.78rem',
+                  color: copiedClipboard ? '#D8B4FE' : 'var(--text-secondary)',
+                  fontWeight: 600,
+                  transition: 'all 0.2s'
+                }}
+              >
+                {copiedClipboard ? <Check size={16} color="#D8B4FE" /> : <Copy size={16} />}
+                <span>
+                  {copiedClipboard
+                    ? 'Card Artwork Copied to Clipboard! Press Ctrl+V / Cmd+V in WhatsApp'
+                    : 'Artwork Copied — Press Ctrl+V in WhatsApp chat to paste directly!'}
+                </span>
+              </div>
             </div>
 
             {/* Card Specs Summary */}
@@ -1860,23 +2017,23 @@ export default function Designer() {
                 background: 'rgba(255, 255, 255, 0.03)',
                 border: '1px solid rgba(255, 255, 255, 0.08)',
                 borderRadius: '12px',
-                padding: '12px 16px',
-                marginBottom: '16px'
+                padding: '10px 14px',
+                marginBottom: '14px'
               }}
             >
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '6px' }}>
-                <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>Card Title</span>
-                <span style={{ fontSize: '0.82rem', fontWeight: 700, color: '#ffffff', textAlign: 'right', maxWidth: '260px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '4px' }}>
+                <span style={{ fontSize: '0.72rem', color: 'var(--text-muted)' }}>Card Title</span>
+                <span style={{ fontSize: '0.8rem', fontWeight: 700, color: '#ffffff', textAlign: 'right', maxWidth: '240px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                   {designTitle}
                 </span>
               </div>
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '6px' }}>
-                <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>Customer</span>
-                <span style={{ fontSize: '0.82rem', color: 'var(--text-secondary)' }}>{user?.name || frontConfig.name}</span>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '4px' }}>
+                <span style={{ fontSize: '0.72rem', color: 'var(--text-muted)' }}>Customer</span>
+                <span style={{ fontSize: '0.8rem', color: 'var(--text-secondary)' }}>{user?.name || frontConfig.name}</span>
               </div>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>Edition</span>
-                <span style={{ fontSize: '0.82rem', color: EDITIONS[edition]?.accentColor || 'var(--accent-purple)', fontWeight: 600 }}>
+                <span style={{ fontSize: '0.72rem', color: 'var(--text-muted)' }}>Edition</span>
+                <span style={{ fontSize: '0.8rem', color: EDITIONS[edition]?.accentColor || 'var(--accent-purple)', fontWeight: 600 }}>
                   {EDITIONS[edition]?.name}
                 </span>
               </div>
@@ -1885,35 +2042,63 @@ export default function Designer() {
             {/* Instruction Steps */}
             <div
               style={{
-                background: 'rgba(37, 211, 102, 0.06)',
-                border: '1px solid rgba(37, 211, 102, 0.2)',
+                background: 'rgba(37, 211, 102, 0.05)',
+                border: '1px solid rgba(37, 211, 102, 0.18)',
                 borderRadius: '12px',
-                padding: '12px 14px',
-                marginBottom: '18px'
+                padding: '10px 12px',
+                marginBottom: '16px'
               }}
             >
-              <div style={{ display: 'flex', alignItems: 'flex-start', gap: '10px', marginBottom: '8px' }}>
-                <div style={{ width: '18px', height: '18px', borderRadius: '50%', background: '#25D366', color: '#000', fontSize: '0.65rem', fontWeight: 800, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, marginTop: '2px' }}>1</div>
-                <div style={{ fontSize: '0.78rem', color: '#ffffff' }}>
-                  High-res Front & Back card images downloaded automatically to your device.
+              <div style={{ display: 'flex', alignItems: 'flex-start', gap: '8px', marginBottom: '6px' }}>
+                <div style={{ width: '18px', height: '18px', borderRadius: '50%', background: '#25D366', color: '#000', fontSize: '0.65rem', fontWeight: 800, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, marginTop: '1px' }}>1</div>
+                <div style={{ fontSize: '0.76rem', color: '#ffffff', lineHeight: 1.35 }}>
+                  <strong>How to attach in WhatsApp:</strong> Simply press <strong>Ctrl+V</strong> (or <strong>Cmd+V</strong>) in the WhatsApp text box to paste the copied card artwork directly.
                 </div>
               </div>
-              <div style={{ display: 'flex', alignItems: 'flex-start', gap: '10px', marginBottom: '8px' }}>
-                <div style={{ width: '18px', height: '18px', borderRadius: '50%', background: '#25D366', color: '#000', fontSize: '0.65rem', fontWeight: 800, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, marginTop: '2px' }}>2</div>
-                <div style={{ fontSize: '0.78rem', color: '#ffffff' }}>
-                  Click below to open WhatsApp with your design specifications pre-filled.
+              <div style={{ display: 'flex', alignItems: 'flex-start', gap: '8px', marginBottom: '6px' }}>
+                <div style={{ width: '18px', height: '18px', borderRadius: '50%', background: '#25D366', color: '#000', fontSize: '0.65rem', fontWeight: 800, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, marginTop: '1px' }}>2</div>
+                <div style={{ fontSize: '0.76rem', color: '#ffffff', lineHeight: 1.35 }}>
+                  Alternatively, drag & drop the downloaded <strong>BOTH_SIDES_300dpi.png</strong> file into the chat.
                 </div>
               </div>
-              <div style={{ display: 'flex', alignItems: 'flex-start', gap: '10px' }}>
-                <div style={{ width: '18px', height: '18px', borderRadius: '50%', background: '#25D366', color: '#000', fontSize: '0.65rem', fontWeight: 800, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, marginTop: '2px' }}>3</div>
-                <div style={{ fontSize: '0.78rem', color: '#ffffff' }}>
-                  Attach the downloaded card images in the WhatsApp chat to complete print queueing!
+              <div style={{ display: 'flex', alignItems: 'flex-start', gap: '8px' }}>
+                <div style={{ width: '18px', height: '18px', borderRadius: '50%', background: '#25D366', color: '#000', fontSize: '0.65rem', fontWeight: 800, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, marginTop: '1px' }}>3</div>
+                <div style={{ fontSize: '0.76rem', color: '#ffffff', lineHeight: 1.35 }}>
+                  Click below to open WhatsApp with your pre-filled specifications and finalize print queueing!
                 </div>
               </div>
             </div>
 
             {/* Action Buttons */}
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '9px' }}>
+              {/* Native share with direct attachments on mobile or supported browsers */}
+              {shareSupported && (
+                <button
+                  type="button"
+                  onClick={handleNativeShare}
+                  disabled={isSharing}
+                  style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    gap: '8px',
+                    background: 'linear-gradient(135deg, #A855F7 0%, #7928CA 100%)',
+                    color: '#ffffff',
+                    padding: '12px 16px',
+                    borderRadius: '12px',
+                    fontWeight: 700,
+                    fontSize: '0.88rem',
+                    border: 'none',
+                    boxShadow: '0 8px 20px rgba(168, 85, 247, 0.35)',
+                    cursor: 'pointer'
+                  }}
+                >
+                  <Share2 size={18} />
+                  <span>{isSharing ? 'Attaching files...' : 'Attach & Share Directly via WhatsApp / Apps'}</span>
+                </button>
+              )}
+
+              {/* Standard WhatsApp Web / App opener */}
               <a
                 href={getWhatsAppOrderUrl()}
                 target="_blank"
@@ -1925,27 +2110,62 @@ export default function Designer() {
                   gap: '8px',
                   background: 'linear-gradient(135deg, #25D366 0%, #128C7E 100%)',
                   color: '#ffffff',
-                  padding: '13px 18px',
+                  padding: '12px 16px',
                   borderRadius: '12px',
                   fontWeight: 700,
-                  fontSize: '0.92rem',
+                  fontSize: '0.9rem',
                   textDecoration: 'none',
                   boxShadow: '0 8px 24px rgba(37, 211, 102, 0.35)',
                   cursor: 'pointer'
                 }}
               >
                 <WhatsappIcon size={20} color="#ffffff" />
-                <span>Open WhatsApp to Send Details</span>
+                <span>Open WhatsApp Chat with Order Specs</span>
                 <ArrowRight size={16} />
               </a>
 
+              {/* Clipboard Quick Copy Button */}
+              <button
+                type="button"
+                onClick={() => handleCopyArtwork('both')}
+                className="btn btn-secondary"
+                style={{
+                  width: '100%',
+                  justifyContent: 'center',
+                  padding: '10px 14px',
+                  fontSize: '0.82rem',
+                  background: copiedClipboard ? 'rgba(37, 211, 102, 0.15)' : 'var(--elevated-surface)',
+                  borderColor: copiedClipboard ? '#25D366' : 'var(--border-color)',
+                  color: copiedClipboard ? '#25D366' : 'var(--text-primary)'
+                }}
+              >
+                {copiedClipboard ? <Check size={16} color="#25D366" /> : <Copy size={16} />}
+                <span>{copiedClipboard ? 'Copied to Clipboard! (Press Ctrl+V in WhatsApp)' : 'Re-Copy Artwork to Clipboard (To Paste in WhatsApp)'}</span>
+              </button>
+
               {/* Re-download artwork buttons */}
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '6px' }}>
+              <div style={{ display: 'grid', gridTemplateColumns: '1.2fr 1fr 1fr 1fr', gap: '6px' }}>
+                <button
+                  type="button"
+                  onClick={handleDownloadBothSides}
+                  className="btn btn-secondary"
+                  style={{
+                    padding: '8px 4px',
+                    fontSize: '0.7rem',
+                    justifyContent: 'center',
+                    background: 'rgba(168, 85, 247, 0.12)',
+                    borderColor: 'rgba(168, 85, 247, 0.35)'
+                  }}
+                  title="Download Both Sides in 1 Combined Sheet (300 DPI PNG)"
+                >
+                  <Download size={13} color="var(--accent-purple)" />
+                  <span style={{ fontWeight: 700 }}>Both Sides</span>
+                </button>
                 <button
                   type="button"
                   onClick={() => handleExportPNG('front')}
                   className="btn btn-secondary"
-                  style={{ padding: '8px 4px', fontSize: '0.72rem', justifyContent: 'center' }}
+                  style={{ padding: '8px 4px', fontSize: '0.7rem', justifyContent: 'center' }}
                   title="Download Front 300 DPI PNG"
                 >
                   <Download size={13} />
@@ -1955,7 +2175,7 @@ export default function Designer() {
                   type="button"
                   onClick={() => handleExportPNG('back')}
                   className="btn btn-secondary"
-                  style={{ padding: '8px 4px', fontSize: '0.72rem', justifyContent: 'center' }}
+                  style={{ padding: '8px 4px', fontSize: '0.7rem', justifyContent: 'center' }}
                   title="Download Back 300 DPI PNG"
                 >
                   <Download size={13} />
@@ -1965,7 +2185,7 @@ export default function Designer() {
                   type="button"
                   onClick={handleExportPDF}
                   className="btn btn-secondary"
-                  style={{ padding: '8px 4px', fontSize: '0.72rem', justifyContent: 'center' }}
+                  style={{ padding: '8px 4px', fontSize: '0.7rem', justifyContent: 'center' }}
                   title="Download Print-Ready PDF"
                 >
                   <FileText size={13} />
@@ -1977,7 +2197,7 @@ export default function Designer() {
                 type="button"
                 onClick={() => setShowWhatsAppModal(false)}
                 className="btn btn-outline"
-                style={{ width: '100%', justifyContent: 'center', marginTop: '4px', fontSize: '0.8rem' }}
+                style={{ width: '100%', justifyContent: 'center', marginTop: '2px', fontSize: '0.78rem' }}
               >
                 Return to Studio
               </button>

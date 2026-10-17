@@ -1,6 +1,7 @@
 /* ==========================================================================
    PRINT-READY PDF & HIGH-RES ARTWORK EXPORT
    Standard ISO/IEC 7810 ID-1: 85.6mm x 54mm with 300 DPI Rendering
+   Supports Dual-Sided Combined PNGs, Multi-File Export, Web Share, & Clipboard
    ========================================================================== */
 
 import { jsPDF } from 'jspdf';
@@ -73,12 +74,216 @@ function drawCropMarks(doc, bleed, width, height) {
 }
 
 /**
- * Downloads high-res PNG of canvas
+ * Downloads high-res PNG of canvas with safe DOM attachment
  */
 export function downloadCanvasPNG(canvas, filename = 'flocard-artwork.png') {
   if (!canvas) return;
-  const link = document.createElement('a');
-  link.download = filename;
-  link.href = canvas.toDataURL('image/png', 1.0);
-  link.click();
+  try {
+    const dataUrl = canvas.toDataURL('image/png', 1.0);
+    const link = document.createElement('a');
+    link.style.display = 'none';
+    link.download = filename;
+    link.href = dataUrl;
+    document.body.appendChild(link);
+    link.click();
+    setTimeout(() => {
+      if (link.parentNode) link.parentNode.removeChild(link);
+    }, 400);
+  } catch (e) {
+    console.error('Error downloading canvas PNG:', e);
+  }
+}
+
+/**
+ * Creates a combined dual-sided artwork canvas showing both Front and Back
+ * on a single luxury specification presentation sheet.
+ */
+export function createCombinedArtworkCanvas({ frontCanvas, backCanvas, designName = 'FLOCARD Card', editionName = 'Purple' }) {
+  if (!frontCanvas || !backCanvas) return null;
+
+  const cardW = frontCanvas.width || 1080;
+  const cardH = frontCanvas.height || 681;
+  const gap = 60;
+  const padding = 60;
+  const headerH = 120;
+  const footerH = 60;
+
+  const combined = document.createElement('canvas');
+  combined.width = (cardW * 2) + gap + (padding * 2);
+  combined.height = cardH + headerH + footerH + (padding * 2);
+
+  const ctx = combined.getContext('2d');
+  if (!ctx) return null;
+
+  // 1. Luxury deep obsidian background
+  const bgGrad = ctx.createLinearGradient(0, 0, combined.width, combined.height);
+  bgGrad.addColorStop(0, '#090510');
+  bgGrad.addColorStop(0.5, '#150A26');
+  bgGrad.addColorStop(1, '#06030B');
+  ctx.fillStyle = bgGrad;
+  ctx.fillRect(0, 0, combined.width, combined.height);
+
+  // Subtle grid lines in background
+  ctx.strokeStyle = 'rgba(168, 85, 247, 0.06)';
+  ctx.lineWidth = 1;
+  for (let x = 0; x < combined.width; x += 60) {
+    ctx.beginPath();
+    ctx.moveTo(x, 0);
+    ctx.lineTo(x, combined.height);
+    ctx.stroke();
+  }
+  for (let y = 0; y < combined.height; y += 60) {
+    ctx.beginPath();
+    ctx.moveTo(0, y);
+    ctx.lineTo(combined.width, y);
+    ctx.stroke();
+  }
+
+  // 2. Header Branding
+  ctx.fillStyle = '#A855F7';
+  ctx.font = 'bold 38px "Space Grotesk", sans-serif';
+  ctx.fillText('FLOCARD™ DUAL-SIDED PRINT SPECIFICATION', padding, 68);
+
+  ctx.fillStyle = '#B8AEC8';
+  ctx.font = '22px "Inter", sans-serif';
+  ctx.fillText(`${designName} • ${editionName} • CR80 ISO/IEC 7810 ID-1 (85.60 × 53.98 mm) • 300 DPI Industrial`, padding, 106);
+
+  // 3. Draw Front Card
+  const cardY = padding + headerH;
+  ctx.save();
+  ctx.shadowColor = 'rgba(0, 0, 0, 0.7)';
+  ctx.shadowBlur = 30;
+  ctx.shadowOffsetY = 15;
+  ctx.drawImage(frontCanvas, padding, cardY, cardW, cardH);
+  ctx.restore();
+
+  // Front Label
+  ctx.fillStyle = '#FFFFFF';
+  ctx.font = 'bold 24px "Space Grotesk", sans-serif';
+  ctx.fillText('SIDE A: FRONT ARTWORK', padding, cardY + cardH + 40);
+
+  ctx.fillStyle = '#82758F';
+  ctx.font = '18px "Inter", sans-serif';
+  ctx.fillText('Laser-etched details & NFC inductive antenna', padding, cardY + cardH + 68);
+
+  // 4. Draw Back Card
+  const backX = padding + cardW + gap;
+  ctx.save();
+  ctx.shadowColor = 'rgba(0, 0, 0, 0.7)';
+  ctx.shadowBlur = 30;
+  ctx.shadowOffsetY = 15;
+  ctx.drawImage(backCanvas, backX, cardY, cardW, cardH);
+  ctx.restore();
+
+  // Back Label
+  ctx.fillStyle = '#FFFFFF';
+  ctx.font = 'bold 24px "Space Grotesk", sans-serif';
+  ctx.fillText('SIDE B: BACK ARTWORK (NFC & QR)', backX, cardY + cardH + 40);
+
+  ctx.fillStyle = '#82758F';
+  ctx.font = '18px "Inter", sans-serif';
+  ctx.fillText('Permanent encrypted dynamic routing & NTAG216 chip', backX, cardY + cardH + 68);
+
+  return combined;
+}
+
+/**
+ * Downloads both front and back sides cleanly.
+ * Automatically exports a combined high-res PNG containing both sides side-by-side,
+ * plus triggers downloads for individual front and back files.
+ */
+export async function downloadBothSides({ frontCanvas, backCanvas, designName = 'FLOCARD Card', editionName = 'Purple' }) {
+  const safeName = designName.replace(/[^a-zA-Z0-9_-]/g, '_');
+
+  // 1. Generate Combined Dual-Sided Artwork (Guarantees BOTH sides in 1 file!)
+  if (frontCanvas && backCanvas) {
+    const combinedCanvas = createCombinedArtworkCanvas({ frontCanvas, backCanvas, designName, editionName });
+    if (combinedCanvas) {
+      downloadCanvasPNG(combinedCanvas, `${safeName}_BOTH_SIDES_300dpi.png`);
+    }
+  }
+
+  // 2. Download Front
+  if (frontCanvas) {
+    setTimeout(() => {
+      downloadCanvasPNG(frontCanvas, `${safeName}_front_300dpi.png`);
+    }, 250);
+  }
+
+  // 3. Download Back
+  if (backCanvas) {
+    setTimeout(() => {
+      downloadCanvasPNG(backCanvas, `${safeName}_back_300dpi.png`);
+    }, 550);
+  }
+}
+
+/**
+ * Copies a canvas image directly to the system clipboard (PNG blob)
+ * Allows user to instantly paste (Ctrl+V / Cmd+V) directly into WhatsApp!
+ */
+export async function copyCanvasToClipboard(canvas) {
+  if (!canvas || !navigator.clipboard || typeof window.ClipboardItem === 'undefined') {
+    return false;
+  }
+  return new Promise((resolve) => {
+    canvas.toBlob(async (blob) => {
+      if (!blob) {
+        resolve(false);
+        return;
+      }
+      try {
+        await navigator.clipboard.write([
+          new ClipboardItem({ 'image/png': blob })
+        ]);
+        resolve(true);
+      } catch (err) {
+        console.warn('Clipboard write error:', err);
+        resolve(false);
+      }
+    }, 'image/png');
+  });
+}
+
+/**
+ * Uses Web Share API to share design files directly to WhatsApp or native apps.
+ * On mobile and supported desktops, this attaches the real image files directly!
+ */
+export async function shareDesignFiles({ frontCanvas, backCanvas, designName = 'FLOCARD Card', text = '' }) {
+  if (!navigator.canShare || !navigator.share) {
+    return false;
+  }
+
+  try {
+    const files = [];
+
+    if (frontCanvas) {
+      const frontBlob = await new Promise(r => frontCanvas.toBlob(r, 'image/png', 1.0));
+      if (frontBlob) {
+        files.push(new File([frontBlob], `${designName.replace(/[^a-zA-Z0-9_-]/g, '_')}_front.png`, { type: 'image/png' }));
+      }
+    }
+
+    if (backCanvas) {
+      const backBlob = await new Promise(r => backCanvas.toBlob(r, 'image/png', 1.0));
+      if (backBlob) {
+        files.push(new File([backBlob], `${designName.replace(/[^a-zA-Z0-9_-]/g, '_')}_back.png`, { type: 'image/png' }));
+      }
+    }
+
+    if (files.length > 0 && navigator.canShare({ files })) {
+      await navigator.share({
+        title: designName,
+        text,
+        files
+      });
+      return true;
+    }
+  } catch (err) {
+    if (err.name !== 'AbortError') {
+      console.warn('Web Share failed:', err);
+    }
+  }
+
+  return false;
 }
