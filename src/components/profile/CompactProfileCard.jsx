@@ -23,19 +23,58 @@ export default function CompactProfileCard({
   profile,
   onExpand,
   isLight = false,
-  reducedMotion = false
+  reducedMotion = false,
+  allowColorSwitch = true,
+  onColorChange
 }) {
-  const accentColor = profile?.accentColor || '#A855F7';
-  const glowColor = profile?.glowColor || '#6B00FF';
+  const [activeFinish, setActiveFinish] = useState(
+    profile?.cardFinish ||
+      (profile?.edition === 'gold'
+        ? 'gold'
+        : profile?.edition === 'platinum' || profile?.edition === 'steel'
+          ? 'steel'
+          : 'purple')
+  );
+
+  useEffect(() => {
+    if (profile?.cardFinish) {
+      setActiveFinish(profile.cardFinish);
+    } else if (profile?.edition === 'gold') {
+      setActiveFinish('gold');
+    } else if (profile?.edition === 'platinum' || profile?.edition === 'steel') {
+      setActiveFinish('steel');
+    } else {
+      setActiveFinish('purple');
+    }
+  }, [profile?.cardFinish, profile?.edition]);
+
+  const finishTints = {
+    steel: '#E2E8F0',
+    gold: '#F3CF8A',
+    purple: '#A855F7'
+  };
+
+  const finishGlows = {
+    steel: '#64748B',
+    gold: '#D97706',
+    purple: profile?.glowColor || '#6B00FF'
+  };
+
+  const finishAccents = {
+    steel: '#94A3B8',
+    gold: '#F59E0B',
+    purple: profile?.accentColor || '#A855F7'
+  };
+
+  const metalTint =
+    profile?.cardColor && profile?.cardFinish === 'custom'
+      ? profile.cardColor
+      : finishTints[activeFinish] || profile?.cardColor || '#A855F7';
+
+  const accentColor = finishAccents[activeFinish] || profile?.accentColor || '#A855F7';
+  const glowColor = finishGlows[activeFinish] || profile?.glowColor || '#6B00FF';
   const photoShape = profile?.photoShape || 'circle';
   const isCircle = photoShape === 'circle';
-
-  // Metal tint based on FLOCARD edition
-  const metalTint = profile?.edition === 'gold'
-    ? '#F3CF8A'
-    : profile?.edition === 'platinum'
-      ? '#FFFFFF'
-      : '#D5C9E5';
 
   const glowShadow = profile?.borderGlowIntensity === 'subtle'
     ? `0 18px 45px -10px ${glowColor}30, 0 0 20px ${glowColor}15`
@@ -63,6 +102,73 @@ export default function CompactProfileCard({
         zIndex: 10
       }}
     >
+      {/* Quick Interactive Metal Finish Switcher */}
+      {allowColorSwitch && (
+        <div
+          style={{
+            display: 'inline-flex',
+            alignItems: 'center',
+            gap: '6px',
+            padding: '4px 10px',
+            borderRadius: '9999px',
+            background: isLight ? 'rgba(0, 0, 0, 0.05)' : 'rgba(255, 255, 255, 0.08)',
+            border: '1px solid var(--border-color)',
+            backdropFilter: 'blur(12px)',
+            marginBottom: '14px',
+            zIndex: 20
+          }}
+          onClick={(e) => e.stopPropagation()}
+        >
+          <span style={{ fontSize: '0.68rem', fontWeight: 600, color: 'var(--text-muted)', marginRight: '2px' }}>
+            Finish:
+          </span>
+          {[
+            { id: 'steel', label: 'Steel', color: '#CBD5E1', gradient: 'linear-gradient(135deg, #E2E8F0, #94A3B8)' },
+            { id: 'gold', label: 'Gold', color: '#F59E0B', gradient: 'linear-gradient(135deg, #FDE68A, #D97706)' },
+            { id: 'purple', label: 'Purple', color: '#A855F7', gradient: 'linear-gradient(135deg, #C084FC, #6B00FF)' }
+          ].map((finish) => {
+            const isSelected = activeFinish === finish.id;
+            return (
+              <button
+                key={finish.id}
+                type="button"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  setActiveFinish(finish.id);
+                  onColorChange?.(finish.id, finishTints[finish.id]);
+                }}
+                style={{
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  gap: '5px',
+                  padding: '3px 9px',
+                  borderRadius: '9999px',
+                  border: isSelected ? `1.5px solid ${finish.color}` : '1.5px solid transparent',
+                  background: isSelected ? (isLight ? 'rgba(0, 0, 0, 0.08)' : 'rgba(255, 255, 255, 0.16)') : 'transparent',
+                  color: isSelected ? 'var(--text-primary)' : 'var(--text-muted)',
+                  fontSize: '0.72rem',
+                  fontWeight: 700,
+                  cursor: 'pointer',
+                  transition: 'all 0.2s cubic-bezier(0.16, 1, 0.3, 1)',
+                  transform: isSelected ? 'scale(1.04)' : 'scale(1)'
+                }}
+              >
+                <span
+                  style={{
+                    width: '9px',
+                    height: '9px',
+                    borderRadius: '50%',
+                    background: finish.gradient,
+                    boxShadow: isSelected ? `0 0 6px ${finish.color}` : 'none',
+                    display: 'inline-block'
+                  }}
+                />
+                {finish.label}
+              </button>
+            );
+          })}
+        </div>
+      )}
       {/* Main Reflective Card Element */}
       <div
         style={{

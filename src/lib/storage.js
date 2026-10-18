@@ -88,7 +88,8 @@ export const INITIAL_PROFILES = [
     gradientStart: '#130B22',
     gradientMid: '#240F3E',
     gradientEnd: '#0B0813',
-    creamHighlight: '#F5EDE5',
+    cardFinish: 'purple', // 'purple' | 'gold' | 'steel'
+    cardColor: '#A855F7',
     glowColor: '#6B00FF',
     accentColor: '#A855F7',
     borderGlowIntensity: 'medium', // 'subtle' | 'medium' | 'high'

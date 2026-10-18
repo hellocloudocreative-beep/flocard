@@ -58,6 +58,14 @@ export default function CustomerProfilesTab({ profiles = [], customer, onSavePro
     setFormData({
       ...profile,
       openingPreference: profile.openingPreference || 'expandable',
+      cardFinish: profile.cardFinish || (profile.edition === 'gold' ? 'gold' : profile.edition === 'platinum' || profile.edition === 'steel' ? 'steel' : 'purple'),
+      cardColor: profile.cardColor || (
+        (profile.cardFinish === 'gold' || profile.edition === 'gold')
+          ? '#F3CF8A'
+          : (profile.cardFinish === 'steel' || profile.edition === 'platinum' || profile.edition === 'steel')
+            ? '#E2E8F0'
+            : '#A855F7'
+      ),
       gradientStart: profile.gradientStart || '#130B22',
       gradientMid: profile.gradientMid || '#240F3E',
       gradientEnd: profile.gradientEnd || '#0B0813',
@@ -434,6 +442,123 @@ export default function CustomerProfilesTab({ profiles = [], customer, onSavePro
                           </div>
                         </div>
                       ))}
+                    </div>
+                  </div>
+
+                  {/* Reflective Card Finish & Background Color */}
+                  <div style={{ padding: '16px', borderRadius: '14px', backgroundColor: 'var(--elevated-surface)', border: '1px solid var(--border-color)' }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
+                      <label style={{ fontSize: '0.84rem', fontWeight: 700, color: 'var(--text-primary)', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                        <Sparkles size={15} color="var(--accent-purple)" />
+                        <span>Reflective Card Finish & Metal Color</span>
+                      </label>
+                      <span style={{ fontSize: '0.72rem', color: 'var(--text-muted)' }}>
+                        Active: {formData.cardFinish === 'gold' ? '24K Mirror Gold' : formData.cardFinish === 'steel' ? 'Brushed Steel' : 'Signature Purple'}
+                      </span>
+                    </div>
+                    <p style={{ fontSize: '0.76rem', color: 'var(--text-secondary)', margin: '0 0 12px', lineHeight: 1.4 }}>
+                      Choose your 3D digital card's reflection finish: Brushed Steel, 24K Mirror Gold, or Signature Purple.
+                    </p>
+
+                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '10px', marginBottom: '14px' }}>
+                      {[
+                        {
+                          id: 'steel',
+                          name: 'Brushed Steel',
+                          desc: 'Platinum & silver mirror reflection',
+                          tint: '#E2E8F0',
+                          accent: '#94A3B8',
+                          glow: '#64748B',
+                          gradient: 'linear-gradient(135deg, #E2E8F0 0%, #94A3B8 50%, #475569 100%)'
+                        },
+                        {
+                          id: 'gold',
+                          name: '24K Mirror Gold',
+                          desc: 'Prestige radiant gold reflection',
+                          tint: '#F3CF8A',
+                          accent: '#F59E0B',
+                          glow: '#D97706',
+                          gradient: 'linear-gradient(135deg, #FDE68A 0%, #F59E0B 50%, #B45309 100%)'
+                        },
+                        {
+                          id: 'purple',
+                          name: 'Signature Purple',
+                          desc: 'Cosmic violet metallic sheen',
+                          tint: '#A855F7',
+                          accent: '#A855F7',
+                          glow: '#6B00FF',
+                          gradient: 'linear-gradient(135deg, #C084FC 0%, #7928CA 50%, #4338CA 100%)'
+                        }
+                      ].map(edition => {
+                        const isSelected = (formData.cardFinish === edition.id) || (!formData.cardFinish && edition.id === 'purple');
+                        return (
+                          <button
+                            key={edition.id}
+                            type="button"
+                            onClick={() => {
+                              setFormData({
+                                ...formData,
+                                cardFinish: edition.id,
+                                cardColor: edition.tint,
+                                glowColor: edition.glow,
+                                accentColor: edition.accent
+                              });
+                            }}
+                            style={{
+                              padding: '12px 10px',
+                              borderRadius: '12px',
+                              border: isSelected ? '2px solid var(--accent-purple)' : '1px solid var(--border-color)',
+                              backgroundColor: isSelected ? 'rgba(107, 0, 255, 0.18)' : 'var(--card-surface)',
+                              cursor: 'pointer',
+                              textAlign: 'left',
+                              display: 'flex',
+                              flexDirection: 'column',
+                              gap: '8px',
+                              transition: 'all 0.2s cubic-bezier(0.16, 1, 0.3, 1)',
+                              transform: isSelected ? 'scale(1.02)' : 'scale(1)',
+                              boxShadow: isSelected ? '0 4px 16px rgba(107, 0, 255, 0.25)' : 'none'
+                            }}
+                          >
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                              <div
+                                style={{
+                                  width: '18px',
+                                  height: '18px',
+                                  borderRadius: '50%',
+                                  background: edition.gradient,
+                                  boxShadow: `0 0 8px ${edition.accent}80`,
+                                  flexShrink: 0
+                                }}
+                              />
+                              <span style={{ fontSize: '0.82rem', fontWeight: 700, color: isSelected ? 'var(--text-primary)' : 'var(--text-secondary)' }}>
+                                {edition.name}
+                              </span>
+                            </div>
+                            <span style={{ fontSize: '0.68rem', color: 'var(--text-muted)', lineHeight: 1.3 }}>
+                              {edition.desc}
+                            </span>
+                          </button>
+                        );
+                      })}
+                    </div>
+
+                    {/* Custom tint fine-tuning */}
+                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', paddingTop: '10px', borderTop: '1px solid var(--border-color)' }}>
+                      <span style={{ fontSize: '0.75rem', color: 'var(--text-secondary)' }}>
+                        Custom Metallic Plate Tint:
+                      </span>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                        <input
+                          type="color"
+                          value={formData.cardColor || (formData.cardFinish === 'gold' ? '#F3CF8A' : formData.cardFinish === 'steel' ? '#E2E8F0' : '#A855F7')}
+                          onChange={e => setFormData({ ...formData, cardColor: e.target.value, cardFinish: 'custom' })}
+                          style={{ width: '34px', height: '30px', borderRadius: '6px', border: 'none', cursor: 'pointer', background: 'none' }}
+                          title="Choose custom metallic tint"
+                        />
+                        <span style={{ fontSize: '0.74rem', fontFamily: 'monospace', color: 'var(--text-primary)' }}>
+                          {formData.cardColor || (formData.cardFinish === 'gold' ? '#F3CF8A' : formData.cardFinish === 'steel' ? '#E2E8F0' : '#A855F7')}
+                        </span>
+                      </div>
                     </div>
                   </div>
 
