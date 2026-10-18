@@ -245,7 +245,7 @@ export default function AccountProfile() {
                 Upload your official photo and company logo to represent your brand across NFC taps and mobile browsers.
               </p>
 
-              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: '20px' }}>
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 260px), 1fr))', gap: '20px' }}>
                 {/* 1. Profile Picture / Avatar */}
                 <div
                   style={{

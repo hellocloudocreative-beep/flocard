@@ -24,7 +24,24 @@ export default function Card3DPreview({
   const [internalSide, setInternalSide] = useState(initialSide);
   const activeSide = controlledSide !== undefined ? controlledSide : internalSide;
   const cardRef = useRef(null);
-  const height = Math.round(width / 1.585);
+
+  // Responsive width detection so card never overflows mobile viewports
+  const [responsiveWidth, setResponsiveWidth] = useState(width);
+
+  useEffect(() => {
+    const handleResize = () => {
+      if (typeof window !== 'undefined') {
+        const available = Math.min(width, window.innerWidth - 32);
+        setResponsiveWidth(Math.max(260, available));
+      }
+    };
+    handleResize();
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
+  }, [width]);
+
+  const effectiveWidth = Math.min(width, responsiveWidth);
+  const height = Math.round(effectiveWidth / 1.585);
 
   const getInitialAngle = () => (activeSide === 'back' ? 180 : 0);
   const [transform, setTransform] = useState(`perspective(1000px) rotateX(0deg) rotateY(${getInitialAngle()}deg)`);
@@ -86,7 +103,8 @@ export default function Card3DPreview({
       onMouseLeave={handleMouseLeave}
       style={{
         position: 'relative',
-        width: `${width}px`,
+        width: `${effectiveWidth}px`,
+        maxWidth: '100%',
         height: `${height}px`,
         perspective: '1200px',
         margin: '0 auto',
@@ -120,7 +138,7 @@ export default function Card3DPreview({
             templateType={config.templateType || templateType}
             edition={edition}
             config={config}
-            width={width}
+            width={effectiveWidth}
             showGuides={showGuides}
             showBleed={showBleed}
             onLogoWarningChange={onLogoWarningChange}
@@ -142,7 +160,7 @@ export default function Card3DPreview({
             templateType={config.templateType || templateType}
             edition={edition}
             config={config}
-            width={width}
+            width={effectiveWidth}
             showGuides={showGuides}
             showBleed={showBleed}
           />

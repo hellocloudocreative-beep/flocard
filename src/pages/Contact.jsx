@@ -41,7 +41,7 @@ export default function Contact() {
           </p>
         </div>
 
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(340px, 1fr))', gap: '48px', alignItems: 'start' }}>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 300px), 1fr))', gap: 'clamp(24px, 4vw, 48px)', alignItems: 'start' }}>
           {/* Contact Details Card */}
           <div className="glass-panel" style={{ padding: '36px' }}>
             <h3 style={{ fontSize: '1.35rem', color: 'var(--text-primary)', marginBottom: '16px' }}>

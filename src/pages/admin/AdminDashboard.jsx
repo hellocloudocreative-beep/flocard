@@ -123,6 +123,7 @@ export default function AdminDashboard({ initialTab = 'overview', initialOrderId
       : 'overview'
   );
   const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [mobileSearchOpen, setMobileSearchOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const [notificationsOpen, setNotificationsOpen] = useState(false);
   const [userDropdownOpen, setUserDropdownOpen] = useState(false);
@@ -516,6 +517,7 @@ export default function AdminDashboard({ initialTab = 'overview', initialOrderId
 
   return (
     <div
+      className="admin-dashboard-root"
       style={{
         display: 'flex',
         minHeight: '100vh',
@@ -523,9 +525,18 @@ export default function AdminDashboard({ initialTab = 'overview', initialOrderId
         color: '#191522',
         fontFamily: 'var(--font-body, Inter, sans-serif)',
         position: 'relative',
-        overflowX: 'hidden'
+        overflowX: 'clip',
+        maxWidth: '100vw'
       }}
     >
+      {/* Mobile Sidebar Backdrop */}
+      {sidebarOpen && (
+        <div
+          className="admin-sidebar-backdrop"
+          onClick={() => setSidebarOpen(false)}
+          aria-hidden="true"
+        />
+      )}
       {/* ====================================================================
           1. DARK BRANDED SIDEBAR NAVIGATION (#100819)
           ==================================================================== */}
@@ -741,9 +752,22 @@ export default function AdminDashboard({ initialTab = 'overview', initialOrderId
       {/* ====================================================================
           2. MAIN CONTENT AREA (Crisp Light Background #F7F6FA)
           ==================================================================== */}
-      <div style={{ flex: 1, display: 'flex', flexDirection: 'column', minWidth: 0, overflowY: 'auto' }}>
+      <div
+        className="admin-main-container"
+        style={{
+          flex: 1,
+          display: 'flex',
+          flexDirection: 'column',
+          minWidth: 0,
+          overflowY: 'auto',
+          overflowX: 'hidden',
+          width: '100%',
+          maxWidth: '100%'
+        }}
+      >
         {/* Top Navigation Bar */}
         <header
+          className="admin-header"
           style={{
             backgroundColor: '#FFFFFF',
             borderBottom: '1px solid #E8E3EF',
@@ -758,7 +782,7 @@ export default function AdminDashboard({ initialTab = 'overview', initialOrderId
           }}
         >
           {/* Left: Mobile Toggle + Page Heading */}
-          <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '14px', minWidth: 0, flexShrink: 1 }}>
             <button
               type="button"
               onClick={() => setSidebarOpen(true)}
@@ -768,21 +792,28 @@ export default function AdminDashboard({ initialTab = 'overview', initialOrderId
                 background: 'none',
                 border: 'none',
                 color: '#191522',
-                cursor: 'pointer'
+                cursor: 'pointer',
+                padding: '4px',
+                flexShrink: 0
               }}
+              aria-label="Open sidebar menu"
             >
               <Menu size={22} />
             </button>
 
-            <div>
+            <div style={{ minWidth: 0 }}>
               <h1
+                className="admin-page-title"
                 style={{
                   margin: 0,
                   fontSize: '1.45rem',
                   fontWeight: 800,
                   color: '#191522',
                   fontFamily: 'var(--font-heading, Sora)',
-                  letterSpacing: '-0.02em'
+                  letterSpacing: '-0.02em',
+                  whiteSpace: 'nowrap',
+                  overflow: 'hidden',
+                  textOverflow: 'ellipsis'
                 }}
               >
                 {activeTab === 'overview' && 'Dashboard'}
@@ -798,7 +829,7 @@ export default function AdminDashboard({ initialTab = 'overview', initialOrderId
                 {activeTab === 'audit-logs' && 'Audit Logs'}
                 {activeTab === 'settings' && 'Settings'}
               </h1>
-              <p style={{ margin: '2px 0 0', fontSize: '0.84rem', color: '#777184' }}>
+              <p className="admin-page-subtitle" style={{ margin: '2px 0 0', fontSize: '0.84rem', color: '#777184' }}>
                 {activeTab === 'overview' && "Welcome back! Here's what's happening with FLOCARD."}
                 {activeTab === 'customers' && 'Manage authenticated customer accounts and enterprise partners.'}
                 {activeTab === 'profiles' && 'Public digital identity profiles, slugs, and live resolutions.'}
@@ -816,9 +847,34 @@ export default function AdminDashboard({ initialTab = 'overview', initialOrderId
           </div>
 
           {/* Right: Search, Notifications, Date Filter & Profile Pill */}
-          <div style={{ display: 'flex', alignItems: 'center', gap: '14px' }}>
+          <div className="admin-header-actions" style={{ display: 'flex', alignItems: 'center', gap: '14px', flexShrink: 0 }}>
+            {/* Mobile Search Toggle Button */}
+            <button
+              type="button"
+              onClick={() => setMobileSearchOpen(!mobileSearchOpen)}
+              className="admin-mobile-search-toggle"
+              aria-label="Toggle search"
+              style={{
+                display: 'none',
+                width: '38px',
+                height: '38px',
+                borderRadius: '50%',
+                border: '1px solid #E8E3EF',
+                backgroundColor: mobileSearchOpen ? '#F3EEFF' : '#FFFFFF',
+                color: mobileSearchOpen ? '#6B00FF' : '#191522',
+                alignItems: 'center',
+                justifyContent: 'center',
+                cursor: 'pointer'
+              }}
+            >
+              <Search size={18} />
+            </button>
+
             {/* Global Search Bar */}
-            <div style={{ position: 'relative', width: '260px' }}>
+            <div
+              className={`admin-header-search ${mobileSearchOpen ? 'mobile-visible' : ''}`}
+              style={{ position: 'relative', width: '260px' }}
+            >
               <Search size={16} color="#777184" style={{ position: 'absolute', left: '12px', top: '50%', transform: 'translateY(-50%)' }} />
               <input
                 type="text"
@@ -909,6 +965,7 @@ export default function AdminDashboard({ initialTab = 'overview', initialOrderId
 
             {/* Date Range Filter Pill */}
             <div
+              className="admin-header-date-filter"
               style={{
                 display: 'flex',
                 alignItems: 'center',
@@ -931,6 +988,7 @@ export default function AdminDashboard({ initialTab = 'overview', initialOrderId
             <div style={{ position: 'relative' }}>
               <button
                 type="button"
+                className="admin-user-btn"
                 onClick={() => setUserDropdownOpen(!userDropdownOpen)}
                 style={{
                   display: 'flex',
@@ -956,7 +1014,8 @@ export default function AdminDashboard({ initialTab = 'overview', initialOrderId
                     alignItems: 'center',
                     justifyContent: 'center',
                     fontWeight: 700,
-                    fontSize: '0.82rem'
+                    fontSize: '0.82rem',
+                    flexShrink: 0
                   }}
                 >
                   {user?.avatar ? (
@@ -966,16 +1025,16 @@ export default function AdminDashboard({ initialTab = 'overview', initialOrderId
                   )}
                 </div>
 
-                <div style={{ textAlign: 'left', lineHeight: 1.2 }}>
-                  <div style={{ fontSize: '0.82rem', fontWeight: 700, color: '#191522' }}>
+                <div className="admin-user-details" style={{ textAlign: 'left', lineHeight: 1.2 }}>
+                  <div style={{ fontSize: '0.82rem', fontWeight: 700, color: '#191522', whiteSpace: 'nowrap' }}>
                     {user?.name || 'Akhil Anvar'}
                   </div>
-                  <div style={{ fontSize: '0.7rem', color: '#777184' }}>
+                  <div style={{ fontSize: '0.7rem', color: '#777184', whiteSpace: 'nowrap' }}>
                     {isOwner ? 'Owner' : 'Administrator'}
                   </div>
                 </div>
 
-                <ChevronDown size={14} color="#777184" />
+                <ChevronDown className="admin-user-chevron" size={14} color="#777184" />
               </button>
 
               {userDropdownOpen && (
@@ -1068,7 +1127,7 @@ export default function AdminDashboard({ initialTab = 'overview', initialOrderId
               </button>
             </div>
 
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(260px, 1fr))', gap: '16px' }}>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 240px), 1fr))', gap: '16px' }}>
               {/* Customer matches */}
               <div style={{ padding: '14px', borderRadius: '12px', border: '1px solid #E8E3EF', background: '#F7F6FA' }}>
                 <span style={{ fontSize: '0.75rem', fontWeight: 700, color: '#6B00FF', textTransform: 'uppercase' }}>
@@ -1107,7 +1166,7 @@ export default function AdminDashboard({ initialTab = 'overview', initialOrderId
         )}
 
         {/* Dashboard Main Scrollable View */}
-        <div style={{ padding: '28px 32px 48px' }}>
+        <div className="admin-main-content" style={{ padding: '28px 32px 48px', width: '100%', boxSizing: 'border-box' }}>
           {/* ====================================================================
               VIEW: DASHBOARD OVERVIEW (Exact Reference Image 2)
               ==================================================================== */}
@@ -1115,9 +1174,10 @@ export default function AdminDashboard({ initialTab = 'overview', initialOrderId
             <div>
               {/* Top 6 Metric Statistic Cards */}
               <div
+                className="admin-stats-grid"
                 style={{
                   display: 'grid',
-                  gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))',
+                  gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 150px), 1fr))',
                   gap: '16px',
                   marginBottom: '28px'
                 }}
@@ -1335,9 +1395,10 @@ export default function AdminDashboard({ initialTab = 'overview', initialOrderId
 
               {/* Middle Section: Two Columns (Recent Activity + Pending Design Approvals) */}
               <div
+                className="admin-middle-grid"
                 style={{
                   display: 'grid',
-                  gridTemplateColumns: 'repeat(auto-fit, minmax(440px, 1fr))',
+                  gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 420px), 1fr))',
                   gap: '24px',
                   marginBottom: '28px'
                 }}
@@ -1571,9 +1632,10 @@ export default function AdminDashboard({ initialTab = 'overview', initialOrderId
 
               {/* Bottom Section: Three Columns (Recently Created Profiles + Recently Assigned Cards + Quick Actions) */}
               <div
+                className="admin-bottom-grid"
                 style={{
                   display: 'grid',
-                  gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))',
+                  gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 300px), 1fr))',
                   gap: '24px'
                 }}
               >
@@ -1792,7 +1854,7 @@ export default function AdminDashboard({ initialTab = 'overview', initialOrderId
                     </div>
                   </div>
 
-                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '12px' }}>
+                  <div className="admin-quick-actions-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '12px' }}>
                     {/* Add Customer */}
                     <button
                       type="button"
@@ -2680,7 +2742,7 @@ export default function AdminDashboard({ initialTab = 'overview', initialOrderId
               </div>
 
               {/* Quick Pricing Summary Row */}
-              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: '16px', marginBottom: '28px' }}>
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 220px), 1fr))', gap: '16px', marginBottom: '28px' }}>
                 <div style={{ padding: '16px', borderRadius: '12px', backgroundColor: '#FAF9FC', border: '1px solid #E8E3EF' }}>
                   <div style={{ fontSize: '0.74rem', textTransform: 'uppercase', letterSpacing: '0.05em', color: '#777184', fontWeight: 600 }}>Physical Editions</div>
                   <div style={{ fontSize: '1.3rem', fontWeight: 800, color: '#191522', marginTop: '4px' }}>3 Editions</div>
@@ -2711,7 +2773,7 @@ export default function AdminDashboard({ initialTab = 'overview', initialOrderId
               </div>
 
               {/* Edition Cards Grid */}
-              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(340px, 1fr))', gap: '24px' }}>
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 320px), 1fr))', gap: '24px' }}>
                 {(products || []).map((product) => {
                   const formattedPrice = formatCurrencyINR(product.price);
                   const formattedCompare = product.comparePrice && product.comparePrice > product.price ? formatCurrencyINR(product.comparePrice) : null;
@@ -2932,7 +2994,7 @@ export default function AdminDashboard({ initialTab = 'overview', initialOrderId
                 </button>
               </div>
 
-              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(360px, 1fr))', gap: '24px' }}>
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 320px), 1fr))', gap: '24px' }}>
                 {(templates || []).map((tmpl) => (
                   <div
                     key={tmpl.id || tmpl.key}
@@ -3150,7 +3212,7 @@ export default function AdminDashboard({ initialTab = 'overview', initialOrderId
                 <p style={{ margin: '2px 0 0', fontSize: '0.8rem', color: '#777184' }}>Live physical interaction data across all issued FLOCARD smart cards.</p>
               </div>
 
-              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(260px, 1fr))', gap: '20px', marginBottom: '24px' }}>
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 240px), 1fr))', gap: '20px', marginBottom: '24px' }}>
                 <div style={{ padding: '20px', borderRadius: '14px', backgroundColor: '#F3EEFF', border: '1px solid #E4D8FF' }}>
                   <div style={{ fontSize: '0.8rem', color: '#6B00FF', fontWeight: 600 }}>Total Tap Count</div>
                   <div style={{ fontSize: '2rem', fontWeight: 800, color: '#191522', marginTop: '4px' }}>
@@ -5186,8 +5248,21 @@ export default function AdminDashboard({ initialTab = 'overview', initialOrderId
         </div>
       )}
 
-      {/* Responsive mobile drawer styles */}
+      {/* Comprehensive Responsive Admin Styles */}
       <style>{`
+        .admin-sidebar-backdrop {
+          position: fixed;
+          inset: 0;
+          background-color: rgba(0, 0, 0, 0.6);
+          backdrop-filter: blur(4px);
+          -webkit-backdrop-filter: blur(4px);
+          z-index: 95;
+          animation: adminFadeIn 0.2s ease;
+        }
+        @keyframes adminFadeIn {
+          from { opacity: 0; }
+          to { opacity: 1; }
+        }
         @media (max-width: 900px) {
           .admin-sidebar {
             position: fixed !important;
@@ -5195,7 +5270,8 @@ export default function AdminDashboard({ initialTab = 'overview', initialOrderId
             top: 0;
             bottom: 0;
             transform: translateX(-100%);
-            box-shadow: 0 0 40px rgba(0, 0, 0, 0.6);
+            box-shadow: 0 0 40px rgba(0, 0, 0, 0.7);
+            z-index: 100 !important;
           }
           .admin-sidebar.mobile-open {
             transform: translateX(0);
@@ -5205,6 +5281,85 @@ export default function AdminDashboard({ initialTab = 'overview', initialOrderId
           }
           .mobile-hamburger-btn {
             display: block !important;
+          }
+          .admin-header {
+            padding: 12px 16px !important;
+          }
+          .admin-page-subtitle {
+            display: none !important;
+          }
+          .admin-page-title {
+            font-size: 1.15rem !important;
+          }
+          .admin-header-date-filter {
+            display: none !important;
+          }
+          .admin-user-details,
+          .admin-user-chevron {
+            display: none !important;
+          }
+          .admin-user-btn {
+            padding: 2px !important;
+          }
+          .admin-main-content {
+            padding: 16px 14px 40px !important;
+          }
+        }
+        @media (max-width: 640px) {
+          .admin-header {
+            padding: 10px 12px !important;
+            position: relative !important;
+          }
+          .admin-header-actions {
+            gap: 8px !important;
+          }
+          .admin-header-search {
+            display: none !important;
+          }
+          .admin-header-search.mobile-visible {
+            display: block !important;
+            position: absolute !important;
+            top: 100% !important;
+            left: 0 !important;
+            right: 0 !important;
+            width: 100% !important;
+            box-sizing: border-box !important;
+            background: #FFFFFF !important;
+            padding: 10px 14px !important;
+            border-bottom: 1px solid #E8E3EF !important;
+            box-shadow: 0 6px 18px rgba(0, 0, 0, 0.08) !important;
+            z-index: 89 !important;
+          }
+          .admin-mobile-search-toggle {
+            display: flex !important;
+          }
+          .admin-stats-grid {
+            grid-template-columns: repeat(2, 1fr) !important;
+            gap: 10px !important;
+            margin-bottom: 18px !important;
+          }
+          .admin-stat-card {
+            padding: 14px 12px !important;
+          }
+          .admin-middle-grid {
+            grid-template-columns: 1fr !important;
+            gap: 16px !important;
+            margin-bottom: 18px !important;
+          }
+          .admin-bottom-grid {
+            grid-template-columns: 1fr !important;
+            gap: 16px !important;
+          }
+          .admin-quick-actions-grid {
+            gap: 8px !important;
+          }
+          .admin-quick-actions-grid button {
+            padding: 12px 8px !important;
+          }
+        }
+        @media (max-width: 360px) {
+          .admin-stats-grid {
+            grid-template-columns: 1fr !important;
           }
         }
       `}</style>

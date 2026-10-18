@@ -65,8 +65,8 @@ export default function Examples() {
         <div
           style={{
             display: 'grid',
-            gridTemplateColumns: 'repeat(auto-fit, minmax(360px, 1fr))',
-            gap: '60px',
+            gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 300px), 1fr))',
+            gap: 'clamp(24px, 5vw, 60px)',
             alignItems: 'center'
           }}
         >

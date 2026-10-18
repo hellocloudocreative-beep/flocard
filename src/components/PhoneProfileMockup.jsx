@@ -53,6 +53,8 @@ export default function PhoneProfileMockup({ profile, scale = 1, className = '' 
       className={`phone-mockup-wrapper ${className}`}
       style={{
         width: '320px',
+        maxWidth: '100%',
+        boxSizing: 'border-box',
         height: '630px',
         background: '#040306',
         borderRadius: '44px',

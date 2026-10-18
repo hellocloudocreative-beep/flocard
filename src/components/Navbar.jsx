@@ -152,6 +152,7 @@ export default function Navbar({ currentPath = '/' }) {
             </div>
           )}
           <span
+            className="nav-account-text"
             style={{
               maxWidth: '85px',
               overflow: 'hidden',
@@ -193,7 +194,7 @@ export default function Navbar({ currentPath = '/' }) {
           }}
         >
           <User size={14} />
-          <span>Sign In</span>
+          <span className="nav-signin-text">Sign In</span>
         </a>
       )}
     </div>
