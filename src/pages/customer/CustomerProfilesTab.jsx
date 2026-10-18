@@ -469,7 +469,7 @@ export default function CustomerProfilesTab({ profiles = [], customer, onSavePro
                           tint: '#E2E8F0',
                           accent: '#94A3B8',
                           glow: '#64748B',
-                          gradient: 'linear-gradient(135deg, #E2E8F0 0%, #94A3B8 50%, #475569 100%)'
+                          gradient: 'linear-gradient(135deg, #FFFFFF 0%, #E2E8F0 50%, #94A3B8 100%)'
                         },
                         {
                           id: 'gold',

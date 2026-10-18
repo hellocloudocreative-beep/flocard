@@ -125,11 +125,39 @@ export default function CardCanvas({
       };
     }
     if (isPlatinum) {
+      if (element === 'name') {
+        return {
+          color: '#E2E8F0', // Solid platinum silver fallback
+          background: 'linear-gradient(100deg, #FFFFFF 0%, #F1F5F9 25%, #CBD5E1 55%, #94A3B8 80%, #FFFFFF 100%)',
+          WebkitBackgroundClip: 'text',
+          WebkitTextFillColor: 'transparent',
+          filter: 'drop-shadow(0 1px 1.5px rgba(0, 0, 0, 0.9))',
+          ...options
+        };
+      }
+      if (element === 'role') {
+        // Softer clean platinum silver, smaller uppercase letters with elegant spacing
+        return {
+          color: '#E2E8F0',
+          filter: 'drop-shadow(0 1px 1px rgba(0, 0, 0, 0.85))',
+          ...options
+        };
+      }
+      if (element === 'tagline') {
+        // Muted cool silver, regular weight, understated
+        return {
+          color: '#94A3B8',
+          ...options
+        };
+      }
+      if (element === 'details') {
+        return {
+          color: '#E2E8F0',
+          ...options
+        };
+      }
       return {
-        background: 'linear-gradient(135deg, #FFFFFF 0%, #F8FAFC 14%, #CBD5E1 30%, #475569 48%, #FFFFFF 64%, #94A3B8 78%, #E2E8F0 90%, #FFFFFF 100%)',
-        WebkitBackgroundClip: 'text',
-        WebkitTextFillColor: 'transparent',
-        filter: 'drop-shadow(0 1px 2px rgba(0, 0, 0, 0.95)) drop-shadow(0 0 6px rgba(255, 255, 255, 0.45))',
+        color: '#E2E8F0',
         ...options
       };
     }
@@ -241,14 +269,12 @@ export default function CardCanvas({
           g.addColorStop(0.70, '#C9972C');
           g.addColorStop(1.0, '#FFE8A0');
         } else if (type === 'platinum') {
+          // Refined metallic platinum & silver gradient: Specular #FFFFFF, Luster #F1F5F9, Chrome #CBD5E1, Polished silver #94A3B8, Highlight #FFFFFF
           g.addColorStop(0, '#FFFFFF');
-          g.addColorStop(0.14, '#F8FAFC');
-          g.addColorStop(0.30, '#CBD5E1');
-          g.addColorStop(0.48, '#475569');
-          g.addColorStop(0.64, '#FFFFFF');
-          g.addColorStop(0.78, '#94A3B8');
-          g.addColorStop(0.90, '#E2E8F0');
-          g.addColorStop(1, '#FFFFFF');
+          g.addColorStop(0.25, '#F1F5F9');
+          g.addColorStop(0.55, '#CBD5E1');
+          g.addColorStop(0.80, '#94A3B8');
+          g.addColorStop(1.0, '#FFFFFF');
         }
         return g;
       };
@@ -261,13 +287,13 @@ export default function CardCanvas({
 
       const getRoleFill = (x, y, textW, textH, fallbackColor) => {
         if (isGold) return '#E9C766'; // Softer champagne gold for professional role
-        if (isPlatinum) return createMetallicGradient(x, y - textH, x + textW, y, 'platinum');
+        if (isPlatinum) return '#E2E8F0'; // Refined clean silver for professional role
         return fallbackColor;
       };
 
       const getTaglineFill = (x, y, textW, textH, fallbackColor) => {
         if (isGold) return '#C5A059'; // Muted warm gold, understated
-        if (isPlatinum) return createMetallicGradient(x, y - textH, x + textW, y, 'platinum');
+        if (isPlatinum) return '#94A3B8'; // Muted cool silver, understated
         return fallbackColor;
       };
 
@@ -301,7 +327,7 @@ export default function CardCanvas({
           const startX = Math.round(w * 0.08);
           const nameY = front.details ? (h - 156) : (h - 142);
           ctx.fillStyle = getNameFill(startX, nameY, 320, 44, colors.nameColor);
-          ctx.font = `${isGold ? '600' : 'bold'} 44px "${front.fontFamily || 'Space Grotesk'}", sans-serif`;
+          ctx.font = `${isGold || isPlatinum ? '600' : 'bold'} 44px "${front.fontFamily || 'Space Grotesk'}", sans-serif`;
           ctx.fillText((front.name || 'YOUR NAME').toUpperCase(), startX, nameY);
 
           const roleY = front.details ? (h - 110) : (h - 92);
@@ -313,7 +339,7 @@ export default function CardCanvas({
 
           if (front.details) {
             const detailsY = h - 74;
-            ctx.fillStyle = isGold ? '#E9C766' : (colors.detailsColor || colors.roleColor);
+            ctx.fillStyle = isGold ? '#E9C766' : isPlatinum ? '#E2E8F0' : (colors.detailsColor || colors.roleColor);
             ctx.font = `400 18px "${front.detailsFontFamily || front.roleFontFamily || 'Inter'}", sans-serif`;
             ctx.letterSpacing = '2px';
             ctx.fillText(front.details.toUpperCase(), startX, detailsY);
@@ -418,7 +444,7 @@ export default function CardCanvas({
           const startX = Math.round(w * 0.08);
           const nameY = front.details ? (h - 124) : (h - 110);
           ctx.fillStyle = getNameFill(startX, nameY, 320, 44, colors.nameColor);
-          ctx.font = `${isGold ? '600' : 'bold'} 44px "${front.fontFamily || 'Space Grotesk'}", sans-serif`;
+          ctx.font = `${isGold || isPlatinum ? '600' : 'bold'} 44px "${front.fontFamily || 'Space Grotesk'}", sans-serif`;
           ctx.fillText((front.name || 'YOUR NAME').toUpperCase(), startX, nameY);
 
           const roleY = front.details ? (h - 80) : (h - 65);
@@ -430,7 +456,7 @@ export default function CardCanvas({
 
           if (front.details) {
             const detailsY = h - 46;
-            ctx.fillStyle = isGold ? '#E9C766' : (colors.detailsColor || colors.roleColor);
+            ctx.fillStyle = isGold ? '#E9C766' : isPlatinum ? '#E2E8F0' : (colors.detailsColor || colors.roleColor);
             ctx.font = `400 18px "${front.detailsFontFamily || front.roleFontFamily || 'Inter'}", sans-serif`;
             ctx.letterSpacing = '2px';
             ctx.fillText(front.details.toUpperCase(), startX, detailsY);
@@ -531,20 +557,16 @@ export default function CardCanvas({
                         </linearGradient>
                         <linearGradient id="nfcPlatGrad-standard-front" x1="0%" y1="0%" x2="100%" y2="100%">
                           <stop offset="0%" stopColor="#FFFFFF" />
-                          <stop offset="14%" stopColor="#F8FAFC" />
-                          <stop offset="30%" stopColor="#CBD5E1" />
-                          <stop offset="48%" stopColor="#475569" />
-                          <stop offset="64%" stopColor="#FFFFFF" />
-                          <stop offset="78%" stopColor="#94A3B8" />
-                          <stop offset="90%" stopColor="#E2E8F0" />
+                          <stop offset="25%" stopColor="#F1F5F9" />
+                          <stop offset="55%" stopColor="#CBD5E1" />
+                          <stop offset="80%" stopColor="#94A3B8" />
                           <stop offset="100%" stopColor="#FFFFFF" />
                         </linearGradient>
                         <filter id="nfcGoldGlow-standard-front" x="-20%" y="-20%" width="140%" height="140%">
                           <feDropShadow dx="0" dy="1" stdDeviation="1.2" floodColor="#000000" floodOpacity="0.85" />
                         </filter>
                         <filter id="nfcPlatGlow-standard-front" x="-20%" y="-20%" width="140%" height="140%">
-                          <feDropShadow dx="0" dy="1" stdDeviation="1.5" floodColor="#000000" floodOpacity="0.95" />
-                          <feDropShadow dx="0" dy="0" stdDeviation="2.5" floodColor="#FFFFFF" floodOpacity="0.45" />
+                          <feDropShadow dx="0" dy="1" stdDeviation="1.2" floodColor="#000000" floodOpacity="0.85" />
                         </filter>
                       </defs>
                       <g filter={isGold ? "url(#nfcGoldGlow-standard-front)" : isPlatinum ? "url(#nfcPlatGlow-standard-front)" : undefined}>
@@ -597,7 +619,7 @@ export default function CardCanvas({
                     style={{
                       fontFamily: front.fontFamily ? `"${front.fontFamily}", sans-serif` : 'var(--font-display)',
                       fontSize: front.fontSize === 'large' ? '1.45rem' : front.fontSize === 'small' ? '1.1rem' : '1.26rem',
-                      fontWeight: isGold ? 600 : 700,
+                      fontWeight: isGold || isPlatinum ? 600 : 700,
                       letterSpacing: '0.04em',
                       lineHeight: 1.15,
                       ...getMetallicTextStyle(colors.nameColor, {}, 'name')
@@ -773,20 +795,16 @@ export default function CardCanvas({
                         </linearGradient>
                         <linearGradient id="nfcPlatGrad-customer_logo-front" x1="0%" y1="0%" x2="100%" y2="100%">
                           <stop offset="0%" stopColor="#FFFFFF" />
-                          <stop offset="14%" stopColor="#F8FAFC" />
-                          <stop offset="30%" stopColor="#CBD5E1" />
-                          <stop offset="48%" stopColor="#475569" />
-                          <stop offset="64%" stopColor="#FFFFFF" />
-                          <stop offset="78%" stopColor="#94A3B8" />
-                          <stop offset="90%" stopColor="#E2E8F0" />
+                          <stop offset="25%" stopColor="#F1F5F9" />
+                          <stop offset="55%" stopColor="#CBD5E1" />
+                          <stop offset="80%" stopColor="#94A3B8" />
                           <stop offset="100%" stopColor="#FFFFFF" />
                         </linearGradient>
                         <filter id="nfcGoldGlow-customer_logo-front" x="-20%" y="-20%" width="140%" height="140%">
                           <feDropShadow dx="0" dy="1" stdDeviation="1.2" floodColor="#000000" floodOpacity="0.85" />
                         </filter>
                         <filter id="nfcPlatGlow-customer_logo-front" x="-20%" y="-20%" width="140%" height="140%">
-                          <feDropShadow dx="0" dy="1" stdDeviation="1.5" floodColor="#000000" floodOpacity="0.95" />
-                          <feDropShadow dx="0" dy="0" stdDeviation="2.5" floodColor="#FFFFFF" floodOpacity="0.45" />
+                          <feDropShadow dx="0" dy="1" stdDeviation="1.2" floodColor="#000000" floodOpacity="0.85" />
                         </filter>
                       </defs>
                       <g filter={isGold ? "url(#nfcGoldGlow-customer_logo-front)" : isPlatinum ? "url(#nfcPlatGlow-customer_logo-front)" : undefined}>
@@ -917,7 +935,7 @@ export default function CardCanvas({
                     style={{
                       fontFamily: front.fontFamily ? `"${front.fontFamily}", sans-serif` : 'var(--font-display)',
                       fontSize: front.fontSize === 'large' ? '1.45rem' : front.fontSize === 'small' ? '1.1rem' : '1.26rem',
-                      fontWeight: isGold ? 600 : 700,
+                      fontWeight: isGold || isPlatinum ? 600 : 700,
                       letterSpacing: '0.04em',
                       lineHeight: 1.15,
                       ...getMetallicTextStyle(colors.nameColor, {}, 'name')
@@ -1084,15 +1102,14 @@ function drawNfcSymbol(ctx, x, y, color, targetW = 76, edition = null) {
   } else if (edition === 'platinum') {
     const nfcGrad = ctx.createLinearGradient(0, 0, 76, 106);
     nfcGrad.addColorStop(0, '#FFFFFF');
-    nfcGrad.addColorStop(0.16, '#F8FAFC');
-    nfcGrad.addColorStop(0.32, '#CBD5E1');
-    nfcGrad.addColorStop(0.50, '#475569');
-    nfcGrad.addColorStop(0.66, '#FFFFFF');
-    nfcGrad.addColorStop(0.82, '#94A3B8');
-    nfcGrad.addColorStop(1, '#E2E8F0');
+    nfcGrad.addColorStop(0.25, '#F1F5F9');
+    nfcGrad.addColorStop(0.55, '#CBD5E1');
+    nfcGrad.addColorStop(0.80, '#94A3B8');
+    nfcGrad.addColorStop(1, '#FFFFFF');
     strokeStyle = nfcGrad;
-    ctx.shadowColor = 'rgba(255, 255, 255, 0.5)';
-    ctx.shadowBlur = 6;
+    ctx.shadowColor = 'rgba(0, 0, 0, 0.6)';
+    ctx.shadowBlur = 3;
+    ctx.shadowOffsetY = 1;
   }
 
   ctx.strokeStyle = strokeStyle;
