@@ -161,6 +161,14 @@ const INITIAL_AUDIT_LOGS = [];
 
 const INITIAL_ADMIN_ACCOUNTS = [
   {
+    email: 'hello.flocard@gmail.com',
+    name: 'Flocard Admin',
+    role: 'owner',
+    avatar: '/assets/akhil.jpg',
+    grantedAt: '2026-01-01T00:00:00Z',
+    grantedBy: 'Root'
+  },
+  {
     email: 'akhil@flocard.in',
     name: 'Akhil Anvar',
     role: 'owner',
@@ -169,6 +177,12 @@ const INITIAL_ADMIN_ACCOUNTS = [
     grantedBy: 'Root'
   }
 ];
+
+const isElevatedUser = (user) => {
+  if (!user) return false;
+  const email = (user.email || '').toLowerCase().trim();
+  return user.role === 'admin' || user.role === 'owner' || email === 'akhil@flocard.in' || email === 'hello.flocard@gmail.com';
+};
 
 const INITIAL_TEMPLATES = [
   {
@@ -536,7 +550,7 @@ export const StorageEngine = {
   getOrders: (currentUser = null) => {
     const list = getLocal('orders', INITIAL_ORDERS);
     if (!currentUser) return list;
-    const isElevated = currentUser.role === 'admin' || currentUser.role === 'owner' || currentUser.email === 'akhil@flocard.in';
+    const isElevated = isElevatedUser(currentUser);
     if (isElevated) return list;
     const cId = currentUser.id;
     const cEmail = (currentUser.email || '').toLowerCase().trim();
@@ -553,7 +567,7 @@ export const StorageEngine = {
     const order = list.find(o => o.id === id || o.orderReference === id);
     if (!order) return null;
 
-    const isElevated = currentUser?.role === 'admin' || currentUser?.role === 'owner' || currentUser?.email === 'akhil@flocard.in';
+    const isElevated = isElevatedUser(currentUser);
     const cId = currentUser?.id;
     const cEmail = (currentUser?.email || '').toLowerCase().trim();
     const cName = (currentUser?.name || '').toLowerCase().trim();
@@ -773,7 +787,7 @@ export const StorageEngine = {
     const actualActor = actorUser || actor;
 
     // Authorization verification
-    const isElevated = !actualActor || actualActor?.role === 'admin' || actualActor?.role === 'owner' || actualActor?.email === 'akhil@flocard.in';
+    const isElevated = isElevatedUser(actualActor);
     if (actualActor && !isElevated) {
       throw new Error('Access Denied: Only administrators can update order status.');
     }
@@ -888,7 +902,7 @@ export const StorageEngine = {
   },
 
   deleteOrder: (orderId, actorUser = null) => {
-    const isElevated = !actorUser || actorUser.role === 'admin' || actorUser.role === 'owner' || actorUser.email === 'akhil@flocard.in';
+    const isElevated = !actorUser || isElevatedUser(actorUser);
     if (!isElevated) {
       throw new Error('Unauthorized: Only administrators can delete orders.');
     }
@@ -1097,7 +1111,7 @@ export const StorageEngine = {
 
   // Order Internal Notes (Admin-only private notes - NEVER returned to customers)
   getOrderInternalNotes: (orderId, currentUser = null) => {
-    const isElevated = currentUser?.role === 'admin' || currentUser?.role === 'owner' || currentUser?.email === 'akhil@flocard.in';
+    const isElevated = isElevatedUser(currentUser);
     if (!isElevated) return [];
     const notes = getLocal('order_internal_notes', INITIAL_ORDER_NOTES);
     return notes
@@ -1106,7 +1120,7 @@ export const StorageEngine = {
   },
 
   addOrderInternalNote: ({ orderId, note, authorUser = null }) => {
-    const isElevated = authorUser?.role === 'admin' || authorUser?.role === 'owner' || authorUser?.email === 'akhil@flocard.in';
+    const isElevated = isElevatedUser(authorUser);
     if (!isElevated) {
       throw new Error('Unauthorized: Only administrators can add internal notes.');
     }
@@ -1288,9 +1302,23 @@ export const StorageEngine = {
   },
 
   // Admin Access Management (Owner Controlled)
-  getAdminAccounts: () => getLocal('admin_accounts', INITIAL_ADMIN_ACCOUNTS),
-  addAdminAccount: ({ email, name, role = 'admin', grantedBy = 'akhil@flocard.in' }) => {
+  getAdminAccounts: () => {
     const accounts = getLocal('admin_accounts', INITIAL_ADMIN_ACCOUNTS);
+    if (!accounts.some(a => a.email.toLowerCase() === 'hello.flocard@gmail.com')) {
+      accounts.unshift({
+        email: 'hello.flocard@gmail.com',
+        name: 'Flocard Admin',
+        role: 'owner',
+        avatar: '/assets/akhil.jpg',
+        grantedAt: '2026-01-01T00:00:00Z',
+        grantedBy: 'Root'
+      });
+      setLocal('admin_accounts', accounts);
+    }
+    return accounts;
+  },
+  addAdminAccount: ({ email, name, role = 'admin', grantedBy = 'hello.flocard@gmail.com' }) => {
+    const accounts = StorageEngine.getAdminAccounts();
     const cleanEmail = email.trim().toLowerCase();
     const existing = accounts.find(a => a.email.toLowerCase() === cleanEmail);
     if (existing) {
@@ -1309,11 +1337,11 @@ export const StorageEngine = {
     StorageEngine.addAuditLog('Admin Access', `Granted ${role} access to ${cleanEmail}`, grantedBy);
     return accounts;
   },
-  revokeAdminAccount: (email, revokedBy = 'akhil@flocard.in') => {
-    const accounts = getLocal('admin_accounts', INITIAL_ADMIN_ACCOUNTS);
+  revokeAdminAccount: (email, revokedBy = 'hello.flocard@gmail.com') => {
+    const accounts = StorageEngine.getAdminAccounts();
     const cleanEmail = email.trim().toLowerCase();
-    // Cannot revoke super-owner akhil
-    if (cleanEmail === 'akhil@flocard.in') {
+    // Cannot revoke super-owners
+    if (cleanEmail === 'akhil@flocard.in' || cleanEmail === 'hello.flocard@gmail.com') {
       return { success: false, error: 'Cannot revoke root platform owner.' };
     }
     const filtered = accounts.filter(a => a.email.toLowerCase() !== cleanEmail);
@@ -1324,7 +1352,8 @@ export const StorageEngine = {
   isEmailAuthorizedAdmin: (email) => {
     if (!email) return false;
     const clean = email.trim().toLowerCase();
-    const accounts = getLocal('admin_accounts', INITIAL_ADMIN_ACCOUNTS);
+    if (clean === 'hello.flocard@gmail.com' || clean === 'akhil@flocard.in') return true;
+    const accounts = StorageEngine.getAdminAccounts();
     return accounts.some(a => a.email.toLowerCase() === clean);
   },
 

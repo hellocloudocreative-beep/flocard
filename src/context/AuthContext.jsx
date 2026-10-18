@@ -10,13 +10,15 @@ import { StorageEngine } from '../lib/storage';
 const AuthContext = createContext();
 
 const ROOT_OWNER = {
-  id: 'cust_akhil',
-  email: 'akhil@flocard.in',
-  name: 'Akhil Anvar',
+  id: 'cust_flocard',
+  email: 'hello.flocard@gmail.com',
+  name: 'Flocard Admin',
   role: 'owner',
   avatar: '/assets/akhil.jpg',
-  profileSlug: 'akhil'
+  profileSlug: 'flocard'
 };
+
+const OWNER_EMAILS = ['hello.flocard@gmail.com', 'akhil@flocard.in'];
 
 export function AuthProvider({ children }) {
   const [user, setUser] = useState(() => {
@@ -63,7 +65,7 @@ export function AuthProvider({ children }) {
 
   const syncSupabaseUser = (sbUser) => {
     const email = sbUser.email?.toLowerCase();
-    const isOwner = email === 'akhil@flocard.in';
+    const isOwner = OWNER_EMAILS.includes(email);
     const role = isOwner ? 'owner' : (sbUser.user_metadata?.role || 'customer');
     const name = sbUser.user_metadata?.full_name || sbUser.user_metadata?.name || email?.split('@')[0] || 'User';
 
@@ -262,7 +264,7 @@ export function AuthProvider({ children }) {
       const cleanEmail = email.trim().toLowerCase();
 
       // Check if this is an admin account
-      const isAuthorized = StorageEngine.isEmailAuthorizedAdmin(cleanEmail) || cleanEmail === 'akhil@flocard.in';
+      const isAuthorized = StorageEngine.isEmailAuthorizedAdmin(cleanEmail) || OWNER_EMAILS.includes(cleanEmail);
 
       if (isAuthorized) {
         if (!password || password.length < 4) {
@@ -320,7 +322,7 @@ export function AuthProvider({ children }) {
     }
   };
 
-  const isOwner = user?.role === 'owner' || user?.email === 'akhil@flocard.in';
+  const isOwner = user?.role === 'owner' || OWNER_EMAILS.includes(user?.email?.toLowerCase());
   const isAdmin = isOwner || user?.role === 'admin';
 
   return (
