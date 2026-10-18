@@ -26,8 +26,16 @@ html[data-theme="dark"] {
   --soft-purple: #c084fc;
   --neon-violet: #8b5cf6;
   
-  --gold-primary: #d4af37;
-  --gold-glow: rgba(212, 175, 55, 0.35);
+  --gold-primary: #E9C766;
+  --gold-glow: rgba(201, 151, 44, 0.18);
+  --gold-metallic-highlight: #FFF0A6;
+  --gold-metallic-champagne: #E9C766;
+  --gold-metallic-rich: #C9972C;
+  --gold-metallic-shadow: #8A5A13;
+  --gold-metallic-gradient: linear-gradient(100deg, #FFF0A6 0%, #E9C766 35%, #C9972C 70%, #FFE8A0 100%);
+  --gold-role-color: #E9C766;
+  --gold-tagline-color: #C5A059;
+  --gold-surface-bg: #0C0B0A;
   --platinum-primary: #e2e8f0;
   --platinum-glow: rgba(226, 232, 240, 0.3);
 
@@ -109,8 +117,16 @@ html[data-theme="light"] {
   --soft-purple: #A78BFA;
   --neon-violet: #6B00FF;
 
-  --gold-primary: #B8860B;
-  --gold-glow: rgba(184, 134, 11, 0.2);
+  --gold-primary: #C9972C;
+  --gold-glow: rgba(201, 151, 44, 0.15);
+  --gold-metallic-highlight: #FFF0A6;
+  --gold-metallic-champagne: #E9C766;
+  --gold-metallic-rich: #C9972C;
+  --gold-metallic-shadow: #8A5A13;
+  --gold-metallic-gradient: linear-gradient(100deg, #FFF0A6 0%, #E9C766 35%, #C9972C 70%, #FFE8A0 100%);
+  --gold-role-color: #C9972C;
+  --gold-tagline-color: #A87D24;
+  --gold-surface-bg: #0C0B0A;
   --platinum-primary: #475569;
   --platinum-glow: rgba(71, 85, 105, 0.2);
 

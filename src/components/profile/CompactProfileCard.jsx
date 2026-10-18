@@ -50,19 +50,19 @@ export default function CompactProfileCard({
 
   const finishTints = {
     steel: '#E2E8F0',
-    gold: '#F3CF8A',
+    gold: '#E9C766',
     purple: '#A855F7'
   };
 
   const finishGlows = {
     steel: '#64748B',
-    gold: '#D97706',
+    gold: '#C9972C',
     purple: profile?.glowColor || '#6B00FF'
   };
 
   const finishAccents = {
     steel: '#94A3B8',
-    gold: '#F59E0B',
+    gold: '#E9C766',
     purple: profile?.accentColor || '#A855F7'
   };
 
