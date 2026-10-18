@@ -56,6 +56,7 @@ import {
 import { useData } from '../context/DataContext';
 import { useAuth } from '../context/AuthContext';
 import { useTheme } from '../context/ThemeContext';
+import { formatCurrencyINR } from '../lib/storage';
 
 export const FONT_OPTIONS = [
   { id: 'Space Grotesk', name: 'Space Grotesk', style: 'Modern Tech & Bold' },
@@ -198,7 +199,7 @@ function InteractiveFontPicker({
 export default function Designer() {
   const { user, isAdmin } = useAuth();
   const { isLight } = useTheme();
-  const { saveDesign, designs, studioBackground, updateStudioBackground, resetStudioBg, createOrderFromDesign } = useData();
+  const { saveDesign, designs, studioBackground, updateStudioBackground, resetStudioBg, createOrderFromDesign, getProductByEdition } = useData();
 
   // URL query params support (e.g. /designer?edition=gold&template=customer_logo&tagline=...&font=...)
   const urlParams = new URLSearchParams(window.location.search);
@@ -219,6 +220,8 @@ export default function Designer() {
   const [edition, setEdition] = useState(
     existingDesign?.edition || initialEdition
   );
+
+  const currentEditionProduct = getProductByEdition(edition);
 
   const [side, setSide] = useState('front'); // 'front' | 'back'
   const [zoom, setZoom] = useState(1);
@@ -687,6 +690,25 @@ export default function Designer() {
           <div className="designer-title-row" style={{ display: 'flex', alignItems: 'center', gap: '12px', flex: 1, minWidth: 0 }}>
             <span className="badge-tag" style={{ flexShrink: 0 }}>
               {TEMPLATES[templateType]?.badge}
+            </span>
+            <span
+              style={{
+                fontSize: '0.78rem',
+                fontWeight: 700,
+                padding: '4px 10px',
+                borderRadius: '8px',
+                backgroundColor: edition === 'gold' ? 'rgba(233, 199, 102, 0.15)' : edition === 'platinum' ? 'rgba(203, 213, 225, 0.15)' : 'rgba(168, 85, 247, 0.15)',
+                color: edition === 'gold' ? '#E9C766' : edition === 'platinum' ? '#CBD5E1' : '#A855F7',
+                border: `1px solid ${edition === 'gold' ? '#E9C76644' : edition === 'platinum' ? '#CBD5E144' : '#A855F744'}`,
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: '6px',
+                flexShrink: 0
+              }}
+            >
+              <span>{EDITIONS[edition]?.name || 'Edition'}</span>
+              <span>&bull;</span>
+              <span>{formatCurrencyINR(currentEditionProduct?.price) || 'Price coming soon'}</span>
             </span>
             <div style={{ position: 'relative', display: 'flex', alignItems: 'center', flex: 1, minWidth: 0 }}>
               <input
@@ -1978,6 +2000,12 @@ export default function Designer() {
                 <span style={{ fontSize: '0.78rem', color: 'var(--text-muted)' }}>Finish Edition</span>
                 <span style={{ fontSize: '0.84rem', color: EDITIONS[edition]?.accentColor || '#A855F7', fontWeight: 700 }}>
                   {EDITIONS[edition]?.name}
+                </span>
+              </div>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                <span style={{ fontSize: '0.78rem', color: 'var(--text-muted)' }}>Authoritative Price</span>
+                <span style={{ fontSize: '0.92rem', color: '#FFFFFF', fontWeight: 800 }}>
+                  {formatCurrencyINR(currentEditionProduct?.price) || 'Price coming soon'}
                 </span>
               </div>
             </div>

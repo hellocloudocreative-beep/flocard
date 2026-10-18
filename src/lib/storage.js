@@ -211,6 +211,116 @@ const INITIAL_TEMPLATES = [
   }
 ];
 
+export const INITIAL_PRODUCTS = [
+  {
+    id: 'prod_gold',
+    editionKey: 'gold',
+    name: 'Gold Edition',
+    subtitle: 'Black with Premium Metallic Champagne Gold Accents',
+    tagline: 'A bold and luxurious design for professionals who stand out.',
+    description: 'Near-black charcoal surface adorned with refined metallic champagne gold typography and subtle brushed reflections.',
+    price: 2499,
+    comparePrice: 3499,
+    currency: 'INR',
+    isActive: true,
+    isAvailable: true,
+    isFeatured: true,
+    featuredBadge: 'Luxury Choice',
+    theme: 'gold',
+    accentColor: '#E9C766',
+    secondaryColor: '#C9972C',
+    spotlightColor: '#E9C766',
+    finishHighlight: 'Near-black matte polymer with metallic champagne gold typography and dual-tone velvet touch.',
+    features: [
+      'NFC-enabled physical card (NXP NTAG216 high frequency chip)',
+      'Personalized name & professional role with metallic gold finish',
+      'Customizable dual-sided card artwork (Standard or Logo Badge)',
+      'Digital profile connection with one-tap instant NFC routing',
+      'High-resolution laser-etched QR code on the reverse',
+      'Waterproof IP68 & scratch-resistant protective coating'
+    ],
+    sampleFrontImage: '/assets/cardbg-gold.png',
+    sampleBackImage: '/assets/flocard-logo-gold.png',
+    ctaText: 'Customize Gold Card',
+    updatedAt: new Date().toISOString()
+  },
+  {
+    id: 'prod_platinum',
+    editionKey: 'platinum',
+    name: 'Platinum Edition',
+    subtitle: 'Black with Metallic Silver & Brushed Platinum Accents',
+    tagline: 'A sleek and modern look for forward-thinking professionals.',
+    description: 'Engineered brushed platinum and chrome precision lines against pure carbon black.',
+    price: 2199,
+    comparePrice: 2999,
+    currency: 'INR',
+    isActive: true,
+    isAvailable: true,
+    isFeatured: false,
+    featuredBadge: 'Minimalist Tech',
+    theme: 'platinum',
+    accentColor: '#E2E8F0',
+    secondaryColor: '#94A3B8',
+    spotlightColor: '#CBD5E1',
+    finishHighlight: 'Precision laser-etched stainless alloy with frosted luster against carbon black.',
+    features: [
+      'NFC-enabled physical card (NXP NTAG216 high frequency chip)',
+      'Personalized name & professional role with brushed silver finish',
+      'Customizable dual-sided card artwork (Standard or Logo Badge)',
+      'Digital profile connection with one-tap instant NFC routing',
+      'High-resolution laser-etched QR code on the reverse',
+      'Bend-proof reinforced stainless steel & polymer hybrid'
+    ],
+    sampleFrontImage: '/assets/cardbg-platinum.png',
+    sampleBackImage: '/assets/flocard-logo-platinum.png',
+    ctaText: 'Customize Platinum Card',
+    updatedAt: new Date().toISOString()
+  },
+  {
+    id: 'prod_purple',
+    editionKey: 'purple',
+    name: 'Purple Edition',
+    subtitle: 'Black with Premium Ultraviolet & Neon Purple Accents',
+    tagline: 'The signature FLOCARD identity. Engineered for innovators.',
+    description: 'Deep ultraviolet neon glow against obsidian matte black with signature FLOCARD identity.',
+    price: 1899,
+    comparePrice: 2499,
+    currency: 'INR',
+    isActive: true,
+    isAvailable: true,
+    isFeatured: true,
+    featuredBadge: 'Signature & Most Popular',
+    theme: 'purple',
+    accentColor: '#A855F7',
+    secondaryColor: '#6B00FF',
+    spotlightColor: '#A855F7',
+    finishHighlight: 'Matte obsidian surface with ultraviolet UV gloss accent and vibrant edge glow.',
+    features: [
+      'NFC-enabled physical card (NXP NTAG216 high frequency chip)',
+      'Personalized name & professional role with crisp typography',
+      'Customizable dual-sided card artwork (Standard or Logo Badge)',
+      'Digital profile connection with one-tap instant NFC routing',
+      'High-resolution laser-etched QR code on the reverse',
+      'Waterproof IP68 rating, 100,000 contactless tap cycles'
+    ],
+    sampleFrontImage: '/assets/cardbg-purple.png',
+    sampleBackImage: '/assets/flocard-logo-white.png',
+    ctaText: 'Customize Purple Card',
+    updatedAt: new Date().toISOString()
+  }
+];
+
+export function formatCurrencyINR(amount) {
+  if (amount === null || amount === undefined || amount === '' || isNaN(Number(amount)) || Number(amount) <= 0) {
+    return null;
+  }
+  return new Intl.NumberFormat('en-IN', {
+    style: 'currency',
+    currency: 'INR',
+    maximumFractionDigits: 0
+  }).format(Number(amount));
+}
+
 // In-memory fallback cache for SSR and Node test environments
 const memoryCache = new Map();
 
@@ -1218,6 +1328,70 @@ export const StorageEngine = {
     return accounts.some(a => a.email.toLowerCase() === clean);
   },
 
+  // Card Products & Pricing
+  getProducts: () => getLocal('products', INITIAL_PRODUCTS),
+  getProductByEdition: (editionKey) => {
+    const list = getLocal('products', INITIAL_PRODUCTS);
+    return list.find(p => p.editionKey === editionKey) || null;
+  },
+  saveProduct: (product, adminRole, adminEmail = 'akhil@flocard.in') => {
+    if (adminRole !== 'admin' && adminRole !== 'owner') {
+      return { success: false, error: 'Unauthorized: Only platform administrators can change product prices and configurations.' };
+    }
+
+    if (!product || !product.editionKey) {
+      return { success: false, error: 'Invalid product data: edition key required.' };
+    }
+
+    // Validate price non-negative
+    let validPrice = null;
+    if (product.price !== null && product.price !== undefined && product.price !== '') {
+      const num = Number(product.price);
+      if (isNaN(num) || num < 0) {
+        return { success: false, error: 'Price must be a valid non-negative number.' };
+      }
+      validPrice = Math.round(num);
+    }
+
+    // Validate comparison price non-negative
+    let validCompare = null;
+    if (product.comparePrice !== null && product.comparePrice !== undefined && product.comparePrice !== '') {
+      const num = Number(product.comparePrice);
+      if (isNaN(num) || num < 0) {
+        return { success: false, error: 'Comparison price must be a valid non-negative number.' };
+      }
+      validCompare = Math.round(num);
+    }
+
+    const list = getLocal('products', INITIAL_PRODUCTS);
+    const index = list.findIndex(p => p.id === product.id || p.editionKey === product.editionKey);
+    let updated;
+    if (index >= 0) {
+      updated = {
+        ...list[index],
+        ...product,
+        price: validPrice,
+        comparePrice: validCompare,
+        updatedAt: new Date().toISOString()
+      };
+      list[index] = updated;
+    } else {
+      updated = {
+        ...product,
+        id: product.id || `prod_${product.editionKey || Date.now()}`,
+        price: validPrice,
+        comparePrice: validCompare,
+        updatedAt: new Date().toISOString()
+      };
+      list.push(updated);
+    }
+
+    setLocal('products', list);
+    const priceFormatted = validPrice !== null ? `₹${validPrice}` : 'Unset (Coming Soon)';
+    StorageEngine.addAuditLog('Card Products & Pricing', `Updated pricing/specs for ${updated.name}: ${priceFormatted}`, adminEmail);
+    return { success: true, product: updated };
+  },
+
   // Studio Background
   getStudioBackground: () => getLocal('studio_bg', '/assets/hero-bg.jpg'),
   saveStudioBackground: (bgUrl, role) => {
@@ -1238,6 +1412,7 @@ export const StorageEngine = {
     localStorage.removeItem(STORAGE_KEY_PREFIX + 'customers');
     localStorage.removeItem(STORAGE_KEY_PREFIX + 'audit_logs');
     localStorage.removeItem(STORAGE_KEY_PREFIX + 'templates');
+    localStorage.removeItem(STORAGE_KEY_PREFIX + 'products');
     localStorage.removeItem(STORAGE_KEY_PREFIX + 'admin_accounts');
     localStorage.removeItem(STORAGE_KEY_PREFIX + 'studio_bg');
     return true;

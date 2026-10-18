@@ -235,6 +235,46 @@ StorageEngine.deleteOrder(submittedOrder.id, adminUser);
 StorageEngine.deleteCard(deliveryResult.card.id);
 console.log('✓ Order delivery and customer panel auto-provisioning verified.');
 
+// 9. PRODUCT PRICING & ADMIN AUTHORIZATION
+console.log('\nTest 9: Authoritative Product Pricing & Admin Authorization');
+const initialProducts = StorageEngine.getProducts();
+assert.strictEqual(initialProducts.length, 3, 'There should be 3 card edition products');
+
+const goldProd = StorageEngine.getProductByEdition('gold');
+assert.ok(goldProd, 'Gold Edition product must exist');
+assert.strictEqual(goldProd.editionKey, 'gold');
+assert.strictEqual(goldProd.price, 2499);
+
+// Customer attempts to update price -> MUST FAIL
+const customerAttempt = StorageEngine.saveProduct({ ...goldProd, price: 99 }, 'customer', customerA.email);
+assert.strictEqual(customerAttempt.success, false, 'Non-admin customer cannot update pricing');
+assert.ok(customerAttempt.error.includes('Unauthorized'), 'Error message must specify unauthorized');
+
+// Admin with invalid negative price -> MUST FAIL
+const invalidPriceAttempt = StorageEngine.saveProduct({ ...goldProd, price: -500 }, 'admin', adminUser.email);
+assert.strictEqual(invalidPriceAttempt.success, false, 'Negative price must be rejected');
+
+// Admin updates price with valid comparison price -> SUCCESS
+const adminUpdate = StorageEngine.saveProduct(
+  { ...goldProd, price: 2799, comparePrice: 3999, isAvailable: true },
+  'admin',
+  adminUser.email
+);
+assert.strictEqual(adminUpdate.success, true, 'Authorized admin must be able to update product pricing');
+assert.strictEqual(adminUpdate.product.price, 2799);
+assert.strictEqual(adminUpdate.product.comparePrice, 3999);
+
+// Verify currency formatting
+import { formatCurrencyINR } from '../src/lib/storage.js';
+assert.strictEqual(formatCurrencyINR(2799), '₹2,799');
+assert.strictEqual(formatCurrencyINR(null), null);
+assert.strictEqual(formatCurrencyINR(0), null);
+
+// Restore original price
+StorageEngine.saveProduct({ ...goldProd, price: 2499, comparePrice: 3499 }, 'admin', adminUser.email);
+console.log('✓ Product pricing security, validation, and INR currency formatting verified.');
+
 console.log('\n========================================');
 console.log('ALL FLOCARD BACKEND & STORAGE TESTS PASSED!');
 console.log('========================================');
+

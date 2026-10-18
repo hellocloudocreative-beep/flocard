@@ -56,7 +56,8 @@ import {
   Truck,
   Building2,
   Upload,
-  Camera
+  Camera,
+  Tag
 } from 'lucide-react';
 import { useData } from '../../context/DataContext';
 import { useAuth } from '../../context/AuthContext';
@@ -64,6 +65,7 @@ import Card3DPreview from '../../components/Card3DPreview';
 import { getSupabaseStatus } from '../../lib/supabase';
 import { exportCardPDF } from '../../lib/pdfExport';
 import { compressImage } from '../../lib/imageCompression';
+import { formatCurrencyINR } from '../../lib/storage';
 import AccountAccessCard from '../../components/spectrum/AccountAccessCard';
 import AnimatedSwitch from '../../components/spectrum/AnimatedSwitch';
 import HoldToConfirm from '../../components/spectrum/HoldToConfirm';
@@ -79,6 +81,9 @@ export default function AdminDashboard({ initialTab = 'overview', initialOrderId
     orders = [],
     customers,
     templates,
+    products = [],
+    saveProduct,
+    getProductByEdition,
     auditLogs,
     adminAccounts,
     addAdminAccount,
@@ -107,7 +112,7 @@ export default function AdminDashboard({ initialTab = 'overview', initialOrderId
 
   // Navigation & UI State
   const [activeTab, setActiveTab] = useState(
-    ['overview', 'customers', 'profiles', 'designs', 'orders', 'cards', 'templates', 'analytics', 'admin-access', 'audit-logs', 'settings'].includes(initialTab)
+    ['overview', 'customers', 'profiles', 'designs', 'orders', 'cards', 'pricing', 'templates', 'analytics', 'admin-access', 'audit-logs', 'settings'].includes(initialTab)
       ? initialTab
       : 'overview'
   );
@@ -137,6 +142,10 @@ export default function AdminDashboard({ initialTab = 'overview', initialOrderId
   const [editingCard, setEditingCard] = useState(null);
   const [editingDesign, setEditingDesign] = useState(null);
   const [editingTemplate, setEditingTemplate] = useState(null);
+  const [editingProduct, setEditingProduct] = useState(null);
+  const [productSaveError, setProductSaveError] = useState('');
+  const [productSaveSuccess, setProductSaveSuccess] = useState('');
+  const [newFeatureText, setNewFeatureText] = useState('');
 
   // Form States
   const [newCustForm, setNewCustForm] = useState({ name: '', email: '', phone: '', company: '' });
@@ -190,6 +199,7 @@ export default function AdminDashboard({ initialTab = 'overview', initialOrderId
     { id: 'designs', label: 'Card Designs', icon: Palette, badge: stats.pendingApprovals > 0 ? stats.pendingApprovals : null },
     { id: 'orders', label: 'Orders', icon: Package, badge: stats.pendingOrders > 0 ? stats.pendingOrders : (orders.length > 0 ? orders.length : null) },
     { id: 'cards', label: 'NFC Cards', icon: Radio, badge: cards.length },
+    { id: 'pricing', label: 'Products & Pricing', icon: Tag, badge: products?.length || 3 },
     { id: 'templates', label: 'Card Templates', icon: Layers },
     { id: 'analytics', label: 'Analytics', icon: BarChart3 },
     { id: 'admin-access', label: 'Admin Access', icon: ShieldCheck, ownerOnly: true },
@@ -429,6 +439,70 @@ export default function AdminDashboard({ initialTab = 'overview', initialOrderId
       textColor: '#FFFFFF',
       cardBg: '#15101D',
       status: 'active'
+    });
+  };
+
+  // Handle Save/Publish Product Pricing & Configuration (Admin Protected)
+  const handleSaveProductPricing = (e) => {
+    if (e && e.preventDefault) e.preventDefault();
+    if (!editingProduct) return;
+    setProductSaveError('');
+    setProductSaveSuccess('');
+
+    // Non-negative validation for selling price
+    if (editingProduct.price !== null && editingProduct.price !== undefined && editingProduct.price !== '') {
+      const p = Number(editingProduct.price);
+      if (isNaN(p) || p < 0) {
+        setProductSaveError('Selling price must be a valid non-negative number.');
+        return;
+      }
+    }
+
+    // Non-negative validation for comparison price
+    if (editingProduct.comparePrice !== null && editingProduct.comparePrice !== undefined && editingProduct.comparePrice !== '') {
+      const cp = Number(editingProduct.comparePrice);
+      if (isNaN(cp) || cp < 0) {
+        setProductSaveError('Comparison price must be a valid non-negative number.');
+        return;
+      }
+    }
+
+    const res = saveProduct(editingProduct, user?.role || 'admin', user?.email || 'akhil@flocard.in');
+    if (res && !res.success) {
+      setProductSaveError(res.error || 'Failed to save product pricing.');
+      return;
+    }
+
+    setProductSaveSuccess(`Product details and pricing saved for ${editingProduct.name}!`);
+    setFulfillmentToast({
+      title: 'Product Pricing Published!',
+      message: `${editingProduct.name} updated across store (${formatCurrencyINR(editingProduct.price) || 'Price coming soon'}).`
+    });
+    setTimeout(() => setFulfillmentToast(null), 5000);
+    setTimeout(() => {
+      setEditingProduct(null);
+      setProductSaveSuccess('');
+      setProductSaveError('');
+    }, 600);
+  };
+
+  const handleAddProductFeature = () => {
+    if (!newFeatureText.trim() || !editingProduct) return;
+    const currentFeatures = editingProduct.features || [];
+    setEditingProduct({
+      ...editingProduct,
+      features: [...currentFeatures, newFeatureText.trim()]
+    });
+    setNewFeatureText('');
+  };
+
+  const handleRemoveProductFeature = (index) => {
+    if (!editingProduct) return;
+    const currentFeatures = [...(editingProduct.features || [])];
+    currentFeatures.splice(index, 1);
+    setEditingProduct({
+      ...editingProduct,
+      features: currentFeatures
     });
   };
 
@@ -711,6 +785,7 @@ export default function AdminDashboard({ initialTab = 'overview', initialOrderId
                 {activeTab === 'designs' && 'Card Designs'}
                 {activeTab === 'orders' && 'Orders & Fulfillment'}
                 {activeTab === 'cards' && 'NFC Cards'}
+                {activeTab === 'pricing' && 'Card Products & Pricing'}
                 {activeTab === 'templates' && 'Card Templates'}
                 {activeTab === 'analytics' && 'Analytics'}
                 {activeTab === 'admin-access' && 'Admin Access'}
@@ -724,6 +799,7 @@ export default function AdminDashboard({ initialTab = 'overview', initialOrderId
                 {activeTab === 'designs' && 'Artwork review queue, bleed safe-area checks, and print approvals.'}
                 {activeTab === 'orders' && 'Card production pipeline, manufacturing orders, and automated NFC card + profile provisioning.'}
                 {activeTab === 'cards' && 'NTAG216 chip inventory, NFC encoding, and permanent redirect routes.'}
+                {activeTab === 'pricing' && 'Configure authoritative physical NFC card pricing, compare prices, included specifications, and live store availability.'}
                 {activeTab === 'templates' && 'Manage Standard FLOCARD (Without Customer Logo) and Customer Logo (With Customer Logo) brand templates.'}
                 {activeTab === 'analytics' && 'Real-time contactless tap metrics and telemetry logs.'}
                 {activeTab === 'admin-access' && 'Owner-governed administrator invitations and security roles.'}
@@ -2568,6 +2644,257 @@ export default function AdminDashboard({ initialTab = 'overview', initialOrderId
           )}
 
           {/* ====================================================================
+              VIEW: CARD PRODUCTS & PRICING
+              Protected authoritative management for physical NFC cards
+              ==================================================================== */}
+          {activeTab === 'pricing' && (
+            <div style={{ backgroundColor: '#FFFFFF', borderRadius: '16px', border: '1px solid #E8E3EF', padding: '28px' }}>
+              {/* Header Row */}
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '24px', flexWrap: 'wrap', gap: '16px' }}>
+                <div>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                    <h3 style={{ margin: 0, fontSize: '1.25rem', fontWeight: 800, color: '#191522' }}>
+                      Card Products & Pricing Configuration
+                    </h3>
+                    <span style={{ fontSize: '0.72rem', fontWeight: 700, padding: '3px 10px', borderRadius: '10px', backgroundColor: '#EDE9FE', color: '#6B00FF' }}>
+                      INR (₹) Standard
+                    </span>
+                  </div>
+                  <p style={{ margin: '4px 0 0', fontSize: '0.82rem', color: '#777184' }}>
+                    Manage authoritative pricing, optional comparison prices, included hardware features, and stock availability for Gold, Platinum, and Purple editions.
+                  </p>
+                </div>
+
+                <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '0.8rem', color: '#059669', backgroundColor: '#ECFDF5', padding: '6px 12px', borderRadius: '10px', border: '1px solid #A7F3D0' }}>
+                    <CheckCircle2 size={15} />
+                    <span>Multi-tab synchronized</span>
+                  </div>
+                </div>
+              </div>
+
+              {/* Quick Pricing Summary Row */}
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: '16px', marginBottom: '28px' }}>
+                <div style={{ padding: '16px', borderRadius: '12px', backgroundColor: '#FAF9FC', border: '1px solid #E8E3EF' }}>
+                  <div style={{ fontSize: '0.74rem', textTransform: 'uppercase', letterSpacing: '0.05em', color: '#777184', fontWeight: 600 }}>Physical Editions</div>
+                  <div style={{ fontSize: '1.3rem', fontWeight: 800, color: '#191522', marginTop: '4px' }}>3 Editions</div>
+                  <div style={{ fontSize: '0.75rem', color: '#6B00FF', marginTop: '2px' }}>Gold, Platinum, Purple</div>
+                </div>
+
+                <div style={{ padding: '16px', borderRadius: '12px', backgroundColor: '#FAF9FC', border: '1px solid #E8E3EF' }}>
+                  <div style={{ fontSize: '0.74rem', textTransform: 'uppercase', letterSpacing: '0.05em', color: '#777184', fontWeight: 600 }}>Active Price Range</div>
+                  <div style={{ fontSize: '1.3rem', fontWeight: 800, color: '#191522', marginTop: '4px' }}>
+                    {(() => {
+                      const validPrices = (products || []).map(p => Number(p.price)).filter(p => !isNaN(p) && p > 0);
+                      if (validPrices.length === 0) return 'Prices pending';
+                      const min = Math.min(...validPrices);
+                      const max = Math.max(...validPrices);
+                      return min === max ? `₹${min.toLocaleString('en-IN')}` : `₹${min.toLocaleString('en-IN')} – ₹${max.toLocaleString('en-IN')}`;
+                    })()}
+                  </div>
+                  <div style={{ fontSize: '0.75rem', color: '#059669', marginTop: '2px' }}>Indian Rupees (₹)</div>
+                </div>
+
+                <div style={{ padding: '16px', borderRadius: '12px', backgroundColor: '#FAF9FC', border: '1px solid #E8E3EF' }}>
+                  <div style={{ fontSize: '0.74rem', textTransform: 'uppercase', letterSpacing: '0.05em', color: '#777184', fontWeight: 600 }}>Store Availability</div>
+                  <div style={{ fontSize: '1.3rem', fontWeight: 800, color: '#059669', marginTop: '4px' }}>
+                    {(products || []).filter(p => p.availability !== 'out_of_stock' && p.status === 'active').length} / {(products || []).length} In Stock
+                  </div>
+                  <div style={{ fontSize: '0.75rem', color: '#777184', marginTop: '2px' }}>Live NFC production</div>
+                </div>
+              </div>
+
+              {/* Edition Cards Grid */}
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(340px, 1fr))', gap: '24px' }}>
+                {(products || []).map((product) => {
+                  const formattedPrice = formatCurrencyINR(product.price);
+                  const formattedCompare = product.comparePrice && product.comparePrice > product.price ? formatCurrencyINR(product.comparePrice) : null;
+                  const isAvailable = product.availability !== 'out_of_stock' && product.status === 'active';
+
+                  return (
+                    <div
+                      key={product.id || product.editionKey}
+                      style={{
+                        borderRadius: '16px',
+                        border: `1px solid ${product.accentColor ? `${product.accentColor}44` : '#E8E3EF'}`,
+                        backgroundColor: '#FFFFFF',
+                        boxShadow: '0 4px 16px rgba(0, 0, 0, 0.03)',
+                        display: 'flex',
+                        flexDirection: 'column',
+                        justifyContent: 'space-between',
+                        overflow: 'hidden',
+                        position: 'relative'
+                      }}
+                    >
+                      {/* Top Accent Strip */}
+                      <div
+                        style={{
+                          height: '5px',
+                          background: product.accentColor === '#E9C766'
+                            ? 'linear-gradient(90deg, #FFF0A6, #E9C766, #C9972C)'
+                            : product.accentColor === '#CBD5E1'
+                              ? 'linear-gradient(90deg, #F8FAFC, #CBD5E1, #94A3B8)'
+                              : 'linear-gradient(90deg, #C084FC, #A855F7, #6B00FF)'
+                        }}
+                      />
+
+                      <div style={{ padding: '20px' }}>
+                        {/* Header Badges */}
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '14px', flexWrap: 'wrap', gap: '8px' }}>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                            <span
+                              style={{
+                                fontSize: '0.74rem',
+                                fontWeight: 700,
+                                textTransform: 'uppercase',
+                                letterSpacing: '0.04em',
+                                padding: '4px 10px',
+                                borderRadius: '8px',
+                                backgroundColor: `${product.accentColor}22`,
+                                color: product.accentColor === '#CBD5E1' ? '#334155' : product.accentColor,
+                                border: `1px solid ${product.accentColor}55`
+                              }}
+                            >
+                              {product.editionKey?.toUpperCase()} EDITION
+                            </span>
+                            {product.featured && (
+                              <span style={{ fontSize: '0.68rem', fontWeight: 800, padding: '3px 8px', borderRadius: '6px', backgroundColor: '#FEF3C7', color: '#B45309', border: '1px solid #FDE68A' }}>
+                                ★ FEATURED
+                              </span>
+                            )}
+                          </div>
+
+                          <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                            <span
+                              style={{
+                                fontSize: '0.7rem',
+                                fontWeight: 600,
+                                padding: '2px 8px',
+                                borderRadius: '6px',
+                                backgroundColor: product.status === 'active' ? '#ECFDF5' : '#F3F4F6',
+                                color: product.status === 'active' ? '#059669' : '#6B7280'
+                              }}
+                            >
+                              {product.status === 'active' ? 'Active' : 'Disabled'}
+                            </span>
+                            <span
+                              style={{
+                                fontSize: '0.7rem',
+                                fontWeight: 600,
+                                padding: '2px 8px',
+                                borderRadius: '6px',
+                                backgroundColor: isAvailable ? '#EFF6FF' : '#FEF2F2',
+                                color: isAvailable ? '#2563EB' : '#DC2626'
+                              }}
+                            >
+                              {product.availability === 'in_stock' ? 'In Stock' : product.availability === 'low_stock' ? 'Low Stock' : product.availability === 'pre_order' ? 'Pre-Order' : 'Out of Stock'}
+                            </span>
+                          </div>
+                        </div>
+
+                        {/* Interactive 3D Card Preview Stage */}
+                        <div
+                          style={{
+                            width: '100%',
+                            minHeight: '230px',
+                            borderRadius: '12px',
+                            background: 'radial-gradient(ellipse at 50% 30%, #201135 0%, #0D0717 65%, #07030D 100%)',
+                            border: `1px solid ${product.accentColor}33`,
+                            display: 'flex',
+                            flexDirection: 'column',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            padding: '16px 12px',
+                            marginBottom: '16px',
+                            position: 'relative'
+                          }}
+                        >
+                          <Card3DPreview edition={product.editionKey} width={250} allowFlip={true} />
+                          <div style={{ marginTop: '10px', fontSize: '0.72rem', color: '#9CA3AF' }}>
+                            Hover to tilt &bull; Click card to flip front / back
+                          </div>
+                        </div>
+
+                        {/* Product Title & Pricing */}
+                        <h4 style={{ margin: '0 0 6px', fontSize: '1.2rem', fontWeight: 800, color: '#191522' }}>
+                          {product.name}
+                        </h4>
+
+                        <div style={{ display: 'flex', alignItems: 'baseline', gap: '8px', marginBottom: '8px' }}>
+                          {formattedPrice ? (
+                            <>
+                              <span style={{ fontSize: '1.6rem', fontWeight: 900, color: '#191522' }}>
+                                {formattedPrice}
+                              </span>
+                              {formattedCompare && (
+                                <span style={{ fontSize: '1rem', color: '#9CA3AF', textDecoration: 'line-through' }}>
+                                  {formattedCompare}
+                                </span>
+                              )}
+                            </>
+                          ) : (
+                            <span style={{ fontSize: '1.1rem', fontWeight: 700, color: '#D97706' }}>
+                              Price coming soon
+                            </span>
+                          )}
+                        </div>
+
+                        <p style={{ margin: '0 0 16px', fontSize: '0.82rem', color: '#6B7280', lineHeight: 1.5 }}>
+                          {product.description}
+                        </p>
+
+                        {/* Key Included Features List */}
+                        <div style={{ borderTop: '1px solid #F3F4F6', paddingTop: '12px', marginBottom: '16px' }}>
+                          <div style={{ fontSize: '0.72rem', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.04em', color: '#4B5563', marginBottom: '8px' }}>
+                            Included Features ({product.features?.length || 0})
+                          </div>
+                          <ul style={{ listStyle: 'none', margin: 0, padding: 0, display: 'flex', flexDirection: 'column', gap: '6px' }}>
+                            {(product.features || []).map((feat, idx) => (
+                              <li key={idx} style={{ display: 'flex', alignItems: 'flex-start', gap: '6px', fontSize: '0.78rem', color: '#374151' }}>
+                                <Check size={14} color="#059669" style={{ marginTop: '2px', flexShrink: 0 }} />
+                                <span>{feat}</span>
+                              </li>
+                            ))}
+                          </ul>
+                        </div>
+                      </div>
+
+                      {/* Card Footer Actions */}
+                      <div style={{ padding: '14px 20px', borderTop: '1px solid #E8E3EF', backgroundColor: '#FAF9FC', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                        <span style={{ fontSize: '0.75rem', color: '#777184' }}>
+                          Updated {new Date(product.updatedAt || Date.now()).toLocaleDateString('en-IN')}
+                        </span>
+
+                        <button
+                          type="button"
+                          onClick={() => setEditingProduct({ ...product, features: [...(product.features || [])] })}
+                          style={{
+                            display: 'flex',
+                            alignItems: 'center',
+                            gap: '6px',
+                            padding: '7px 14px',
+                            borderRadius: '8px',
+                            border: '1px solid #D1D5DB',
+                            backgroundColor: '#FFFFFF',
+                            color: '#1F2937',
+                            fontSize: '0.8rem',
+                            fontWeight: 600,
+                            cursor: 'pointer',
+                            boxShadow: '0 1px 2px rgba(0,0,0,0.05)'
+                          }}
+                        >
+                          <Edit2 size={14} />
+                          <span>Configure Pricing & Specs</span>
+                        </button>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          )}
+
+          {/* ====================================================================
               VIEW: CARD TEMPLATES
               ==================================================================== */}
           {activeTab === 'templates' && (
@@ -4282,6 +4609,255 @@ export default function AdminDashboard({ initialTab = 'overview', initialOrderId
                 </button>
                 <button type="submit" style={{ padding: '8px 20px', borderRadius: '8px', border: 'none', backgroundColor: '#6B00FF', color: '#FFFFFF', fontWeight: 600, fontSize: '0.8rem', cursor: 'pointer' }}>
                   Save Template
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* ====================================================================
+          MODAL: CONFIGURE CARD PRODUCT & PRICING
+          ==================================================================== */}
+      {editingProduct && (
+        <div style={{ position: 'fixed', inset: 0, backgroundColor: 'rgba(8, 6, 13, 0.85)', backdropFilter: 'blur(4px)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000, padding: '20px' }}>
+          <div style={{ backgroundColor: '#FFFFFF', borderRadius: '16px', width: '100%', maxWidth: '600px', padding: '24px', border: '1px solid #E8E3EF', maxHeight: '92vh', overflowY: 'auto', boxShadow: '0 20px 40px rgba(0,0,0,0.2)' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px', paddingBottom: '12px', borderBottom: '1px solid #F3F4F6' }}>
+              <div>
+                <h3 style={{ margin: 0, fontSize: '1.2rem', fontWeight: 800, color: '#191522' }}>
+                  Edit Product Pricing & Specifications
+                </h3>
+                <p style={{ margin: '2px 0 0', fontSize: '0.78rem', color: '#777184' }}>
+                  {editingProduct.name} ({editingProduct.editionKey?.toUpperCase()} Edition)
+                </p>
+              </div>
+              <button
+                type="button"
+                onClick={() => { setEditingProduct(null); setProductSaveError(''); setProductSaveSuccess(''); }}
+                style={{ background: 'none', border: 'none', color: '#777184', cursor: 'pointer', padding: '4px' }}
+              >
+                <X size={18} />
+              </button>
+            </div>
+
+            {productSaveError && (
+              <div style={{ padding: '10px 14px', borderRadius: '8px', backgroundColor: '#FEF2F2', border: '1px solid #FCA5A5', color: '#B91C1C', fontSize: '0.8rem', marginBottom: '14px', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                <AlertCircle size={15} />
+                <span>{productSaveError}</span>
+              </div>
+            )}
+
+            {productSaveSuccess && (
+              <div style={{ padding: '10px 14px', borderRadius: '8px', backgroundColor: '#ECFDF5', border: '1px solid #A7F3D0', color: '#047857', fontSize: '0.8rem', marginBottom: '14px', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                <CheckCircle2 size={15} />
+                <span>{productSaveSuccess}</span>
+              </div>
+            )}
+
+            <form onSubmit={handleSaveProductPricing} style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
+              {/* Pricing Row */}
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
+                <div>
+                  <label style={{ display: 'block', fontSize: '0.78rem', fontWeight: 600, marginBottom: '4px', color: '#191522' }}>
+                    Selling Price (₹ INR) <span style={{ color: '#EF4444' }}>*</span>
+                  </label>
+                  <input
+                    type="number"
+                    min="0"
+                    step="1"
+                    value={editingProduct.price ?? ''}
+                    onChange={(e) => setEditingProduct({ ...editingProduct, price: e.target.value === '' ? null : Number(e.target.value) })}
+                    placeholder="e.g. 2499 (0 for Price coming soon)"
+                    style={{ width: '100%', padding: '9px 12px', borderRadius: '8px', border: '1px solid #E8E3EF', fontSize: '0.84rem' }}
+                  />
+                  <span style={{ fontSize: '0.7rem', color: '#777184', marginTop: '2px', display: 'block' }}>
+                    Leave empty or 0 to show "Price coming soon".
+                  </span>
+                </div>
+
+                <div>
+                  <label style={{ display: 'block', fontSize: '0.78rem', fontWeight: 600, marginBottom: '4px', color: '#191522' }}>
+                    Comparison Price (₹ INR)
+                  </label>
+                  <input
+                    type="number"
+                    min="0"
+                    step="1"
+                    value={editingProduct.comparePrice ?? ''}
+                    onChange={(e) => setEditingProduct({ ...editingProduct, comparePrice: e.target.value === '' ? null : Number(e.target.value) })}
+                    placeholder="e.g. 2999 (optional strike-through)"
+                    style={{ width: '100%', padding: '9px 12px', borderRadius: '8px', border: '1px solid #E8E3EF', fontSize: '0.84rem' }}
+                  />
+                  <span style={{ fontSize: '0.7rem', color: '#777184', marginTop: '2px', display: 'block' }}>
+                    Only displayed when greater than selling price.
+                  </span>
+                </div>
+              </div>
+
+              {/* Product Title */}
+              <div>
+                <label style={{ display: 'block', fontSize: '0.78rem', fontWeight: 600, marginBottom: '4px', color: '#191522' }}>
+                  Product Edition Name
+                </label>
+                <input
+                  type="text"
+                  required
+                  value={editingProduct.name || ''}
+                  onChange={(e) => setEditingProduct({ ...editingProduct, name: e.target.value })}
+                  style={{ width: '100%', padding: '9px 12px', borderRadius: '8px', border: '1px solid #E8E3EF', fontSize: '0.84rem' }}
+                />
+              </div>
+
+              {/* Description */}
+              <div>
+                <label style={{ display: 'block', fontSize: '0.78rem', fontWeight: 600, marginBottom: '4px', color: '#191522' }}>
+                  Product Finish & Description
+                </label>
+                <textarea
+                  rows={2}
+                  value={editingProduct.description || ''}
+                  onChange={(e) => setEditingProduct({ ...editingProduct, description: e.target.value })}
+                  style={{ width: '100%', padding: '9px 12px', borderRadius: '8px', border: '1px solid #E8E3EF', fontSize: '0.84rem', resize: 'vertical' }}
+                />
+              </div>
+
+              {/* Status & Availability & Featured */}
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '12px' }}>
+                <div>
+                  <label style={{ display: 'block', fontSize: '0.78rem', fontWeight: 600, marginBottom: '4px', color: '#191522' }}>
+                    Product Status
+                  </label>
+                  <select
+                    value={editingProduct.status || 'active'}
+                    onChange={(e) => setEditingProduct({ ...editingProduct, status: e.target.value })}
+                    style={{ width: '100%', padding: '9px 12px', borderRadius: '8px', border: '1px solid #E8E3EF', fontSize: '0.84rem' }}
+                  >
+                    <option value="active">Active (Visible)</option>
+                    <option value="disabled">Disabled (Hidden)</option>
+                  </select>
+                </div>
+
+                <div>
+                  <label style={{ display: 'block', fontSize: '0.78rem', fontWeight: 600, marginBottom: '4px', color: '#191522' }}>
+                    Inventory Status
+                  </label>
+                  <select
+                    value={editingProduct.availability || 'in_stock'}
+                    onChange={(e) => setEditingProduct({ ...editingProduct, availability: e.target.value })}
+                    style={{ width: '100%', padding: '9px 12px', borderRadius: '8px', border: '1px solid #E8E3EF', fontSize: '0.84rem' }}
+                  >
+                    <option value="in_stock">In Stock</option>
+                    <option value="low_stock">Low Stock</option>
+                    <option value="out_of_stock">Out of Stock</option>
+                    <option value="pre_order">Pre-Order</option>
+                  </select>
+                </div>
+
+                <div>
+                  <label style={{ display: 'block', fontSize: '0.78rem', fontWeight: 600, marginBottom: '4px', color: '#191522' }}>
+                    Featured Edition
+                  </label>
+                  <label style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '9px 12px', borderRadius: '8px', border: '1px solid #E8E3EF', cursor: 'pointer', fontSize: '0.82rem' }}>
+                    <input
+                      type="checkbox"
+                      checked={!!editingProduct.featured}
+                      onChange={(e) => setEditingProduct({ ...editingProduct, featured: e.target.checked })}
+                    />
+                    <span>Show Badge</span>
+                  </label>
+                </div>
+              </div>
+
+              {/* Included Features Management */}
+              <div>
+                <label style={{ display: 'block', fontSize: '0.78rem', fontWeight: 600, marginBottom: '6px', color: '#191522' }}>
+                  Key Included Features (Strictly shown on product card)
+                </label>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '6px', marginBottom: '8px' }}>
+                  {(editingProduct.features || []).map((feat, idx) => (
+                    <div key={idx} style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                      <input
+                        type="text"
+                        value={feat}
+                        onChange={(e) => {
+                          const updated = [...(editingProduct.features || [])];
+                          updated[idx] = e.target.value;
+                          setEditingProduct({ ...editingProduct, features: updated });
+                        }}
+                        style={{ flex: 1, padding: '7px 10px', borderRadius: '8px', border: '1px solid #E8E3EF', fontSize: '0.8rem' }}
+                      />
+                      <button
+                        type="button"
+                        onClick={() => handleRemoveProductFeature(idx)}
+                        style={{ background: 'none', border: 'none', color: '#EF4444', cursor: 'pointer', padding: '4px' }}
+                        title="Remove feature"
+                      >
+                        <Trash2 size={15} />
+                      </button>
+                    </div>
+                  ))}
+                </div>
+
+                <div style={{ display: 'flex', gap: '8px' }}>
+                  <input
+                    type="text"
+                    value={newFeatureText}
+                    onChange={(e) => setNewFeatureText(e.target.value)}
+                    placeholder="Type new feature to include..."
+                    onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); handleAddProductFeature(); } }}
+                    style={{ flex: 1, padding: '7px 10px', borderRadius: '8px', border: '1px solid #E8E3EF', fontSize: '0.8rem' }}
+                  />
+                  <button
+                    type="button"
+                    onClick={handleAddProductFeature}
+                    style={{ padding: '7px 14px', borderRadius: '8px', border: 'none', backgroundColor: '#6B00FF', color: '#FFFFFF', fontSize: '0.8rem', fontWeight: 600, cursor: 'pointer' }}
+                  >
+                    + Add Feature
+                  </button>
+                </div>
+              </div>
+
+              {/* Sample Card Images */}
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
+                <div>
+                  <label style={{ display: 'block', fontSize: '0.78rem', fontWeight: 600, marginBottom: '4px', color: '#191522' }}>
+                    Front Card Asset URL
+                  </label>
+                  <input
+                    type="text"
+                    value={editingProduct.sampleFrontImage || ''}
+                    onChange={(e) => setEditingProduct({ ...editingProduct, sampleFrontImage: e.target.value })}
+                    style={{ width: '100%', padding: '7px 10px', borderRadius: '8px', border: '1px solid #E8E3EF', fontSize: '0.8rem' }}
+                  />
+                </div>
+
+                <div>
+                  <label style={{ display: 'block', fontSize: '0.78rem', fontWeight: 600, marginBottom: '4px', color: '#191522' }}>
+                    Back Card Asset URL
+                  </label>
+                  <input
+                    type="text"
+                    value={editingProduct.sampleBackImage || ''}
+                    onChange={(e) => setEditingProduct({ ...editingProduct, sampleBackImage: e.target.value })}
+                    style={{ width: '100%', padding: '7px 10px', borderRadius: '8px', border: '1px solid #E8E3EF', fontSize: '0.8rem' }}
+                  />
+                </div>
+              </div>
+
+              {/* Modal Buttons */}
+              <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '10px', marginTop: '16px', paddingTop: '14px', borderTop: '1px solid #F3F4F6' }}>
+                <button
+                  type="button"
+                  onClick={() => { setEditingProduct(null); setProductSaveError(''); setProductSaveSuccess(''); }}
+                  style={{ padding: '8px 16px', borderRadius: '8px', border: '1px solid #E8E3EF', background: 'none', fontSize: '0.82rem', cursor: 'pointer' }}
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  style={{ padding: '8px 22px', borderRadius: '8px', border: 'none', backgroundColor: '#6B00FF', color: '#FFFFFF', fontWeight: 600, fontSize: '0.82rem', cursor: 'pointer', boxShadow: '0 2px 6px rgba(107, 0, 255, 0.25)' }}
+                >
+                  Save & Publish Changes
                 </button>
               </div>
             </form>

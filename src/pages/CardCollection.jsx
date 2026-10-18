@@ -8,13 +8,18 @@ import { ArrowRight, Sparkles, Check } from 'lucide-react';
 import Card3DPreview from '../components/Card3DPreview';
 import { EDITIONS } from '../lib/constants';
 import { useTheme } from '../context/ThemeContext';
+import { useData } from '../context/DataContext';
+import { formatCurrencyINR } from '../lib/storage';
+import SpotlightCard from '../components/SpotlightCard/SpotlightCard';
 
 export default function CardCollection() {
   const [filter, setFilter] = useState('all');
   const [templateType, setTemplateType] = useState('standard');
   const { isLight } = useTheme();
+  const { products, getProductByEdition } = useData();
 
-  const editionKeys = filter === 'all' ? ['purple', 'gold', 'platinum'] : [filter];
+  // Three signature editions in prompt order: Gold, Platinum, Purple
+  const editionKeys = filter === 'all' ? ['gold', 'platinum', 'purple'] : [filter];
 
   return (
     <div style={{ paddingTop: 'calc(var(--header-height) + 40px)', paddingBottom: '100px' }}>
@@ -95,9 +100,9 @@ export default function CardCollection() {
             >
               {[
                 { id: 'all', label: 'All Editions' },
-                { id: 'purple', label: 'Purple (Signature)' },
                 { id: 'gold', label: 'Gold Edition' },
-                { id: 'platinum', label: 'Platinum Edition' }
+                { id: 'platinum', label: 'Platinum Edition' },
+                { id: 'purple', label: 'Purple Edition (Signature)' }
               ].map(tab => (
                 <button
                   key={tab.id}
@@ -122,93 +127,231 @@ export default function CardCollection() {
           </div>
         </div>
 
-        {/* Editions Grid */}
+        {/* Editions Grid with React Bits <SpotlightCard /> */}
         <div className="grid-3" style={{ marginBottom: '80px', alignItems: 'stretch' }}>
           {editionKeys.map(key => {
-            const item = EDITIONS[key];
+            const fallbackItem = EDITIONS[key] || EDITIONS.gold;
+            const product = getProductByEdition(key) || fallbackItem;
+            const isGold = key === 'gold';
+            const isPlatinum = key === 'platinum';
             const isPurple = key === 'purple';
+
+            const spotlightColor = isGold
+              ? 'rgba(233, 199, 102, 0.42)'
+              : isPlatinum
+                ? 'rgba(203, 213, 225, 0.42)'
+                : 'rgba(168, 85, 247, 0.52)';
+
+            const accentColor = isGold ? '#E9C766' : isPlatinum ? '#CBD5E1' : '#A855F7';
+
+            const formattedPrice = formatCurrencyINR(product.price);
+            const formattedCompare = product.comparePrice && product.comparePrice > product.price
+              ? formatCurrencyINR(product.comparePrice)
+              : null;
+
+            // Edition CTA Text
+            const ctaText = isGold
+              ? 'Customize Gold Card'
+              : isPlatinum
+                ? 'Customize Platinum Card'
+                : 'Customize Purple Card';
+
+            // Features actually included in the product configuration
+            const includedFeatures = product.features || [
+              'NFC-enabled card, when included in the configured product.',
+              'Personalized name and professional role.',
+              'Customizable card artwork.',
+              'Digital profile connection, when included.',
+              'QR code on the back, when included.'
+            ];
+
             return (
-              <div
+              <SpotlightCard
                 key={key}
-                className={`glass-panel ${isPurple ? 'glass-panel-glow' : ''}`}
+                theme="dark"
+                spotlightColor={spotlightColor}
+                intensity={0.22}
+                spotlightSize={280}
+                softness={0.7}
+                borderGlow={0.65}
+                proximity={80}
+                className="flocard-edition-pricing-card"
                 style={{
-                  padding: '32px 24px',
+                  padding: '30px 24px',
                   display: 'flex',
                   flexDirection: 'column',
                   justifyContent: 'space-between',
+                  borderRadius: '16px',
+                  border: `1px solid ${accentColor}38`,
                   background: isPurple
-                    ? (isLight ? '#FFFFFF' : 'linear-gradient(180deg, rgba(23, 16, 32, 0.95) 0%, rgba(32, 11, 59, 0.5) 100%)')
-                    : 'var(--card-surface)',
-                  borderColor: isPurple ? (isLight ? 'rgba(107, 0, 255, 0.35)' : 'rgba(168, 85, 247, 0.5)') : 'var(--border-color)',
-                  position: 'relative'
+                    ? 'linear-gradient(180deg, rgba(23, 16, 32, 0.96) 0%, rgba(32, 11, 59, 0.6) 100%)'
+                    : isGold
+                      ? 'linear-gradient(180deg, rgba(22, 19, 14, 0.96) 0%, rgba(32, 26, 15, 0.55) 100%)'
+                      : 'linear-gradient(180deg, rgba(18, 20, 24, 0.96) 0%, rgba(26, 30, 36, 0.55) 100%)',
+                  position: 'relative',
+                  overflow: 'hidden'
                 }}
               >
-                {item.popular && (
+                {/* Featured / Popular Badge */}
+                {(product.featured || isPurple) && (
                   <div
                     style={{
                       position: 'absolute',
                       top: '16px',
                       right: '16px',
-                      background: 'linear-gradient(135deg, var(--primary-purple), var(--deep-violet))',
-                      color: '#ffffff',
-                      fontSize: '0.72rem',
-                      fontWeight: 700,
+                      background: isGold
+                        ? 'linear-gradient(135deg, #FFF0A6, #C9972C)'
+                        : isPlatinum
+                          ? 'linear-gradient(135deg, #FFFFFF, #94A3B8)'
+                          : 'linear-gradient(135deg, var(--primary-purple), var(--deep-violet))',
+                      color: isGold || isPlatinum ? '#0F0E13' : '#FFFFFF',
+                      fontSize: '0.7rem',
+                      fontWeight: 800,
                       padding: '4px 12px',
-                      borderRadius: 'var(--radius-full)',
+                      borderRadius: '10px',
                       display: 'flex',
                       alignItems: 'center',
                       gap: '4px',
-                      boxShadow: '0 4px 12px rgba(107, 0, 255, 0.35)'
+                      boxShadow: `0 4px 12px ${accentColor}40`,
+                      zIndex: 3
                     }}
                   >
                     <Sparkles size={11} />
-                    <span>Most Popular</span>
+                    <span>{product.featured ? 'Featured Edition' : 'Most Popular'}</span>
                   </div>
                 )}
 
                 <div>
-                  <div style={{ marginBottom: '28px', textAlign: 'center' }}>
-                    <Card3DPreview edition={key} templateType={templateType} width={310} allowFlip={true} />
+                  {/* Card 3D Preview (Front & Back interactive flip) */}
+                  <div style={{ marginBottom: '24px', textAlign: 'center' }}>
+                    <Card3DPreview edition={key} templateType={templateType} width={300} allowFlip={true} />
+                    <div style={{ marginTop: '10px', fontSize: '0.74rem', color: 'var(--text-muted)' }}>
+                      Click card to flip front & back &bull; Hover to tilt
+                    </div>
                   </div>
 
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '8px' }}>
-                    <h3 style={{ fontSize: '1.4rem', color: 'var(--text-primary)', textTransform: 'uppercase' }}>
-                      {item.name}
+                  {/* Edition Name */}
+                  <div style={{ marginBottom: '6px' }}>
+                    <span
+                      style={{
+                        fontSize: '0.72rem',
+                        fontWeight: 800,
+                        textTransform: 'uppercase',
+                        letterSpacing: '0.08em',
+                        color: accentColor,
+                        display: 'inline-block',
+                        marginBottom: '4px'
+                      }}
+                    >
+                      {product.badge || key?.toUpperCase()} EDITION
+                    </span>
+                    <h3
+                      style={{
+                        fontSize: '1.5rem',
+                        fontWeight: 800,
+                        color: '#FFFFFF',
+                        textTransform: 'uppercase',
+                        letterSpacing: '-0.01em',
+                        margin: 0
+                      }}
+                    >
+                      {product.name || fallbackItem.name}
                     </h3>
                   </div>
 
-                  <p style={{ fontSize: '0.88rem', color: 'var(--text-secondary)', lineHeight: 1.55, marginBottom: '20px' }}>
-                    {item.description}
+                  {/* Authoritative Price Display */}
+                  <div style={{ margin: '14px 0 16px', padding: '12px 14px', borderRadius: '10px', backgroundColor: 'rgba(255, 255, 255, 0.04)', border: '1px solid rgba(255, 255, 255, 0.07)' }}>
+                    <div style={{ display: 'flex', alignItems: 'baseline', gap: '8px', flexWrap: 'wrap' }}>
+                      {formattedPrice ? (
+                        <>
+                          <span
+                            style={{
+                              fontSize: '1.85rem',
+                              fontWeight: 900,
+                              color: '#FFFFFF',
+                              fontFamily: 'var(--font-heading, Sora, sans-serif)',
+                              letterSpacing: '-0.02em'
+                            }}
+                          >
+                            {formattedPrice}
+                          </span>
+                          {formattedCompare && (
+                            <span
+                              style={{
+                                fontSize: '1.05rem',
+                                color: 'rgba(255, 255, 255, 0.45)',
+                                textDecoration: 'line-through'
+                              }}
+                            >
+                              {formattedCompare}
+                            </span>
+                          )}
+                        </>
+                      ) : (
+                        <span
+                          style={{
+                            fontSize: '1.25rem',
+                            fontWeight: 700,
+                            color: '#F59E0B'
+                          }}
+                        >
+                          Price coming soon
+                        </span>
+                      )}
+                    </div>
+                    <div style={{ fontSize: '0.72rem', color: 'rgba(255, 255, 255, 0.55)', marginTop: '4px' }}>
+                      MRP incl. of all taxes &bull; Includes dynamic NFC redirection
+                    </div>
+                  </div>
+
+                  {/* Short description */}
+                  <p style={{ fontSize: '0.88rem', color: 'rgba(255, 255, 255, 0.72)', lineHeight: 1.55, marginBottom: '20px' }}>
+                    {product.description || fallbackItem.description}
                   </p>
 
-                  <div style={{ borderTop: '1px solid var(--border-color)', paddingTop: '16px', marginBottom: '24px' }}>
-                    <div style={{ fontSize: '0.75rem', fontWeight: 700, color: 'var(--primary-purple)', textTransform: 'uppercase', marginBottom: '10px' }}>
-                      Key Specifications
+                  {/* Key Included Features (Strictly configured features) */}
+                  <div style={{ borderTop: '1px solid rgba(255, 255, 255, 0.08)', paddingTop: '16px', marginBottom: '26px' }}>
+                    <div style={{ fontSize: '0.74rem', fontWeight: 700, color: accentColor, textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: '12px' }}>
+                      Key Included Features
                     </div>
-                    <ul style={{ listStyle: 'none', display: 'flex', flexDirection: 'column', gap: '8px', fontSize: '0.82rem', color: 'var(--text-secondary)' }}>
-                      <li style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                        <Check size={14} color="var(--primary-purple)" />
-                        <span>{item.specs.material}</span>
-                      </li>
-                      <li style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                        <Check size={14} color="var(--primary-purple)" />
-                        <span>{item.specs.chip}</span>
-                      </li>
-                      <li style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                        <Check size={14} color="var(--primary-purple)" />
-                        <span>{item.specs.durability}</span>
-                      </li>
+                    <ul style={{ listStyle: 'none', margin: 0, padding: 0, display: 'flex', flexDirection: 'column', gap: '9px', fontSize: '0.82rem', color: 'rgba(255, 255, 255, 0.82)' }}>
+                      {includedFeatures.map((feat, idx) => (
+                        <li key={idx} style={{ display: 'flex', alignItems: 'flex-start', gap: '9px' }}>
+                          <Check size={14} color={accentColor} style={{ marginTop: '2px', flexShrink: 0 }} />
+                          <span style={{ lineHeight: 1.45 }}>{feat}</span>
+                        </li>
+                      ))}
                     </ul>
                   </div>
                 </div>
 
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+                {/* CTAs */}
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '10px', marginTop: '10px' }}>
                   <a
                     href={`/designer?edition=${key}&template=${templateType}`}
-                    className={`btn ${isPurple ? 'btn-primary' : 'btn-secondary'}`}
-                    style={{ width: '100%' }}
+                    className="btn"
+                    style={{
+                      width: '100%',
+                      padding: '12px 20px',
+                      borderRadius: '10px',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      gap: '8px',
+                      fontWeight: 700,
+                      fontSize: '0.9rem',
+                      textDecoration: 'none',
+                      transition: 'transform 0.2s ease, box-shadow 0.2s ease',
+                      background: isGold
+                        ? 'linear-gradient(135deg, #FFF0A6 0%, #E9C766 50%, #C9972C 100%)'
+                        : isPlatinum
+                          ? 'linear-gradient(135deg, #FFFFFF 0%, #E2E8F0 50%, #94A3B8 100%)'
+                          : 'linear-gradient(135deg, #A855F7 0%, #6B00FF 100%)',
+                      color: isGold || isPlatinum ? '#0F0E13' : '#FFFFFF',
+                      boxShadow: `0 4px 16px ${accentColor}40`
+                    }}
                   >
-                    <span>Customize {item.name}</span>
+                    <span>{ctaText}</span>
                     <ArrowRight size={16} />
                   </a>
 
@@ -217,15 +360,17 @@ export default function CardCollection() {
                     style={{
                       textAlign: 'center',
                       fontSize: '0.82rem',
-                      color: 'var(--primary-purple)',
+                      color: accentColor,
                       fontWeight: 600,
-                      padding: '6px'
+                      padding: '6px',
+                      textDecoration: 'none',
+                      opacity: 0.85
                     }}
                   >
                     View Technical Details &rarr;
                   </a>
                 </div>
-              </div>
+              </SpotlightCard>
             );
           })}
         </div>

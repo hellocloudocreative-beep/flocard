@@ -15,6 +15,7 @@ export function DataProvider({ children }) {
   const [orders, setOrders] = useState(() => StorageEngine.getOrders());
   const [customers, setCustomers] = useState(() => StorageEngine.getCustomers());
   const [templates, setTemplates] = useState(() => StorageEngine.getTemplates());
+  const [products, setProducts] = useState(() => StorageEngine.getProducts());
   const [auditLogs, setAuditLogs] = useState(() => StorageEngine.getAuditLogs());
   const [studioBackground, setStudioBackground] = useState(() => StorageEngine.getStudioBackground());
   const [adminAccounts, setAdminAccounts] = useState(() => StorageEngine.getAdminAccounts());
@@ -27,6 +28,7 @@ export function DataProvider({ children }) {
     setOrders(StorageEngine.getOrders());
     setCustomers(StorageEngine.getCustomers());
     setTemplates(StorageEngine.getTemplates());
+    setProducts(StorageEngine.getProducts());
     setAuditLogs(StorageEngine.getAuditLogs());
     setStudioBackground(StorageEngine.getStudioBackground());
     setAdminAccounts(StorageEngine.getAdminAccounts());
@@ -55,6 +57,7 @@ export function DataProvider({ children }) {
     window.addEventListener('flocard_profile_updated', refreshAll);
     window.addEventListener('flocard_card_updated', refreshAll);
     window.addEventListener('flocard_notification_created', refreshAll);
+    window.addEventListener('flocard_products_updated', refreshAll);
     window.addEventListener('storage', handleStorageChange);
     window.addEventListener('focus', handleWindowFocus);
 
@@ -63,6 +66,7 @@ export function DataProvider({ children }) {
       window.removeEventListener('flocard_profile_updated', refreshAll);
       window.removeEventListener('flocard_card_updated', refreshAll);
       window.removeEventListener('flocard_notification_created', refreshAll);
+      window.removeEventListener('flocard_products_updated', refreshAll);
       window.removeEventListener('storage', handleStorageChange);
       window.removeEventListener('focus', handleWindowFocus);
     };
@@ -199,6 +203,17 @@ export function DataProvider({ children }) {
     refreshAll();
   };
 
+  const saveProduct = (product, role, email) => {
+    const res = StorageEngine.saveProduct(product, role, email);
+    if (res.success) {
+      refreshAll();
+      if (typeof window !== 'undefined') {
+        window.dispatchEvent(new CustomEvent('flocard_products_updated', { detail: res.product }));
+      }
+    }
+    return res;
+  };
+
   const resetAllData = () => {
     StorageEngine.resetAll();
     refreshAll();
@@ -212,6 +227,7 @@ export function DataProvider({ children }) {
       orders,
       customers,
       templates,
+      products,
       auditLogs,
       adminAccounts,
       lastOrderUpdate,
@@ -239,6 +255,8 @@ export function DataProvider({ children }) {
       deleteCustomer,
       saveTemplate,
       deleteTemplate,
+      saveProduct,
+      getProductByEdition: StorageEngine.getProductByEdition,
       resetAllData,
       getProfileBySlug: StorageEngine.getProfileBySlug,
       getCardByCode: StorageEngine.getCardByCode,

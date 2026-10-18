@@ -10,11 +10,16 @@ import PhoneProfileMockup from '../components/PhoneProfileMockup';
 import { BRAND, EDITIONS, HOW_IT_WORKS_STEPS } from '../lib/constants';
 import { useData } from '../context/DataContext';
 import { useTheme } from '../context/ThemeContext';
+import { formatCurrencyINR } from '../lib/storage';
 
 export default function Home() {
-  const { profiles } = useData();
+  const { profiles, getProductByEdition } = useData();
   const { isLight } = useTheme();
   const akhilProfile = profiles.find(p => p.slug === 'akhil') || profiles[0];
+
+  const goldProduct = getProductByEdition('gold') || EDITIONS.gold;
+  const platinumProduct = getProductByEdition('platinum') || EDITIONS.platinum;
+  const purpleProduct = getProductByEdition('purple') || EDITIONS.purple;
 
   return (
     <div className="homepage-wrapper" style={{ overflowX: 'hidden' }}>
@@ -353,10 +358,11 @@ export default function Home() {
                 display: 'flex',
                 flexDirection: 'column',
                 justifyContent: 'space-between',
+                borderRadius: '16px',
                 transition: 'transform 0.3s ease, border-color 0.3s ease, box-shadow 0.3s ease'
               }}
               onMouseEnter={(e) => {
-                e.currentTarget.style.borderColor = 'rgba(212, 175, 55, 0.6)';
+                e.currentTarget.style.borderColor = 'rgba(233, 199, 102, 0.6)';
                 e.currentTarget.style.transform = 'translateY(-6px)';
               }}
               onMouseLeave={(e) => {
@@ -365,18 +371,54 @@ export default function Home() {
               }}
             >
               <div>
-                <div style={{ marginBottom: '24px' }}>
+                <div style={{ marginBottom: '20px' }}>
                   <Card3DPreview edition="gold" width={320} allowFlip={true} />
                 </div>
-                <h3 style={{ fontSize: '1.35rem', color: 'var(--text-primary)', textTransform: 'uppercase', marginBottom: '8px' }}>
-                  {EDITIONS.gold.name}
+                <div style={{ fontSize: '0.74rem', fontWeight: 800, textTransform: 'uppercase', letterSpacing: '0.06em', color: '#E9C766', marginBottom: '4px' }}>
+                  GOLD EDITION
+                </div>
+                <h3 style={{ fontSize: '1.4rem', color: 'var(--text-primary)', textTransform: 'uppercase', marginBottom: '8px' }}>
+                  {goldProduct.name || EDITIONS.gold.name}
                 </h3>
+                
+                {/* Authoritative Price Display */}
+                <div style={{ display: 'flex', alignItems: 'baseline', gap: '8px', marginBottom: '12px' }}>
+                  {formatCurrencyINR(goldProduct.price) ? (
+                    <>
+                      <span style={{ fontSize: '1.6rem', fontWeight: 900, color: 'var(--text-primary)' }}>
+                        {formatCurrencyINR(goldProduct.price)}
+                      </span>
+                      {goldProduct.comparePrice && goldProduct.comparePrice > goldProduct.price && (
+                        <span style={{ fontSize: '0.95rem', color: 'var(--text-muted)', textDecoration: 'line-through' }}>
+                          {formatCurrencyINR(goldProduct.comparePrice)}
+                        </span>
+                      )}
+                    </>
+                  ) : (
+                    <span style={{ fontSize: '1.1rem', fontWeight: 700, color: '#F59E0B' }}>
+                      Price coming soon
+                    </span>
+                  )}
+                </div>
+
                 <p style={{ fontSize: '0.88rem', color: 'var(--text-secondary)', lineHeight: 1.5, marginBottom: '20px' }}>
-                  {EDITIONS.gold.description}
+                  {goldProduct.description || EDITIONS.gold.description}
                 </p>
               </div>
-              <a href="/designer?edition=gold" className="btn btn-secondary" style={{ width: '100%' }}>
-                <span>Customize Now</span>
+              <a
+                href="/designer?edition=gold"
+                className="btn btn-secondary"
+                style={{
+                  width: '100%',
+                  borderRadius: '10px',
+                  fontWeight: 700,
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  gap: '8px'
+                }}
+              >
+                <span>Customize Gold Card</span>
                 <ArrowRight size={15} />
               </a>
             </div>
@@ -389,10 +431,11 @@ export default function Home() {
                 display: 'flex',
                 flexDirection: 'column',
                 justifyContent: 'space-between',
+                borderRadius: '16px',
                 transition: 'transform 0.3s ease, border-color 0.3s ease, box-shadow 0.3s ease'
               }}
               onMouseEnter={(e) => {
-                e.currentTarget.style.borderColor = 'rgba(226, 232, 240, 0.5)';
+                e.currentTarget.style.borderColor = 'rgba(203, 213, 225, 0.6)';
                 e.currentTarget.style.transform = 'translateY(-6px)';
               }}
               onMouseLeave={(e) => {
@@ -401,18 +444,54 @@ export default function Home() {
               }}
             >
               <div>
-                <div style={{ marginBottom: '24px' }}>
+                <div style={{ marginBottom: '20px' }}>
                   <Card3DPreview edition="platinum" width={320} allowFlip={true} />
                 </div>
-                <h3 style={{ fontSize: '1.35rem', color: 'var(--text-primary)', textTransform: 'uppercase', marginBottom: '8px' }}>
-                  {EDITIONS.platinum.name}
+                <div style={{ fontSize: '0.74rem', fontWeight: 800, textTransform: 'uppercase', letterSpacing: '0.06em', color: '#CBD5E1', marginBottom: '4px' }}>
+                  PLATINUM EDITION
+                </div>
+                <h3 style={{ fontSize: '1.4rem', color: 'var(--text-primary)', textTransform: 'uppercase', marginBottom: '8px' }}>
+                  {platinumProduct.name || EDITIONS.platinum.name}
                 </h3>
+
+                {/* Authoritative Price Display */}
+                <div style={{ display: 'flex', alignItems: 'baseline', gap: '8px', marginBottom: '12px' }}>
+                  {formatCurrencyINR(platinumProduct.price) ? (
+                    <>
+                      <span style={{ fontSize: '1.6rem', fontWeight: 900, color: 'var(--text-primary)' }}>
+                        {formatCurrencyINR(platinumProduct.price)}
+                      </span>
+                      {platinumProduct.comparePrice && platinumProduct.comparePrice > platinumProduct.price && (
+                        <span style={{ fontSize: '0.95rem', color: 'var(--text-muted)', textDecoration: 'line-through' }}>
+                          {formatCurrencyINR(platinumProduct.comparePrice)}
+                        </span>
+                      )}
+                    </>
+                  ) : (
+                    <span style={{ fontSize: '1.1rem', fontWeight: 700, color: '#F59E0B' }}>
+                      Price coming soon
+                    </span>
+                  )}
+                </div>
+
                 <p style={{ fontSize: '0.88rem', color: 'var(--text-secondary)', lineHeight: 1.5, marginBottom: '20px' }}>
-                  {EDITIONS.platinum.description}
+                  {platinumProduct.description || EDITIONS.platinum.description}
                 </p>
               </div>
-              <a href="/designer?edition=platinum" className="btn btn-secondary" style={{ width: '100%' }}>
-                <span>Customize Now</span>
+              <a
+                href="/designer?edition=platinum"
+                className="btn btn-secondary"
+                style={{
+                  width: '100%',
+                  borderRadius: '10px',
+                  fontWeight: 700,
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  gap: '8px'
+                }}
+              >
+                <span>Customize Platinum Card</span>
                 <ArrowRight size={15} />
               </a>
             </div>
@@ -425,6 +504,7 @@ export default function Home() {
                 display: 'flex',
                 flexDirection: 'column',
                 justifyContent: 'space-between',
+                borderRadius: '16px',
                 borderColor: isLight ? 'rgba(107, 0, 255, 0.35)' : 'rgba(168, 85, 247, 0.5)',
                 background: isLight 
                   ? '#FFFFFF' 
@@ -442,7 +522,7 @@ export default function Home() {
                   right: '16px',
                   background: 'linear-gradient(135deg, var(--primary-purple), var(--deep-violet))',
                   padding: '4px 12px',
-                  borderRadius: 'var(--radius-full)',
+                  borderRadius: '10px',
                   fontSize: '0.72rem',
                   fontWeight: 700,
                   display: 'flex',
@@ -457,18 +537,54 @@ export default function Home() {
               </div>
 
               <div>
-                <div style={{ marginBottom: '24px' }}>
+                <div style={{ marginBottom: '20px' }}>
                   <Card3DPreview edition="purple" width={320} allowFlip={true} />
                 </div>
+                <div style={{ fontSize: '0.74rem', fontWeight: 800, textTransform: 'uppercase', letterSpacing: '0.06em', color: '#A855F7', marginBottom: '4px' }}>
+                  PURPLE EDITION
+                </div>
                 <h3 style={{ fontSize: '1.35rem', color: 'var(--text-primary)', textTransform: 'uppercase', marginBottom: '8px' }}>
-                  {EDITIONS.purple.name}
+                  {purpleProduct.name || EDITIONS.purple.name}
                 </h3>
+
+                {/* Authoritative Price Display */}
+                <div style={{ display: 'flex', alignItems: 'baseline', gap: '8px', marginBottom: '12px' }}>
+                  {formatCurrencyINR(purpleProduct.price) ? (
+                    <>
+                      <span style={{ fontSize: '1.6rem', fontWeight: 900, color: 'var(--text-primary)' }}>
+                        {formatCurrencyINR(purpleProduct.price)}
+                      </span>
+                      {purpleProduct.comparePrice && purpleProduct.comparePrice > purpleProduct.price && (
+                        <span style={{ fontSize: '0.95rem', color: 'var(--text-muted)', textDecoration: 'line-through' }}>
+                          {formatCurrencyINR(purpleProduct.comparePrice)}
+                        </span>
+                      )}
+                    </>
+                  ) : (
+                    <span style={{ fontSize: '1.1rem', fontWeight: 700, color: '#F59E0B' }}>
+                      Price coming soon
+                    </span>
+                  )}
+                </div>
+
                 <p style={{ fontSize: '0.88rem', color: 'var(--text-secondary)', lineHeight: 1.5, marginBottom: '20px' }}>
-                  {EDITIONS.purple.description}
+                  {purpleProduct.description || EDITIONS.purple.description}
                 </p>
               </div>
-              <a href="/designer?edition=purple" className="btn btn-primary" style={{ width: '100%' }}>
-                <span>Customize Now</span>
+              <a
+                href="/designer?edition=purple"
+                className="btn btn-primary"
+                style={{
+                  width: '100%',
+                  borderRadius: '10px',
+                  fontWeight: 700,
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  gap: '8px'
+                }}
+              >
+                <span>Customize Purple Card</span>
                 <ArrowRight size={15} />
               </a>
             </div>
