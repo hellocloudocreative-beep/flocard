@@ -429,8 +429,13 @@ export const StorageEngine = {
     const isElevated = currentUser.role === 'admin' || currentUser.role === 'owner' || currentUser.email === 'akhil@flocard.in';
     if (isElevated) return list;
     const cId = currentUser.id;
-    const cEmail = (currentUser.email || '').toLowerCase();
-    return list.filter(o => (cId && o.customerId === cId) || (cEmail && o.customerEmail?.toLowerCase() === cEmail));
+    const cEmail = (currentUser.email || '').toLowerCase().trim();
+    const cName = (currentUser.name || '').toLowerCase().trim();
+    return list.filter(o => 
+      (cId && o.customerId === cId) ||
+      (cEmail && o.customerEmail?.toLowerCase().trim() === cEmail) ||
+      (cName && o.customerName?.toLowerCase().trim() === cName)
+    );
   },
 
   getOrderById: (id, currentUser = null) => {
@@ -440,8 +445,11 @@ export const StorageEngine = {
 
     const isElevated = currentUser?.role === 'admin' || currentUser?.role === 'owner' || currentUser?.email === 'akhil@flocard.in';
     const cId = currentUser?.id;
-    const cEmail = (currentUser?.email || '').toLowerCase();
-    const isOwner = (cId && order.customerId === cId) || (cEmail && order.customerEmail?.toLowerCase() === cEmail);
+    const cEmail = (currentUser?.email || '').toLowerCase().trim();
+    const cName = (currentUser?.name || '').toLowerCase().trim();
+    const isOwner = (cId && order.customerId === cId) ||
+      (cEmail && order.customerEmail?.toLowerCase().trim() === cEmail) ||
+      (cName && order.customerName?.toLowerCase().trim() === cName);
 
     if (currentUser && !isElevated && !isOwner) {
       return null; // Customer data isolation: unauthorized
@@ -686,30 +694,39 @@ export const StorageEngine = {
     if (estimatedDeliveryAt !== undefined) order.estimatedDeliveryAt = estimatedDeliveryAt || null;
 
     // Handle delivery completion & auto-provisioning
-    if (targetStatus === 'delivered' && !order.cardCode) {
-      order.deliveredAt = new Date().toISOString();
-      const provisioned = StorageEngine.deliverOrder(order.id, actorUser);
-      if (provisioned) {
+    if (targetStatus === 'delivered') {
+      order.deliveredAt = order.deliveredAt || new Date().toISOString();
+      const provisioned = StorageEngine.deliverOrder(order.id, actualActor);
+      if (provisioned?.order) {
         order.cardCode = provisioned.card?.cardCode || order.cardCode;
         order.profileSlug = provisioned.profile?.slug || order.profileSlug;
+        order.status = 'delivered';
       }
-    } else if (targetStatus === 'delivered') {
-      order.deliveredAt = new Date().toISOString();
     }
 
-    orders[orderIndex] = order;
-    setLocal('orders', orders);
+    // Refresh orders from store in case deliverOrder updated it
+    const refreshedOrders = getLocal('orders', INITIAL_ORDERS);
+    const refreshedIdx = refreshedOrders.findIndex(o => o.id === orderId || o.orderReference === orderId);
+    if (refreshedIdx >= 0) {
+      refreshedOrders[refreshedIdx] = { ...refreshedOrders[refreshedIdx], ...order };
+      setLocal('orders', refreshedOrders);
+    } else {
+      orders[orderIndex] = order;
+      setLocal('orders', orders);
+    }
 
-    // 1. Record immutable status history entry
+    // 1. Record immutable status history entry (if not already recorded by deliverOrder)
     const finalPublicMessage = (publicMessage || '').trim() || getDefaultPublicMessage(targetStatus);
-    StorageEngine.addOrderStatusHistoryEntry({
-      orderId: order.id,
-      previousStatus: prevStatus,
-      newStatus: targetStatus,
-      publicMessage: finalPublicMessage,
-      actorUserId: actualActor?.id || 'admin',
-      actorName: actualActor?.name || 'Operations Lead'
-    });
+    if (targetStatus !== 'delivered') {
+      StorageEngine.addOrderStatusHistoryEntry({
+        orderId: order.id,
+        previousStatus: prevStatus,
+        newStatus: targetStatus,
+        publicMessage: finalPublicMessage,
+        actorUserId: actualActor?.id || 'admin',
+        actorName: actualActor?.name || 'Operations Lead'
+      });
+    }
 
     // 2. Record internal administrative note if provided (NEVER exposed to customer)
     if (internalNote && internalNote.trim()) {
@@ -720,22 +737,24 @@ export const StorageEngine = {
       });
     }
 
-    // 3. Create customer in-app notification
-    const stageInfo = getOrderStageInfo(targetStatus);
-    StorageEngine.createNotification({
-      recipientUserId: order.customerId,
-      orderId: order.id,
-      orderReference: order.orderReference,
-      status: targetStatus,
-      title: `Order Status: ${stageInfo.label}`,
-      message: finalPublicMessage
-    });
+    // 3. Create customer in-app notification (if not already recorded by deliverOrder)
+    if (targetStatus !== 'delivered') {
+      const stageInfo = getOrderStageInfo(targetStatus);
+      StorageEngine.createNotification({
+        recipientUserId: order.customerId,
+        orderId: order.id,
+        orderReference: order.orderReference,
+        status: targetStatus,
+        title: `Order Status: ${stageInfo.label}`,
+        message: finalPublicMessage
+      });
+    }
 
     // 4. Log audit log
     StorageEngine.addAuditLog(
       'Order Fulfillment',
       `Order ${order.orderReference || order.id} status updated from "${prevStatus}" to "${targetStatus}" for ${order.customerName}`,
-      actorUser?.name || 'Administrator'
+      actualActor?.name || 'Administrator'
     );
 
     // 5. Emit browser event for immediate realtime timeline updates
@@ -745,6 +764,8 @@ export const StorageEngine = {
           orderId: order.id,
           orderReference: order.orderReference,
           status: targetStatus,
+          cardCode: order.cardCode,
+          profileSlug: order.profileSlug,
           timestamp: new Date().toISOString()
         }
       }));
@@ -773,6 +794,7 @@ export const StorageEngine = {
     if (orderIndex < 0) return null;
 
     const order = orders[orderIndex];
+    const prevStatus = normalizeOrderStatus(order.status);
 
     // Determine unique slug for customer profile
     const rawSlug = (order.customerName || 'customer')
@@ -791,7 +813,7 @@ export const StorageEngine = {
     }
 
     // Generate unique NFC Card Code
-    const cardCode = `flc-${rawSlug.slice(0, 8)}-${Math.floor(100 + Math.random() * 900)}`;
+    const cardCode = order.cardCode || `flc-${rawSlug.slice(0, 8)}-${Math.floor(100 + Math.random() * 900)}`;
     const newCard = {
       id: `card_${Date.now()}`,
       cardCode,
@@ -876,13 +898,64 @@ export const StorageEngine = {
     }
     setLocal('customers', customers);
 
-    // Update order status
+    // Update order status & fields
     order.status = 'delivered';
     order.deliveredAt = order.deliveredAt || new Date().toISOString();
+    order.updatedAt = new Date().toISOString();
     order.cardCode = newCard.cardCode;
     order.profileSlug = finalSlug;
     orders[orderIndex] = order;
     setLocal('orders', orders);
+
+    // 1. Record immutable status history entry for delivery
+    StorageEngine.addOrderStatusHistoryEntry({
+      orderId: order.id,
+      previousStatus: prevStatus,
+      newStatus: 'delivered',
+      publicMessage: 'Card delivered to recipient and NFC redirect routing activated.',
+      actorUserId: actorUser?.id || 'admin',
+      actorName: actorUser?.name || 'Operations Lead'
+    });
+
+    // 2. Create customer in-app notification
+    StorageEngine.createNotification({
+      recipientUserId: order.customerId,
+      orderId: order.id,
+      orderReference: order.orderReference,
+      status: 'delivered',
+      title: 'Order Delivered & Card Active!',
+      message: `Your FLOCARD (${order.orderReference || order.id}) has been delivered! Your NFC card (${newCard.cardCode}) and digital profile (@${finalSlug}) are now live.`
+    });
+
+    // 3. Log audit log
+    StorageEngine.addAuditLog(
+      'Order Fulfillment',
+      `Order ${order.orderReference || order.id} delivered for ${order.customerName}. NFC card ${newCard.cardCode} & Profile @${finalSlug} provisioned.`,
+      actorUser?.name || 'Operations Team'
+    );
+
+    // 4. Dispatch browser events for immediate realtime reactive updates
+    if (typeof window !== 'undefined') {
+      window.dispatchEvent(new CustomEvent('flocard_order_updated', {
+        detail: {
+          orderId: order.id,
+          orderReference: order.orderReference,
+          status: 'delivered',
+          cardCode: newCard.cardCode,
+          profileSlug: finalSlug,
+          timestamp: new Date().toISOString()
+        }
+      }));
+      window.dispatchEvent(new CustomEvent('flocard_notification_created', {
+        detail: { recipientUserId: order.customerId }
+      }));
+      window.dispatchEvent(new CustomEvent('flocard_profile_updated', {
+        detail: { profile: newProfile }
+      }));
+      window.dispatchEvent(new CustomEvent('flocard_card_updated', {
+        detail: { card: newCard }
+      }));
+    }
 
     return { order, card: newCard, profile: newProfile };
   },

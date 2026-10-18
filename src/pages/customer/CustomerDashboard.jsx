@@ -5,7 +5,7 @@
    notifications bell, and strict customer record isolation.
    ========================================================================== */
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import {
   LayoutDashboard,
   Radio,
@@ -47,6 +47,7 @@ export default function CustomerDashboard({ initialTab = 'overview', initialOrde
     cards = [],
     profiles = [],
     designs = [],
+    orders = [],
     getOrdersForUser,
     getNotifications,
     markNotificationRead,
@@ -79,20 +80,44 @@ export default function CustomerDashboard({ initialTab = 'overview', initialOrde
 
   useEffect(() => {
     reloadNotifications();
-  }, [user, lastOrderUpdate]);
+  }, [user, lastOrderUpdate, orders]);
 
-  // Filter cards and profiles belonging to this customer
-  const customerCards = user
-    ? cards.filter(c => c.customerId === user.id || (user.email && c.customerEmail?.toLowerCase() === user.email.toLowerCase()))
-    : [];
+  // Filter cards, profiles, and orders belonging to this customer reactively
+  const customerCards = useMemo(() => {
+    if (!user) return [];
+    const uId = user.id;
+    const uEmail = (user.email || '').toLowerCase().trim();
+    const uName = (user.name || '').toLowerCase().trim();
+    return cards.filter(c => 
+      (uId && c.customerId === uId) ||
+      (uEmail && c.customerEmail?.toLowerCase().trim() === uEmail) ||
+      (uName && c.customerName?.toLowerCase().trim() === uName)
+    );
+  }, [user, cards]);
 
-  const customerProfiles = user
-    ? profiles.filter(p => p.userId === user.id || (user.email && p.email?.toLowerCase() === user.email.toLowerCase()))
-    : [];
+  const customerProfiles = useMemo(() => {
+    if (!user) return [];
+    const uId = user.id;
+    const uEmail = (user.email || '').toLowerCase().trim();
+    const uName = (user.name || '').toLowerCase().trim();
+    return profiles.filter(p => 
+      (uId && p.userId === uId) ||
+      (uEmail && p.email?.toLowerCase().trim() === uEmail) ||
+      (uName && p.name?.toLowerCase().trim() === uName)
+    );
+  }, [user, profiles]);
 
-  const customerOrders = user && getOrdersForUser
-    ? getOrdersForUser(user)
-    : [];
+  const customerOrders = useMemo(() => {
+    if (!user) return [];
+    const uId = user.id;
+    const uEmail = (user.email || '').toLowerCase().trim();
+    const uName = (user.name || '').toLowerCase().trim();
+    return orders.filter(o =>
+      (uId && o.customerId === uId) ||
+      (uEmail && o.customerEmail?.toLowerCase().trim() === uEmail) ||
+      (uName && o.customerName?.toLowerCase().trim() === uName)
+    );
+  }, [user, orders, lastOrderUpdate]);
 
   const unreadNotificationsCount = notificationsList.filter(n => !n.readAt).length;
 

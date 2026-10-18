@@ -53,6 +53,7 @@ export function DataProvider({ children }) {
 
     window.addEventListener('flocard_order_updated', handleOrderUpdated);
     window.addEventListener('flocard_profile_updated', refreshAll);
+    window.addEventListener('flocard_card_updated', refreshAll);
     window.addEventListener('flocard_notification_created', refreshAll);
     window.addEventListener('storage', handleStorageChange);
     window.addEventListener('focus', handleWindowFocus);
@@ -60,6 +61,7 @@ export function DataProvider({ children }) {
     return () => {
       window.removeEventListener('flocard_order_updated', handleOrderUpdated);
       window.removeEventListener('flocard_profile_updated', refreshAll);
+      window.removeEventListener('flocard_card_updated', refreshAll);
       window.removeEventListener('flocard_notification_created', refreshAll);
       window.removeEventListener('storage', handleStorageChange);
       window.removeEventListener('focus', handleWindowFocus);

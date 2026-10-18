@@ -173,10 +173,67 @@ const analyticsAfter = StorageEngine.getRealAnalytics(customerA);
 assert.strictEqual(analyticsAfter.totalScans, analyticsBefore.totalScans + 1);
 console.log('✓ Real analytics event recording and aggregation verified.');
 
-// Clean up test order and card
-StorageEngine.deleteOrder('ord_test_9999');
-StorageEngine.deleteCard('c_test_9999');
-console.log('✓ Cleaned up test order and card.');
+// 8. DIRECT ADMIN QUEUING FROM DESIGN SUBMISSION
+console.log('\nTest 7: Direct Admin Panel Queueing from Card Designer');
+const testDesign = {
+  id: 'des_test_print_001',
+  title: 'Executive Steel Card',
+  customerId: customerA.id,
+  customerName: customerA.name,
+  customerEmail: customerA.email,
+  edition: 'platinum',
+  templateType: 'standard',
+  front: { name: 'Akhil Customer', role: 'VP Engineering' },
+  back: { qrUrl: 'https://flocard.in/akhil' }
+};
+
+const submittedOrder = StorageEngine.createOrderFromDesign(
+  testDesign,
+  'Submitted via Card Designer for Print Production',
+  customerA
+);
+
+assert.ok(submittedOrder, 'Order should be created from design');
+assert.strictEqual(submittedOrder.status, 'design_submitted');
+assert.strictEqual(submittedOrder.customerId, customerA.id);
+
+// Admin should immediately see the order in admin queue
+const allAdminOrders = StorageEngine.getOrders(adminUser);
+assert.ok(allAdminOrders.some(o => o.id === submittedOrder.id), 'Admin must see submitted design in orders queue');
+
+// Customer should immediately see their submitted order in customer panel
+const customerQueue = StorageEngine.getOrders(customerA);
+assert.ok(customerQueue.some(o => o.id === submittedOrder.id), 'Customer panel must list the submitted order');
+console.log('✓ Direct admin order queueing and customer panel synchronization verified.');
+
+// 9. DELIVERY FULFILLMENT & AUTO-PROVISIONING IN CUSTOMER PANEL
+console.log('\nTest 8: Admin Order Delivery & Customer Panel Auto-Provisioning');
+const deliveryResult = StorageEngine.deliverOrder(submittedOrder.id, adminUser);
+assert.ok(deliveryResult, 'deliverOrder must return provisioned result');
+assert.strictEqual(deliveryResult.order.status, 'delivered');
+assert.ok(deliveryResult.card?.cardCode, 'NFC Card code must be generated');
+assert.ok(deliveryResult.profile?.slug, 'Digital profile slug must be generated');
+
+// Query order as customer
+const deliveredOrderForCustomer = StorageEngine.getOrderById(submittedOrder.id, customerA);
+assert.strictEqual(deliveredOrderForCustomer.status, 'delivered');
+assert.strictEqual(deliveredOrderForCustomer.cardCode, deliveryResult.card.cardCode);
+assert.strictEqual(deliveredOrderForCustomer.profileSlug, deliveryResult.profile.slug);
+
+// Customer notification for delivery
+const deliveredNotifs = StorageEngine.getNotifications(customerA);
+const deliveryNotif = deliveredNotifs.find(n => n.orderId === submittedOrder.id && n.status === 'delivered');
+assert.ok(deliveryNotif, 'Customer must receive delivery notification with active card info');
+
+// Verify order history has delivery entry
+const deliveryHistory = StorageEngine.getOrderHistory(submittedOrder.id, customerA);
+const lastHistoryEntry = deliveryHistory[deliveryHistory.length - 1];
+assert.strictEqual(lastHistoryEntry.newStatus, 'delivered');
+
+// Clean up
+StorageEngine.deleteOrder(submittedOrder.id, adminUser);
+StorageEngine.deleteCard(deliveryResult.card.id);
+console.log('✓ Order delivery and customer panel auto-provisioning verified.');
 
 console.log('\n========================================');
 console.log('ALL FLOCARD BACKEND & STORAGE TESTS PASSED!');

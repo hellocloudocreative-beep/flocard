@@ -30,7 +30,7 @@ import { EDITIONS, BRAND } from '../../lib/constants';
 
 export default function CustomerOrderDetail({ orderId, onBack }) {
   const { user } = useAuth();
-  const { getOrderById, lastOrderUpdate } = useData();
+  const { getOrderById, lastOrderUpdate, orders = [] } = useData();
 
   const [order, setOrder] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -45,14 +45,7 @@ export default function CustomerOrderDetail({ orderId, onBack }) {
 
   useEffect(() => {
     loadOrder();
-  }, [orderId, user]);
-
-  // Real-time update: when an order is updated, refresh seamlessly in-place
-  useEffect(() => {
-    if (lastOrderUpdate && (lastOrderUpdate.orderId === orderId || lastOrderUpdate.orderReference === orderId)) {
-      loadOrder();
-    }
-  }, [lastOrderUpdate, orderId]);
+  }, [orderId, user, orders, lastOrderUpdate]);
 
   if (loading) {
     return (
