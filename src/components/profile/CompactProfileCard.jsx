@@ -180,7 +180,6 @@ export default function CompactProfileCard({
           width: '100%'
         }}
         onClick={onExpand}
-        title="Click to view full digital portfolio"
       >
         {/* Ambient Glow behind the reflective card */}
         <div
@@ -192,7 +191,7 @@ export default function CompactProfileCard({
             transform: 'translate(-50%, -50%)',
             width: '340px',
             height: '480px',
-            borderRadius: '36px',
+            borderRadius: '24px',
             background: `radial-gradient(ellipse at center, ${glowColor}45 0%, ${accentColor}25 50%, transparent 75%)`,
             filter: 'blur(35px)',
             pointerEvents: 'none',
@@ -214,9 +213,12 @@ export default function CompactProfileCard({
           tiltStrength={12}
           width={360}
           height={550}
-          radius={28}
+          radius={20}
+          bodyStyle={{
+            boxShadow: glowShadow
+          }}
           style={{
-            boxShadow: glowShadow,
+            borderRadius: '20px',
             zIndex: 1
           }}
         >
@@ -385,11 +387,10 @@ export default function CompactProfileCard({
                 {profile?.phone && (
                   <a
                     href={`tel:${profile.phone}`}
-                    title="Call"
                     style={{
                       flex: 1,
                       height: '38px',
-                      borderRadius: '12px',
+                      borderRadius: '8px',
                       background: isLight ? 'rgba(0, 0, 0, 0.06)' : 'rgba(255, 255, 255, 0.09)',
                       border: isLight ? '1px solid rgba(0, 0, 0, 0.1)' : '1px solid rgba(255, 255, 255, 0.16)',
                       color: isLight ? '#18181b' : '#FFFFFF',
@@ -412,11 +413,10 @@ export default function CompactProfileCard({
                 {profile?.email && (
                   <a
                     href={`mailto:${profile.email}`}
-                    title="Email"
                     style={{
                       flex: 1,
                       height: '38px',
-                      borderRadius: '12px',
+                      borderRadius: '8px',
                       background: isLight ? 'rgba(0, 0, 0, 0.06)' : 'rgba(255, 255, 255, 0.09)',
                       border: isLight ? '1px solid rgba(0, 0, 0, 0.1)' : '1px solid rgba(255, 255, 255, 0.16)',
                       color: isLight ? '#18181b' : '#FFFFFF',
@@ -439,11 +439,10 @@ export default function CompactProfileCard({
                 <button
                   type="button"
                   onClick={() => downloadVCard(profile)}
-                  title="Save Contact vCard"
                   style={{
                     flex: 1.25,
                     height: '38px',
-                    borderRadius: '12px',
+                    borderRadius: '8px',
                     background: isLight ? 'rgba(0, 0, 0, 0.06)' : 'rgba(255, 255, 255, 0.09)',
                     border: isLight ? '1px solid rgba(0, 0, 0, 0.1)' : '1px solid rgba(255, 255, 255, 0.16)',
                     color: isLight ? '#18181b' : '#FFFFFF',
@@ -472,7 +471,7 @@ export default function CompactProfileCard({
                   maxWidth: '310px',
                   marginTop: '10px',
                   height: '42px',
-                  borderRadius: '14px',
+                  borderRadius: '10px',
                   background: `linear-gradient(135deg, ${glowColor} 0%, ${accentColor} 100%)`,
                   border: 'none',
                   color: '#FFFFFF',

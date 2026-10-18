@@ -585,6 +585,7 @@ const ReflectiveCard = ({
   radius = 24,
   className = '',
   style,
+  bodyStyle,
   onClick
 }) => {
   const rootRef = useRef(null);
@@ -1013,10 +1014,14 @@ const ReflectiveCard = ({
     <div
       ref={rootRef}
       className={`reflective-card ${className}`.trim()}
-      style={{ ...cardStyle, ...style }}
+      style={{ ...cardStyle, borderRadius: `${corner}px`, ...style }}
       onClick={onClick}
     >
-      <div ref={bodyRef} className="reflective-card__body">
+      <div
+        ref={bodyRef}
+        className="reflective-card__body"
+        style={{ borderRadius: `${corner}px`, ...bodyStyle }}
+      >
         <canvas ref={canvasRef} className="reflective-card__canvas" aria-hidden="true" />
         <div className="reflective-card__content">
           {children ?? (

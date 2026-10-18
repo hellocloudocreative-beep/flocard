@@ -9,6 +9,7 @@
   touch-action: pan-y;
   user-select: none;
   -webkit-user-select: none;
+  border-radius: var(--rc-radius);
 }
 
 .reflective-card__body {
