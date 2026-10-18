@@ -26,6 +26,9 @@ import AccountDashboard from './pages/account/AccountDashboard';
 import AccountDesigns from './pages/account/AccountDesigns';
 import AccountProfile from './pages/account/AccountProfile';
 import AdminDashboard from './pages/admin/AdminDashboard';
+import CustomerDashboard from './pages/customer/CustomerDashboard';
+import AiConciergePage from './pages/AiConciergePage';
+import AiConciergeFloatingWidget from './components/ai/AiConciergeFloatingWidget';
 import { AuthProvider } from './context/AuthContext';
 import { DataProvider } from './context/DataContext';
 import { ThemeProvider } from './context/ThemeContext';
@@ -118,10 +121,16 @@ export default function App() {
     content = <AdminLogin />;
     showHeaderFooter = false;
   }
-  // 1c. Admin Platform: /admin
+  // 1c. Admin Platform: /admin, /admin/orders, /admin/orders/:id
   else if (path === '/admin' || path.startsWith('/admin/')) {
     const subRoute = path.replace('/admin', '').replace(/^\//, '') || 'overview';
-    content = <AdminDashboard initialTab={subRoute} />;
+    let initialTab = subRoute;
+    let initialOrderId = null;
+    if (subRoute.startsWith('orders/')) {
+      initialTab = 'orders';
+      initialOrderId = subRoute.replace('orders/', '');
+    }
+    content = <AdminDashboard initialTab={initialTab} initialOrderId={initialOrderId} />;
     showHeaderFooter = false;
   }
   // 2. NFC Redirect: /t/:cardCode
@@ -190,18 +199,33 @@ export default function App() {
   else if (path === '/reset-password') {
     content = <Login view="reset" />;
   }
-  // 9. Customer Account Portal
-  else if (path === '/account') {
-    content = <AccountDashboard />;
+  // 9. Dedicated FLOCARD AI Concierge (/ai-concierge)
+  else if (path === '/ai-concierge') {
+    content = <AiConciergePage />;
   }
-  else if (path.startsWith('/account/designs')) {
-    content = <AccountDesigns />;
+  // 10. Customer Dashboard (/dashboard, /dashboard/*)
+  else if (path === '/dashboard' || path.startsWith('/dashboard/')) {
+    const subRoute = path.replace('/dashboard', '').replace(/^\//, '') || 'overview';
+    let initialTab = 'overview';
+    let initialOrderId = null;
+    if (subRoute.startsWith('orders/')) {
+      initialTab = 'orders';
+      initialOrderId = subRoute.replace('orders/', '');
+    } else if (subRoute) {
+      initialTab = subRoute;
+    }
+    content = <CustomerDashboard initialTab={initialTab} initialOrderId={initialOrderId} />;
+    showHeaderFooter = false;
   }
-  else if (path === '/account/profile') {
-    content = <AccountProfile />;
-  }
-  else if (path === '/account/settings') {
-    content = <AccountProfile />;
+  // 10b. Legacy Account redirect -> Customer Dashboard
+  else if (path === '/account' || path.startsWith('/account/')) {
+    const subRoute = path.replace('/account', '').replace(/^\//, '');
+    let initialTab = 'overview';
+    if (subRoute === 'designs') initialTab = 'cards';
+    else if (subRoute === 'profile') initialTab = 'profiles';
+    else if (subRoute === 'settings') initialTab = 'settings';
+    content = <CustomerDashboard initialTab={initialTab} />;
+    showHeaderFooter = false;
   }
   // 11. 404
   else {
@@ -216,6 +240,7 @@ export default function App() {
             {showHeaderFooter && <Navbar currentPath={path} />}
             {content}
             {showHeaderFooter && <Footer />}
+            <AiConciergeFloatingWidget currentPath={path} />
           </div>
         </DataProvider>
       </AuthProvider>

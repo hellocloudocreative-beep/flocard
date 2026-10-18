@@ -192,3 +192,14 @@ export const FEATURES = [
     desc: 'Replace thousands of disposable paper cards with one sustainable digital signature.'
   }
 ];
+
+export const FONT_OPTIONS = [
+  { id: 'Space Grotesk', name: 'Space Grotesk', style: 'Modern Tech & Bold' },
+  { id: 'Sora', name: 'Sora', style: 'Geometric Luxury' },
+  { id: 'Inter', name: 'Inter', style: 'Ultra Clean & Minimal' },
+  { id: 'Outfit', name: 'Outfit', style: 'Contemporary Editorial' },
+  { id: 'Plus Jakarta Sans', name: 'Plus Jakarta Sans', style: 'Sleek Corporate' },
+  { id: 'Cinzel', name: 'Cinzel', style: 'Regal Roman Classical' },
+  { id: 'Playfair Display', name: 'Playfair Display', style: 'Luxury Serif' },
+  { id: 'Montserrat', name: 'Montserrat', style: 'Geometric Bold' }
+];

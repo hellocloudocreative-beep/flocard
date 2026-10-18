@@ -17,8 +17,8 @@ export function DataProvider({ children }) {
   const [templates, setTemplates] = useState(() => StorageEngine.getTemplates());
   const [auditLogs, setAuditLogs] = useState(() => StorageEngine.getAuditLogs());
   const [studioBackground, setStudioBackground] = useState(() => StorageEngine.getStudioBackground());
-
   const [adminAccounts, setAdminAccounts] = useState(() => StorageEngine.getAdminAccounts());
+  const [lastOrderUpdate, setLastOrderUpdate] = useState(null);
 
   const refreshAll = () => {
     setProfiles(StorageEngine.getProfiles());
@@ -31,6 +31,40 @@ export function DataProvider({ children }) {
     setStudioBackground(StorageEngine.getStudioBackground());
     setAdminAccounts(StorageEngine.getAdminAccounts());
   };
+
+  // Real-time synchronization listeners across browser windows, tabs, and local dispatches
+  useEffect(() => {
+    const handleOrderUpdated = (e) => {
+      refreshAll();
+      if (e.detail) {
+        setLastOrderUpdate(e.detail);
+      }
+    };
+
+    const handleStorageChange = (e) => {
+      if (e.key && e.key.includes('flocard_data')) {
+        refreshAll();
+      }
+    };
+
+    const handleWindowFocus = () => {
+      refreshAll();
+    };
+
+    window.addEventListener('flocard_order_updated', handleOrderUpdated);
+    window.addEventListener('flocard_profile_updated', refreshAll);
+    window.addEventListener('flocard_notification_created', refreshAll);
+    window.addEventListener('storage', handleStorageChange);
+    window.addEventListener('focus', handleWindowFocus);
+
+    return () => {
+      window.removeEventListener('flocard_order_updated', handleOrderUpdated);
+      window.removeEventListener('flocard_profile_updated', refreshAll);
+      window.removeEventListener('flocard_notification_created', refreshAll);
+      window.removeEventListener('storage', handleStorageChange);
+      window.removeEventListener('focus', handleWindowFocus);
+    };
+  }, []);
 
   const addAdminAccount = (accountData) => {
     const updated = StorageEngine.addAdminAccount(accountData);
@@ -111,31 +145,32 @@ export function DataProvider({ children }) {
     return updated;
   };
 
-  const updateOrderStatus = (id, status) => {
-    const updated = StorageEngine.updateOrderStatus(id, status);
+  const updateOrderStatus = (params) => {
+    const updated = StorageEngine.updateOrderStatus(params);
     refreshAll();
     return updated;
   };
 
-  const deliverOrder = (orderId) => {
-    const result = StorageEngine.deliverOrder(orderId);
+  const deliverOrder = (orderId, actorUser) => {
+    const result = StorageEngine.deliverOrder(orderId, actorUser);
     refreshAll();
     return result;
   };
 
-  const deleteOrder = (id) => {
-    StorageEngine.deleteOrder(id);
+  const deleteOrder = (id, actorUser) => {
+    const res = StorageEngine.deleteOrder(id, actorUser);
     refreshAll();
+    return res;
   };
 
-  const createOrderFromDesign = (design, notes) => {
-    const order = StorageEngine.createOrderFromDesign(design, notes);
+  const createOrderFromDesign = (design, notes, customerUser) => {
+    const order = StorageEngine.createOrderFromDesign(design, notes, customerUser);
     refreshAll();
     return order;
   };
 
-  const assignDesignToOrder = (designId, notes) => {
-    const res = StorageEngine.assignDesignToOrder(designId, notes);
+  const assignDesignToOrder = (designId, notes, adminUser) => {
+    const res = StorageEngine.assignDesignToOrder(designId, notes, adminUser);
     refreshAll();
     return res;
   };
@@ -177,6 +212,7 @@ export function DataProvider({ children }) {
       templates,
       auditLogs,
       adminAccounts,
+      lastOrderUpdate,
       addAdminAccount,
       revokeAdminAccount,
       studioBackground,
@@ -205,7 +241,19 @@ export function DataProvider({ children }) {
       getProfileBySlug: StorageEngine.getProfileBySlug,
       getCardByCode: StorageEngine.getCardByCode,
       getDesignById: StorageEngine.getDesignById,
-      getOrderById: StorageEngine.getOrderById
+      getOrderById: StorageEngine.getOrderById,
+      getOrdersForUser: StorageEngine.getOrders,
+      getOrderHistory: StorageEngine.getOrderHistory,
+      getOrderInternalNotes: StorageEngine.getOrderInternalNotes,
+      addOrderInternalNote: StorageEngine.addOrderInternalNote,
+      getNotifications: StorageEngine.getNotifications,
+      markNotificationRead: StorageEngine.markNotificationRead,
+      markAllNotificationsRead: StorageEngine.markAllNotificationsRead,
+      getRealAnalytics: StorageEngine.getRealAnalytics,
+      logAnalyticsEvent: StorageEngine.logAnalyticsEvent,
+      getAiConversation: StorageEngine.getAiConversation,
+      saveAiConversation: StorageEngine.saveAiConversation,
+      clearAiConversation: StorageEngine.clearAiConversation
     }}>
       {children}
     </DataContext.Provider>

@@ -22,11 +22,140 @@ try {
   // Ignore in SSR / private browsing
 }
 
-const INITIAL_PROFILES = [];
+export const ORDER_STAGES = [
+  { key: 'design_submitted', label: 'Design Submitted', step: 1, description: 'Order received and digital design submitted for pre-press verification.' },
+  { key: 'artwork_approved', label: 'Artwork Approved', step: 2, description: 'Print-ready vector assets, typography, and bleed margins approved by production.' },
+  { key: 'manufacturing_started', label: 'Manufacturing Started', step: 3, description: 'Card base CNC cut and NXP NTAG216 high-frequency chip embedded.' },
+  { key: 'quality_inspection', label: 'Quality Inspection', step: 4, description: 'Dual-frequency NFC transmission tested and surface finish inspected.' },
+  { key: 'dispatched', label: 'Dispatched', step: 5, description: 'Card packaged in luxury presentation box and handed over to courier.' },
+  { key: 'delivered', label: 'Delivered', step: 6, description: 'Card delivered to recipient and NFC redirect routing activated.' }
+];
+
+export const EXCEPTION_STAGES = [
+  { key: 'revision_required', label: 'Revision Required', description: 'Design adjustments requested before manufacturing can proceed.' },
+  { key: 'on_hold', label: 'On Hold', description: 'Production paused per customer request or operational hold.' },
+  { key: 'manufacturing_issue', label: 'Manufacturing Issue', description: 'Recalibrating tooling to ensure flawless card surface finish.' },
+  { key: 'delivery_issue', label: 'Delivery Issue', description: 'Courier transit address re-attempt or verification needed.' },
+  { key: 'cancelled', label: 'Cancelled', description: 'Order cancelled and production halted.' }
+];
+
+export function normalizeOrderStatus(status) {
+  if (!status) return 'design_submitted';
+  const s = String(status).toLowerCase();
+  if (s === 'pending' || s === 'draft' || s === 'submitted') return 'design_submitted';
+  if (s === 'processing') return 'artwork_approved';
+  if (s === 'printing') return 'manufacturing_started';
+  if (s === 'shipped') return 'dispatched';
+  return s;
+}
+
+export function getOrderStageInfo(status) {
+  const norm = normalizeOrderStatus(status);
+  const found = ORDER_STAGES.find(s => s.key === norm) || EXCEPTION_STAGES.find(s => s.key === norm);
+  if (found) return found;
+  return { key: norm, label: norm.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase()), step: 1, description: '' };
+}
+
+export function getDefaultPublicMessage(status) {
+  const norm = normalizeOrderStatus(status);
+  const stage = ORDER_STAGES.find(s => s.key === norm) || EXCEPTION_STAGES.find(s => s.key === norm);
+  return stage ? stage.description : `Order status has transitioned to ${status}.`;
+}
+
+export const INITIAL_PROFILES = [
+  {
+    id: 'prof_akhil_001',
+    userId: 'usr_akhil_founder',
+    slug: 'akhil',
+    name: 'Akhil Anvar',
+    role: 'CEO & Founder',
+    company: 'FLOCARD',
+    avatar: '/assets/akhil.jpg',
+    location: 'Bengaluru, India',
+    bio: 'Pioneering connected NFC identity for executives and global tech pioneers. One tap. Every connection.',
+    phone: '+91 6238 578 552',
+    email: 'contact@flocard.in',
+    whatsapp: '916238578552',
+    website: 'https://flocard.in',
+    socialLinks: {
+      linkedin: 'https://linkedin.com/in/akhilanvar',
+      instagram: 'https://instagram.com/akhilanvar',
+      twitter: 'https://twitter.com/flocard_in'
+    },
+    // Morphing Profile & Appearance Customization Settings
+    openingPreference: 'expandable', // 'expandable' | 'full' | 'compact_only'
+    gradientPreset: 'cosmic_violet',
+    gradientStart: '#130B22',
+    gradientMid: '#240F3E',
+    gradientEnd: '#0B0813',
+    creamHighlight: '#F5EDE5',
+    glowColor: '#6B00FF',
+    accentColor: '#A855F7',
+    borderGlowIntensity: 'medium', // 'subtle' | 'medium' | 'high'
+    photoShape: 'circle', // 'circle' | 'rounded_rect'
+    photoLayout: 'center',
+    cardTypography: 'Space Grotesk',
+    backgroundTypography: 'FLOCARD',
+    visibleCompactFields: {
+      bio: true,
+      role: true,
+      company: true,
+      contactBtn: true,
+      verifiedBadge: true
+    },
+    sectionVisibility: {
+      about: true,
+      portfolio: true,
+      services: true,
+      experience: true,
+      contact: true
+    },
+    galleryLayout: 'grid', // 'grid' | 'masonry' | 'carousel' | 'featured'
+    portfolio: [
+      {
+        id: 'port_1',
+        title: 'FLOCARD Core Platform',
+        category: 'Hardware & Web',
+        description: 'Next-generation contactless NFC business cards combined with dynamic digital identity.',
+        image: '/assets/true_front_card.png',
+        link: 'https://flocard.in'
+      },
+      {
+        id: 'port_2',
+        title: 'Obsidian NFC Architecture',
+        category: 'Industrial Design',
+        description: 'Aerospace-grade matte composite with precision-machined edges and embedded NTAG216 high-frequency chip.',
+        image: '/assets/cardbg-purple.png',
+        link: 'https://flocard.in/cards'
+      },
+      {
+        id: 'port_3',
+        title: 'Universal Digital Profile Suite',
+        category: 'SaaS & UI/UX',
+        description: 'Morphing digital profile and vCard distribution system for modern professionals.',
+        image: '/assets/hero-bg.jpg',
+        link: 'https://flocard.in/digital-profiles'
+      }
+    ],
+    services: [
+      { id: 'srv_1', title: 'Enterprise Smart Cards', description: 'Custom metal & hybrid NFC rollouts for corporate teams.' },
+      { id: 'srv_2', title: 'Executive Networking', description: 'Contactless identity infrastructure and lead tracking.' }
+    ],
+    experience: [
+      { id: 'exp_1', role: 'Founder & CEO', company: 'FLOCARD', period: '2024 – Present', description: 'Leading product vision, NFC hardware engineering, and digital identity software.' }
+    ],
+    isVerified: true,
+    status: 'published'
+  }
+];
 const INITIAL_CARDS = [];
 const INITIAL_DESIGNS = [];
 const INITIAL_CUSTOMERS = [];
 const INITIAL_ORDERS = [];
+const INITIAL_ORDER_HISTORY = [];
+const INITIAL_ORDER_NOTES = [];
+const INITIAL_NOTIFICATIONS = [];
+const INITIAL_ANALYTICS_EVENTS = [];
 const INITIAL_AUDIT_LOGS = [];
 
 const INITIAL_ADMIN_ACCOUNTS = [
@@ -81,26 +210,75 @@ const INITIAL_TEMPLATES = [
   }
 ];
 
-// Helper to read and write from localStorage with initial fallback
+// In-memory fallback cache for SSR and Node test environments
+const memoryCache = new Map();
+
+// Helper to read and write from localStorage with in-memory & sessionStorage fallback
 function getLocal(key, initial) {
+  const fullKey = STORAGE_KEY_PREFIX + key;
   try {
-    const raw = localStorage.getItem(STORAGE_KEY_PREFIX + key);
+    if (typeof localStorage === 'undefined') {
+      if (!memoryCache.has(fullKey)) {
+        memoryCache.set(fullKey, JSON.stringify(initial));
+        return initial;
+      }
+      return JSON.parse(memoryCache.get(fullKey));
+    }
+    const raw = localStorage.getItem(fullKey);
     if (!raw) {
-      localStorage.setItem(STORAGE_KEY_PREFIX + key, JSON.stringify(initial));
+      if (typeof sessionStorage !== 'undefined') {
+        const sessRaw = sessionStorage.getItem(fullKey);
+        if (sessRaw) {
+          try {
+            const parsed = JSON.parse(sessRaw);
+            memoryCache.set(fullKey, sessRaw);
+            return parsed;
+          } catch (_) {}
+        }
+      }
+      if (memoryCache.has(fullKey)) {
+        return JSON.parse(memoryCache.get(fullKey));
+      }
+      localStorage.setItem(fullKey, JSON.stringify(initial));
+      memoryCache.set(fullKey, JSON.stringify(initial));
       return initial;
     }
-    return JSON.parse(raw);
+    const parsed = JSON.parse(raw);
+    memoryCache.set(fullKey, raw);
+    return parsed;
   } catch (err) {
-    console.error('Storage get error for', key, err);
+    if (memoryCache.has(fullKey)) {
+      try { return JSON.parse(memoryCache.get(fullKey)); } catch (_) {}
+    }
     return initial;
   }
 }
 
 function setLocal(key, value) {
-  try {
-    localStorage.setItem(STORAGE_KEY_PREFIX + key, JSON.stringify(value));
-  } catch (err) {
-    console.error('Storage set error for', key, err);
+  const fullKey = STORAGE_KEY_PREFIX + key;
+  const serialized = JSON.stringify(value);
+  // Always update in-memory cache
+  memoryCache.set(fullKey, serialized);
+
+  if (typeof localStorage !== 'undefined') {
+    try {
+      localStorage.setItem(fullKey, serialized);
+    } catch (err) {
+      console.warn(`[FLOCARD Storage] Quota or private browsing issue for ${key}, attempting storage cleanup...`, err);
+      // Clean up excess audit logs or temporary keys if quota exceeded
+      try {
+        const auditKey = STORAGE_KEY_PREFIX + 'audit_logs';
+        localStorage.removeItem(auditKey);
+        localStorage.setItem(fullKey, serialized);
+      } catch (err2) {
+        // Fallback to sessionStorage
+        try {
+          if (typeof sessionStorage !== 'undefined') {
+            sessionStorage.setItem(fullKey, serialized);
+          }
+        } catch (_) {}
+      }
+    }
   }
 }
 
@@ -108,25 +286,47 @@ export const StorageEngine = {
   // Profiles
   getProfiles: () => getLocal('profiles', INITIAL_PROFILES),
   getProfileBySlug: (slug) => {
+    if (!slug) return null;
+    const cleanSlug = String(slug).trim().toLowerCase();
     const list = getLocal('profiles', INITIAL_PROFILES);
-    return list.find(p => p.slug.toLowerCase() === slug.toLowerCase()) || null;
+    const found = list.find(p => p.slug && p.slug.trim().toLowerCase() === cleanSlug);
+    if (found) return found;
+
+    // Fallbacks for primary admin/demo profile
+    if (cleanSlug === 'akhil' || cleanSlug === 'default') {
+      const matchPrimary = list.find(p => p.id === 'prof_akhil_001') || list[0] || INITIAL_PROFILES[0];
+      return matchPrimary;
+    }
+    return null;
   },
   saveProfile: (profile) => {
+    if (!profile) return null;
     const list = getLocal('profiles', INITIAL_PROFILES);
-    const index = list.findIndex(p => p.id === profile.id || p.slug === profile.slug);
+    const index = list.findIndex(p => p.id === profile.id || (p.slug && profile.slug && p.slug.trim().toLowerCase() === profile.slug.trim().toLowerCase()));
+    let saved;
     if (index >= 0) {
       list[index] = { ...list[index], ...profile, updatedAt: new Date().toISOString() };
+      saved = list[index];
     } else {
-      list.unshift({ ...profile, id: profile.id || `prof_${Date.now()}`, createdAt: new Date().toISOString() });
+      saved = { ...profile, id: profile.id || `prof_${Date.now()}`, createdAt: new Date().toISOString() };
+      list.unshift(saved);
     }
     setLocal('profiles', list);
     StorageEngine.addAuditLog('Profile', `Profile updated for ${profile.name}`, 'You');
-    return profile;
+
+    // Broadcast update across windows & reactive hooks
+    if (typeof window !== 'undefined') {
+      window.dispatchEvent(new CustomEvent('flocard_profile_updated', { detail: { profile: saved, list } }));
+    }
+    return saved;
   },
   deleteProfile: (id) => {
     const list = getLocal('profiles', INITIAL_PROFILES).filter(p => p.id !== id);
     setLocal('profiles', list);
     StorageEngine.addAuditLog('Profile', `Profile deleted: ${id}`, 'You');
+    if (typeof window !== 'undefined') {
+      window.dispatchEvent(new CustomEvent('flocard_profile_updated', { detail: { deletedId: id, list } }));
+    }
   },
 
   // Cards
@@ -222,11 +422,45 @@ export const StorageEngine = {
   },
 
   // Orders & Fulfillment Pipeline
-  getOrders: () => getLocal('orders', INITIAL_ORDERS),
-  getOrderById: (id) => {
+  getOrders: (currentUser = null) => {
     const list = getLocal('orders', INITIAL_ORDERS);
-    return list.find(o => o.id === id) || null;
+    if (!currentUser) return list;
+    const isElevated = currentUser.role === 'admin' || currentUser.role === 'owner' || currentUser.email === 'akhil@flocard.in';
+    if (isElevated) return list;
+    const cId = currentUser.id;
+    const cEmail = (currentUser.email || '').toLowerCase();
+    return list.filter(o => (cId && o.customerId === cId) || (cEmail && o.customerEmail?.toLowerCase() === cEmail));
   },
+
+  getOrderById: (id, currentUser = null) => {
+    const list = getLocal('orders', INITIAL_ORDERS);
+    const order = list.find(o => o.id === id || o.orderReference === id);
+    if (!order) return null;
+
+    const isElevated = currentUser?.role === 'admin' || currentUser?.role === 'owner' || currentUser?.email === 'akhil@flocard.in';
+    const cId = currentUser?.id;
+    const cEmail = (currentUser?.email || '').toLowerCase();
+    const isOwner = (cId && order.customerId === cId) || (cEmail && order.customerEmail?.toLowerCase() === cEmail);
+
+    if (currentUser && !isElevated && !isOwner) {
+      return null; // Customer data isolation: unauthorized
+    }
+
+    const history = StorageEngine.getOrderHistory(order.id);
+    const result = {
+      ...order,
+      status: normalizeOrderStatus(order.status),
+      history
+    };
+
+    // Attach internal notes ONLY to administrators
+    if (isElevated) {
+      result.internalNotes = StorageEngine.getOrderInternalNotes(order.id, currentUser);
+    }
+
+    return result;
+  },
+
   saveOrder: (order) => {
     const list = getLocal('orders', INITIAL_ORDERS);
     const index = list.findIndex(o => o.id === order.id);
@@ -235,37 +469,44 @@ export const StorageEngine = {
       saved = { ...list[index], ...order, updatedAt: new Date().toISOString() };
       list[index] = saved;
     } else {
+      const orderRef = order.orderReference || `FLC-ORD-${Math.floor(1000 + Math.random() * 9000)}`;
       saved = {
         ...order,
-        id: order.id || `#ORD-${Math.floor(1000 + Math.random() * 9000)}`,
+        id: order.id || orderRef,
+        orderReference: orderRef,
         orderDate: order.orderDate || new Date().toISOString(),
-        status: order.status || 'processing'
+        status: normalizeOrderStatus(order.status || 'design_submitted'),
+        createdAt: order.createdAt || new Date().toISOString(),
+        updatedAt: new Date().toISOString()
       };
       list.unshift(saved);
     }
     setLocal('orders', list);
     return saved;
   },
-  createOrderFromDesign: (design, notes = '') => {
+
+  createOrderFromDesign: (design, notes = '', customerUser = null) => {
     const orders = getLocal('orders', INITIAL_ORDERS);
     let existing = orders.find(o => o.designId === design.id);
     if (existing) {
       return existing;
     }
 
-    const customerName = design.customerName || design.front?.name || 'Valued Client';
-    const email = design.customerEmail || `${customerName.toLowerCase().replace(/[^a-z0-9]/g, '') || 'client'}@example.com`;
-    const phone = design.customerPhone || '+91 6238 578 552';
-    const company = design.company || design.front?.company || 'FLOCARD Enterprise';
+    const customerName = design.customerName || customerUser?.name || design.front?.name || 'Valued Client';
+    const email = design.customerEmail || customerUser?.email || `${customerName.toLowerCase().replace(/[^a-z0-9]/g, '') || 'client'}@example.com`;
+    const phone = design.customerPhone || customerUser?.phone || '+91 6238 578 552';
+    const company = design.company || customerUser?.company || design.front?.company || 'FLOCARD Enterprise';
     const logoUrl = design.customerLogo?.url || (typeof design.customerLogo === 'string' ? design.customerLogo : null) || design.front?.customLogo || null;
+    const orderRef = `FLC-ORD-${Math.floor(1000 + Math.random() * 9000)}`;
 
     const newOrder = {
-      id: `#ORD-${Math.floor(1000 + Math.random() * 9000)}`,
+      id: orderRef,
+      orderReference: orderRef,
       designId: design.id,
       designTitle: design.title || `${customerName}'s Card Design`,
       templateType: design.templateType || 'standard',
       edition: design.edition || 'purple',
-      customerId: design.customerId || `cust_${Date.now()}`,
+      customerId: design.customerId || customerUser?.id || `cust_${Date.now()}`,
       customerName,
       customerEmail: email,
       customerPhone: phone,
@@ -276,12 +517,18 @@ export const StorageEngine = {
       frontConfig: design.front || {},
       backConfig: design.back || {},
       customColors: design.customColors || {},
-      status: 'processing', // 'processing' | 'printing' | 'shipped' | 'delivered'
+      status: 'design_submitted',
       orderDate: new Date().toISOString(),
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
       totalAmount: 1999,
       quantity: 1,
       shippingAddress: design.shippingAddress || 'Plot 42, Infopark Kochi, Kerala 682042',
-      approvalNotes: notes || design.reviewNotes || 'Design artwork verified for manufacturing',
+      trackingNumber: null,
+      carrierName: null,
+      trackingUrl: null,
+      estimatedDeliveryAt: null,
+      approvalNotes: notes || design.reviewNotes || 'Design artwork submitted for pre-production verification',
       cardCode: null,
       profileSlug: null
     };
@@ -289,9 +536,27 @@ export const StorageEngine = {
     orders.unshift(newOrder);
     setLocal('orders', orders);
 
-    // Also ensure customer exists in customers
+    // Initial immutable status history entry
+    StorageEngine.addOrderStatusHistoryEntry({
+      orderId: newOrder.id,
+      previousStatus: null,
+      newStatus: 'design_submitted',
+      publicMessage: 'Order received and digital design submitted for pre-press verification.',
+      actorUserId: customerUser?.id || 'customer',
+      actorName: customerName
+    });
+
+    // Customer in-app notification
+    StorageEngine.createNotification({
+      recipientUserId: newOrder.customerId,
+      orderId: newOrder.id,
+      title: 'Order Received',
+      message: `Your FLOCARD order ${newOrder.orderReference} has been received and submitted for verification.`
+    });
+
+    // Ensure customer exists in customers list
     const customers = getLocal('customers', INITIAL_CUSTOMERS);
-    let cust = customers.find(c => c.id === newOrder.customerId || c.email === newOrder.customerEmail || c.name.toLowerCase() === customerName.toLowerCase());
+    let cust = customers.find(c => c.id === newOrder.customerId || c.email.toLowerCase() === newOrder.customerEmail.toLowerCase());
     if (cust) {
       cust.totalDesigns = (cust.totalDesigns || 0) + 1;
       setLocal('customers', customers);
@@ -311,24 +576,31 @@ export const StorageEngine = {
       setLocal('customers', customers);
     }
 
-    // Also link order back to design record
+    // Link design back to order
     const designs = getLocal('designs', INITIAL_DESIGNS);
     const dItem = designs.find(d => d.id === design.id);
     if (dItem) {
       dItem.orderId = newOrder.id;
-      dItem.status = 'approved';
+      dItem.status = 'submitted';
       setLocal('designs', designs);
     }
 
     StorageEngine.addAuditLog(
       'Order Placement',
-      `Production order ${newOrder.id} created automatically for approved design ${design.id} (${customerName})`,
-      'System Automation'
+      `Production order ${newOrder.id} created for design ${design.id} (${customerName})`,
+      customerName
     );
+
+    // Dispatch realtime update event
+    if (typeof window !== 'undefined') {
+      window.dispatchEvent(new CustomEvent('flocard_order_updated', { detail: { orderId: newOrder.id, status: newOrder.status } }));
+      window.dispatchEvent(new CustomEvent('flocard_notification_created', { detail: { customerId: newOrder.customerId } }));
+    }
 
     return newOrder;
   },
-  assignDesignToOrder: (designId, notes = '') => {
+
+  assignDesignToOrder: (designId, notes = '', adminUser = null) => {
     const list = getLocal('designs', INITIAL_DESIGNS);
     const item = list.find(d => d.id === designId);
     if (!item) return null;
@@ -337,44 +609,166 @@ export const StorageEngine = {
     item.reviewNotes = notes || item.reviewNotes || 'Design approved and assigned to manufacturing order.';
     item.reviewedAt = new Date().toISOString();
 
-    const order = StorageEngine.createOrderFromDesign(item, item.reviewNotes);
+    const order = StorageEngine.createOrderFromDesign(item, item.reviewNotes, null);
     item.orderId = order.id;
     setLocal('designs', list);
 
-    StorageEngine.addAuditLog(
-      'Order Placement',
-      `Design ${item.id} assigned to manufacturing order ${order.id} for ${item.customerName}`,
-      'Akhil Anvar'
-    );
+    // Advance order to artwork_approved
+    StorageEngine.updateOrderStatus({
+      orderId: order.id,
+      newStatus: 'artwork_approved',
+      publicMessage: 'Design artwork approved by pre-press engineering. Print queues scheduled.',
+      internalNote: notes || 'Design artwork checked and approved for production.',
+      actorUser: adminUser || { id: 'admin', name: 'Akhil Anvar', role: 'admin' }
+    });
 
     return { design: item, order };
   },
-  updateOrderStatus: (orderId, status) => {
-    if (status === 'delivered') {
-      return StorageEngine.deliverOrder(orderId);
+
+  // Controlled, authorized status update with validation, history, and customer notifications
+  updateOrderStatus: (params, legacyStatus = null, legacyMeta = {}) => {
+    let opts = {};
+    if (typeof params === 'string') {
+      opts = {
+        orderId: params,
+        newStatus: legacyStatus,
+        ...(typeof legacyMeta === 'object' ? legacyMeta : {})
+      };
+    } else {
+      opts = params || {};
     }
+
+    const {
+      orderId,
+      newStatus,
+      publicMessage = '',
+      internalNote = '',
+      carrierName = null,
+      trackingNumber = null,
+      trackingUrl = null,
+      estimatedDeliveryAt = null,
+      actorUser = null,
+      actor = null
+    } = opts;
+
+    const actualActor = actorUser || actor;
+
+    // Authorization verification
+    const isElevated = !actualActor || actualActor?.role === 'admin' || actualActor?.role === 'owner' || actualActor?.email === 'akhil@flocard.in';
+    if (actualActor && !isElevated) {
+      throw new Error('Access Denied: Only administrators can update order status.');
+    }
+
     const orders = getLocal('orders', INITIAL_ORDERS);
-    const order = orders.find(o => o.id === orderId);
-    if (order) {
-      order.status = status;
-      order.updatedAt = new Date().toISOString();
-      setLocal('orders', orders);
-      StorageEngine.addAuditLog(
-        'Order Fulfillment',
-        `Order ${order.id} status updated to ${status} for ${order.customerName}`,
-        'Akhil Anvar'
-      );
+    const orderIndex = orders.findIndex(o => o.id === orderId || o.orderReference === orderId);
+    if (orderIndex < 0) {
+      throw new Error(`Order ${orderId} not found.`);
     }
-    return order;
-  },
-  deleteOrder: (orderId) => {
-    const orders = getLocal('orders', INITIAL_ORDERS).filter(o => o.id !== orderId);
+
+    const order = orders[orderIndex];
+    const prevStatus = normalizeOrderStatus(order.status);
+    const targetStatus = normalizeOrderStatus(newStatus);
+
+    // Validate status value against recognized fulfillment and exception stages
+    const validStages = [...ORDER_STAGES.map(s => s.key), ...EXCEPTION_STAGES.map(s => s.key)];
+    if (!validStages.includes(targetStatus)) {
+      throw new Error(`Invalid status transition: "${newStatus}" is not a recognized fulfillment stage.`);
+    }
+
+    // Update order fields
+    order.status = targetStatus;
+    order.updatedAt = new Date().toISOString();
+
+    if (carrierName !== undefined && carrierName !== null) order.carrierName = carrierName || null;
+    if (trackingNumber !== undefined && trackingNumber !== null) order.trackingNumber = trackingNumber || null;
+    if (trackingUrl !== undefined && trackingUrl !== null) order.trackingUrl = trackingUrl || null;
+    if (estimatedDeliveryAt !== undefined) order.estimatedDeliveryAt = estimatedDeliveryAt || null;
+
+    // Handle delivery completion & auto-provisioning
+    if (targetStatus === 'delivered' && !order.cardCode) {
+      order.deliveredAt = new Date().toISOString();
+      const provisioned = StorageEngine.deliverOrder(order.id, actorUser);
+      if (provisioned) {
+        order.cardCode = provisioned.card?.cardCode || order.cardCode;
+        order.profileSlug = provisioned.profile?.slug || order.profileSlug;
+      }
+    } else if (targetStatus === 'delivered') {
+      order.deliveredAt = new Date().toISOString();
+    }
+
+    orders[orderIndex] = order;
     setLocal('orders', orders);
-    StorageEngine.addAuditLog('Order Fulfillment', `Order deleted: ${orderId}`, 'You');
+
+    // 1. Record immutable status history entry
+    const finalPublicMessage = (publicMessage || '').trim() || getDefaultPublicMessage(targetStatus);
+    StorageEngine.addOrderStatusHistoryEntry({
+      orderId: order.id,
+      previousStatus: prevStatus,
+      newStatus: targetStatus,
+      publicMessage: finalPublicMessage,
+      actorUserId: actualActor?.id || 'admin',
+      actorName: actualActor?.name || 'Operations Lead'
+    });
+
+    // 2. Record internal administrative note if provided (NEVER exposed to customer)
+    if (internalNote && internalNote.trim()) {
+      StorageEngine.addOrderInternalNote({
+        orderId: order.id,
+        note: internalNote.trim(),
+        authorUser: actualActor
+      });
+    }
+
+    // 3. Create customer in-app notification
+    const stageInfo = getOrderStageInfo(targetStatus);
+    StorageEngine.createNotification({
+      recipientUserId: order.customerId,
+      orderId: order.id,
+      orderReference: order.orderReference,
+      status: targetStatus,
+      title: `Order Status: ${stageInfo.label}`,
+      message: finalPublicMessage
+    });
+
+    // 4. Log audit log
+    StorageEngine.addAuditLog(
+      'Order Fulfillment',
+      `Order ${order.orderReference || order.id} status updated from "${prevStatus}" to "${targetStatus}" for ${order.customerName}`,
+      actorUser?.name || 'Administrator'
+    );
+
+    // 5. Emit browser event for immediate realtime timeline updates
+    if (typeof window !== 'undefined') {
+      window.dispatchEvent(new CustomEvent('flocard_order_updated', {
+        detail: {
+          orderId: order.id,
+          orderReference: order.orderReference,
+          status: targetStatus,
+          timestamp: new Date().toISOString()
+        }
+      }));
+      window.dispatchEvent(new CustomEvent('flocard_notification_created', {
+        detail: { recipientUserId: order.customerId }
+      }));
+    }
+
+    return { success: true, order, ...order };
   },
-  deliverOrder: (orderId) => {
+
+  deleteOrder: (orderId, actorUser = null) => {
+    const isElevated = !actorUser || actorUser.role === 'admin' || actorUser.role === 'owner' || actorUser.email === 'akhil@flocard.in';
+    if (!isElevated) {
+      throw new Error('Unauthorized: Only administrators can delete orders.');
+    }
+    const orders = getLocal('orders', INITIAL_ORDERS).filter(o => o.id !== orderId && o.orderReference !== orderId);
+    setLocal('orders', orders);
+    StorageEngine.addAuditLog('Order Fulfillment', `Order deleted: ${orderId}`, actorUser?.name || 'Administrator');
+    return true;
+  },
+
+  deliverOrder: (orderId, actorUser = null) => {
     const orders = getLocal('orders', INITIAL_ORDERS);
-    const orderIndex = orders.findIndex(o => o.id === orderId);
+    const orderIndex = orders.findIndex(o => o.id === orderId || o.orderReference === orderId);
     if (orderIndex < 0) return null;
 
     const order = orders[orderIndex];
@@ -405,16 +799,18 @@ export const StorageEngine = {
       status: 'active',
       customerId: order.customerId,
       customerName: order.customerName,
+      customerEmail: order.customerEmail,
       profileSlug: finalSlug,
       tapCount: 0,
       registeredAt: new Date().toISOString(),
       orderId: order.id,
-      notes: `Auto-provisioned upon delivery of order ${order.id}`
+      notes: `Auto-provisioned upon delivery of order ${order.orderReference || order.id}`
     };
 
     // Generate new Digital Profile with customer name, logo, role, and details
     const newProfile = {
       id: `prof_${Date.now()}`,
+      userId: order.customerId,
       name: order.customerName,
       slug: finalSlug,
       role: order.role || order.frontConfig?.role || 'Executive',
@@ -424,12 +820,13 @@ export const StorageEngine = {
       avatar: order.customerLogo || null,
       logo: order.customerLogo || null,
       phone: order.customerPhone || '+91 6238 578 552',
-      email: order.customerEmail || `${finalSlug}@example.com`,
+      email: order.customerEmail || `${finalSlug}@flocard.in`,
       whatsapp: (order.customerPhone || '916238578552').replace(/[^0-9]/g, ''),
       location: 'Kochi, Kerala, India',
       website: `https://${finalSlug}.flocard.in`,
       theme: order.edition || 'purple',
-      status: 'published',
+      status: 'active',
+      viewsCount: 0,
       socialLinks: {
         website: `https://${finalSlug}.flocard.in`,
         linkedin: `https://linkedin.com/in/${finalSlug}`,
@@ -450,19 +847,23 @@ export const StorageEngine = {
           link: `https://${finalSlug}.flocard.in`
         }
       ],
-      stats: { views: 1, saves: 0, shares: 0 },
+      stats: { views: 0, saves: 0, shares: 0 },
       createdAt: new Date().toISOString()
     };
 
     // Save Card and Profile to storage
     const cards = getLocal('cards', INITIAL_CARDS);
-    cards.unshift(newCard);
-    setLocal('cards', cards);
+    if (!cards.some(c => c.cardCode === newCard.cardCode)) {
+      cards.unshift(newCard);
+      setLocal('cards', cards);
+    }
 
-    profiles.unshift(newProfile);
-    setLocal('profiles', profiles);
+    if (!profiles.some(p => p.slug === newProfile.slug)) {
+      profiles.unshift(newProfile);
+      setLocal('profiles', profiles);
+    }
 
-    // Update Customer in customers list (increment totalCards)
+    // Update Customer in customers list
     const customers = getLocal('customers', INITIAL_CUSTOMERS);
     let cust = customers.find(c => c.id === order.customerId || c.email === order.customerEmail || c.name.toLowerCase() === order.customerName.toLowerCase());
     if (cust) {
@@ -471,39 +872,189 @@ export const StorageEngine = {
       if (!cust.avatar && order.customerLogo) {
         cust.avatar = order.customerLogo;
       }
-    } else {
-      cust = {
-        id: order.customerId || `cust_${Date.now()}`,
-        name: order.customerName,
-        email: order.customerEmail,
-        phone: order.customerPhone || '+91 6238 578 552',
-        company: order.company || 'FLOCARD Partner',
-        avatar: order.customerLogo || null,
-        totalCards: 1,
-        totalDesigns: 1,
-        status: 'active',
-        joinedDate: new Date().toISOString().split('T')[0]
-      };
-      customers.unshift(cust);
     }
     setLocal('customers', customers);
 
     // Update order status
     order.status = 'delivered';
-    order.deliveredAt = new Date().toISOString();
+    order.deliveredAt = order.deliveredAt || new Date().toISOString();
     order.cardCode = newCard.cardCode;
     order.profileSlug = finalSlug;
     orders[orderIndex] = order;
     setLocal('orders', orders);
 
-    // Log audit entry
-    StorageEngine.addAuditLog(
-      'Order Fulfillment',
-      `Order ${order.id} delivered to ${order.customerName}. NFC card ${newCard.cardCode} and profile @${finalSlug} are now live!`,
-      'Akhil Anvar'
+    return { order, card: newCard, profile: newProfile };
+  },
+
+  // Order Status History (Immutable fulfillment audit trail)
+  getOrderHistory: (orderId) => {
+    const history = getLocal('order_history', INITIAL_ORDER_HISTORY);
+    return history
+      .filter(h => h.orderId === orderId)
+      .sort((a, b) => new Date(a.createdAt) - new Date(b.createdAt));
+  },
+
+  addOrderStatusHistoryEntry: ({ orderId, previousStatus, newStatus, publicMessage, actorUserId, actorName }) => {
+    const history = getLocal('order_history', INITIAL_ORDER_HISTORY);
+    const entry = {
+      id: `hist_${Date.now()}_${Math.random().toString(36).substring(7)}`,
+      orderId,
+      previousStatus: previousStatus ? normalizeOrderStatus(previousStatus) : null,
+      newStatus: normalizeOrderStatus(newStatus),
+      publicMessage: publicMessage || getDefaultPublicMessage(newStatus),
+      actorUserId: actorUserId || 'system',
+      actorName: actorName || 'Operations Team',
+      createdAt: new Date().toISOString()
+    };
+    history.push(entry);
+    setLocal('order_history', history);
+    return entry;
+  },
+
+  // Order Internal Notes (Admin-only private notes - NEVER returned to customers)
+  getOrderInternalNotes: (orderId, currentUser = null) => {
+    const isElevated = currentUser?.role === 'admin' || currentUser?.role === 'owner' || currentUser?.email === 'akhil@flocard.in';
+    if (!isElevated) return [];
+    const notes = getLocal('order_internal_notes', INITIAL_ORDER_NOTES);
+    return notes
+      .filter(n => n.orderId === orderId)
+      .sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
+  },
+
+  addOrderInternalNote: ({ orderId, note, authorUser = null }) => {
+    const isElevated = authorUser?.role === 'admin' || authorUser?.role === 'owner' || authorUser?.email === 'akhil@flocard.in';
+    if (!isElevated) {
+      throw new Error('Unauthorized: Only administrators can add internal notes.');
+    }
+    const notes = getLocal('order_internal_notes', INITIAL_ORDER_NOTES);
+    const entry = {
+      id: `note_${Date.now()}_${Math.random().toString(36).substring(7)}`,
+      orderId,
+      authorUserId: authorUser?.id || 'admin',
+      authorName: authorUser?.name || 'Administrator',
+      note: note.trim(),
+      createdAt: new Date().toISOString()
+    };
+    notes.unshift(entry);
+    setLocal('order_internal_notes', notes);
+    return entry;
+  },
+
+  // In-App Customer Notifications
+  getNotifications: (currentUser = null) => {
+    if (!currentUser) return [];
+    const list = getLocal('customer_notifications', INITIAL_NOTIFICATIONS);
+    const cId = currentUser.id;
+    const cEmail = (currentUser.email || '').toLowerCase();
+    return list
+      .filter(n => n.recipientUserId === cId || (cEmail && n.recipientEmail?.toLowerCase() === cEmail))
+      .sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
+  },
+
+  markNotificationRead: (notificationId, currentUser = null) => {
+    const list = getLocal('customer_notifications', INITIAL_NOTIFICATIONS);
+    const item = list.find(n => n.id === notificationId);
+    if (item) {
+      const isOwner = !currentUser || item.recipientUserId === currentUser.id;
+      if (isOwner) {
+        item.readAt = new Date().toISOString();
+        setLocal('customer_notifications', list);
+      }
+    }
+    return item;
+  },
+
+  markAllNotificationsRead: (currentUser = null) => {
+    if (!currentUser) return;
+    const list = getLocal('customer_notifications', INITIAL_NOTIFICATIONS);
+    const cId = currentUser.id;
+    list.forEach(n => {
+      if (n.recipientUserId === cId && !n.readAt) {
+        n.readAt = new Date().toISOString();
+      }
+    });
+    setLocal('customer_notifications', list);
+  },
+
+  createNotification: ({ recipientUserId, recipientEmail = null, orderId = null, orderReference = null, status = null, title, message }) => {
+    if (!recipientUserId && !recipientEmail) return null;
+    const list = getLocal('customer_notifications', INITIAL_NOTIFICATIONS);
+    const notif = {
+      id: `notif_${Date.now()}_${Math.random().toString(36).substring(7)}`,
+      recipientUserId,
+      recipientEmail,
+      orderId,
+      orderReference,
+      status,
+      title: title || 'Order Update',
+      message: message || 'Your order has been updated.',
+      readAt: null,
+      createdAt: new Date().toISOString()
+    };
+    list.unshift(notif);
+    setLocal('customer_notifications', list);
+    return notif;
+  },
+
+  // Privacy-Conscious Real Analytics Engine (Calculated strictly from real events)
+  getRealAnalytics: (currentUser = null) => {
+    if (!currentUser) {
+      return { totalViews: 0, totalTaps: 0, totalScans: 0, totalDownloads: 0, totalShares: 0, recentEvents: [] };
+    }
+    const profiles = StorageEngine.getProfiles().filter(p => p.userId === currentUser.id || p.email?.toLowerCase() === currentUser.email?.toLowerCase());
+    const cards = StorageEngine.getCards().filter(c => c.customerId === currentUser.id || c.customerEmail?.toLowerCase() === currentUser.email?.toLowerCase());
+
+    const userSlugs = new Set(profiles.map(p => p.slug.toLowerCase()));
+    const userCodes = new Set(cards.map(c => c.cardCode.toLowerCase()));
+
+    const allEvents = getLocal('analytics_events', INITIAL_ANALYTICS_EVENTS);
+    const matchingEvents = allEvents.filter(e =>
+      (e.profileSlug && userSlugs.has(e.profileSlug.toLowerCase())) ||
+      (e.cardCode && userCodes.has(e.cardCode.toLowerCase()))
     );
 
-    return { order, card: newCard, profile: newProfile };
+    return {
+      totalViews: matchingEvents.filter(e => e.eventType === 'profile_view').length,
+      totalTaps: matchingEvents.filter(e => e.eventType === 'nfc_tap').length,
+      totalScans: matchingEvents.filter(e => e.eventType === 'qr_scan').length,
+      totalDownloads: matchingEvents.filter(e => e.eventType === 'vcard_download').length,
+      totalShares: matchingEvents.filter(e => e.eventType === 'share_click').length,
+      recentEvents: matchingEvents.slice(0, 50)
+    };
+  },
+
+  logAnalyticsEvent: ({ cardCode = null, profileSlug = null, eventType = 'profile_view', clientMeta = {} }) => {
+    const events = getLocal('analytics_events', INITIAL_ANALYTICS_EVENTS);
+    const newEvent = {
+      id: `evt_${Date.now()}_${Math.random().toString(36).substring(7)}`,
+      cardCode,
+      profileSlug,
+      eventType,
+      referrer: typeof document !== 'undefined' ? document.referrer : '',
+      userAgent: typeof navigator !== 'undefined' ? navigator.userAgent : '',
+      createdAt: new Date().toISOString(),
+      ...clientMeta
+    };
+    events.unshift(newEvent);
+    setLocal('analytics_events', events.slice(0, 1000));
+    return newEvent;
+  },
+
+  // AI Concierge Conversation Storage (Optional, with customer privacy & clear controls)
+  getAiConversation: (userId = 'guest') => {
+    return getLocal(`ai_convo_${userId}`, []);
+  },
+
+  saveAiConversation: (userId = 'guest', messages = []) => {
+    setLocal(`ai_convo_${userId}`, messages.slice(-40)); // Keep only recent turns
+  },
+
+  clearAiConversation: (userId = 'guest') => {
+    try {
+      localStorage.removeItem(STORAGE_KEY_PREFIX + `ai_convo_${userId}`);
+    } catch {
+      // Ignore
+    }
   },
 
   // Customers

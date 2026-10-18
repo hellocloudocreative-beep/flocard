@@ -23,6 +23,7 @@ import {
   Link as LinkIcon
 } from 'lucide-react';
 import PhoneProfileMockup from '../../components/PhoneProfileMockup';
+import { compressImage } from '../../lib/imageCompression';
 
 export default function AccountProfile() {
   const { user } = useAuth();
@@ -82,42 +83,45 @@ export default function AccountProfile() {
   }, [userProfile?.id]);
 
   // Handle Avatar / Headshot Upload
-  const handleAvatarUpload = (e) => {
+  const handleAvatarUpload = async (e) => {
     const file = e.target.files?.[0];
     if (!file) return;
-    const reader = new FileReader();
-    reader.onload = () => {
-      setFormData(prev => ({ ...prev, avatar: reader.result }));
-    };
-    reader.readAsDataURL(file);
+    try {
+      const compressed = await compressImage(file, { maxWidth: 400, maxHeight: 400, quality: 0.85 });
+      setFormData(prev => ({ ...prev, avatar: compressed }));
+    } catch (err) {
+      console.error('Avatar upload failed:', err);
+    }
     e.target.value = '';
   };
 
   // Handle Logo Upload
-  const handleLogoUpload = (e) => {
+  const handleLogoUpload = async (e) => {
     const file = e.target.files?.[0];
     if (!file) return;
-    const reader = new FileReader();
-    reader.onload = () => {
-      setFormData(prev => ({ ...prev, logo: reader.result }));
-    };
-    reader.readAsDataURL(file);
+    try {
+      const compressed = await compressImage(file, { maxWidth: 500, maxHeight: 500, quality: 0.85, outputFormat: file.type === 'image/png' ? 'image/png' : 'image/jpeg' });
+      setFormData(prev => ({ ...prev, logo: compressed }));
+    } catch (err) {
+      console.error('Logo upload failed:', err);
+    }
     e.target.value = '';
   };
 
   // Handle Individual Work Image Upload
-  const handleWorkImageUpload = (index, e) => {
+  const handleWorkImageUpload = async (index, e) => {
     const file = e.target.files?.[0];
     if (!file) return;
-    const reader = new FileReader();
-    reader.onload = () => {
+    try {
+      const compressed = await compressImage(file, { maxWidth: 800, maxHeight: 800, quality: 0.82 });
       setFormData(prev => {
         const next = [...prev.portfolio];
-        next[index] = { ...next[index], image: reader.result };
+        next[index] = { ...next[index], image: compressed };
         return { ...prev, portfolio: next };
       });
-    };
-    reader.readAsDataURL(file);
+    } catch (err) {
+      console.error('Work image upload failed:', err);
+    }
     e.target.value = '';
   };
 
@@ -157,13 +161,13 @@ export default function AccountProfile() {
   };
 
   // Bulk Upload Multiple Work Images
-  const handleBulkWorkUpload = (e) => {
+  const handleBulkWorkUpload = async (e) => {
     const files = Array.from(e.target.files || []);
     if (!files.length) return;
 
-    files.forEach((file) => {
-      const reader = new FileReader();
-      reader.onload = () => {
+    for (const file of files) {
+      try {
+        const compressed = await compressImage(file, { maxWidth: 800, maxHeight: 800, quality: 0.82 });
         const rawTitle = file.name.replace(/\.[^/.]+$/, '').replace(/[-_]/g, ' ');
         const cleanTitle = rawTitle.charAt(0).toUpperCase() + rawTitle.slice(1);
         setFormData(prev => ({
@@ -175,14 +179,15 @@ export default function AccountProfile() {
               title: cleanTitle || 'New Work Showcase',
               category: 'Work Showcase',
               desc: 'Client showcase deliverables and visual portfolio preview.',
-              image: reader.result,
+              image: compressed,
               link: ''
             }
           ]
         }));
-      };
-      reader.readAsDataURL(file);
-    });
+      } catch (err) {
+        console.error('Work upload error:', err);
+      }
+    }
     e.target.value = '';
   };
 

@@ -5,15 +5,19 @@
    ========================================================================== */
 
 import React, { useState, useEffect } from 'react';
-import { Menu, X, ArrowRight, User, LogOut, Sun, Moon, ChevronDown } from 'lucide-react';
+import { Menu, X, ArrowRight, User, LogOut, Sun, Moon, ChevronDown, Sparkles } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import { useTheme } from '../context/ThemeContext';
+import { useData } from '../context/DataContext';
 
 export default function Navbar({ currentPath = '/' }) {
   const [mobileOpen, setMobileOpen] = useState(false);
   const [scrolled, setScrolled] = useState(false);
   const { user, logout } = useAuth();
   const { theme, isDark, isLight, toggleTheme } = useTheme();
+  const { profiles = [] } = useData();
+
+  const userAvatar = user?.avatar || profiles.find(p => (user?.id && p.customerId === user.id) || (user?.email && p.email === user.email) || p.slug === 'akhil')?.avatar;
 
   useEffect(() => {
     const handleScroll = () => {
@@ -39,6 +43,7 @@ export default function Navbar({ currentPath = '/' }) {
     { label: 'Home', href: '/' },
     { label: 'Cards', href: '/cards' },
     { label: 'Digital Profiles', href: '/digital-profiles' },
+    { label: 'AI Concierge', href: '/ai-concierge', badge: 'AI' },
     { label: 'How It Works', href: '/how-it-works' },
     { label: 'About', href: '/about' },
     { label: 'Contact', href: '/contact' }
@@ -131,7 +136,26 @@ export default function Navbar({ currentPath = '/' }) {
                   onMouseEnter={(e) => (e.target.style.color = 'var(--nav-hover-color)')}
                   onMouseLeave={(e) => (e.target.style.color = active ? 'var(--nav-active-color)' : 'var(--nav-link-color)')}
                 >
-                  {link.label}
+                  <span style={{ display: 'inline-flex', alignItems: 'center', gap: '6px' }}>
+                    {link.badge && <Sparkles size={13} color="var(--accent-purple)" />}
+                    {link.label}
+                    {link.badge && (
+                      <span
+                        style={{
+                          fontSize: '0.62rem',
+                          padding: '1px 6px',
+                          borderRadius: '9999px',
+                          background: 'linear-gradient(135deg, rgba(168,85,247,0.2), rgba(107,0,255,0.25))',
+                          border: '1px solid rgba(168,85,247,0.4)',
+                          color: 'var(--accent-purple)',
+                          fontWeight: 700,
+                          letterSpacing: '0.5px'
+                        }}
+                      >
+                        {link.badge}
+                      </span>
+                    )}
+                  </span>
                   {active && (
                     <span
                       style={{
@@ -195,7 +219,7 @@ export default function Navbar({ currentPath = '/' }) {
             {user ? (
               <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
                 <a
-                  href="/account"
+                  href="/dashboard"
                   style={{
                     background: 'var(--btn-sec-bg)',
                     border: '1px solid var(--btn-sec-border)',
@@ -214,7 +238,11 @@ export default function Navbar({ currentPath = '/' }) {
                   onMouseEnter={(e) => (e.currentTarget.style.borderColor = 'var(--primary-purple)')}
                   onMouseLeave={(e) => (e.currentTarget.style.borderColor = 'var(--btn-sec-border)')}
                 >
-                  <User size={14} color="var(--primary-purple)" />
+                  {userAvatar ? (
+                    <img src={userAvatar} alt="" style={{ width: '18px', height: '18px', borderRadius: '50%', objectFit: 'cover' }} />
+                  ) : (
+                    <User size={14} color="var(--primary-purple)" />
+                  )}
                   <span>{user.name ? user.name.split(' ')[0] : 'Account'}</span>
                   <ChevronDown size={13} color="var(--text-muted)" />
                 </a>
@@ -386,10 +414,28 @@ export default function Navbar({ currentPath = '/' }) {
                   fontWeight: 600,
                   color: currentPath === link.href ? 'var(--primary-purple)' : 'var(--text-primary)',
                   padding: '8px 0',
-                  borderBottom: '1px solid var(--border-color)'
+                  borderBottom: '1px solid var(--border-color)',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'space-between'
                 }}
               >
-                {link.label}
+                <span>{link.label}</span>
+                {link.badge && (
+                  <span
+                    style={{
+                      fontSize: '0.66rem',
+                      padding: '2px 8px',
+                      borderRadius: '9999px',
+                      background: 'linear-gradient(135deg, rgba(168,85,247,0.25), rgba(107,0,255,0.3))',
+                      border: '1px solid var(--accent-purple)',
+                      color: 'var(--accent-purple)',
+                      fontWeight: 700
+                    }}
+                  >
+                    {link.badge}
+                  </span>
+                )}
               </a>
             ))}
 
@@ -399,7 +445,7 @@ export default function Navbar({ currentPath = '/' }) {
             {user ? (
               <div style={{ display: 'flex', flexDirection: 'column', gap: '14px', paddingTop: '8px' }}>
                 <a
-                  href="/account"
+                  href="/dashboard"
                   onClick={() => setMobileOpen(false)}
                   style={{
                     display: 'flex',
@@ -411,8 +457,12 @@ export default function Navbar({ currentPath = '/' }) {
                     textDecoration: 'none'
                   }}
                 >
-                  <User size={18} color="var(--primary-purple)" />
-                  <span>My Account ({user.name || 'Member'})</span>
+                  {userAvatar ? (
+                    <img src={userAvatar} alt="" style={{ width: '22px', height: '22px', borderRadius: '50%', objectFit: 'cover' }} />
+                  ) : (
+                    <User size={18} color="var(--primary-purple)" />
+                  )}
+                  <span>Dashboard ({user.name || 'Member'})</span>
                 </a>
                 <button
                   type="button"

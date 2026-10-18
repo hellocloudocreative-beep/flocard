@@ -63,12 +63,14 @@ import { useAuth } from '../../context/AuthContext';
 import Card3DPreview from '../../components/Card3DPreview';
 import { getSupabaseStatus } from '../../lib/supabase';
 import { exportCardPDF } from '../../lib/pdfExport';
+import { compressImage } from '../../lib/imageCompression';
 import AccountAccessCard from '../../components/spectrum/AccountAccessCard';
 import AnimatedSwitch from '../../components/spectrum/AnimatedSwitch';
 import HoldToConfirm from '../../components/spectrum/HoldToConfirm';
 import MorphButton from '../../components/spectrum/MorphButton';
+import AdminOrderManager from './AdminOrderManager';
 
-export default function AdminDashboard({ initialTab = 'overview' }) {
+export default function AdminDashboard({ initialTab = 'overview', initialOrderId = null }) {
   const { user, isOwner, isAdmin, logout, switchPersona } = useAuth();
   const {
     profiles,
@@ -339,8 +341,15 @@ export default function AdminDashboard({ initialTab = 'overview' }) {
   const handleUpdateProfile = (e) => {
     e.preventDefault();
     if (!editingProfile) return;
-    saveProfile(editingProfile);
+    const saved = saveProfile(editingProfile);
+    const targetSlug = saved?.slug || editingProfile.slug || 'akhil';
     setEditingProfile(null);
+    setFulfillmentToast({
+      title: 'Digital Profile Saved',
+      message: `Profile changes saved! Live at flocard.in/p/${targetSlug}`,
+      type: 'success'
+    });
+    setTimeout(() => setFulfillmentToast(null), 5000);
   };
 
   const handleDeleteProfile = (id) => {
@@ -2401,418 +2410,10 @@ export default function AdminDashboard({ initialTab = 'overview' }) {
           )}
 
           {/* ====================================================================
-              VIEW: ORDERS & CARD FULFILLMENT PIPELINE
+              VIEW: ORDERS & CARD FULFILLMENT PIPELINE (ADMIN ORDER MANAGER)
               ==================================================================== */}
-          {activeTab === 'orders' && (
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
-              {/* Top Order KPI Metrics */}
-              <div
-                style={{
-                  display: 'grid',
-                  gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))',
-                  gap: '16px'
-                }}
-              >
-                <div style={{ backgroundColor: '#FFFFFF', borderRadius: '16px', border: '1px solid #E8E3EF', padding: '16px 20px' }}>
-                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-                    <span style={{ fontSize: '0.78rem', color: '#777184', fontWeight: 600, textTransform: 'uppercase' }}>Total Orders</span>
-                    <div style={{ width: '32px', height: '32px', borderRadius: '8px', backgroundColor: '#F3EEFF', color: '#6B00FF', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                      <Package size={16} />
-                    </div>
-                  </div>
-                  <div style={{ fontSize: '1.8rem', fontWeight: 800, color: '#191522', marginTop: '6px', fontFamily: 'var(--font-heading, Sora)' }}>
-                    {orders.length}
-                  </div>
-                </div>
-
-                <div style={{ backgroundColor: '#FFFFFF', borderRadius: '16px', border: '1px solid #E8E3EF', padding: '16px 20px' }}>
-                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-                    <span style={{ fontSize: '0.78rem', color: '#777184', fontWeight: 600, textTransform: 'uppercase' }}>In Production / Processing</span>
-                    <div style={{ width: '32px', height: '32px', borderRadius: '8px', backgroundColor: '#FFF7ED', color: '#EA580C', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                      <Clock size={16} />
-                    </div>
-                  </div>
-                  <div style={{ fontSize: '1.8rem', fontWeight: 800, color: '#EA580C', marginTop: '6px', fontFamily: 'var(--font-heading, Sora)' }}>
-                    {orders.filter(o => o.status === 'processing' || o.status === 'printing').length}
-                  </div>
-                </div>
-
-                <div style={{ backgroundColor: '#FFFFFF', borderRadius: '16px', border: '1px solid #E8E3EF', padding: '16px 20px' }}>
-                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-                    <span style={{ fontSize: '0.78rem', color: '#777184', fontWeight: 600, textTransform: 'uppercase' }}>Shipped / In Transit</span>
-                    <div style={{ width: '32px', height: '32px', borderRadius: '8px', backgroundColor: '#EEF6FF', color: '#2563EB', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                      <Truck size={16} />
-                    </div>
-                  </div>
-                  <div style={{ fontSize: '1.8rem', fontWeight: 800, color: '#2563EB', marginTop: '6px', fontFamily: 'var(--font-heading, Sora)' }}>
-                    {orders.filter(o => o.status === 'shipped').length}
-                  </div>
-                </div>
-
-                <div style={{ backgroundColor: '#FFFFFF', borderRadius: '16px', border: '1px solid #E8E3EF', padding: '16px 20px' }}>
-                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-                    <span style={{ fontSize: '0.78rem', color: '#777184', fontWeight: 600, textTransform: 'uppercase' }}>Delivered & Provisioned</span>
-                    <div style={{ width: '32px', height: '32px', borderRadius: '8px', backgroundColor: '#EEFAF5', color: '#16A36A', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                      <CheckCircle2 size={16} />
-                    </div>
-                  </div>
-                  <div style={{ fontSize: '1.8rem', fontWeight: 800, color: '#16A36A', marginTop: '6px', fontFamily: 'var(--font-heading, Sora)' }}>
-                    {orders.filter(o => o.status === 'delivered').length}
-                  </div>
-                </div>
-              </div>
-
-              {/* Order Table Box */}
-              <div style={{ backgroundColor: '#FFFFFF', borderRadius: '16px', border: '1px solid #E8E3EF', padding: '24px' }}>
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px', flexWrap: 'wrap', gap: '12px' }}>
-                  <div>
-                    <h3 style={{ margin: 0, fontSize: '1.1rem', fontWeight: 700, color: '#191522' }}>Card Manufacturing & Delivery Queue</h3>
-                    <p style={{ margin: '2px 0 0', fontSize: '0.8rem', color: '#777184' }}>
-                      When designs are approved, orders enter this queue. Marking an order <strong>Delivered</strong> automatically generates the NFC Card and creates the customer's live profile with logo & details.
-                    </p>
-                  </div>
-
-                  {/* Filter chips */}
-                  <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap' }}>
-                    {['all', 'processing', 'printing', 'shipped', 'delivered'].map((st) => (
-                      <button
-                        key={st}
-                        type="button"
-                        onClick={() => setOrderFilter(st)}
-                        style={{
-                          padding: '6px 12px',
-                          borderRadius: '8px',
-                          border: orderFilter === st ? '1px solid #6B00FF' : '1px solid #E8E3EF',
-                          backgroundColor: orderFilter === st ? '#F3EEFF' : '#FFFFFF',
-                          color: orderFilter === st ? '#6B00FF' : '#777184',
-                          fontSize: '0.76rem',
-                          fontWeight: 600,
-                          cursor: 'pointer',
-                          textTransform: 'capitalize'
-                        }}
-                      >
-                        {st === 'all' ? `All Orders (${orders.length})` : `${st} (${orders.filter(o => o.status === st).length})`}
-                      </button>
-                    ))}
-                  </div>
-                </div>
-
-                {/* Table */}
-                <div style={{ overflowX: 'auto' }}>
-                  <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left', fontSize: '0.84rem' }}>
-                    <thead>
-                      <tr style={{ borderBottom: '1px solid #F2ECFF', color: '#777184', fontSize: '0.74rem', textTransform: 'uppercase' }}>
-                        <th style={{ padding: '10px 12px' }}>Order ID</th>
-                        <th style={{ padding: '10px 12px' }}>Customer & Company</th>
-                        <th style={{ padding: '10px 12px' }}>Design & Card Edition</th>
-                        <th style={{ padding: '10px 12px' }}>Status</th>
-                        <th style={{ padding: '10px 12px' }}>Auto-Provisioned Assets</th>
-                        <th style={{ padding: '10px 12px', textAlign: 'center' }}>Actions</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {orders.filter(o => orderFilter === 'all' || o.status === orderFilter).length === 0 ? (
-                        <tr>
-                          <td colSpan={6} style={{ padding: '48px 12px', textAlign: 'center', color: '#777184' }}>
-                            <Package size={36} color="#C4B5FD" style={{ margin: '0 auto 10px', display: 'block' }} />
-                            <div style={{ fontWeight: 600, color: '#191522', marginBottom: '4px', fontSize: '0.95rem' }}>
-                              {orders.length === 0 ? 'No manufacturing orders in queue' : `No orders with status "${orderFilter}"`}
-                            </div>
-                            <div style={{ fontSize: '0.78rem', maxWidth: '420px', margin: '0 auto 16px' }}>
-                              {orders.length === 0
-                                ? 'When a customer sends a print design and you approve it in the Card Designs tab, it automatically creates a production order here.'
-                                : 'Try selecting another status tab or approve pending designs.'}
-                            </div>
-                            {orders.length === 0 && (
-                              <button
-                                type="button"
-                                onClick={() => setActiveTab('designs')}
-                                style={{
-                                  padding: '8px 16px',
-                                  borderRadius: '8px',
-                                  border: 'none',
-                                  backgroundColor: '#6B00FF',
-                                  color: '#FFFFFF',
-                                  fontSize: '0.8rem',
-                                  fontWeight: 600,
-                                  cursor: 'pointer'
-                                }}
-                              >
-                                View Card Designs Queue
-                              </button>
-                            )}
-                          </td>
-                        </tr>
-                      ) : (
-                        orders
-                          .filter(o => orderFilter === 'all' || o.status === orderFilter)
-                          .map((order) => {
-                            const isDelivered = order.status === 'delivered';
-                            return (
-                              <tr key={order.id} style={{ borderBottom: '1px solid #F7F6FA' }}>
-                                {/* Order ID & Date */}
-                                <td style={{ padding: '12px' }}>
-                                  <div style={{ fontFamily: 'monospace', fontWeight: 700, color: '#6B00FF', fontSize: '0.86rem' }}>
-                                    {order.id}
-                                  </div>
-                                  <div style={{ fontSize: '0.72rem', color: '#777184', display: 'flex', alignItems: 'center', gap: '4px', marginTop: '2px' }}>
-                                    <Clock size={11} />
-                                    <span>{new Date(order.orderDate).toLocaleDateString()}</span>
-                                  </div>
-                                </td>
-
-                                {/* Customer info */}
-                                <td style={{ padding: '12px' }}>
-                                  <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-                                    <div
-                                      style={{
-                                        width: '34px',
-                                        height: '34px',
-                                        borderRadius: '50%',
-                                        backgroundColor: '#1B1028',
-                                        border: '1px solid #A855F7',
-                                        display: 'flex',
-                                        alignItems: 'center',
-                                        justifyContent: 'center',
-                                        color: '#FFFFFF',
-                                        fontWeight: 700,
-                                        fontSize: '0.8rem',
-                                        overflow: 'hidden',
-                                        flexShrink: 0
-                                      }}
-                                    >
-                                      {order.customerLogo ? (
-                                        <img src={order.customerLogo} alt="Logo" style={{ width: '100%', height: '100%', objectFit: 'contain' }} />
-                                      ) : (
-                                        order.customerName?.charAt(0) || 'C'
-                                      )}
-                                    </div>
-                                    <div>
-                                      <div style={{ fontWeight: 700, color: '#191522' }}>{order.customerName}</div>
-                                      <div style={{ fontSize: '0.74rem', color: '#777184' }}>{order.customerEmail}</div>
-                                      <div style={{ fontSize: '0.72rem', color: '#6B00FF', fontWeight: 500 }}>{order.company}</div>
-                                    </div>
-                                  </div>
-                                </td>
-
-                                {/* Design & Card Edition */}
-                                <td style={{ padding: '12px' }}>
-                                  <div style={{ fontWeight: 600, color: '#191522' }}>{order.designTitle || 'Custom FLOCARD'}</div>
-                                  <div style={{ display: 'flex', alignItems: 'center', gap: '6px', marginTop: '4px' }}>
-                                    <span
-                                      style={{
-                                        fontSize: '0.7rem',
-                                        fontWeight: 700,
-                                        padding: '2px 8px',
-                                        borderRadius: '9999px',
-                                        backgroundColor:
-                                          order.edition === 'gold' ? '#FEF3C7' :
-                                          order.edition === 'platinum' ? '#F1F5F9' : '#F3EEFF',
-                                        color:
-                                          order.edition === 'gold' ? '#B45309' :
-                                          order.edition === 'platinum' ? '#475569' : '#6B00FF',
-                                        textTransform: 'capitalize'
-                                      }}
-                                    >
-                                      {order.edition || 'Purple'} Edition
-                                    </span>
-                                    <span style={{ fontSize: '0.7rem', color: '#777184' }}>
-                                      {order.templateType === 'customer_logo' ? 'With Logo' : 'Standard'}
-                                    </span>
-                                  </div>
-                                </td>
-
-                                {/* Status Badge */}
-                                <td style={{ padding: '12px' }}>
-                                  <span
-                                    style={{
-                                      fontSize: '0.74rem',
-                                      padding: '4px 10px',
-                                      borderRadius: '9999px',
-                                      backgroundColor:
-                                        order.status === 'delivered' ? '#EEFAF5' :
-                                        order.status === 'shipped' ? '#EEF6FF' :
-                                        order.status === 'printing' ? '#F3EEFF' : '#FFF7ED',
-                                      color:
-                                        order.status === 'delivered' ? '#16A36A' :
-                                        order.status === 'shipped' ? '#2563EB' :
-                                        order.status === 'printing' ? '#6B00FF' : '#EA580C',
-                                      fontWeight: 700,
-                                      display: 'inline-flex',
-                                      alignItems: 'center',
-                                      gap: '4px',
-                                      textTransform: 'capitalize'
-                                    }}
-                                  >
-                                    ● {order.status}
-                                  </span>
-                                </td>
-
-                                {/* Auto-Provisioned Assets */}
-                                <td style={{ padding: '12px' }}>
-                                  {isDelivered && order.cardCode ? (
-                                    <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
-                                      <a
-                                        href={`/t/${order.cardCode}`}
-                                        target="_blank"
-                                        rel="noreferrer"
-                                        style={{
-                                          display: 'inline-flex',
-                                          alignItems: 'center',
-                                          gap: '4px',
-                                          fontSize: '0.74rem',
-                                          color: '#6B00FF',
-                                          fontWeight: 600,
-                                          textDecoration: 'none'
-                                        }}
-                                      >
-                                        <Radio size={12} />
-                                        <span>NFC Card: {order.cardCode}</span>
-                                        <ExternalLink size={10} />
-                                      </a>
-                                      <a
-                                        href={`/p/${order.profileSlug}`}
-                                        target="_blank"
-                                        rel="noreferrer"
-                                        style={{
-                                          display: 'inline-flex',
-                                          alignItems: 'center',
-                                          gap: '4px',
-                                          fontSize: '0.74rem',
-                                          color: '#16A36A',
-                                          fontWeight: 600,
-                                          textDecoration: 'none'
-                                        }}
-                                      >
-                                        <FileText size={12} />
-                                        <span>Profile: @{order.profileSlug}</span>
-                                        <ExternalLink size={10} />
-                                      </a>
-                                    </div>
-                                  ) : (
-                                    <span style={{ fontSize: '0.74rem', color: '#9CA3AF', fontStyle: 'italic' }}>
-                                      Awaiting delivery confirmation
-                                    </span>
-                                  )}
-                                </td>
-
-                                {/* Actions */}
-                                <td style={{ padding: '12px', textAlign: 'center' }}>
-                                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px' }}>
-                                    {!isDelivered ? (
-                                      <button
-                                        type="button"
-                                        onClick={() => handleDeliverOrder(order.id)}
-                                        title="Mark Delivered: automatically registers NFC card and creates live customer profile"
-                                        style={{
-                                          display: 'inline-flex',
-                                          alignItems: 'center',
-                                          gap: '6px',
-                                          padding: '7px 14px',
-                                          borderRadius: '8px',
-                                          border: 'none',
-                                          backgroundColor: '#16A36A',
-                                          color: '#FFFFFF',
-                                          fontSize: '0.76rem',
-                                          fontWeight: 700,
-                                          cursor: 'pointer',
-                                          boxShadow: '0 2px 8px rgba(22, 163, 106, 0.25)'
-                                        }}
-                                      >
-                                        <Sparkles size={13} />
-                                        <span>Mark Delivered & Provision Card</span>
-                                      </button>
-                                    ) : (
-                                      <span
-                                        style={{
-                                          display: 'inline-flex',
-                                          alignItems: 'center',
-                                          gap: '4px',
-                                          padding: '5px 10px',
-                                          borderRadius: '8px',
-                                          backgroundColor: '#EEFAF5',
-                                          color: '#16A36A',
-                                          fontSize: '0.76rem',
-                                          fontWeight: 700
-                                        }}
-                                      >
-                                        <Check size={13} />
-                                        <span>Fulfilled & Live</span>
-                                      </span>
-                                    )}
-
-                                    {/* Quick Status Dropdown if not delivered */}
-                                    {!isDelivered && (
-                                      <select
-                                        value={order.status}
-                                        onChange={(e) => updateOrderStatus(order.id, e.target.value)}
-                                        style={{
-                                          padding: '5px 8px',
-                                          borderRadius: '8px',
-                                          border: '1px solid #E8E3EF',
-                                          fontSize: '0.74rem',
-                                          color: '#191522',
-                                          backgroundColor: '#FFFFFF',
-                                          cursor: 'pointer'
-                                        }}
-                                      >
-                                        <option value="processing">Processing</option>
-                                        <option value="printing">Printing</option>
-                                        <option value="shipped">Shipped</option>
-                                        <option value="delivered">Delivered</option>
-                                      </select>
-                                    )}
-
-                                    <button
-                                      type="button"
-                                      onClick={() => setSelectedOrder(order)}
-                                      title="View Order Details & Print Specs"
-                                      style={{
-                                        display: 'inline-flex',
-                                        alignItems: 'center',
-                                        padding: '5px 8px',
-                                        borderRadius: '8px',
-                                        border: '1px solid #E8E3EF',
-                                        backgroundColor: '#F7F6FA',
-                                        color: '#191522',
-                                        cursor: 'pointer'
-                                      }}
-                                    >
-                                      <Eye size={13} />
-                                    </button>
-
-                                    <button
-                                      type="button"
-                                      onClick={() => {
-                                        if (window.confirm(`Delete order ${order.id}?`)) {
-                                          deleteOrder(order.id);
-                                        }
-                                      }}
-                                      title="Delete Order"
-                                      style={{
-                                        display: 'inline-flex',
-                                        alignItems: 'center',
-                                        padding: '5px 8px',
-                                        borderRadius: '8px',
-                                        border: '1px solid #FEE2E2',
-                                        backgroundColor: '#FEF2F2',
-                                        color: '#DC4545',
-                                        cursor: 'pointer'
-                                      }}
-                                    >
-                                      <Trash2 size={13} />
-                                    </button>
-                                  </div>
-                                </td>
-                              </tr>
-                            );
-                          })
-                      )}
-                    </tbody>
-                  </table>
-                </div>
-              </div>
-            </div>
+          {activeTab === "orders" && (
+            <AdminOrderManager initialOrderId={initialOrderId} />
           )}
 
           {/* ====================================================================
@@ -3877,7 +3478,17 @@ export default function AdminDashboard({ initialTab = 'overview' }) {
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
               <div>
                 <h3 style={{ margin: 0, fontSize: '1.2rem', fontWeight: 800, color: '#191522' }}>Edit Digital Profile</h3>
-                <p style={{ margin: '2px 0 0', fontSize: '0.78rem', color: '#777184' }}>flocard.in/p/{editingProfile.slug}</p>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginTop: '2px' }}>
+                  <span style={{ fontSize: '0.78rem', color: '#777184' }}>flocard.in/p/{editingProfile.slug}</span>
+                  <a
+                    href={`/p/${editingProfile.slug}`}
+                    target="_blank"
+                    rel="noreferrer"
+                    style={{ fontSize: '0.74rem', color: '#6B00FF', fontWeight: 600, textDecoration: 'none', display: 'inline-flex', alignItems: 'center', gap: '3px' }}
+                  >
+                    <span>Preview Link ↗</span>
+                  </a>
+                </div>
               </div>
               <button type="button" onClick={() => setEditingProfile(null)} style={{ background: 'none', border: 'none', color: '#777184', cursor: 'pointer' }}>
                 <X size={18} />
@@ -3905,12 +3516,15 @@ export default function AdminDashboard({ initialTab = 'overview' }) {
                           type="file"
                           accept="image/*"
                           style={{ display: 'none' }}
-                          onChange={(e) => {
+                          onChange={async (e) => {
                             const file = e.target.files?.[0];
                             if (!file) return;
-                            const reader = new FileReader();
-                            reader.onload = () => setEditingProfile({ ...editingProfile, avatar: reader.result });
-                            reader.readAsDataURL(file);
+                            try {
+                              const compressed = await compressImage(file, { maxWidth: 400, maxHeight: 400, quality: 0.85 });
+                              setEditingProfile(prev => ({ ...prev, avatar: compressed }));
+                            } catch (err) {
+                              console.error('Avatar upload failed:', err);
+                            }
                             e.target.value = '';
                           }}
                         />
@@ -3947,12 +3561,15 @@ export default function AdminDashboard({ initialTab = 'overview' }) {
                           type="file"
                           accept="image/*"
                           style={{ display: 'none' }}
-                          onChange={(e) => {
+                          onChange={async (e) => {
                             const file = e.target.files?.[0];
                             if (!file) return;
-                            const reader = new FileReader();
-                            reader.onload = () => setEditingProfile({ ...editingProfile, logo: reader.result });
-                            reader.readAsDataURL(file);
+                            try {
+                              const compressed = await compressImage(file, { maxWidth: 500, maxHeight: 500, quality: 0.85, outputFormat: file.type === 'image/png' ? 'image/png' : 'image/jpeg' });
+                              setEditingProfile(prev => ({ ...prev, logo: compressed }));
+                            } catch (err) {
+                              console.error('Logo upload failed:', err);
+                            }
                             e.target.value = '';
                           }}
                         />
@@ -4015,14 +3632,26 @@ export default function AdminDashboard({ initialTab = 'overview' }) {
                 </div>
               </div>
 
-              <div>
-                <label style={{ display: 'block', fontSize: '0.78rem', fontWeight: 600, marginBottom: '4px', color: '#191522' }}>Tagline</label>
-                <input
-                  type="text"
-                  value={editingProfile.tagline || ''}
-                  onChange={(e) => setEditingProfile({ ...editingProfile, tagline: e.target.value })}
-                  style={{ width: '100%', padding: '9px 12px', borderRadius: '8px', border: '1px solid #E8E3EF', fontSize: '0.84rem' }}
-                />
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
+                <div>
+                  <label style={{ display: 'block', fontSize: '0.78rem', fontWeight: 600, marginBottom: '4px', color: '#191522' }}>Location / City</label>
+                  <input
+                    type="text"
+                    value={editingProfile.location || ''}
+                    onChange={(e) => setEditingProfile({ ...editingProfile, location: e.target.value })}
+                    placeholder="e.g. Bengaluru, India"
+                    style={{ width: '100%', padding: '9px 12px', borderRadius: '8px', border: '1px solid #E8E3EF', fontSize: '0.84rem' }}
+                  />
+                </div>
+                <div>
+                  <label style={{ display: 'block', fontSize: '0.78rem', fontWeight: 600, marginBottom: '4px', color: '#191522' }}>Tagline</label>
+                  <input
+                    type="text"
+                    value={editingProfile.tagline || ''}
+                    onChange={(e) => setEditingProfile({ ...editingProfile, tagline: e.target.value })}
+                    style={{ width: '100%', padding: '9px 12px', borderRadius: '8px', border: '1px solid #E8E3EF', fontSize: '0.84rem' }}
+                  />
+                </div>
               </div>
 
               <div>
@@ -4118,12 +3747,12 @@ export default function AdminDashboard({ initialTab = 'overview' }) {
                       accept="image/*"
                       multiple
                       style={{ display: 'none' }}
-                      onChange={(e) => {
+                      onChange={async (e) => {
                         const files = Array.from(e.target.files || []);
                         if (!files.length) return;
-                        files.forEach(file => {
-                          const reader = new FileReader();
-                          reader.onload = () => {
+                        for (const file of files) {
+                          try {
+                            const compressed = await compressImage(file, { maxWidth: 800, maxHeight: 800, quality: 0.82 });
                             const rawTitle = file.name.replace(/\.[^/.]+$/, '').replace(/[-_]/g, ' ');
                             const title = rawTitle.charAt(0).toUpperCase() + rawTitle.slice(1);
                             setEditingProfile(prev => ({
@@ -4135,13 +3764,14 @@ export default function AdminDashboard({ initialTab = 'overview' }) {
                                   title: title || 'New Work Showcase',
                                   category: 'Work Showcase',
                                   desc: 'Client project deliverables and visual showcase.',
-                                  image: reader.result
+                                  image: compressed
                                 }
                               ]
                             }));
-                          };
-                          reader.readAsDataURL(file);
-                        });
+                          } catch (err) {
+                            console.error('Work image compression failed:', err);
+                          }
+                        }
                         e.target.value = '';
                       }}
                     />
