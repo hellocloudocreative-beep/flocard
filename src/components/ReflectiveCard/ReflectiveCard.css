@@ -176,3 +176,36 @@
   opacity: 0;
   pointer-events: none;
 }
+
+/* FLOCARD Expanded Portfolio View Integration */
+.flocard-reflective-expanded {
+  width: 100% !important;
+  max-width: 900px !important;
+  height: auto !important;
+  user-select: text !important;
+  -webkit-user-select: text !important;
+  cursor: default;
+}
+
+.flocard-reflective-expanded .reflective-card__body {
+  height: auto !important;
+  min-height: 520px;
+  overflow: hidden;
+  user-select: text !important;
+  -webkit-user-select: text !important;
+}
+
+.flocard-reflective-expanded .reflective-card__content {
+  padding: 0 !important;
+  height: auto !important;
+  display: block !important;
+  user-select: text !important;
+  -webkit-user-select: text !important;
+}
+
+.flocard-reflective-expanded a,
+.flocard-reflective-expanded button,
+.flocard-reflective-expanded input,
+.flocard-reflective-expanded textarea {
+  user-select: auto;
+}

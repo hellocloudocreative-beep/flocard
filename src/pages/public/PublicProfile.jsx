@@ -165,6 +165,16 @@ export default function PublicProfile({ slug = 'akhil' }) {
   const backgroundText = profile.backgroundTypography || 'FLOCARD';
   const glowColor = profile.glowColor || '#6B00FF';
   const accentColor = profile.accentColor || '#A855F7';
+  const edition = profile?.edition;
+  const finish = profile?.cardFinish;
+  const metalTint =
+    profile?.cardColor && finish === 'custom'
+      ? profile.cardColor
+      : edition === 'gold' || finish === 'gold'
+        ? '#E9C766'
+        : edition === 'platinum' || edition === 'steel' || finish === 'steel'
+          ? '#E2E8F0'
+          : profile?.accentColor || '#A855F7';
 
   const navItems = useMemo(() => [
     {
@@ -240,7 +250,7 @@ export default function PublicProfile({ slug = 'akhil' }) {
         />
       </div>
 
-      {/* Cinematic Ambient Purple Radial Glow Lighting */}
+      {/* Cinematic Ambient Reflective Glow Lighting */}
       <div
         aria-hidden="true"
         style={{
@@ -248,13 +258,33 @@ export default function PublicProfile({ slug = 'akhil' }) {
           top: 0,
           left: '50%',
           transform: 'translateX(-50%)',
-          width: '840px',
-          height: '520px',
-          background: `radial-gradient(ellipse at 50% -10%, ${glowColor}40 0%, ${accentColor}18 45%, transparent 70%)`,
+          width: isExpanded ? '100vw' : '840px',
+          height: isExpanded ? '100vh' : '520px',
+          background: isExpanded
+            ? `radial-gradient(ellipse 90% 60% at 50% 0%, ${glowColor}35 0%, ${accentColor}18 35%, transparent 75%), radial-gradient(circle 800px at 50% 85%, ${metalTint}15 0%, transparent 70%)`
+            : `radial-gradient(ellipse at 50% -10%, ${glowColor}40 0%, ${accentColor}18 45%, transparent 70%)`,
           pointerEvents: 'none',
-          zIndex: 1
+          zIndex: 1,
+          transition: 'all 0.6s ease'
         }}
       />
+
+      {/* Atmospheric Reflective Light Sheen Sweep when Expanded */}
+      {isExpanded && (
+        <div
+          aria-hidden="true"
+          style={{
+            position: 'fixed',
+            inset: 0,
+            background: `radial-gradient(ellipse 120% 40% at 50% 0%, ${metalTint}20 0%, transparent 60%)`,
+            pointerEvents: 'none',
+            zIndex: 1,
+            mixBlendMode: 'screen',
+            opacity: isLight ? 0.35 : 0.7,
+            animation: 'fadeIn 0.6s ease forwards'
+          }}
+        />
+      )}
 
       {/* Top Floating CardNav */}
       <div style={{ width: '100%', maxWidth: '780px', marginBottom: '20px', position: 'relative', zIndex: 40 }}>

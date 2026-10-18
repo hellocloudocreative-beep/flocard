@@ -4,9 +4,10 @@
    real portfolio gallery, project lightbox, vCard export, and reverse collapse.
    ========================================================================== */
 
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import MagicBento from '../MagicBento/MagicBento';
+import ReflectiveCard from '../ReflectiveCard/ReflectiveCard';
 import {
   ArrowLeft,
   X,
@@ -60,11 +61,48 @@ export default function ExpandedPortfolioView({
     }));
   }, [p.portfolio]);
 
+  const [activeFinish, setActiveFinish] = useState('purple');
+
+  useEffect(() => {
+    if (profile?.cardFinish) {
+      setActiveFinish(profile.cardFinish);
+    } else if (profile?.edition === 'gold') {
+      setActiveFinish('gold');
+    } else if (profile?.edition === 'platinum' || profile?.edition === 'steel') {
+      setActiveFinish('steel');
+    } else {
+      setActiveFinish('purple');
+    }
+  }, [profile?.cardFinish, profile?.edition]);
+
+  const finishTints = {
+    steel: '#E2E8F0',
+    gold: '#E9C766',
+    purple: '#A855F7'
+  };
+
+  const finishGlows = {
+    steel: '#64748B',
+    gold: '#C9972C',
+    purple: profile?.glowColor || '#6B00FF'
+  };
+
+  const finishAccents = {
+    steel: '#94A3B8',
+    gold: '#E9C766',
+    purple: profile?.accentColor || '#A855F7'
+  };
+
+  const metalTint =
+    profile?.cardColor && profile?.cardFinish === 'custom'
+      ? profile.cardColor
+      : finishTints[activeFinish] || profile?.cardColor || '#A855F7';
+
   const gradientStart = p.gradientStart || '#130B22';
   const gradientMid = p.gradientMid || '#240F3E';
   const gradientEnd = p.gradientEnd || '#0B0813';
-  const accentColor = p.accentColor || '#A855F7';
-  const glowColor = p.glowColor || '#6B00FF';
+  const accentColor = finishAccents[activeFinish] || p.accentColor || '#A855F7';
+  const glowColor = finishGlows[activeFinish] || p.glowColor || '#6B00FF';
   const creamHighlight = p.creamHighlight || '#F5EDE5';
   const photoShape = p.photoShape || 'circle';
   const isCircle = photoShape === 'circle';
@@ -117,19 +155,54 @@ export default function ExpandedPortfolioView({
       transition={transitionConfig}
       style={{
         width: '100%',
-        maxWidth: '880px',
-        borderRadius: '36px',
-        padding: '28px 24px 40px',
-        background: `linear-gradient(155deg, ${gradientMid} 0%, ${gradientStart} 45%, ${gradientEnd} 100%)`,
-        border: `1px solid ${accentColor}45`,
-        boxShadow: glowShadow,
+        maxWidth: '900px',
         position: 'relative',
         zIndex: 10,
         display: 'flex',
         flexDirection: 'column',
-        overflow: 'hidden'
+        alignItems: 'center'
       }}
     >
+      <ReflectiveCard
+        theme={isLight ? 'light' : 'dark'}
+        tint={metalTint}
+        webcam={false}
+        metalness={0.92}
+        roughness={0.28}
+        blurStrength={6}
+        shine={1.25}
+        glare={0.45}
+        bevel={2}
+        enableTilt={!reducedMotion}
+        tiltStrength={2}
+        width="100%"
+        height="auto"
+        radius={20}
+        className="flocard-reflective-expanded"
+        style={{
+          width: '100%',
+          maxWidth: '900px',
+          borderRadius: '20px',
+          zIndex: 1
+        }}
+        bodyStyle={{
+          borderRadius: '20px',
+          border: `1px solid ${accentColor}45`,
+          boxShadow: glowShadow,
+          background: `linear-gradient(155deg, ${gradientMid} 0%, ${gradientStart} 45%, ${gradientEnd} 100%)`
+        }}
+      >
+        <div
+          style={{
+            position: 'relative',
+            zIndex: 3,
+            padding: '24px 20px 36px',
+            width: '100%',
+            boxSizing: 'border-box',
+            display: 'flex',
+            flexDirection: 'column'
+          }}
+        >
       {/* Ambient Cream Overlay */}
       <div
         style={{
@@ -894,8 +967,10 @@ export default function ExpandedPortfolioView({
           </div>
         </div>
       </motion.div>
+    </div>
+  </ReflectiveCard>
 
-      {/* Project Lightbox Modal */}
+  {/* Project Lightbox Modal */}
       {selectedProject && (
         <div
           style={{
