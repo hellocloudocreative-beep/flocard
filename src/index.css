@@ -276,16 +276,50 @@ button, input, select, textarea {
   font-weight: 600;
   font-size: 0.95rem;
   cursor: pointer;
-  transition: all 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+  transition: transform 0.2s cubic-bezier(0.16, 1, 0.3, 1),
+              box-shadow 0.2s cubic-bezier(0.16, 1, 0.3, 1),
+              background 0.2s cubic-bezier(0.16, 1, 0.3, 1),
+              border-color 0.2s ease,
+              color 0.2s ease;
   border: 1px solid transparent;
   outline: none;
   white-space: nowrap;
   user-select: none;
   min-height: 46px;
+  will-change: transform;
 }
 
 .btn:active {
-  transform: scale(0.98);
+  transform: scale(0.96) !important;
+  transition-duration: 0.08s;
+}
+
+/* Interactive selection chips & studio tabs */
+.interactive-chip,
+.studio-tab-btn,
+.edition-select-btn,
+.template-select-btn {
+  transition: transform 0.2s cubic-bezier(0.16, 1, 0.3, 1),
+              box-shadow 0.2s cubic-bezier(0.16, 1, 0.3, 1),
+              background 0.2s cubic-bezier(0.16, 1, 0.3, 1),
+              border-color 0.2s ease,
+              color 0.2s ease;
+  will-change: transform;
+}
+
+.interactive-chip:hover,
+.studio-tab-btn:hover,
+.edition-select-btn:hover,
+.template-select-btn:hover {
+  transform: translateY(-1.5px);
+}
+
+.interactive-chip:active,
+.studio-tab-btn:active,
+.edition-select-btn:active,
+.template-select-btn:active {
+  transform: scale(0.97) !important;
+  transition-duration: 0.08s;
 }
 
 .btn-primary {

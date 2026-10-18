@@ -131,6 +131,7 @@ const CardNav = ({
   logoHref = '#',
   items = DEFAULT_ITEMS,
   cta,
+  actions,
   theme = 'dark',
   surface = 'glass',
   openOn = 'click',
@@ -462,7 +463,12 @@ const CardNav = ({
             </LinkComponent>
           )}
 
-          {cta && !narrow && ctaButton(cta, false)}
+          {(actions || cta) && (
+            <div className="card-nav__right-group">
+              {actions}
+              {cta && !narrow && ctaButton(cta, false)}
+            </div>
+          )}
         </div>
 
         <div ref={contentRef} id={contentId} className={CONTENT} aria-hidden={!open}>

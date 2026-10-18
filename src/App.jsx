@@ -30,6 +30,7 @@ import CustomerDashboard from './pages/customer/CustomerDashboard';
 import { AuthProvider } from './context/AuthContext';
 import { DataProvider } from './context/DataContext';
 import { ThemeProvider } from './context/ThemeContext';
+import { AnimatePresence, motion } from 'motion/react';
 
 export default function App() {
   const [currentPath, setCurrentPath] = useState(window.location.pathname);
@@ -232,7 +233,21 @@ export default function App() {
         <DataProvider>
           <div className="flocard-app-root">
             {showHeaderFooter && <Navbar currentPath={path} />}
-            {content}
+            <AnimatePresence mode="wait" initial={false}>
+              <motion.main
+                key={path}
+                initial={{ opacity: 0, y: 12 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, y: -10 }}
+                transition={{
+                  duration: 0.22,
+                  ease: [0.16, 1, 0.3, 1]
+                }}
+                style={{ width: '100%', minHeight: '80vh' }}
+              >
+                {content}
+              </motion.main>
+            </AnimatePresence>
             {showHeaderFooter && <Footer />}
           </div>
         </DataProvider>

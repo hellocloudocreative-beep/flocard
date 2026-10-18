@@ -42,6 +42,7 @@ import {
 } from 'lucide-react';
 import CardCanvas from '../components/CardCanvas';
 import Card3DPreview from '../components/Card3DPreview';
+import { motion, AnimatePresence } from 'motion/react';
 import { EDITIONS, TEMPLATES, BRAND } from '../lib/constants';
 import {
   exportCardPDF,
@@ -171,8 +172,9 @@ function InteractiveFontPicker({
                   padding: '7px 10px',
                   borderRadius: '6px',
                   background: isThisHovered ? 'rgba(168, 85, 247, 0.3)' : isSelected ? 'rgba(107, 0, 255, 0.2)' : 'transparent',
+                  transform: isThisHovered ? 'translateX(4px)' : 'none',
                   cursor: 'pointer',
-                  transition: 'background 0.12s ease'
+                  transition: 'transform 0.15s cubic-bezier(0.16, 1, 0.3, 1), background 0.15s ease'
                 }}
               >
                 <div style={{ display: 'flex', flexDirection: 'column' }}>
@@ -874,6 +876,7 @@ export default function Designer() {
                   <button
                     key={tmpl.id}
                     type="button"
+                    className="template-select-btn"
                     onClick={() => handleTemplateChange(tmpl.id)}
                     style={{
                       background: templateType === tmpl.id ? 'rgba(107, 0, 255, 0.25)' : 'var(--elevated-surface)',
@@ -885,7 +888,9 @@ export default function Designer() {
                       fontWeight: 600,
                       cursor: 'pointer',
                       textAlign: 'center',
-                      transition: 'all 0.2s ease'
+                      boxShadow: templateType === tmpl.id ? '0 4px 14px rgba(107, 0, 255, 0.25)' : 'none',
+                      transform: templateType === tmpl.id ? 'scale(1.02)' : 'scale(1)',
+                      transition: 'transform 0.2s cubic-bezier(0.16, 1, 0.3, 1), box-shadow 0.2s ease, background-color 0.2s ease, border-color 0.2s ease'
                     }}
                   >
                     <div style={{ fontWeight: 700, marginBottom: '2px' }}>{tmpl.name}</div>
@@ -907,6 +912,7 @@ export default function Designer() {
                   <button
                     key={key}
                     type="button"
+                    className="edition-select-btn"
                     onClick={() => handleEditionChange(key)}
                     style={{
                       background: edition === key ? 'rgba(107, 0, 255, 0.25)' : 'var(--elevated-surface)',
@@ -918,7 +924,9 @@ export default function Designer() {
                       fontWeight: 600,
                       cursor: 'pointer',
                       textAlign: 'center',
-                      transition: 'all 0.2s ease'
+                      boxShadow: edition === key ? `0 4px 14px ${item.accentColor}35` : 'none',
+                      transform: edition === key ? 'scale(1.03)' : 'scale(1)',
+                      transition: 'transform 0.2s cubic-bezier(0.16, 1, 0.3, 1), box-shadow 0.2s ease, background-color 0.2s ease, border-color 0.2s ease'
                     }}
                   >
                     <div
@@ -928,7 +936,8 @@ export default function Designer() {
                         borderRadius: '50%',
                         background: item.accentColor,
                         margin: '0 auto 4px',
-                        boxShadow: `0 0 8px ${item.accentColor}`
+                        boxShadow: `0 0 8px ${item.accentColor}`,
+                        transition: 'transform 0.2s ease'
                       }}
                     />
                     {item.name.replace(' Edition', '')}
@@ -961,6 +970,7 @@ export default function Designer() {
                   <button
                     key={tab.id}
                     type="button"
+                    className="studio-tab-btn"
                     onClick={() => {
                       setActiveTab(tab.id);
                       if (tab.id === 'qr') setSide('back');
@@ -980,7 +990,9 @@ export default function Designer() {
                       cursor: 'pointer',
                       background: active ? 'var(--primary-purple)' : 'transparent',
                       color: active ? '#ffffff' : 'var(--text-secondary)',
-                      transition: 'all 0.2s ease'
+                      boxShadow: active ? '0 2px 8px rgba(107, 0, 255, 0.4)' : 'none',
+                      transform: active ? 'scale(1.02)' : 'scale(1)',
+                      transition: 'transform 0.2s cubic-bezier(0.16, 1, 0.3, 1), background-color 0.2s ease, color 0.2s ease'
                     }}
                   >
                     <Icon size={14} />
@@ -990,8 +1002,16 @@ export default function Designer() {
               })}
             </div>
 
-            {/* TAB 2: TWO INDEPENDENT LOGOS & SCALING */}
-            {activeTab === 'logos' && (
+            <AnimatePresence mode="wait" initial={false}>
+              <motion.div
+                key={activeTab}
+                initial={{ opacity: 0, y: 8 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, y: -6 }}
+                transition={{ duration: 0.16, ease: [0.16, 1, 0.3, 1] }}
+              >
+                {/* TAB 2: TWO INDEPENDENT LOGOS & SCALING */}
+                {activeTab === 'logos' && (
               <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
                 {/* 1. Customer Logo Section */}
                 <div style={{ background: 'var(--elevated-surface)', padding: '14px', borderRadius: '10px', border: '1px solid var(--border-color)' }}>
@@ -1436,7 +1456,9 @@ export default function Designer() {
                 </div>
               </div>
             )}
-          </div>
+          </motion.div>
+        </AnimatePresence>
+      </div>
 
           {/* ==================================================================
               CENTER CANVAS: REAL-TIME INTERACTIVE VIEW
@@ -1479,6 +1501,7 @@ export default function Designer() {
               <button
                 type="button"
                 onClick={() => setSide(side === 'front' ? 'back' : 'front')}
+                className="interactive-chip"
                 style={{
                   background: 'transparent',
                   border: 'none',
@@ -1489,10 +1512,26 @@ export default function Designer() {
                   fontSize: '0.8rem',
                   fontWeight: 600,
                   cursor: 'pointer',
-                  padding: '4px 8px'
+                  padding: '4px 8px',
+                  borderRadius: '6px',
+                  transition: 'transform 0.2s cubic-bezier(0.16, 1, 0.3, 1), background-color 0.2s ease, color 0.2s ease'
+                }}
+                onMouseEnter={(e) => {
+                  e.currentTarget.style.background = 'rgba(107, 0, 255, 0.15)';
+                  e.currentTarget.style.transform = 'scale(1.05)';
+                }}
+                onMouseLeave={(e) => {
+                  e.currentTarget.style.background = 'transparent';
+                  e.currentTarget.style.transform = 'scale(1)';
                 }}
               >
-                <RotateCw size={14} />
+                <RotateCw
+                  size={14}
+                  style={{
+                    transition: 'transform 0.4s cubic-bezier(0.16, 1, 0.3, 1)',
+                    transform: side === 'back' ? 'rotate(180deg)' : 'rotate(0deg)'
+                  }}
+                />
                 <span>Showing: {side.toUpperCase()}</span>
               </button>
 
