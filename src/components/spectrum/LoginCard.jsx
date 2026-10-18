@@ -24,7 +24,7 @@ export default function LoginCard({
   };
 
   const handleQuickAdminFill = () => {
-    setEmail('akhil@flocard.in');
+    setEmail('hello.flocard@gmail.com');
     setPassword('admin123');
   };
 
@@ -118,7 +118,7 @@ export default function LoginCard({
               type="email"
               value={email}
               onChange={(e) => setEmail(e.target.value)}
-              placeholder="e.g. akhil@flocard.in"
+              placeholder="e.g. hello.flocard@gmail.com"
               required
               autoComplete="email"
               style={{

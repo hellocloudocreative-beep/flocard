@@ -71,9 +71,15 @@ import AnimatedSwitch from '../../components/spectrum/AnimatedSwitch';
 import HoldToConfirm from '../../components/spectrum/HoldToConfirm';
 import MorphButton from '../../components/spectrum/MorphButton';
 import AdminOrderManager from './AdminOrderManager';
+import AdminLogin from '../auth/AdminLogin';
 
 export default function AdminDashboard({ initialTab = 'overview', initialOrderId = null }) {
   const { user, isOwner, isAdmin, logout, switchPersona } = useAuth();
+
+  // Strict Admin Gate: Require admin authentication before viewing Admin Platform
+  if (!user || !isAdmin) {
+    return <AdminLogin />;
+  }
   const {
     profiles,
     cards,

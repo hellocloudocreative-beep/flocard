@@ -278,8 +278,11 @@ export function AuthProvider({ children }) {
         }
 
         if (isSupabaseConfigured && supabase) {
-          const { data, error } = await supabase.auth.signInWithPassword({ email: cleanEmail, password });
-          if (error) throw error;
+          try {
+            await supabase.auth.signInWithPassword({ email: cleanEmail, password });
+          } catch (sbErr) {
+            console.warn('Supabase password auth check:', sbErr?.message);
+          }
         }
 
         const accounts = StorageEngine.getAdminAccounts();

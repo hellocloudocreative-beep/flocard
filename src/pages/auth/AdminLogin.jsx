@@ -6,7 +6,7 @@
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '../../context/AuthContext';
 import LoginCard from '../../components/spectrum/LoginCard';
-import { ShieldCheck, ArrowLeft } from 'lucide-react';
+import { ShieldCheck, ArrowLeft, KeyRound } from 'lucide-react';
 
 export default function AdminLogin() {
   const { user, isAdmin, loginWithGoogle, login, loading: authLoading } = useAuth();
@@ -117,6 +117,34 @@ export default function AdminLogin() {
           <span>FLOCARD Public Portal</span>
         </a>
       </div>
+
+      {/* Notice if currently logged in as a normal customer */}
+      {user && !isAdmin && (
+        <div
+          style={{
+            position: 'relative',
+            zIndex: 2,
+            maxWidth: '440px',
+            width: '100%',
+            marginBottom: '16px',
+            padding: '12px 16px',
+            borderRadius: '12px',
+            backgroundColor: 'rgba(234, 179, 8, 0.12)',
+            border: '1px solid rgba(234, 179, 8, 0.3)',
+            color: '#FACC15',
+            fontSize: '0.84rem',
+            display: 'flex',
+            alignItems: 'center',
+            gap: '10px',
+            lineHeight: 1.45
+          }}
+        >
+          <KeyRound size={18} style={{ flexShrink: 0 }} />
+          <span>
+            Signed in as <strong>{user.email}</strong>. Administrator verification is required to access platform controls.
+          </span>
+        </div>
+      )}
 
       {/* Main Login Card */}
       <div style={{ position: 'relative', zIndex: 2, width: '100%', display: 'flex', justifyContent: 'center' }}>

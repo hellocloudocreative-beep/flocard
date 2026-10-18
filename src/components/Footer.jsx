@@ -23,7 +23,7 @@ export default function Footer() {
       if (next >= 4) {
         if (typeof window !== 'undefined') {
           if (navigator.vibrate) navigator.vibrate([40, 50, 40]);
-          window.location.href = '/admin';
+          window.location.href = '/admin-login';
         }
         return 0;
       }
