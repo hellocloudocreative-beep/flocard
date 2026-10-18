@@ -5,7 +5,7 @@
    centered user portrait, and in-card contact & portfolio action buttons.
    ========================================================================== */
 
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { motion } from 'motion/react';
 import {
   Phone,

@@ -217,7 +217,7 @@ export default function AdminOrderManager({ initialOrderId = null }) {
               onChange={e => setSearchQuery(e.target.value)}
               placeholder="Search reference, customer, email..."
               className="input"
-              style={{ width: '100%', paddingLeft: '34px', fontSize: '0.82rem' }}
+              style={{ width: '100%', paddingLeft: '34px', fontSize: '0.82rem', borderRadius: '8px' }}
             />
           </div>
 
@@ -442,7 +442,7 @@ export default function AdminOrderManager({ initialOrderId = null }) {
                   value={targetStatus}
                   onChange={e => setTargetStatus(e.target.value)}
                   className="input"
-                  style={{ width: '100%', fontSize: '0.86rem', padding: '10px 12px' }}
+                  style={{ width: '100%', fontSize: '0.86rem', padding: '10px 12px', borderRadius: '8px' }}
                 >
                   <optgroup label="Standard Sequential Pipeline">
                     {ORDER_STAGES.map(s => (
@@ -472,12 +472,12 @@ export default function AdminOrderManager({ initialOrderId = null }) {
                   onChange={e => setPublicMessage(e.target.value)}
                   placeholder="Optional custom message explaining this stage to the client..."
                   className="input"
-                  style={{ width: '100%', fontSize: '0.82rem', resize: 'vertical' }}
+                  style={{ width: '100%', fontSize: '0.82rem', resize: 'vertical', borderRadius: '8px' }}
                 />
               </div>
 
               {/* Private Administrative Internal Note (Protected - Never Exposed to Customers) */}
-              <div style={{ backgroundColor: 'rgba(239, 68, 68, 0.05)', padding: '14px', borderRadius: '12px', border: '1px solid rgba(239, 68, 68, 0.2)' }}>
+              <div style={{ backgroundColor: 'rgba(239, 68, 68, 0.05)', padding: '14px', borderRadius: '10px', border: '1px solid rgba(239, 68, 68, 0.2)' }}>
                 <label style={{ fontSize: '0.78rem', fontWeight: 700, color: '#EF4444', display: 'flex', alignItems: 'center', gap: '6px', marginBottom: '6px' }}>
                   <Lock size={13} />
                   <span>Private Internal Administrative Note (ADMIN ONLY — Never sent to customer)</span>
@@ -488,7 +488,7 @@ export default function AdminOrderManager({ initialOrderId = null }) {
                   onChange={e => setInternalNote(e.target.value)}
                   placeholder="e.g. Quality inspection passed on batch #882. Courier waybill printed."
                   className="input"
-                  style={{ width: '100%', fontSize: '0.82rem', resize: 'vertical', backgroundColor: 'var(--card-surface)' }}
+                  style={{ width: '100%', fontSize: '0.82rem', resize: 'vertical', backgroundColor: 'var(--card-surface)', borderRadius: '8px' }}
                 />
               </div>
 
@@ -504,7 +504,7 @@ export default function AdminOrderManager({ initialOrderId = null }) {
                     onChange={e => setCarrierName(e.target.value)}
                     placeholder="e.g. BlueDart / DHL / FedEx"
                     className="input"
-                    style={{ width: '100%', fontSize: '0.82rem' }}
+                    style={{ width: '100%', fontSize: '0.82rem', borderRadius: '8px' }}
                   />
                 </div>
                 <div>
@@ -517,7 +517,7 @@ export default function AdminOrderManager({ initialOrderId = null }) {
                     onChange={e => setTrackingNumber(e.target.value)}
                     placeholder="e.g. BD98712345"
                     className="input"
-                    style={{ width: '100%', fontSize: '0.82rem' }}
+                    style={{ width: '100%', fontSize: '0.82rem', borderRadius: '8px' }}
                   />
                 </div>
               </div>
@@ -533,7 +533,7 @@ export default function AdminOrderManager({ initialOrderId = null }) {
                     onChange={e => setTrackingUrl(e.target.value)}
                     placeholder="https://..."
                     className="input"
-                    style={{ width: '100%', fontSize: '0.82rem' }}
+                    style={{ width: '100%', fontSize: '0.82rem', borderRadius: '8px' }}
                   />
                 </div>
                 <div>
@@ -545,7 +545,7 @@ export default function AdminOrderManager({ initialOrderId = null }) {
                     value={estimatedDeliveryAt}
                     onChange={e => setEstimatedDeliveryAt(e.target.value)}
                     className="input"
-                    style={{ width: '100%', fontSize: '0.82rem' }}
+                    style={{ width: '100%', fontSize: '0.82rem', borderRadius: '8px' }}
                   />
                 </div>
               </div>

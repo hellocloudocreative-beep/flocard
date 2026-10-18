@@ -109,10 +109,10 @@ export default function App() {
   let content = null;
   let showHeaderFooter = true;
 
-  // 1. Public Profile: /p/:slug
-  if (path.startsWith('/p/')) {
-    const slug = path.replace('/p/', '');
-    content = <PublicProfile slug={slug || 'akhil'} />;
+  // 1. Public Profile: /p/:slug or /profile/:slug
+  if (path.startsWith('/p/') || path.startsWith('/profile/')) {
+    const raw = path.replace(/^\/(p|profile)\//, '').split('?')[0].replace(/\/+$/, '');
+    content = <PublicProfile slug={raw || 'akhil'} />;
     showHeaderFooter = false;
   }
   // 1b. Hidden Admin Login: /admin-login

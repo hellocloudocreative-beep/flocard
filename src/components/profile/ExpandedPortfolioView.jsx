@@ -33,42 +33,43 @@ import { LinkedinIcon, InstagramIcon, TwitterIcon, GithubIcon } from '../SocialI
 import { downloadVCard } from '../../lib/vcard';
 
 export default function ExpandedPortfolioView({
-  profile,
+  profile = {},
   onCollapse,
   isLight = false,
   reducedMotion = false
 }) {
+  const p = profile || {};
   const [activeTab, setActiveTab] = useState('portfolio');
   const [selectedProject, setSelectedProject] = useState(null);
   const [copiedLink, setCopiedLink] = useState(false);
   const [showQrModal, setShowQrModal] = useState(false);
 
   const bentoItems = useMemo(() => {
-    if (!profile.portfolio || profile.portfolio.length === 0) return [];
+    if (!p.portfolio || p.portfolio.length === 0) return [];
     const visuals = ['analytics', 'dashboard', 'collaboration', 'automation', 'integration', 'security'];
-    return profile.portfolio.map((item, idx) => ({
-      id: item.id || `bento-${idx}`,
-      title: item.title,
-      description: item.description,
-      label: item.category || 'Featured Work',
-      image: item.image,
-      visual: item.image ? undefined : visuals[idx % visuals.length],
+    return p.portfolio.map((item, idx) => ({
+      id: item?.id || `bento-${idx}`,
+      title: item?.title || '',
+      description: item?.description || '',
+      label: item?.category || 'Featured Work',
+      image: item?.image,
+      visual: item?.image ? undefined : visuals[idx % visuals.length],
       colSpan: idx === 0 ? 2 : 1,
       rowSpan: idx === 0 ? 2 : 1,
       onClick: () => setSelectedProject(item)
     }));
-  }, [profile.portfolio]);
+  }, [p.portfolio]);
 
-  const gradientStart = profile.gradientStart || '#130B22';
-  const gradientMid = profile.gradientMid || '#240F3E';
-  const gradientEnd = profile.gradientEnd || '#0B0813';
-  const accentColor = profile.accentColor || '#A855F7';
-  const glowColor = profile.glowColor || '#6B00FF';
-  const creamHighlight = profile.creamHighlight || '#F5EDE5';
-  const photoShape = profile.photoShape || 'circle';
+  const gradientStart = p.gradientStart || '#130B22';
+  const gradientMid = p.gradientMid || '#240F3E';
+  const gradientEnd = p.gradientEnd || '#0B0813';
+  const accentColor = p.accentColor || '#A855F7';
+  const glowColor = p.glowColor || '#6B00FF';
+  const creamHighlight = p.creamHighlight || '#F5EDE5';
+  const photoShape = p.photoShape || 'circle';
   const isCircle = photoShape === 'circle';
 
-  const glowShadow = profile.borderGlowIntensity === 'subtle'
+  const glowShadow = p.borderGlowIntensity === 'subtle'
     ? `0 20px 60px -15px ${glowColor}30, 0 0 25px ${glowColor}15`
     : `0 35px 95px -20px ${glowColor}55, 0 0 45px ${glowColor}25, 0 0 0 1px ${accentColor}30`;
 

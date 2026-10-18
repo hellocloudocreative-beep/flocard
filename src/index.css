@@ -242,6 +242,10 @@ button, input, select, textarea {
   font-family: inherit;
 }
 
+input, select, textarea {
+  border-radius: var(--radius-sm, 8px);
+}
+
 /* --------------------------------------------------------------------------
    3. LAYOUT UTILITIES
    -------------------------------------------------------------------------- */
@@ -475,25 +479,26 @@ html[data-theme="light"] .glass-panel-glow {
   letter-spacing: 0.02em;
 }
 
-.form-input, .form-select, .form-textarea {
+.input, .select, .form-input, .form-select, .form-textarea {
   width: 100%;
-  padding: 12px 16px;
+  padding: 10px 14px;
   background: var(--input-bg);
   border: 1px solid var(--border-color);
-  border-radius: var(--radius-md);
+  border-radius: var(--radius-sm, 8px) !important;
   color: var(--text-primary);
-  font-size: 0.95rem;
+  font-size: 0.92rem;
   transition: all 0.2s ease;
   outline: none;
+  box-sizing: border-box;
 }
 
-.form-input:focus, .form-select:focus, .form-textarea:focus {
+.input:focus, .select:focus, .form-input:focus, .form-select:focus, .form-textarea:focus {
   border-color: var(--primary-purple);
   box-shadow: 0 0 0 3px rgba(107, 0, 255, 0.2);
   background: var(--input-focus-bg);
 }
 
-.form-input::placeholder, .form-textarea::placeholder {
+.input::placeholder, .select::placeholder, .form-input::placeholder, .form-textarea::placeholder {
   color: var(--text-muted);
 }
 
