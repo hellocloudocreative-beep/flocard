@@ -3,7 +3,7 @@
    Theme-aware footer with dynamic logo, semantic tokens, and copyright.
    ========================================================================== */
 
-import React from 'react';
+import React, { useState, useRef } from 'react';
 import { ArrowUpRight, Zap } from 'lucide-react';
 import { BRAND } from '../lib/constants';
 import { useTheme } from '../context/ThemeContext';
@@ -11,6 +11,28 @@ import { useTheme } from '../context/ThemeContext';
 export default function Footer() {
   const currentYear = new Date().getFullYear();
   const { isLight } = useTheme();
+
+  // Secret Admin Access: Tap/Click copyright or footer blank area 4-5 times
+  const [tapCount, setTapCount] = useState(0);
+  const tapTimerRef = useRef(null);
+
+  const handleSecretAdminTap = () => {
+    setTapCount(prev => {
+      const next = prev + 1;
+      if (tapTimerRef.current) clearTimeout(tapTimerRef.current);
+      if (next >= 4) {
+        if (typeof window !== 'undefined') {
+          if (navigator.vibrate) navigator.vibrate([40, 50, 40]);
+          window.location.href = '/admin';
+        }
+        return 0;
+      }
+      tapTimerRef.current = setTimeout(() => {
+        setTapCount(0);
+      }, 2500);
+      return next;
+    });
+  };
 
   return (
     <footer
@@ -113,7 +135,7 @@ export default function Footer() {
               <li><a href="/about" style={{ color: 'var(--text-secondary)' }}>About FLOCARD</a></li>
               <li><a href="/contact" style={{ color: 'var(--text-secondary)' }}>Contact & Inquiries</a></li>
               <li><a href="/account" style={{ color: 'var(--text-secondary)' }}>Customer Account</a></li>
-              <li><a href="/admin" style={{ color: 'var(--primary-purple)', fontWeight: 600 }}>Admin Platform</a></li>
+              <li><a href="/faq" style={{ color: 'var(--text-secondary)' }}>Help Center</a></li>
               <li><span style={{ color: 'var(--text-muted)', fontSize: '0.82rem' }}>contact@flocard.in</span></li>
             </ul>
           </div>
@@ -133,14 +155,24 @@ export default function Footer() {
             color: 'var(--text-muted)'
           }}
         >
-          <div>
+          {/* Secret multi-tap admin access on copyright blank area */}
+          <div
+            onClick={handleSecretAdminTap}
+            title={tapCount > 1 ? `${4 - tapCount} more taps to open Admin Platform` : undefined}
+            style={{
+              cursor: 'default',
+              userSelect: 'none',
+              WebkitTapHighlightColor: 'transparent',
+              padding: '4px 0'
+            }}
+          >
             &copy; {currentYear} {BRAND.name} Technologies. All rights reserved.
           </div>
 
           <div style={{ display: 'flex', gap: '20px' }}>
             <a href="/privacy" style={{ color: 'var(--text-secondary)' }}>Privacy Policy</a>
             <a href="/terms" style={{ color: 'var(--text-secondary)' }}>Terms and Conditions</a>
-            <a href="/admin/settings/security" style={{ color: 'var(--text-muted)' }}>Security</a>
+            <a href="/faq" style={{ color: 'var(--text-muted)' }}>Security & Privacy</a>
           </div>
         </div>
       </div>

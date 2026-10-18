@@ -714,3 +714,19 @@ html[data-theme="light"] .glass-panel-glow {
 .public-profile-root.is-light .profile-footer-text {
   color: #898197 !important;
 }
+
+/* ==========================================================================
+   RESPONSIVE LAYOUT UTILITIES
+   ========================================================================== */
+@media (max-width: 1023px) {
+  .hidden-mobile {
+    display: none !important;
+  }
+}
+
+@media (min-width: 1024px) {
+  .hidden-desktop {
+    display: none !important;
+  }
+}
+

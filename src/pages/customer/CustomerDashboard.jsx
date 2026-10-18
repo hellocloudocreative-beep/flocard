@@ -59,6 +59,7 @@ export default function CustomerDashboard({ initialTab = 'overview', initialOrde
   const [selectedOrderId, setSelectedOrderId] = useState(initialOrderId);
   const [showNotifications, setShowNotifications] = useState(false);
   const [notificationsList, setNotificationsList] = useState([]);
+  const [mobileDrawerOpen, setMobileDrawerOpen] = useState(false);
 
   // Sync state if initial props change
   useEffect(() => {
@@ -175,6 +176,7 @@ export default function CustomerDashboard({ initialTab = 'overview', initialOrde
   const handleTabChange = (tabKey) => {
     setActiveTab(tabKey);
     setSelectedOrderId(null);
+    setMobileDrawerOpen(false);
     window.history.pushState({}, '', tabKey === 'overview' ? '/dashboard' : `/dashboard/${tabKey}`);
   };
 
@@ -378,7 +380,7 @@ export default function CustomerDashboard({ initialTab = 'overview', initialOrde
         {/* Top Header Bar inside Dashboard */}
         <div
           style={{
-            padding: '16px 24px',
+            padding: 'clamp(12px, 2.5vw, 16px) clamp(14px, 3vw, 24px)',
             borderBottom: '1px solid var(--border-color)',
             backgroundColor: 'var(--header-bg)',
             display: 'flex',
@@ -390,13 +392,35 @@ export default function CustomerDashboard({ initialTab = 'overview', initialOrde
             backdropFilter: 'blur(12px)'
           }}
         >
-          {/* Active Title Breadcrumb */}
-          <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-            <span style={{ fontSize: '0.84rem', color: 'var(--text-muted)' }}>Dashboard</span>
-            <ChevronRight size={14} color="var(--text-muted)" />
-            <span style={{ fontSize: '0.92rem', fontWeight: 700, color: 'var(--text-primary)', textTransform: 'capitalize' }}>
-              {selectedOrderId ? 'Order Journey Timeline' : activeTab}
-            </span>
+          {/* Active Title Breadcrumb & Mobile Drawer Trigger */}
+          <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+            <button
+              type="button"
+              className="hidden-desktop"
+              onClick={() => setMobileDrawerOpen(true)}
+              aria-label="Open Navigation Menu"
+              style={{
+                width: '36px',
+                height: '36px',
+                borderRadius: '8px',
+                backgroundColor: 'var(--elevated-surface)',
+                border: '1px solid var(--border-color)',
+                color: 'var(--text-primary)',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                cursor: 'pointer'
+              }}
+            >
+              <Menu size={18} />
+            </button>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+              <span style={{ fontSize: '0.84rem', color: 'var(--text-muted)' }}>Dashboard</span>
+              <ChevronRight size={14} color="var(--text-muted)" />
+              <span style={{ fontSize: '0.92rem', fontWeight: 700, color: 'var(--text-primary)', textTransform: 'capitalize' }}>
+                {selectedOrderId ? 'Order Journey' : activeTab}
+              </span>
+            </div>
           </div>
 
           {/* Right Header Actions: Notification Bell & Theme Switch */}
@@ -547,7 +571,7 @@ export default function CustomerDashboard({ initialTab = 'overview', initialOrde
         </div>
 
         {/* Tab Content Display */}
-        <div style={{ padding: '28px', maxWidth: '1200px', width: '100%', margin: '0 auto' }}>
+        <div style={{ padding: 'clamp(14px, 3.5vw, 28px)', maxWidth: '1200px', width: '100%', margin: '0 auto' }}>
           {selectedOrderId ? (
             <CustomerOrderDetail orderId={selectedOrderId} onBack={handleBackToOrders} />
           ) : (
@@ -668,6 +692,164 @@ export default function CustomerDashboard({ initialTab = 'overview', initialOrde
           );
         })}
       </nav>
+      {/* MOBILE SLIDE-OUT DRAWER OVERLAY */}
+      {mobileDrawerOpen && (
+        <div
+          style={{
+            position: 'fixed',
+            inset: 0,
+            zIndex: 1000,
+            display: 'flex',
+            backgroundColor: 'rgba(0, 0, 0, 0.65)',
+            backdropFilter: 'blur(6px)',
+            WebkitBackdropFilter: 'blur(6px)'
+          }}
+          onClick={() => setMobileDrawerOpen(false)}
+        >
+          <div
+            style={{
+              width: '280px',
+              maxWidth: '85%',
+              height: '100%',
+              backgroundColor: 'var(--bg-secondary)',
+              borderRight: '1px solid var(--border-color)',
+              padding: '24px 16px',
+              display: 'flex',
+              flexDirection: 'column',
+              boxShadow: '4px 0 24px rgba(0,0,0,0.5)'
+            }}
+            onClick={(e) => e.stopPropagation()}
+          >
+            {/* Drawer Header: User info + Close Button */}
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '20px' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                <div
+                  style={{
+                    width: '38px',
+                    height: '38px',
+                    borderRadius: '50%',
+                    backgroundColor: 'rgba(107, 0, 255, 0.2)',
+                    color: 'var(--accent-purple)',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    fontWeight: 700,
+                    fontSize: '1rem',
+                    overflow: 'hidden'
+                  }}
+                >
+                  {user.avatar ? (
+                    <img src={user.avatar} alt={user.name} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                  ) : (
+                    user.name?.charAt(0) || 'F'
+                  )}
+                </div>
+                <div style={{ minWidth: 0 }}>
+                  <div style={{ fontWeight: 700, fontSize: '0.88rem', color: 'var(--text-primary)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                    {user.name}
+                  </div>
+                  <div style={{ fontSize: '0.72rem', color: 'var(--text-muted)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                    {user.email}
+                  </div>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => setMobileDrawerOpen(false)}
+                aria-label="Close menu"
+                style={{
+                  background: 'none',
+                  border: 'none',
+                  color: 'var(--text-secondary)',
+                  cursor: 'pointer',
+                  padding: '4px'
+                }}
+              >
+                <X size={20} />
+              </button>
+            </div>
+
+            {/* Drawer Nav Links */}
+            <nav style={{ display: 'flex', flexDirection: 'column', gap: '6px', flex: 1, overflowY: 'auto' }}>
+              {navItems.map((item) => {
+                const Icon = item.icon;
+                const isActive = activeTab === item.key;
+                return (
+                  <button
+                    key={item.key}
+                    type="button"
+                    onClick={() => {
+                      handleTabChange(item.key);
+                      setMobileDrawerOpen(false);
+                    }}
+                    style={{
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'space-between',
+                      padding: '12px 14px',
+                      borderRadius: '10px',
+                      border: 'none',
+                      backgroundColor: isActive ? 'var(--primary-purple)' : 'transparent',
+                      color: isActive ? '#FFFFFF' : 'var(--text-secondary)',
+                      fontWeight: isActive ? 700 : 500,
+                      fontSize: '0.88rem',
+                      cursor: 'pointer',
+                      textAlign: 'left'
+                    }}
+                  >
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                      <Icon size={18} />
+                      <span>{item.label}</span>
+                    </div>
+                    {item.count !== undefined && item.count > 0 && (
+                      <span
+                        style={{
+                          fontSize: '0.68rem',
+                          fontWeight: 700,
+                          padding: '2px 7px',
+                          borderRadius: '9999px',
+                          backgroundColor: isActive ? 'rgba(255, 255, 255, 0.25)' : 'var(--elevated-surface)',
+                          color: isActive ? '#FFFFFF' : 'var(--text-muted)'
+                        }}
+                      >
+                        {item.count}
+                      </span>
+                    )}
+                  </button>
+                );
+              })}
+            </nav>
+
+            {/* Drawer Bottom: Sign Out */}
+            <div style={{ paddingTop: '16px', borderTop: '1px solid var(--border-color)' }}>
+              <button
+                type="button"
+                onClick={() => {
+                  setMobileDrawerOpen(false);
+                  logout();
+                }}
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '10px',
+                  padding: '12px 14px',
+                  borderRadius: '10px',
+                  border: 'none',
+                  backgroundColor: 'rgba(239, 68, 68, 0.08)',
+                  color: '#EF4444',
+                  fontSize: '0.86rem',
+                  fontWeight: 600,
+                  cursor: 'pointer',
+                  width: '100%'
+                }}
+              >
+                <LogOut size={16} />
+                <span>Sign Out</span>
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
