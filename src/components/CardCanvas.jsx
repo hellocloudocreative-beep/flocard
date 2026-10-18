@@ -690,16 +690,11 @@ export default function CardCanvas({
                   }}
                 >
                   <img
-                    src={isGold ? "/assets/flocard-logo-gold.png" : "/assets/logo-light.png"}
+                    src={isGold ? "/assets/flocard-logo-gold.png" : isPlatinum ? "/assets/flocard-logo-platinum.png" : "/assets/logo-light.png"}
                     alt="FLOCARD"
-                    style={{ width: '100%', height: 'auto', display: 'block' }}
+                    style={{ width: '100%', height: 'auto', display: 'block', objectFit: 'contain' }}
                     onError={(e) => {
-                      if (e.target.src.includes('flocard-logo-gold.png')) {
-                        e.target.src = '/assets/logo-light.png';
-                      } else {
-                        e.target.style.display = 'none';
-                        if (e.target.nextSibling) e.target.nextSibling.style.display = 'inline';
-                      }
+                      e.target.src = '/assets/logo-light.png';
                     }}
                   />
                   <span
@@ -990,16 +985,11 @@ export default function CardCanvas({
                   }}
                 >
                   <img
-                    src={isGold ? "/assets/flocard-logo-gold.png" : "/assets/logo-light.png"}
+                    src={isGold ? "/assets/flocard-logo-gold.png" : isPlatinum ? "/assets/flocard-logo-platinum.png" : "/assets/logo-light.png"}
                     alt="FLOCARD"
-                    style={{ width: '100%', height: 'auto', display: 'block' }}
+                    style={{ width: '100%', height: 'auto', display: 'block', objectFit: 'contain' }}
                     onError={(e) => {
-                      if (e.target.src.includes('flocard-logo-gold.png')) {
-                        e.target.src = '/assets/logo-light.png';
-                      } else {
-                        e.target.style.display = 'none';
-                        if (e.target.nextSibling) e.target.nextSibling.style.display = 'inline';
-                      }
+                      e.target.src = '/assets/logo-light.png';
                     }}
                   />
                   <span
@@ -1143,7 +1133,7 @@ function drawFlocardLogo(ctx, x, y, targetWidth = 297, scale = 100, edition = nu
   ctx.scale(s, s);
 
   const logoImg = new Image();
-  logoImg.src = edition === 'gold' ? '/assets/flocard-logo-gold.png' : '/assets/logo-light.png';
+  logoImg.src = edition === 'gold' ? '/assets/flocard-logo-gold.png' : edition === 'platinum' ? '/assets/flocard-logo-platinum.png' : '/assets/logo-light.png';
   const drawLogo = (img) => {
     const aspect = img.naturalWidth / img.naturalHeight;
     const targetH = targetWidth / aspect;
