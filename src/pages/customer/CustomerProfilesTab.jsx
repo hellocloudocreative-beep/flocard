@@ -8,7 +8,7 @@
    - Interactive Live Morphing Preview Studio
    ========================================================================== */
 
-import React, { useState } from 'react';
+import React, { useState, useRef } from 'react';
 import {
   FileText,
   ExternalLink,
@@ -32,10 +32,15 @@ import {
   Minimize2,
   Sliders,
   Layers,
-  ArrowUpRight
+  ArrowUpRight,
+  Upload,
+  User,
+  Building2,
+  Image as ImageIcon
 } from 'lucide-react';
 import { downloadVCard } from '../../lib/vcard';
 import { useData } from '../../context/DataContext';
+import { compressImage } from '../../lib/imageCompression';
 import CompactProfileCard from '../../components/profile/CompactProfileCard';
 import ExpandedPortfolioView from '../../components/profile/ExpandedPortfolioView';
 
@@ -51,6 +56,53 @@ export default function CustomerProfilesTab({ profiles = [], customer, onSavePro
 
   // Form states for editing profile
   const [formData, setFormData] = useState({});
+
+  // Image upload refs
+  const avatarInputRef = useRef(null);
+  const logoInputRef = useRef(null);
+
+  // Handle Avatar Upload
+  const handleAvatarUpload = async (e) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    try {
+      const compressed = await compressImage(file, { maxWidth: 400, maxHeight: 400, quality: 0.85 });
+      setFormData(prev => ({ ...prev, avatar: compressed }));
+    } catch (err) {
+      console.error('Avatar upload failed:', err);
+    }
+    e.target.value = '';
+  };
+
+  // Handle Logo Upload
+  const handleLogoUpload = async (e) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    try {
+      const compressed = await compressImage(file, { maxWidth: 500, maxHeight: 500, quality: 0.85, outputFormat: file.type === 'image/png' ? 'image/png' : 'image/jpeg' });
+      setFormData(prev => ({ ...prev, logo: compressed }));
+    } catch (err) {
+      console.error('Logo upload failed:', err);
+    }
+    e.target.value = '';
+  };
+
+  // Handle Portfolio Item Image Upload
+  const handlePortfolioImageUpload = async (index, e) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    try {
+      const compressed = await compressImage(file, { maxWidth: 800, maxHeight: 800, quality: 0.82 });
+      setFormData(prev => {
+        const next = [...(prev.portfolio || [])];
+        next[index] = { ...next[index], image: compressed };
+        return { ...prev, portfolio: next };
+      });
+    } catch (err) {
+      console.error('Portfolio image upload failed:', err);
+    }
+    e.target.value = '';
+  };
 
   const handleOpenEdit = (profile) => {
     setEditingProfile(profile);
@@ -696,7 +748,196 @@ export default function CustomerProfilesTab({ profiles = [], customer, onSavePro
 
               {/* TAB 2: IDENTITY INFO */}
               {editorTab === 'info' && (
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+
+                  {/* ── PHOTO & LOGO UPLOAD ROW ── */}
+                  <div
+                    style={{
+                      display: 'grid',
+                      gridTemplateColumns: '1fr 1fr',
+                      gap: '12px',
+                      padding: '16px',
+                      backgroundColor: 'var(--elevated-surface)',
+                      borderRadius: '14px',
+                      border: '1px solid var(--border-color)'
+                    }}
+                  >
+                    {/* Avatar / Headshot */}
+                    <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '10px' }}>
+                      <div
+                        style={{
+                          width: '80px',
+                          height: '80px',
+                          borderRadius: '50%',
+                          overflow: 'hidden',
+                          border: '2px solid var(--border-color)',
+                          background: 'var(--card-surface)',
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                          flexShrink: 0,
+                          cursor: 'pointer',
+                          position: 'relative'
+                        }}
+                        onClick={() => avatarInputRef.current?.click()}
+                        title="Click to upload headshot"
+                      >
+                        {formData.avatar ? (
+                          <img src={formData.avatar} alt="Avatar" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                        ) : (
+                          <User size={28} color="var(--text-muted)" />
+                        )}
+                        <div style={{
+                          position: 'absolute',
+                          inset: 0,
+                          borderRadius: '50%',
+                          background: 'rgba(0,0,0,0.35)',
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                          opacity: 0,
+                          transition: 'opacity 0.2s'
+                        }}
+                          onMouseEnter={e => e.currentTarget.style.opacity = 1}
+                          onMouseLeave={e => e.currentTarget.style.opacity = 0}
+                        >
+                          <Upload size={16} color="#fff" />
+                        </div>
+                      </div>
+                      <input ref={avatarInputRef} type="file" accept="image/*" onChange={handleAvatarUpload} style={{ display: 'none' }} />
+                      <div style={{ textAlign: 'center' }}>
+                        <div style={{ fontSize: '0.76rem', fontWeight: 700, color: 'var(--text-primary)' }}>Profile Photo</div>
+                        <button
+                          type="button"
+                          onClick={() => avatarInputRef.current?.click()}
+                          style={{
+                            marginTop: '6px',
+                            display: 'inline-flex',
+                            alignItems: 'center',
+                            gap: '5px',
+                            fontSize: '0.72rem',
+                            fontWeight: 600,
+                            padding: '5px 12px',
+                            borderRadius: '9999px',
+                            border: '1px solid var(--border-color)',
+                            background: 'transparent',
+                            color: 'var(--text-secondary)',
+                            cursor: 'pointer'
+                          }}
+                        >
+                          <Upload size={11} />
+                          {formData.avatar ? 'Change Photo' : 'Upload Photo'}
+                        </button>
+                        {formData.avatar && (
+                          <button
+                            type="button"
+                            onClick={() => setFormData(prev => ({ ...prev, avatar: '' }))}
+                            style={{
+                              marginTop: '4px',
+                              display: 'block',
+                              fontSize: '0.68rem',
+                              color: '#F87171',
+                              background: 'none',
+                              border: 'none',
+                              cursor: 'pointer',
+                              width: '100%'
+                            }}
+                          >
+                            Remove
+                          </button>
+                        )}
+                      </div>
+                    </div>
+
+                    {/* Company Logo */}
+                    <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '10px' }}>
+                      <div
+                        style={{
+                          width: '80px',
+                          height: '80px',
+                          borderRadius: '16px',
+                          overflow: 'hidden',
+                          border: '2px solid var(--border-color)',
+                          background: 'var(--card-surface)',
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                          flexShrink: 0,
+                          cursor: 'pointer',
+                          position: 'relative'
+                        }}
+                        onClick={() => logoInputRef.current?.click()}
+                        title="Click to upload company logo"
+                      >
+                        {formData.logo ? (
+                          <img src={formData.logo} alt="Logo" style={{ width: '100%', height: '100%', objectFit: 'contain', padding: '6px' }} />
+                        ) : (
+                          <Building2 size={28} color="var(--text-muted)" />
+                        )}
+                        <div style={{
+                          position: 'absolute',
+                          inset: 0,
+                          borderRadius: '14px',
+                          background: 'rgba(0,0,0,0.35)',
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                          opacity: 0,
+                          transition: 'opacity 0.2s'
+                        }}
+                          onMouseEnter={e => e.currentTarget.style.opacity = 1}
+                          onMouseLeave={e => e.currentTarget.style.opacity = 0}
+                        >
+                          <Upload size={16} color="#fff" />
+                        </div>
+                      </div>
+                      <input ref={logoInputRef} type="file" accept="image/*" onChange={handleLogoUpload} style={{ display: 'none' }} />
+                      <div style={{ textAlign: 'center' }}>
+                        <div style={{ fontSize: '0.76rem', fontWeight: 700, color: 'var(--text-primary)' }}>Company Logo</div>
+                        <button
+                          type="button"
+                          onClick={() => logoInputRef.current?.click()}
+                          style={{
+                            marginTop: '6px',
+                            display: 'inline-flex',
+                            alignItems: 'center',
+                            gap: '5px',
+                            fontSize: '0.72rem',
+                            fontWeight: 600,
+                            padding: '5px 12px',
+                            borderRadius: '9999px',
+                            border: '1px solid var(--border-color)',
+                            background: 'transparent',
+                            color: 'var(--text-secondary)',
+                            cursor: 'pointer'
+                          }}
+                        >
+                          <Upload size={11} />
+                          {formData.logo ? 'Change Logo' : 'Upload Logo'}
+                        </button>
+                        {formData.logo && (
+                          <button
+                            type="button"
+                            onClick={() => setFormData(prev => ({ ...prev, logo: '' }))}
+                            style={{
+                              marginTop: '4px',
+                              display: 'block',
+                              fontSize: '0.68rem',
+                              color: '#F87171',
+                              background: 'none',
+                              border: 'none',
+                              cursor: 'pointer',
+                              width: '100%'
+                            }}
+                          >
+                            Remove
+                          </button>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* ── NAME / ROLE ROW ── */}
                   <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
                     <div>
                       <label style={{ fontSize: '0.76rem', fontWeight: 600, color: 'var(--text-secondary)', display: 'block', marginBottom: '4px' }}>Full Name</label>
@@ -801,6 +1042,113 @@ export default function CustomerProfilesTab({ profiles = [], customer, onSavePro
                       />
                     </div>
                   </div>
+
+                  {/* ── PORTFOLIO IMAGES ── */}
+                  {(formData.portfolio || []).length > 0 && (
+                    <div
+                      style={{
+                        padding: '14px',
+                        backgroundColor: 'var(--elevated-surface)',
+                        borderRadius: '14px',
+                        border: '1px solid var(--border-color)'
+                      }}
+                    >
+                      <div style={{ fontSize: '0.78rem', fontWeight: 700, color: 'var(--text-primary)', marginBottom: '10px', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                        <ImageIcon size={14} color="var(--accent-purple)" />
+                        Portfolio Images
+                      </div>
+                      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(90px, 1fr))', gap: '10px' }}>
+                        {(formData.portfolio || []).map((item, idx) => (
+                          <label
+                            key={item.id || idx}
+                            title={item.title || `Work ${idx + 1}`}
+                            style={{
+                              position: 'relative',
+                              display: 'block',
+                              width: '100%',
+                              paddingBottom: '100%',
+                              borderRadius: '12px',
+                              overflow: 'hidden',
+                              background: 'var(--card-surface)',
+                              border: '1px dashed var(--border-color)',
+                              cursor: 'pointer'
+                            }}
+                          >
+                            <input
+                              type="file"
+                              accept="image/*"
+                              onChange={e => handlePortfolioImageUpload(idx, e)}
+                              style={{ display: 'none' }}
+                            />
+                            {item.image ? (
+                              <img
+                                src={item.image}
+                                alt={item.title || `Work ${idx + 1}`}
+                                style={{
+                                  position: 'absolute',
+                                  inset: 0,
+                                  width: '100%',
+                                  height: '100%',
+                                  objectFit: 'cover'
+                                }}
+                              />
+                            ) : (
+                              <div style={{
+                                position: 'absolute',
+                                inset: 0,
+                                display: 'flex',
+                                flexDirection: 'column',
+                                alignItems: 'center',
+                                justifyContent: 'center',
+                                gap: '4px',
+                                color: 'var(--text-muted)'
+                              }}>
+                                <Upload size={16} />
+                                <span style={{ fontSize: '0.62rem' }}>Add Image</span>
+                              </div>
+                            )}
+                            {/* Hover overlay */}
+                            <div style={{
+                              position: 'absolute',
+                              inset: 0,
+                              background: 'rgba(107,0,255,0.55)',
+                              display: 'flex',
+                              alignItems: 'center',
+                              justifyContent: 'center',
+                              opacity: 0,
+                              transition: 'opacity 0.2s',
+                              borderRadius: '11px'
+                            }}
+                              onMouseEnter={e => e.currentTarget.style.opacity = 1}
+                              onMouseLeave={e => e.currentTarget.style.opacity = 0}
+                            >
+                              <Upload size={18} color="#fff" />
+                            </div>
+                            {/* Title chip */}
+                            <div style={{
+                              position: 'absolute',
+                              bottom: 0,
+                              left: 0,
+                              right: 0,
+                              background: 'rgba(0,0,0,0.6)',
+                              color: '#fff',
+                              fontSize: '0.6rem',
+                              padding: '3px 5px',
+                              whiteSpace: 'nowrap',
+                              overflow: 'hidden',
+                              textOverflow: 'ellipsis'
+                            }}>
+                              {item.title || `Work ${idx + 1}`}
+                            </div>
+                          </label>
+                        ))}
+                      </div>
+                      <p style={{ fontSize: '0.68rem', color: 'var(--text-muted)', marginTop: '8px', margin: '8px 0 0' }}>
+                        Click any tile to upload / replace its image.
+                      </p>
+                    </div>
+                  )}
+
                 </div>
               )}
 
