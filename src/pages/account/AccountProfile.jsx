@@ -23,7 +23,7 @@ import {
   Link as LinkIcon
 } from 'lucide-react';
 import PhoneProfileMockup from '../../components/PhoneProfileMockup';
-import { compressImage } from '../../lib/imageCompression';
+import { uploadImage } from '../../lib/uploadImage';
 
 export default function AccountProfile() {
   const { user } = useAuth();
@@ -87,8 +87,8 @@ export default function AccountProfile() {
     const file = e.target.files?.[0];
     if (!file) return;
     try {
-      const compressed = await compressImage(file, { maxWidth: 400, maxHeight: 400, quality: 0.85 });
-      setFormData(prev => ({ ...prev, avatar: compressed }));
+      const url = await uploadImage(file, 'avatar', user?.id || 'anon');
+      setFormData(prev => ({ ...prev, avatar: url }));
     } catch (err) {
       console.error('Avatar upload failed:', err);
     }
@@ -100,8 +100,8 @@ export default function AccountProfile() {
     const file = e.target.files?.[0];
     if (!file) return;
     try {
-      const compressed = await compressImage(file, { maxWidth: 500, maxHeight: 500, quality: 0.85, outputFormat: file.type === 'image/png' ? 'image/png' : 'image/jpeg' });
-      setFormData(prev => ({ ...prev, logo: compressed }));
+      const url = await uploadImage(file, 'logo', user?.id || 'anon');
+      setFormData(prev => ({ ...prev, logo: url }));
     } catch (err) {
       console.error('Logo upload failed:', err);
     }
@@ -113,10 +113,10 @@ export default function AccountProfile() {
     const file = e.target.files?.[0];
     if (!file) return;
     try {
-      const compressed = await compressImage(file, { maxWidth: 800, maxHeight: 800, quality: 0.82 });
+      const url = await uploadImage(file, 'portfolio', user?.id || 'anon');
       setFormData(prev => {
         const next = [...prev.portfolio];
-        next[index] = { ...next[index], image: compressed };
+        next[index] = { ...next[index], image: url };
         return { ...prev, portfolio: next };
       });
     } catch (err) {
@@ -167,7 +167,7 @@ export default function AccountProfile() {
 
     for (const file of files) {
       try {
-        const compressed = await compressImage(file, { maxWidth: 800, maxHeight: 800, quality: 0.82 });
+        const url = await uploadImage(file, 'portfolio', user?.id || 'anon');
         const rawTitle = file.name.replace(/\.[^/.]+$/, '').replace(/[-_]/g, ' ');
         const cleanTitle = rawTitle.charAt(0).toUpperCase() + rawTitle.slice(1);
         setFormData(prev => ({
@@ -179,7 +179,7 @@ export default function AccountProfile() {
               title: cleanTitle || 'New Work Showcase',
               category: 'Work Showcase',
               desc: 'Client showcase deliverables and visual portfolio preview.',
-              image: compressed,
+              image: url,
               link: ''
             }
           ]

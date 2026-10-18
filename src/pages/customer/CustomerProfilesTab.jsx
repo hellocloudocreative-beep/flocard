@@ -40,7 +40,7 @@ import {
 } from 'lucide-react';
 import { downloadVCard } from '../../lib/vcard';
 import { useData } from '../../context/DataContext';
-import { compressImage } from '../../lib/imageCompression';
+import { uploadImage } from '../../lib/uploadImage';
 import CompactProfileCard from '../../components/profile/CompactProfileCard';
 import ExpandedPortfolioView from '../../components/profile/ExpandedPortfolioView';
 
@@ -66,8 +66,8 @@ export default function CustomerProfilesTab({ profiles = [], customer, onSavePro
     const file = e.target.files?.[0];
     if (!file) return;
     try {
-      const compressed = await compressImage(file, { maxWidth: 400, maxHeight: 400, quality: 0.85 });
-      setFormData(prev => ({ ...prev, avatar: compressed }));
+      const url = await uploadImage(file, 'avatar', customer?.id || 'anon');
+      setFormData(prev => ({ ...prev, avatar: url }));
     } catch (err) {
       console.error('Avatar upload failed:', err);
     }
@@ -79,8 +79,8 @@ export default function CustomerProfilesTab({ profiles = [], customer, onSavePro
     const file = e.target.files?.[0];
     if (!file) return;
     try {
-      const compressed = await compressImage(file, { maxWidth: 500, maxHeight: 500, quality: 0.85, outputFormat: file.type === 'image/png' ? 'image/png' : 'image/jpeg' });
-      setFormData(prev => ({ ...prev, logo: compressed }));
+      const url = await uploadImage(file, 'logo', customer?.id || 'anon');
+      setFormData(prev => ({ ...prev, logo: url }));
     } catch (err) {
       console.error('Logo upload failed:', err);
     }
@@ -92,10 +92,10 @@ export default function CustomerProfilesTab({ profiles = [], customer, onSavePro
     const file = e.target.files?.[0];
     if (!file) return;
     try {
-      const compressed = await compressImage(file, { maxWidth: 800, maxHeight: 800, quality: 0.82 });
+      const url = await uploadImage(file, 'portfolio', customer?.id || 'anon');
       setFormData(prev => {
         const next = [...(prev.portfolio || [])];
-        next[index] = { ...next[index], image: compressed };
+        next[index] = { ...next[index], image: url };
         return { ...prev, portfolio: next };
       });
     } catch (err) {

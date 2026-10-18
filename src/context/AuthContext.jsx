@@ -100,61 +100,47 @@ export function AuthProvider({ children }) {
         const { error } = await supabase.auth.signInWithOAuth({
           provider: 'google',
           options: {
-            redirectTo: redirectUri
+            redirectTo: redirectUri,
+            queryParams: {
+              access_type: 'offline',
+              prompt: 'consent',
+            }
           }
         });
         if (error) {
-          console.warn('Supabase OAuth error, attempting fallback:', error.message);
-          // If in local dev or OAuth provider not enabled on Supabase, proceed to demo fallback for customer
-          if (!targetRedirect.includes('/admin')) {
-            const googleCust = {
-              id: 'cust_google_demo',
-              name: 'Alex Rivera (Google)',
-              email: 'alex.rivera@gmail.com',
-              role: 'customer',
-              company: 'Apex Innovations',
-              status: 'active',
-              totalCards: 2,
-              totalDesigns: 1,
-              joinedDate: new Date().toISOString().split('T')[0]
+          console.warn('Supabase Google OAuth error:', error.message);
+          // Provider not enabled → give clear actionable error
+          if (error.message?.toLowerCase().includes('provider') || error.message?.toLowerCase().includes('not enabled') || error.status === 422) {
+            return {
+              success: false,
+              error: 'Google sign-in is not yet enabled. Go to Supabase Dashboard → Authentication → Providers → Google and enable it with your Google OAuth credentials.'
             };
-            setUser(googleCust);
-            StorageEngine.saveCustomer(googleCust);
-            StorageEngine.addAuditLog('Customer Login', `Customer signed in via Google: Alex Rivera`, googleCust.name);
-            return { success: true, user: googleCust, isDemo: true };
           }
-          throw error;
+          if (targetRedirect.includes('/admin')) {
+            throw error;
+          }
+          // Other OAuth errors for non-admin: return error
+          return { success: false, error: error.message || 'Google sign-in failed. Please try email sign-in.' };
         }
+        // signInWithOAuth redirects the browser — if we reach here, it succeeded
         return { success: true };
       }
 
-      // Do NOT auto-authenticate to admin without entering credentials!
+      // Supabase not configured at all
       if (targetRedirect.includes('/admin')) {
         return {
           success: false,
-          error: 'Google OAuth is not configured for this domain. Please sign in with your administrator email and password below.'
+          error: 'Google OAuth is not configured. Please sign in with your administrator email and password below.'
         };
       }
 
-      // Demo Google Customer Session for local testing
-      const googleCust = {
-        id: 'cust_google_demo',
-        name: 'Alex Rivera (Google)',
-        email: 'alex.rivera@gmail.com',
-        role: 'customer',
-        company: 'Apex Innovations',
-        status: 'active',
-        totalCards: 2,
-        totalDesigns: 1,
-        joinedDate: new Date().toISOString().split('T')[0]
+      return {
+        success: false,
+        error: 'Google sign-in requires Supabase to be configured. Please use email sign-in instead.'
       };
-      setUser(googleCust);
-      StorageEngine.saveCustomer(googleCust);
-      StorageEngine.addAuditLog('Customer Login', `Customer signed in via Google: Alex Rivera`, googleCust.name);
-      return { success: true, user: googleCust, isDemo: true };
     } catch (err) {
       console.error('Google Sign In error:', err);
-      return { success: false, error: err.message };
+      return { success: false, error: err.message || 'Google sign-in failed. Please try again.' };
     } finally {
       setLoading(false);
     }
