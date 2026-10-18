@@ -15,7 +15,8 @@ import {
   Mail,
   Maximize2,
   Sliders,
-  ShieldCheck
+  ShieldCheck,
+  Camera
 } from 'lucide-react';
 import ReflectiveCard from '../ReflectiveCard/ReflectiveCard';
 import { downloadVCard } from '../../lib/vcard';
@@ -27,6 +28,7 @@ export default function CompactProfileCard({
   reducedMotion = false
 }) {
   const [cardVariant, setCardVariant] = useState('reflective'); // 'reflective' | 'gradient'
+  const [webcamEnabled, setWebcamEnabled] = useState(false);
 
   const gradientStart = profile.gradientStart || '#130B22';
   const gradientMid = profile.gradientMid || '#240F3E';
@@ -86,7 +88,10 @@ export default function CompactProfileCard({
       >
         <button
           type="button"
-          onClick={() => setCardVariant('reflective')}
+          onClick={() => {
+            setCardVariant('reflective');
+            setWebcamEnabled(false);
+          }}
           style={{
             padding: '5px 14px',
             borderRadius: '9999px',
@@ -98,9 +103,9 @@ export default function CompactProfileCard({
             display: 'flex',
             alignItems: 'center',
             gap: '6px',
-            backgroundColor: cardVariant === 'reflective' ? accentColor : 'transparent',
+            backgroundColor: cardVariant === 'reflective' && !webcamEnabled ? accentColor : 'transparent',
             color: '#FFFFFF',
-            boxShadow: cardVariant === 'reflective' ? `0 2px 10px ${accentColor}60` : 'none'
+            boxShadow: cardVariant === 'reflective' && !webcamEnabled ? `0 2px 10px ${accentColor}60` : 'none'
           }}
         >
           <Sparkles size={12} />
@@ -109,7 +114,38 @@ export default function CompactProfileCard({
 
         <button
           type="button"
-          onClick={() => setCardVariant('gradient')}
+          onClick={(e) => {
+            e.stopPropagation();
+            setCardVariant('reflective');
+            setWebcamEnabled(!webcamEnabled);
+          }}
+          title="Reflect your webcam in real-time on the metal card"
+          style={{
+            padding: '5px 14px',
+            borderRadius: '9999px',
+            border: 'none',
+            fontSize: '0.74rem',
+            fontWeight: 700,
+            cursor: 'pointer',
+            transition: 'all 0.2s ease',
+            display: 'flex',
+            alignItems: 'center',
+            gap: '6px',
+            backgroundColor: cardVariant === 'reflective' && webcamEnabled ? '#10B981' : 'transparent',
+            color: '#FFFFFF',
+            boxShadow: cardVariant === 'reflective' && webcamEnabled ? '0 2px 10px rgba(16, 185, 129, 0.6)' : 'none'
+          }}
+        >
+          <Camera size={12} />
+          <span>{webcamEnabled ? 'Camera Active' : 'Live Mirror'}</span>
+        </button>
+
+        <button
+          type="button"
+          onClick={() => {
+            setCardVariant('gradient');
+            setWebcamEnabled(false);
+          }}
           style={{
             padding: '5px 14px',
             borderRadius: '9999px',
@@ -173,6 +209,7 @@ export default function CompactProfileCard({
             idValue={profile.phone || profile.email || `NFC-${profile.slug?.toUpperCase() || '216'}`}
             theme={isLight ? 'light' : 'dark'}
             tint={metalTint}
+            webcam={webcamEnabled}
             metalness={1}
             roughness={0.32}
             blurStrength={7}
