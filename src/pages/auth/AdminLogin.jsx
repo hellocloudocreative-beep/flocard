@@ -28,7 +28,7 @@ export default function AdminLogin() {
     setLoading(true);
 
     try {
-      const res = await loginWithGoogle();
+      const res = await loginWithGoogle('/admin');
       if (res.success) {
         window.history.pushState({}, '', '/admin');
         window.dispatchEvent(new PopStateEvent('popstate'));

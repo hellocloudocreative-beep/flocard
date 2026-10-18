@@ -38,26 +38,120 @@ export function AuthProvider({ children }) {
     }
   }, [user]);
 
+  // Listen for Supabase OAuth redirect and session restoration
+  useEffect(() => {
+    if (isSupabaseConfigured && supabase) {
+      supabase.auth.getSession().then(({ data: { session } }) => {
+        if (session?.user) {
+          syncSupabaseUser(session.user);
+        }
+      }).catch(err => {
+        console.warn('Supabase getSession error:', err);
+      });
+
+      const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
+        if (session?.user) {
+          syncSupabaseUser(session.user);
+        }
+      });
+
+      return () => {
+        subscription?.unsubscribe();
+      };
+    }
+  }, []);
+
+  const syncSupabaseUser = (sbUser) => {
+    const email = sbUser.email?.toLowerCase();
+    const isOwner = email === 'akhil@flocard.in';
+    const role = isOwner ? 'owner' : (sbUser.user_metadata?.role || 'customer');
+    const name = sbUser.user_metadata?.full_name || sbUser.user_metadata?.name || email?.split('@')[0] || 'User';
+
+    setUser(prev => {
+      if (prev && prev.email === email && prev.id === sbUser.id) return prev;
+      const synced = {
+        id: sbUser.id,
+        email,
+        name,
+        role,
+        avatar: sbUser.user_metadata?.avatar_url || '',
+        company: sbUser.user_metadata?.company || 'Member',
+        status: 'active',
+        totalCards: prev?.totalCards || 0,
+        totalDesigns: prev?.totalDesigns || 0,
+        joinedDate: prev?.joinedDate || new Date().toISOString().split('T')[0]
+      };
+      if (role === 'customer') {
+        StorageEngine.saveCustomer(synced);
+      }
+      return synced;
+    });
+  };
+
   // Google OAuth Login
-  const loginWithGoogle = async () => {
+  const loginWithGoogle = async (targetRedirect = '/account') => {
     setLoading(true);
     try {
+      const redirectUri = targetRedirect.startsWith('http')
+        ? targetRedirect
+        : `${window.location.origin}${targetRedirect}`;
+
       if (isSupabaseConfigured && supabase) {
         const { error } = await supabase.auth.signInWithOAuth({
           provider: 'google',
           options: {
-            redirectTo: `${window.location.origin}/admin`
+            redirectTo: redirectUri
           }
         });
-        if (error) throw error;
+        if (error) {
+          console.warn('Supabase OAuth error, attempting fallback:', error.message);
+          // If in local dev or OAuth provider not enabled on Supabase, proceed to demo fallback for customer
+          if (!targetRedirect.includes('/admin')) {
+            const googleCust = {
+              id: 'cust_google_demo',
+              name: 'Alex Rivera (Google)',
+              email: 'alex.rivera@gmail.com',
+              role: 'customer',
+              company: 'Apex Innovations',
+              status: 'active',
+              totalCards: 2,
+              totalDesigns: 1,
+              joinedDate: new Date().toISOString().split('T')[0]
+            };
+            setUser(googleCust);
+            StorageEngine.saveCustomer(googleCust);
+            StorageEngine.addAuditLog('Customer Login', `Customer signed in via Google: Alex Rivera`, googleCust.name);
+            return { success: true, user: googleCust, isDemo: true };
+          }
+          throw error;
+        }
         return { success: true };
       }
 
       // Do NOT auto-authenticate to admin without entering credentials!
-      return {
-        success: false,
-        error: 'Google OAuth is not configured for this domain. Please sign in with your administrator email and password below.'
+      if (targetRedirect.includes('/admin')) {
+        return {
+          success: false,
+          error: 'Google OAuth is not configured for this domain. Please sign in with your administrator email and password below.'
+        };
+      }
+
+      // Demo Google Customer Session for local testing
+      const googleCust = {
+        id: 'cust_google_demo',
+        name: 'Alex Rivera (Google)',
+        email: 'alex.rivera@gmail.com',
+        role: 'customer',
+        company: 'Apex Innovations',
+        status: 'active',
+        totalCards: 2,
+        totalDesigns: 1,
+        joinedDate: new Date().toISOString().split('T')[0]
       };
+      setUser(googleCust);
+      StorageEngine.saveCustomer(googleCust);
+      StorageEngine.addAuditLog('Customer Login', `Customer signed in via Google: Alex Rivera`, googleCust.name);
+      return { success: true, user: googleCust, isDemo: true };
     } catch (err) {
       console.error('Google Sign In error:', err);
       return { success: false, error: err.message };

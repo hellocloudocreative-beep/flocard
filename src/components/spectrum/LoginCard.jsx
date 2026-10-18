@@ -215,8 +215,8 @@ export default function LoginCard({
               background: 'rgba(107, 0, 255, 0.2)',
               border: '1px solid rgba(107, 0, 255, 0.4)',
               color: 'var(--light-lavender, #B8AEC8)',
-              borderRadius: '4px',
-              padding: '3px 8px',
+              borderRadius: '8px',
+              padding: '4px 10px',
               fontSize: '0.74rem',
               fontWeight: 600,
               cursor: 'pointer'
