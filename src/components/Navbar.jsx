@@ -43,7 +43,6 @@ export default function Navbar({ currentPath = '/' }) {
     { label: 'Home', href: '/' },
     { label: 'Cards', href: '/cards' },
     { label: 'Digital Profiles', href: '/digital-profiles' },
-    { label: 'AI Concierge', href: '/ai-concierge', badge: 'AI' },
     { label: 'How It Works', href: '/how-it-works' },
     { label: 'About', href: '/about' },
     { label: 'Contact', href: '/contact' }

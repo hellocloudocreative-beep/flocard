@@ -1040,23 +1040,6 @@ export const StorageEngine = {
     return newEvent;
   },
 
-  // AI Concierge Conversation Storage (Optional, with customer privacy & clear controls)
-  getAiConversation: (userId = 'guest') => {
-    return getLocal(`ai_convo_${userId}`, []);
-  },
-
-  saveAiConversation: (userId = 'guest', messages = []) => {
-    setLocal(`ai_convo_${userId}`, messages.slice(-40)); // Keep only recent turns
-  },
-
-  clearAiConversation: (userId = 'guest') => {
-    try {
-      localStorage.removeItem(STORAGE_KEY_PREFIX + `ai_convo_${userId}`);
-    } catch {
-      // Ignore
-    }
-  },
-
   // Customers
   getCustomers: () => getLocal('customers', INITIAL_CUSTOMERS),
   saveCustomer: (cust) => {

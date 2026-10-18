@@ -27,8 +27,6 @@ import AccountDesigns from './pages/account/AccountDesigns';
 import AccountProfile from './pages/account/AccountProfile';
 import AdminDashboard from './pages/admin/AdminDashboard';
 import CustomerDashboard from './pages/customer/CustomerDashboard';
-import AiConciergePage from './pages/AiConciergePage';
-import AiConciergeFloatingWidget from './components/ai/AiConciergeFloatingWidget';
 import { AuthProvider } from './context/AuthContext';
 import { DataProvider } from './context/DataContext';
 import { ThemeProvider } from './context/ThemeContext';
@@ -199,10 +197,6 @@ export default function App() {
   else if (path === '/reset-password') {
     content = <Login view="reset" />;
   }
-  // 9. Dedicated FLOCARD AI Concierge (/ai-concierge)
-  else if (path === '/ai-concierge') {
-    content = <AiConciergePage />;
-  }
   // 10. Customer Dashboard (/dashboard, /dashboard/*)
   else if (path === '/dashboard' || path.startsWith('/dashboard/')) {
     const subRoute = path.replace('/dashboard', '').replace(/^\//, '') || 'overview';
@@ -240,7 +234,6 @@ export default function App() {
             {showHeaderFooter && <Navbar currentPath={path} />}
             {content}
             {showHeaderFooter && <Footer />}
-            <AiConciergeFloatingWidget currentPath={path} />
           </div>
         </DataProvider>
       </AuthProvider>

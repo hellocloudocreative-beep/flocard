@@ -250,10 +250,7 @@ export function DataProvider({ children }) {
       markNotificationRead: StorageEngine.markNotificationRead,
       markAllNotificationsRead: StorageEngine.markAllNotificationsRead,
       getRealAnalytics: StorageEngine.getRealAnalytics,
-      logAnalyticsEvent: StorageEngine.logAnalyticsEvent,
-      getAiConversation: StorageEngine.getAiConversation,
-      saveAiConversation: StorageEngine.saveAiConversation,
-      clearAiConversation: StorageEngine.clearAiConversation
+      logAnalyticsEvent: StorageEngine.logAnalyticsEvent
     }}>
       {children}
     </DataContext.Provider>

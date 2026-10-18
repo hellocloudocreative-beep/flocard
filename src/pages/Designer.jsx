@@ -55,7 +55,6 @@ import { useData } from '../context/DataContext';
 import { useAuth } from '../context/AuthContext';
 import { useTheme } from '../context/ThemeContext';
 import { WhatsappIcon } from '../components/SocialIcons';
-import AiConciergeView from '../components/ai/AiConciergeView';
 
 export const FONT_OPTIONS = [
   { id: 'Space Grotesk', name: 'Space Grotesk', style: 'Modern Tech & Bold' },
@@ -231,7 +230,6 @@ export default function Designer() {
   const [hoveredFont, setHoveredFont] = useState(null); // { field: 'name' | 'role' | 'details' | 'tagline', font: string }
   const [showAuthModal, setShowAuthModal] = useState(false);
   const [showWhatsAppModal, setShowWhatsAppModal] = useState(false);
-  const [showAiModal, setShowAiModal] = useState(false);
 
   // Helper to dynamically format card name as `<Username>'s FLOCARD (<Edition> Edition)`
   const getDynamicCardTitle = (name, editionKey) => {
@@ -823,25 +821,6 @@ export default function Designer() {
               </span>
             )}
 
-            <button
-              type="button"
-              onClick={() => setShowAiModal(true)}
-              className="btn btn-sm designer-btn"
-              title="Open AI Concierge to get personalized layout, typography, and bio suggestions"
-              style={{
-                background: 'linear-gradient(135deg, rgba(168, 85, 247, 0.18), rgba(107, 0, 255, 0.22))',
-                border: '1px solid rgba(168, 85, 247, 0.5)',
-                color: 'var(--accent-purple)',
-                fontWeight: 600,
-                display: 'inline-flex',
-                alignItems: 'center',
-                gap: '6px',
-                boxShadow: '0 0 15px rgba(107, 0, 255, 0.15)'
-              }}
-            >
-              <Sparkles size={14} color="var(--accent-purple)" />
-              <span>AI Concierge Assist</span>
-            </button>
 
             <button
               type="button"
@@ -1824,83 +1803,6 @@ export default function Designer() {
         </div>
       </div>
 
-      {/* AI Concierge Studio Assistant Modal */}
-      {showAiModal && (
-        <div
-          style={{
-            position: 'fixed',
-            inset: 0,
-            background: 'rgba(5, 3, 10, 0.85)',
-            backdropFilter: 'blur(10px)',
-            WebkitBackdropFilter: 'blur(10px)',
-            zIndex: 9999,
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            padding: '20px'
-          }}
-        >
-          <div
-            style={{
-              maxWidth: '920px',
-              width: '100%',
-              maxHeight: '92vh',
-              overflowY: 'auto',
-              borderRadius: '24px',
-              border: '1px solid var(--border-highlight)',
-              boxShadow: '0 25px 60px rgba(0,0,0,0.8), 0 0 50px rgba(107,0,255,0.25)'
-            }}
-          >
-            <AiConciergeView
-              onClose={() => setShowAiModal(false)}
-              designerContext={{
-                edition,
-                templateType,
-                fontFamily: frontConfig.fontFamily,
-                name: frontConfig.name,
-                role: frontConfig.role,
-                tagline: frontConfig.tagline
-              }}
-              onApplySuggestionsToDesigner={(approvedChanges) => {
-                if (approvedChanges.edition && EDITIONS[approvedChanges.edition]) {
-                  handleEditionChange(approvedChanges.edition);
-                }
-                if (approvedChanges.templateType && TEMPLATES[approvedChanges.templateType]) {
-                  setTemplateType(approvedChanges.templateType);
-                }
-                if (
-                  approvedChanges.fontFamily ||
-                  approvedChanges.roleFontFamily ||
-                  approvedChanges.tagline !== undefined ||
-                  approvedChanges.nfcPosition ||
-                  approvedChanges.alignment
-                ) {
-                  setFrontConfig((prev) => ({
-                    ...prev,
-                    fontFamily: approvedChanges.fontFamily || prev.fontFamily,
-                    roleFontFamily: approvedChanges.roleFontFamily || prev.roleFontFamily,
-                    tagline: approvedChanges.tagline !== undefined ? approvedChanges.tagline : prev.tagline,
-                    nfcPosition: approvedChanges.nfcPosition || prev.nfcPosition,
-                    alignment: approvedChanges.alignment || prev.alignment
-                  }));
-                }
-                if (approvedChanges.customerLogoSize) {
-                  setCustomerLogo((prev) => ({ ...prev, size: approvedChanges.customerLogoSize }));
-                }
-                if (approvedChanges.flocardLogoPosition) {
-                  setFlocardLogo((prev) => ({ ...prev, position: approvedChanges.flocardLogoPosition }));
-                }
-                if (approvedChanges.customColors) {
-                  setCustomColors((prev) => ({ ...prev, ...approvedChanges.customColors }));
-                }
-                setSaveSuccess('AI suggestions applied! Your design remains fully editable.');
-                setTimeout(() => setSaveSuccess(''), 5000);
-                setShowAiModal(false);
-              }}
-            />
-          </div>
-        </div>
-      )}
 
       {/* Customer Login Required Modal */}
       {showAuthModal && (

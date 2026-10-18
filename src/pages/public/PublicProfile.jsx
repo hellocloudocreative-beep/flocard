@@ -186,9 +186,8 @@ export default function PublicProfile({ slug = 'akhil' }) {
     },
     {
       label: 'Platform',
-      description: 'AI Concierge, Digital Profiles & Tracking',
+      description: 'Digital Profiles, NFC Hardware & Tracking',
       links: [
-        { label: 'AI Concierge', href: '/ai-concierge' },
         { label: 'Create Card', href: '/designer' }
       ]
     }
