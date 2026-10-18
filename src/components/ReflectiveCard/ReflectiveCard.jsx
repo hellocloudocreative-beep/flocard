@@ -2,7 +2,7 @@
 
 import { memo, useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { HugeiconsIcon } from '@hugeicons/react';
-import { CheckmarkBadge01Icon, FingerPrintIcon } from '@hugeicons/core-free-icons';
+import { CheckmarkBadge01Icon } from '@hugeicons/core-free-icons';
 
 import './ReflectiveCard.css';
 
@@ -1047,9 +1047,6 @@ const ReflectiveCard = ({
                     {idLabel && <span className="reflective-card__label">{idLabel}</span>}
                     {idValue && <span className="reflective-card__value">{idValue}</span>}
                   </div>
-                  <span className="reflective-card__tile">
-                    <HugeiconsIcon icon={FingerPrintIcon} size={22} strokeWidth={1.6} />
-                  </span>
                 </div>
               )}
             </>
