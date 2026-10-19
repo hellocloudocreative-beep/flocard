@@ -79,17 +79,17 @@ export default function AdminDashboard({ initialTab = 'overview', initialOrderId
   const { user, isOwner, isAdmin, logout, switchPersona } = useAuth();
 
   const {
-    profiles,
-    cards,
-    designs,
+    profiles = [],
+    cards = [],
+    designs = [],
     orders = [],
-    customers,
-    templates,
+    customers = [],
+    templates = [],
     products = [],
     saveProduct,
     getProductByEdition,
-    auditLogs,
-    adminAccounts,
+    auditLogs = [],
+    adminAccounts = [],
     addAdminAccount,
     revokeAdminAccount,
     saveCard,
@@ -304,11 +304,11 @@ export default function AdminDashboard({ initialTab = 'overview', initialOrderId
     if (!searchQuery.trim()) return null;
     const q = searchQuery.toLowerCase();
     return {
-      customers: customers.filter(c => c.name?.toLowerCase().includes(q) || c.email?.toLowerCase().includes(q)),
-      profiles: profiles.filter(p => p.name?.toLowerCase().includes(q) || p.slug?.toLowerCase().includes(q)),
-      cards: cards.filter(c => c.cardCode?.toLowerCase().includes(q) || c.customerName?.toLowerCase().includes(q)),
-      designs: designs.filter(d => d.title?.toLowerCase().includes(q) || d.customerName?.toLowerCase().includes(q)),
-      orders: orders.filter(o => o.id?.toLowerCase().includes(q) || o.customerName?.toLowerCase().includes(q) || o.customerEmail?.toLowerCase().includes(q))
+      customers: (customers || []).filter(c => c?.name?.toLowerCase().includes(q) || c?.email?.toLowerCase().includes(q)),
+      profiles: (profiles || []).filter(p => p?.name?.toLowerCase().includes(q) || p?.slug?.toLowerCase().includes(q)),
+      cards: (cards || []).filter(c => c?.cardCode?.toLowerCase().includes(q) || c?.customerName?.toLowerCase().includes(q)),
+      designs: (designs || []).filter(d => d?.title?.toLowerCase().includes(q) || d?.customerName?.toLowerCase().includes(q)),
+      orders: (orders || []).filter(o => o?.id?.toLowerCase().includes(q) || o?.customerName?.toLowerCase().includes(q) || o?.customerEmail?.toLowerCase().includes(q))
     };
   }, [searchQuery, customers, profiles, cards, designs, orders]);
 

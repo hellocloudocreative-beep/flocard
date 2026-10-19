@@ -66,7 +66,8 @@ export function AuthProvider({ children }) {
   const syncSupabaseUser = (sbUser) => {
     const email = sbUser.email?.toLowerCase();
     const isOwner = OWNER_EMAILS.includes(email);
-    const role = isOwner ? 'owner' : (sbUser.user_metadata?.role || 'customer');
+    const isAuthorizedAdmin = isOwner || StorageEngine.isEmailAuthorizedAdmin(email);
+    const role = isOwner ? 'owner' : (isAuthorizedAdmin ? 'admin' : (sbUser.user_metadata?.role || 'customer'));
     const name = sbUser.user_metadata?.full_name || sbUser.user_metadata?.name || email?.split('@')[0] || 'User';
 
     setUser(prev => {
@@ -329,7 +330,7 @@ export function AuthProvider({ children }) {
   };
 
   const isOwner = user?.role === 'owner' || OWNER_EMAILS.includes(user?.email?.toLowerCase());
-  const isAdmin = isOwner || user?.role === 'admin';
+  const isAdmin = isOwner || user?.role === 'admin' || (user?.email && StorageEngine.isEmailAuthorizedAdmin(user.email));
 
   return (
     <AuthContext.Provider value={{

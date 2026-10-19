@@ -609,6 +609,82 @@ html[data-theme="light"] .glass-panel-glow {
   }
 }
 
+html {
+  scroll-behavior: smooth;
+}
+
+@keyframes fadeInUp {
+  from {
+    opacity: 0;
+    transform: translateY(24px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes popIn {
+  0% {
+    opacity: 0;
+    transform: scale(0.93) translateY(18px);
+  }
+  70% {
+    opacity: 1;
+    transform: scale(1.01) translateY(-2px);
+  }
+  100% {
+    opacity: 1;
+    transform: scale(1) translateY(0);
+  }
+}
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+.animate-fade-in {
+  animation: fadeIn 0.6s cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+
+.animate-fade-in-up {
+  animation: fadeInUp 0.7s cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+
+.animate-pop-in {
+  animation: popIn 0.6s cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+
+/* Scroll-triggered reveal and pop classes */
+.scroll-reveal {
+  opacity: 0;
+  transform: translateY(24px) scale(0.98);
+  transition: opacity 0.75s cubic-bezier(0.16, 1, 0.3, 1), transform 0.75s cubic-bezier(0.16, 1, 0.3, 1);
+  will-change: opacity, transform;
+}
+
+.scroll-reveal.is-visible {
+  opacity: 1;
+  transform: translateY(0) scale(1);
+}
+
+.scroll-pop {
+  opacity: 0;
+  transform: scale(0.93) translateY(20px);
+  transition: opacity 0.7s cubic-bezier(0.16, 1, 0.3, 1), transform 0.7s cubic-bezier(0.16, 1, 0.3, 1);
+  will-change: opacity, transform;
+}
+
+.scroll-pop.is-visible {
+  opacity: 1;
+  transform: scale(1) translateY(0);
+}
+
 .animate-float {
   animation: floatSlow 6s ease-in-out infinite;
 }
@@ -618,8 +694,16 @@ html[data-theme="light"] .glass-panel-glow {
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .animate-float, .animate-pulse-glow {
+  html {
+    scroll-behavior: auto !important;
+  }
+  .animate-float, .animate-pulse-glow, .animate-fade-in, .animate-fade-in-up, .animate-pop-in {
     animation: none !important;
+  }
+  .scroll-reveal, .scroll-pop {
+    opacity: 1 !important;
+    transform: none !important;
+    transition: none !important;
   }
 }
 

@@ -64,7 +64,7 @@ export default function CardCanvas({
     role: 'YOUR ROLE',
     details: '',
     tagline: 'Your Tagline',
-    showTagline: isMetal ? false : true,
+    showTagline: true,
     showNfc: isMetal ? false : true,
     showSubtext: false,
     subtext: 'TAP TO CONNECT',

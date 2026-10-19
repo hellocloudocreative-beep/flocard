@@ -32,6 +32,50 @@ import { DataProvider } from './context/DataContext';
 import { ThemeProvider } from './context/ThemeContext';
 import { AnimatePresence, motion } from 'motion/react';
 
+class AdminErrorBoundary extends React.Component {
+  constructor(props) {
+    super(props);
+    this.state = { hasError: false, error: null };
+  }
+  static getDerivedStateFromError(error) {
+    return { hasError: true, error };
+  }
+  componentDidCatch(error, errorInfo) {
+    console.error('Admin Dashboard caught runtime error:', error, errorInfo);
+  }
+  render() {
+    if (this.state.hasError) {
+      return (
+        <div style={{ minHeight: '100vh', background: '#08060D', color: '#fff', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: '24px' }}>
+          <div style={{ maxWidth: '480px', width: '100%', background: 'rgba(23, 16, 32, 0.95)', border: '1px solid rgba(168, 85, 247, 0.3)', borderRadius: '20px', padding: '32px', textAlign: 'center' }}>
+            <h2 style={{ fontSize: '1.4rem', fontWeight: 700, color: '#f87171', marginBottom: '12px' }}>Admin Workspace Encountered an Error</h2>
+            <p style={{ fontSize: '0.86rem', color: '#b9aec9', marginBottom: '24px', lineHeight: 1.5 }}>
+              {this.state.error?.message || 'A transient state error occurred while rendering the dashboard.'}
+            </p>
+            <div style={{ display: 'flex', gap: '12px', justifyContent: 'center' }}>
+              <button
+                onClick={() => { this.setState({ hasError: false, error: null }); window.location.reload(); }}
+                className="btn btn-primary"
+                style={{ padding: '10px 20px', borderRadius: '10px', fontSize: '0.88rem' }}
+              >
+                Reload Dashboard
+              </button>
+              <button
+                onClick={() => { localStorage.removeItem('flocard_data_demo'); window.location.href = '/admin'; }}
+                className="btn btn-secondary"
+                style={{ padding: '10px 20px', borderRadius: '10px', fontSize: '0.88rem' }}
+              >
+                Reset Cache
+              </button>
+            </div>
+          </div>
+        </div>
+      );
+    }
+    return this.props.children;
+  }
+}
+
 function ProtectedAdminRoute({ initialTab, initialOrderId }) {
   const { user, isAdmin, loading } = useAuth();
 
@@ -50,11 +94,51 @@ function ProtectedAdminRoute({ initialTab, initialOrderId }) {
     return <AdminLogin />;
   }
 
-  return <AdminDashboard initialTab={initialTab} initialOrderId={initialOrderId} />;
+  return (
+    <AdminErrorBoundary>
+      <AdminDashboard initialTab={initialTab} initialOrderId={initialOrderId} />
+    </AdminErrorBoundary>
+  );
 }
 
 export default function App() {
   const [currentPath, setCurrentPath] = useState(window.location.pathname);
+
+  // Global Smooth Scroll Pop-Up & Fade-In Reveal Observer
+  useEffect(() => {
+    if (typeof window === 'undefined' || !('IntersectionObserver' in window)) return;
+
+    const observer = new IntersectionObserver(
+      (entries) => {
+        entries.forEach((entry) => {
+          if (entry.isIntersecting) {
+            entry.target.classList.add('is-visible');
+          }
+        });
+      },
+      { threshold: 0.08, rootMargin: '0px 0px -40px 0px' }
+    );
+
+    const observeElements = () => {
+      const targets = document.querySelectorAll(
+        '.scroll-reveal, .scroll-pop, .glass-panel, .feature-step-card, .product-card, .hero-card-left, .hero-card-right'
+      );
+      targets.forEach((el) => {
+        if (!el.classList.contains('scroll-reveal') && !el.classList.contains('scroll-pop')) {
+          el.classList.add('scroll-reveal');
+        }
+        observer.observe(el);
+      });
+    };
+
+    observeElements();
+    const timer = setTimeout(observeElements, 300);
+
+    return () => {
+      clearTimeout(timer);
+      observer.disconnect();
+    };
+  }, [currentPath]);
 
   // Keyboard shortcut listener for hidden admin portal: Cmd + Shift + K (Mac) / Ctrl + Shift + K (Win/Linux)
   useEffect(() => {

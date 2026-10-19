@@ -291,7 +291,7 @@ export default function PublicProfile({ slug = 'akhil' }) {
         <CardNav
           logo={
             <img
-              src={isLight ? '/assets/FLOCARD_black_transparent.png' : '/assets/FLOCARD_white_transparent.png'}
+              src={isLight ? '/assets/logo-dark.png' : '/assets/logo-light.png'}
               alt="FLOCARD"
               style={{
                 height: '24px',
