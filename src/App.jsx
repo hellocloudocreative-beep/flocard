@@ -78,6 +78,23 @@ class AdminErrorBoundary extends React.Component {
   }
 }
 
+class SafeBoundary extends React.Component {
+  constructor(props) {
+    super(props);
+    this.state = { hasError: false };
+  }
+  static getDerivedStateFromError() {
+    return { hasError: true };
+  }
+  componentDidCatch(error, errorInfo) {
+    console.warn('SafeBoundary caught non-critical component error:', error, errorInfo);
+  }
+  render() {
+    if (this.state.hasError) return null;
+    return this.props.children;
+  }
+}
+
 function ProtectedAdminRoute({ initialTab, initialOrderId }) {
   const { user, isAdmin, loading } = useAuth();
 
@@ -344,29 +361,31 @@ export default function App() {
           <div className="flocard-app-root">
             {/* Global Animated Horizon GradientASCII Background across web */}
             {path !== '/designer' && (
-              <div
-                className="global-gradient-ascii-bg"
-                aria-hidden="true"
-                style={{
-                  position: 'fixed',
-                  top: 0,
-                  left: 0,
-                  right: 0,
-                  width: '100vw',
-                  height: '100vh',
-                  pointerEvents: 'none',
-                  zIndex: 0,
-                  opacity: 0.38
-                }}
-              >
-                <GradientASCII
-                  colors={["#731ed8", "#f6f8ff", "#cda5ff", "#7038f8"]}
-                  shape="horizon"
-                  characters=" .·•●"
-                  cellSize={18}
-                  density={0.8}
-                />
-              </div>
+              <SafeBoundary>
+                <div
+                  className="global-gradient-ascii-bg"
+                  aria-hidden="true"
+                  style={{
+                    position: 'fixed',
+                    top: 0,
+                    left: 0,
+                    right: 0,
+                    width: '100vw',
+                    height: '100vh',
+                    pointerEvents: 'none',
+                    zIndex: 0,
+                    opacity: 0.38
+                  }}
+                >
+                  <GradientASCII
+                    colors={["#731ed8", "#f6f8ff", "#cda5ff", "#7038f8"]}
+                    shape="horizon"
+                    characters=" .·•●"
+                    cellSize={18}
+                    density={0.8}
+                  />
+                </div>
+              </SafeBoundary>
             )}
 
             {showHeaderFooter && <Navbar currentPath={path} />}
@@ -386,10 +405,12 @@ export default function App() {
               </motion.main>
             </AnimatePresence>
             {showHeaderFooter && <Footer />}
-            <CookieConsent
-              storageKey="flocard-cookie-consent"
-              policy={{ label: "Cookie Policy", href: "/legal" }}
-            />
+            <SafeBoundary>
+              <CookieConsent
+                storageKey="flocard-cookie-consent"
+                policy={{ label: "Cookie Policy", href: "/legal" }}
+              />
+            </SafeBoundary>
           </div>
         </DataProvider>
       </AuthProvider>
