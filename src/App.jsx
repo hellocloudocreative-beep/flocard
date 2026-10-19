@@ -27,10 +27,31 @@ import AccountDesigns from './pages/account/AccountDesigns';
 import AccountProfile from './pages/account/AccountProfile';
 import AdminDashboard from './pages/admin/AdminDashboard';
 import CustomerDashboard from './pages/customer/CustomerDashboard';
-import { AuthProvider } from './context/AuthContext';
+import { AuthProvider, useAuth } from './context/AuthContext';
 import { DataProvider } from './context/DataContext';
 import { ThemeProvider } from './context/ThemeContext';
 import { AnimatePresence, motion } from 'motion/react';
+
+function ProtectedAdminRoute({ initialTab, initialOrderId }) {
+  const { user, isAdmin, loading } = useAuth();
+
+  if (loading) {
+    return (
+      <div style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', background: '#0a0a0f', color: '#fff' }}>
+        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '16px' }}>
+          <div style={{ width: '36px', height: '36px', border: '3px solid rgba(168, 85, 247, 0.2)', borderTopColor: '#a855f7', borderRadius: '50%', animation: 'spin 0.8s linear infinite' }} />
+          <p style={{ fontSize: '0.9rem', color: '#94a3b8', margin: 0 }}>Securing Admin Platform...</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (!user || !isAdmin) {
+    return <AdminLogin />;
+  }
+
+  return <AdminDashboard initialTab={initialTab} initialOrderId={initialOrderId} />;
+}
 
 export default function App() {
   const [currentPath, setCurrentPath] = useState(window.location.pathname);
@@ -129,7 +150,7 @@ export default function App() {
       initialTab = 'orders';
       initialOrderId = subRoute.replace('orders/', '');
     }
-    content = <AdminDashboard initialTab={initialTab} initialOrderId={initialOrderId} />;
+    content = <ProtectedAdminRoute initialTab={initialTab} initialOrderId={initialOrderId} />;
     showHeaderFooter = false;
   }
   // 2. NFC Redirect: /t/:cardCode

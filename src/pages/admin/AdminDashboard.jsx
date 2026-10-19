@@ -78,10 +78,6 @@ import AdminLogin from '../auth/AdminLogin';
 export default function AdminDashboard({ initialTab = 'overview', initialOrderId = null }) {
   const { user, isOwner, isAdmin, logout, switchPersona } = useAuth();
 
-  // Strict Admin Gate: Require admin authentication before viewing Admin Platform
-  if (!user || !isAdmin) {
-    return <AdminLogin />;
-  }
   const {
     profiles,
     cards,

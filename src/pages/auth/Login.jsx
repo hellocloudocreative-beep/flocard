@@ -48,7 +48,7 @@ export default function Login({ view = 'login' }) {
     setSuccessMessage(null);
     setLoading(true);
 
-    const redirectTarget = urlParams.get('redirect') || '/account';
+    const redirectTarget = urlParams.get('redirect') || '/dashboard';
 
     try {
       const res = await loginWithGoogle(redirectTarget);

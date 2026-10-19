@@ -91,12 +91,13 @@ export function AuthProvider({ children }) {
   };
 
   // Google OAuth Login
-  const loginWithGoogle = async (targetRedirect = '/account') => {
+  const loginWithGoogle = async (targetRedirect = '/dashboard') => {
     setLoading(true);
     try {
+      const cleanPath = targetRedirect.startsWith('/') ? targetRedirect : `/${targetRedirect}`;
       const redirectUri = targetRedirect.startsWith('http')
         ? targetRedirect
-        : `${window.location.origin}${targetRedirect}`;
+        : `${window.location.origin}${cleanPath}`;
 
       if (isSupabaseConfigured && supabase) {
         const { error } = await supabase.auth.signInWithOAuth({

@@ -7,40 +7,40 @@ import './CardNav.css';
 
 const THEMES = {
   dark: {
-    '--cn-panel': 'rgba(38, 35, 46, 0.72)',
-    '--cn-solid': '#26232e',
-    '--cn-edge': 'rgba(255, 255, 255, 0.08)',
-    '--cn-highlight': 'rgba(255, 255, 255, 0.07)',
-    '--cn-shadow': '0 24px 48px -20px rgba(0, 0, 0, 0.8), 0 6px 16px -8px rgba(0, 0, 0, 0.5)',
+    '--cn-panel': 'rgba(15, 12, 24, 0.72)',
+    '--cn-solid': '#14111f',
+    '--cn-edge': 'rgba(255, 255, 255, 0.1)',
+    '--cn-highlight': 'rgba(255, 255, 255, 0.2)',
+    '--cn-shadow': '0 24px 48px -20px rgba(0, 0, 0, 0.8), 0 0 0 1px rgba(255, 255, 255, 0.08), inset 0 1px 1px 0 rgba(255, 255, 255, 0.15)',
     '--cn-text': '#f4f4f5',
-    '--cn-muted': 'rgba(244, 244, 245, 0.56)',
-    '--cn-hover': 'rgba(255, 255, 255, 0.06)',
-    '--cn-ring': 'rgba(244, 244, 245, 0.55)',
-    '--cn-tile': 'linear-gradient(180deg, #34303d 0%, #27242f 100%)',
+    '--cn-muted': 'rgba(244, 244, 245, 0.6)',
+    '--cn-hover': 'rgba(255, 255, 255, 0.08)',
+    '--cn-ring': 'rgba(168, 85, 247, 0.6)',
+    '--cn-tile': 'linear-gradient(180deg, rgba(38, 32, 54, 0.85) 0%, rgba(24, 20, 36, 0.95) 100%)',
     '--cn-tile-rim':
-      'inset 0 0 0 1px rgba(255, 255, 255, 0.06), inset 0 1px 0 rgba(255, 255, 255, 0.1), 0 4px 10px -4px rgba(0, 0, 0, 0.6)',
-    '--cn-cta': 'linear-gradient(180deg, #ffffff 0%, #ebebf0 100%)',
-    '--cn-cta-ink': '#121016',
-    '--cn-cta-shadow': 'inset 0 1px 0 rgba(255, 255, 255, 0.9), 0 6px 16px -6px rgba(0, 0, 0, 0.6)',
-    '--cn-cta-hover': 'brightness(0.94)'
+      'inset 0 0 0 1px rgba(255, 255, 255, 0.09), inset 0 1px 0 rgba(255, 255, 255, 0.18), 0 8px 24px -6px rgba(0, 0, 0, 0.65)',
+    '--cn-cta': 'linear-gradient(135deg, #7928ca 0%, #4f46e5 100%)',
+    '--cn-cta-ink': '#ffffff',
+    '--cn-cta-shadow': '0 4px 16px rgba(121, 40, 202, 0.4), inset 0 1px 0 rgba(255, 255, 255, 0.35)',
+    '--cn-cta-hover': 'brightness(1.12)'
   },
   light: {
-    '--cn-panel': 'rgba(244, 244, 246, 0.84)',
-    '--cn-solid': '#f4f4f6',
-    '--cn-edge': 'rgba(24, 24, 27, 0.07)',
-    '--cn-highlight': 'rgba(255, 255, 255, 0.95)',
-    '--cn-shadow': '0 24px 48px -24px rgba(24, 24, 27, 0.3), 0 6px 16px -10px rgba(24, 24, 27, 0.16)',
-    '--cn-text': '#18181b',
-    '--cn-muted': 'rgba(24, 24, 27, 0.56)',
-    '--cn-hover': 'rgba(24, 24, 27, 0.05)',
-    '--cn-ring': 'rgba(24, 24, 27, 0.45)',
-    '--cn-tile': 'linear-gradient(180deg, #ffffff 0%, #f8f8fa 100%)',
+    '--cn-panel': 'rgba(255, 255, 255, 0.82)',
+    '--cn-solid': '#ffffff',
+    '--cn-edge': 'rgba(0, 0, 0, 0.08)',
+    '--cn-highlight': 'rgba(255, 255, 255, 1)',
+    '--cn-shadow': '0 20px 48px -20px rgba(0, 0, 0, 0.15), 0 0 0 1px rgba(0, 0, 0, 0.06), inset 0 1px 1px 0 rgba(255, 255, 255, 1)',
+    '--cn-text': '#09090b',
+    '--cn-muted': 'rgba(9, 9, 11, 0.62)',
+    '--cn-hover': 'rgba(0, 0, 0, 0.05)',
+    '--cn-ring': 'rgba(121, 40, 202, 0.5)',
+    '--cn-tile': 'linear-gradient(180deg, rgba(255, 255, 255, 0.95) 0%, rgba(248, 247, 252, 0.95) 100%)',
     '--cn-tile-rim':
-      'inset 0 0 0 1px rgba(24, 24, 27, 0.07), inset 0 1px 0 rgba(255, 255, 255, 1), 0 4px 10px -5px rgba(24, 24, 27, 0.22)',
-    '--cn-cta': 'linear-gradient(180deg, #2c2c31 0%, #18181b 100%)',
+      'inset 0 0 0 1px rgba(0, 0, 0, 0.07), inset 0 1px 0 rgba(255, 255, 255, 1), 0 8px 20px -8px rgba(0, 0, 0, 0.09)',
+    '--cn-cta': 'linear-gradient(135deg, #7928ca 0%, #4f46e5 100%)',
     '--cn-cta-ink': '#ffffff',
-    '--cn-cta-shadow': 'inset 0 1px 0 rgba(255, 255, 255, 0.12), 0 6px 14px -6px rgba(24, 24, 27, 0.45)',
-    '--cn-cta-hover': 'brightness(1.25)'
+    '--cn-cta-shadow': '0 4px 16px rgba(121, 40, 202, 0.35), inset 0 1px 0 rgba(255, 255, 255, 0.3)',
+    '--cn-cta-hover': 'brightness(1.12)'
   }
 };
 
@@ -192,7 +192,7 @@ const CardNav = ({
     '--cn-logo': '24px',
     '--cn-card': `${cardHeight}px`
   };
-  if (surface === 'glass') vars['--cn-blur'] = 'blur(20px) saturate(1.6)';
+  if (surface === 'glass') vars['--cn-blur'] = 'blur(32px) saturate(180%)';
   if (surface === 'solid') {
     vars['--cn-panel'] = palette['--cn-solid'];
     vars['--cn-blur'] = 'none';

@@ -22,6 +22,11 @@
   box-shadow: var(--cn-shadow);
   -webkit-backdrop-filter: var(--cn-blur);
   backdrop-filter: var(--cn-blur);
+  transition: box-shadow 0.35s cubic-bezier(0.16, 1, 0.3, 1), background-color 0.35s ease;
+}
+
+.card-nav:hover .card-nav__panel {
+  box-shadow: var(--cn-shadow), 0 0 28px -4px rgba(121, 40, 202, 0.22);
 }
 
 .card-nav__rim {
@@ -165,7 +170,7 @@
   justify-content: center;
   justify-self: end;
   height: calc(var(--cn-bar) - var(--cn-inset) * 2);
-  padding: 0 16px;
+  padding: 0 18px;
   border: 0;
   border-radius: calc(var(--cn-radius) - var(--cn-inset));
   background: var(--cn-cta);
@@ -178,11 +183,17 @@
   text-decoration: none;
   cursor: pointer;
   outline: none;
-  transition: filter 0.2s ease;
+  transition: transform 0.25s cubic-bezier(0.16, 1, 0.3, 1), box-shadow 0.25s ease, filter 0.25s ease;
 }
 
 .card-nav__cta:hover {
   filter: var(--cn-cta-hover);
+  transform: translateY(-1px);
+  box-shadow: var(--cn-cta-shadow), 0 6px 20px rgba(121, 40, 202, 0.5);
+}
+
+.card-nav__cta:active {
+  transform: translateY(0);
 }
 
 .card-nav__right-group {

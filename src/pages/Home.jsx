@@ -8,7 +8,6 @@ import { ArrowRight, Sparkles, Radio, Layers, Users, ShieldCheck, CheckCircle2, 
 import Card3DPreview from '../components/Card3DPreview';
 import PhoneProfileMockup from '../components/PhoneProfileMockup';
 import CompactProfileCard from '../components/profile/CompactProfileCard';
-import CosmicHeroCanvas from '../components/CosmicHeroCanvas';
 import { BRAND, EDITIONS, HOW_IT_WORKS_STEPS } from '../lib/constants';
 import { useData } from '../context/DataContext';
 import { useTheme } from '../context/ThemeContext';
@@ -43,6 +42,7 @@ export default function Home() {
       {/* ======================================================================
           HERO SECTION — CINEMATIC PLANETARY HORIZON & FLOATING CARDS
           ====================================================================== */}
+      {/* Clean Static Hero Background (Dark-Purple / Obsidian branding, zero particles or canvas loops) */}
       <section
         className="hero-section"
         style={{
@@ -53,37 +53,26 @@ export default function Home() {
           justifyContent: 'center',
           paddingTop: 'calc(var(--header-height) + 24px)',
           paddingBottom: '80px',
-          overflow: 'hidden'
+          overflow: 'hidden',
+          background: isLight
+            ? 'radial-gradient(ellipse 80% 50% at 50% -10%, rgba(168, 85, 247, 0.12) 0%, rgba(248, 247, 252, 0) 70%), #f8f7fc'
+            : 'radial-gradient(ellipse 80% 50% at 50% -10%, rgba(121, 40, 202, 0.22) 0%, rgba(7, 4, 13, 0) 70%), radial-gradient(circle 600px at 50% 25%, rgba(67, 56, 202, 0.12) 0%, rgba(7, 4, 13, 0) 70%), #07040d'
         }}
       >
-        {/* Animated 3D Cosmic Environment (Asteroids, 3D NFC Cards, Planetary Rings, Starfield) */}
-        <CosmicHeroCanvas isLight={isLight} />
-
-        {/* Atmospheric Vignette & Contrast Gradients (Keeps Hero Typography 100% Readable) */}
+        {/* Subtle Ambient Violet Glow Accent */}
         <div
+          aria-hidden="true"
           style={{
             position: 'absolute',
-            inset: 0,
-            background: isLight
-              ? 'radial-gradient(circle at 50% 30%, rgba(255, 255, 255, 0.45) 0%, rgba(245, 243, 255, 0.75) 70%, rgba(237, 233, 254, 0.95) 100%)'
-              : 'radial-gradient(circle at 50% 30%, rgba(7, 4, 13, 0.3) 0%, rgba(7, 4, 13, 0.65) 60%, rgba(7, 4, 13, 0.92) 100%)',
-            zIndex: 1,
-            pointerEvents: 'none',
-            transition: 'background 0.3s ease'
-          }}
-        />
-
-        {/* Ambient Nebula Light Flare */}
-        <div
-          style={{
-            position: 'absolute',
-            top: '20%',
+            top: '12%',
             left: '50%',
             transform: 'translateX(-50%)',
-            width: '800px',
-            height: '400px',
-            background: 'var(--hero-glow)',
-            filter: 'blur(45px)',
+            width: 'min(90vw, 800px)',
+            height: '380px',
+            background: isLight
+              ? 'radial-gradient(circle, rgba(168, 85, 247, 0.14) 0%, rgba(255, 255, 255, 0) 70%)'
+              : 'radial-gradient(circle, rgba(121, 40, 202, 0.22) 0%, rgba(7, 4, 13, 0) 70%)',
+            filter: 'blur(60px)',
             zIndex: 1,
             pointerEvents: 'none',
             transition: 'background 0.3s ease'

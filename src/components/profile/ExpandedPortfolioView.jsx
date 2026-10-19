@@ -236,7 +236,7 @@ export default function ExpandedPortfolioView({
         {/* Brand Lockup (Single clean brand logo, matching navbar without duplicate text) */}
         <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
           <img
-            src="/assets/logo-light.png"
+            src={isLight ? '/assets/FLOCARD_black_transparent.png' : '/assets/FLOCARD_white_transparent.png'}
             alt="FLOCARD"
             style={{ height: '24px', width: 'auto', display: 'block', objectFit: 'contain' }}
             onError={(e) => {

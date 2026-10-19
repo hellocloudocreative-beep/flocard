@@ -225,7 +225,7 @@ export default function Navbar({ currentPath = '/' }) {
         <CardNav
           logo={
             <img
-              src={isLight ? '/assets/logo-dark.png' : '/assets/logo-light.png'}
+              src={isLight ? '/assets/FLOCARD_black_transparent.png' : '/assets/FLOCARD_white_transparent.png'}
               alt="FLOCARD"
               style={{
                 height: '24px',
