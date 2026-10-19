@@ -62,15 +62,36 @@ export function getDefaultPublicMessage(status) {
   return stage ? stage.description : `Order status has transitioned to ${status}.`;
 }
 
+export const DEFAULT_DEMO_CONFIG = {
+  name: 'Your Name',
+  role: 'Your Role',
+  tagline: 'Your Tagline',
+  company: 'Your Company',
+  avatar: '', // Empty by default: do not automatically inject photos
+  logo: '',   // Empty by default: shows "YOUR LOGO" placeholder
+  phone: '+91 98765 43210',
+  email: 'contact@flocard.in',
+  whatsapp: '919876543210',
+  website: 'https://flocard.in',
+  bio: 'Pioneering connected NFC identity for executives and global tech pioneers. One tap. Every connection.',
+  cardEdition: 'purple',
+  cardFinish: 'purple',
+  socialLinks: {
+    linkedin: 'https://linkedin.com',
+    instagram: 'https://instagram.com',
+    twitter: 'https://twitter.com'
+  }
+};
+
 export const INITIAL_PROFILES = [
   {
     id: 'prof_akhil_001',
     userId: 'usr_akhil_founder',
     slug: 'akhil',
-    name: 'Akhil Anvar',
-    role: 'CEO & Founder',
-    company: 'FLOCARD',
-    avatar: '/assets/akhil.jpg',
+    name: 'Your Name',
+    role: 'Your Role',
+    company: 'Your Company',
+    avatar: '', // Don't make images automatically
     location: 'Bengaluru, India',
     bio: 'Pioneering connected NFC identity for executives and global tech pioneers. One tap. Every connection.',
     phone: '+91 6238 578 552',
@@ -78,9 +99,9 @@ export const INITIAL_PROFILES = [
     whatsapp: '916238578552',
     website: 'https://flocard.in',
     socialLinks: {
-      linkedin: 'https://linkedin.com/in/akhilanvar',
-      instagram: 'https://instagram.com/akhilanvar',
-      twitter: 'https://twitter.com/flocard_in'
+      linkedin: 'https://linkedin.com',
+      instagram: 'https://instagram.com',
+      twitter: 'https://twitter.com'
     },
     // Morphing Profile & Appearance Customization Settings
     openingPreference: 'expandable', // 'expandable' | 'full' | 'compact_only'
@@ -320,6 +341,38 @@ export const INITIAL_PRODUCTS = [
     sampleFrontImage: '/assets/cardbg-purple.png',
     sampleBackImage: '/assets/flocard-logo-white.png',
     ctaText: 'Customize Purple Card',
+    updatedAt: new Date().toISOString()
+  },
+  {
+    id: 'prod_metal',
+    editionKey: 'metal',
+    name: 'Metal Edition',
+    subtitle: 'Brushed Gunmetal with Ultra-Crisp Laser White Typography',
+    tagline: 'Precision-engineered brushed gunmetal for modern leaders.',
+    description: 'Dark brushed gunmetal finish with ultra-crisp laser-white typography and executive minimalism.',
+    price: 2799,
+    comparePrice: 3799,
+    currency: 'INR',
+    isActive: true,
+    isAvailable: true,
+    isFeatured: true,
+    featuredBadge: 'Stealth Metal',
+    theme: 'metal',
+    accentColor: '#CBD5E1',
+    secondaryColor: '#64748B',
+    spotlightColor: '#CBD5E1',
+    finishHighlight: 'Dark brushed gunmetal finish with scratch-resistant PVD coating and executive minimalist typography.',
+    features: [
+      'NFC-enabled physical card (NXP NTAG216 high frequency chip)',
+      'Brushed gunmetal metallic finish with laser-precision etching',
+      'Minimalist executive typography with clean dual-sided artwork',
+      'Digital profile connection with one-tap instant NFC routing',
+      'High-contrast scannable QR code on the reverse',
+      'Waterproof IP68 rating & scratch-resistant PVD surface'
+    ],
+    sampleFrontImage: '/assets/cardbg-metal.png',
+    sampleBackImage: '/assets/flocard-logo-white.png',
+    ctaText: 'Customize Metal Card',
     updatedAt: new Date().toISOString()
   }
 ];
@@ -1358,9 +1411,22 @@ export const StorageEngine = {
   },
 
   // Card Products & Pricing
-  getProducts: () => getLocal('products', INITIAL_PRODUCTS),
-  getProductByEdition: (editionKey) => {
+  getProducts: () => {
     const list = getLocal('products', INITIAL_PRODUCTS);
+    let changed = false;
+    INITIAL_PRODUCTS.forEach(initP => {
+      if (!list.some(p => p.editionKey === initP.editionKey || p.id === initP.id)) {
+        list.push(initP);
+        changed = true;
+      }
+    });
+    if (changed) {
+      setLocal('products', list);
+    }
+    return list;
+  },
+  getProductByEdition: (editionKey) => {
+    const list = StorageEngine.getProducts();
     return list.find(p => p.editionKey === editionKey) || null;
   },
   saveProduct: (product, adminRole, adminEmail = 'akhil@flocard.in') => {
@@ -1432,6 +1498,22 @@ export const StorageEngine = {
     return { success: true, bgUrl };
   },
 
+  // Global Demo Showcase Configuration
+  getDemoConfig: () => getLocal('demo_config', DEFAULT_DEMO_CONFIG),
+  saveDemoConfig: (config, adminRole = 'admin', adminEmail = 'admin@flocard.in') => {
+    const current = StorageEngine.getDemoConfig();
+    const updated = { ...current, ...config };
+    setLocal('demo_config', updated);
+    window.dispatchEvent(new CustomEvent('flocard_demo_updated', { detail: updated }));
+    StorageEngine.addAuditLog('Demo Showcase', `Updated global demo showcase settings (Name: ${updated.name || 'Your Name'})`, adminEmail);
+    return { success: true, demoConfig: updated };
+  },
+  resetDemoConfig: () => {
+    setLocal('demo_config', DEFAULT_DEMO_CONFIG);
+    window.dispatchEvent(new CustomEvent('flocard_demo_updated', { detail: DEFAULT_DEMO_CONFIG }));
+    return { success: true, demoConfig: DEFAULT_DEMO_CONFIG };
+  },
+
   // System Reset
   resetAll: () => {
     localStorage.removeItem(STORAGE_KEY_PREFIX + 'profiles');
@@ -1444,6 +1526,7 @@ export const StorageEngine = {
     localStorage.removeItem(STORAGE_KEY_PREFIX + 'products');
     localStorage.removeItem(STORAGE_KEY_PREFIX + 'admin_accounts');
     localStorage.removeItem(STORAGE_KEY_PREFIX + 'studio_bg');
+    localStorage.removeItem(STORAGE_KEY_PREFIX + 'demo_config');
     return true;
   }
 };

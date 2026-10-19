@@ -10,11 +10,12 @@ export default function CardDetail({ editionKey = 'purple' }) {
   const { getProductByEdition } = useData();
   const product = getProductByEdition(editionKey) || fallbackEdition;
 
+  const isMetal = editionKey === 'metal';
   const isGold = editionKey === 'gold';
   const isPlatinum = editionKey === 'platinum';
   const isPurple = editionKey === 'purple';
 
-  const accentColor = isGold ? '#E9C766' : isPlatinum ? '#CBD5E1' : '#A855F7';
+  const accentColor = isGold ? '#E9C766' : isPlatinum ? '#CBD5E1' : isMetal ? '#CBD5E1' : '#A855F7';
 
   const formattedPrice = formatCurrencyINR(product.price);
   const formattedCompare = product.comparePrice && product.comparePrice > product.price
@@ -25,7 +26,9 @@ export default function CardDetail({ editionKey = 'purple' }) {
     ? 'Customize Gold Card'
     : isPlatinum
       ? 'Customize Platinum Card'
-      : 'Customize Purple Card';
+      : isMetal
+        ? 'Customize Metal Card'
+        : 'Customize Purple Card';
 
   const includedFeatures = product.features || [
     'NFC-enabled card, when included in configured product.',
@@ -231,8 +234,10 @@ export default function CardDetail({ editionKey = 'purple' }) {
                     ? 'linear-gradient(135deg, #FFF0A6 0%, #E9C766 50%, #C9972C 100%)'
                     : isPlatinum
                       ? 'linear-gradient(135deg, #FFFFFF 0%, #E2E8F0 50%, #94A3B8 100%)'
-                      : 'linear-gradient(135deg, #A855F7 0%, #6B00FF 100%)',
-                  color: isGold || isPlatinum ? '#0F0E13' : '#FFFFFF',
+                      : isMetal
+                        ? 'linear-gradient(135deg, #F8FAFC 0%, #CBD5E1 50%, #64748B 100%)'
+                        : 'linear-gradient(135deg, #A855F7 0%, #6B00FF 100%)',
+                  color: isGold || isPlatinum || isMetal ? '#0F0E13' : '#FFFFFF',
                   boxShadow: `0 4px 18px ${accentColor}40`
                 }}
               >

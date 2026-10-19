@@ -697,9 +697,9 @@ export default function Designer() {
                 fontWeight: 700,
                 padding: '4px 10px',
                 borderRadius: '8px',
-                backgroundColor: edition === 'gold' ? 'rgba(233, 199, 102, 0.15)' : edition === 'platinum' ? 'rgba(203, 213, 225, 0.15)' : 'rgba(168, 85, 247, 0.15)',
-                color: edition === 'gold' ? '#E9C766' : edition === 'platinum' ? '#CBD5E1' : '#A855F7',
-                border: `1px solid ${edition === 'gold' ? '#E9C76644' : edition === 'platinum' ? '#CBD5E144' : '#A855F744'}`,
+                backgroundColor: edition === 'gold' ? 'rgba(233, 199, 102, 0.15)' : edition === 'platinum' ? 'rgba(203, 213, 225, 0.15)' : edition === 'metal' ? 'rgba(148, 163, 184, 0.15)' : 'rgba(168, 85, 247, 0.15)',
+                color: edition === 'gold' ? '#E9C766' : edition === 'platinum' ? '#CBD5E1' : edition === 'metal' ? '#CBD5E1' : '#A855F7',
+                border: `1px solid ${edition === 'gold' ? '#E9C76644' : edition === 'platinum' ? '#CBD5E144' : edition === 'metal' ? '#CBD5E144' : '#A855F744'}`,
                 display: 'inline-flex',
                 alignItems: 'center',
                 gap: '6px',
@@ -850,7 +850,7 @@ export default function Designer() {
               <label className="form-label" style={{ marginBottom: '8px', display: 'block' }}>
                 Color Edition Preset
               </label>
-              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '8px' }}>
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '8px' }}>
                 {Object.entries(EDITIONS).map(([key, item]) => (
                   <button
                     key={key}

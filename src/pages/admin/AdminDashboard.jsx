@@ -62,6 +62,8 @@ import {
 import { useData } from '../../context/DataContext';
 import { useAuth } from '../../context/AuthContext';
 import Card3DPreview from '../../components/Card3DPreview';
+import CompactProfileCard from '../../components/profile/CompactProfileCard';
+import { uploadImage } from '../../lib/uploadImage';
 import { getSupabaseStatus } from '../../lib/supabase';
 import { exportCardPDF } from '../../lib/pdfExport';
 import { compressImage } from '../../lib/imageCompression';
@@ -113,12 +115,15 @@ export default function AdminDashboard({ initialTab = 'overview', initialOrderId
     studioBackground,
     updateStudioBackground,
     resetStudioBg,
+    demoConfig,
+    saveDemoConfig,
+    resetDemoConfig,
     resetAllData
   } = useData();
 
   // Navigation & UI State
   const [activeTab, setActiveTab] = useState(
-    ['overview', 'customers', 'profiles', 'designs', 'orders', 'cards', 'pricing', 'templates', 'analytics', 'admin-access', 'audit-logs', 'settings'].includes(initialTab)
+    ['overview', 'customers', 'profiles', 'designs', 'orders', 'cards', 'pricing', 'templates', 'demo', 'analytics', 'admin-access', 'audit-logs', 'settings'].includes(initialTab)
       ? initialTab
       : 'overview'
   );
@@ -158,6 +163,89 @@ export default function AdminDashboard({ initialTab = 'overview', initialOrderId
   const [newCustForm, setNewCustForm] = useState({ name: '', email: '', phone: '', company: '' });
   const [newProfForm, setNewProfForm] = useState({ name: '', slug: '', role: '', company: '', theme: 'purple' });
   const [assignCardForm, setAssignCardForm] = useState({ cardCode: '', customerId: '', profileSlug: '', edition: 'purple' });
+
+  // Global Demo Showcase State
+  const [demoForm, setDemoForm] = useState(() => ({
+    name: demoConfig?.name || 'Your Name',
+    role: demoConfig?.role || 'Your Role',
+    tagline: demoConfig?.tagline || 'Your Tagline',
+    company: demoConfig?.company || 'Your Company',
+    avatar: demoConfig?.avatar || '',
+    logo: demoConfig?.logo || '',
+    phone: demoConfig?.phone || '+91 98765 43210',
+    email: demoConfig?.email || 'contact@flocard.in',
+    website: demoConfig?.website || 'https://flocard.in',
+    bio: demoConfig?.bio || 'Pioneering connected NFC identity for executives and global tech pioneers. One tap. Every connection.',
+    cardEdition: demoConfig?.cardEdition || 'purple',
+    cardFinish: demoConfig?.cardFinish || 'purple'
+  }));
+  const [demoSaveSuccess, setDemoSaveSuccess] = useState('');
+  const [demoSaveError, setDemoSaveError] = useState('');
+  const [uploadingDemoImage, setUploadingDemoImage] = useState(false);
+
+  useEffect(() => {
+    if (demoConfig) {
+      setDemoForm({
+        name: demoConfig.name || 'Your Name',
+        role: demoConfig.role || 'Your Role',
+        tagline: demoConfig.tagline || 'Your Tagline',
+        company: demoConfig.company || 'Your Company',
+        avatar: demoConfig.avatar || '',
+        logo: demoConfig.logo || '',
+        phone: demoConfig.phone || '+91 98765 43210',
+        email: demoConfig.email || 'contact@flocard.in',
+        website: demoConfig.website || 'https://flocard.in',
+        bio: demoConfig.bio || 'Pioneering connected NFC identity for executives and global tech pioneers. One tap. Every connection.',
+        cardEdition: demoConfig.cardEdition || 'purple',
+        cardFinish: demoConfig.cardFinish || 'purple'
+      });
+    }
+  }, [demoConfig]);
+
+  const handleDemoImageUpload = async (e) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setUploadingDemoImage(true);
+    setDemoSaveError('');
+    try {
+      const url = await uploadImage(file, 'logo', 'demo_admin');
+      if (url) {
+        setDemoForm(prev => ({ ...prev, avatar: url, logo: url }));
+        setDemoSaveSuccess('Brand logo uploaded! Click "Save Demo Settings" to publish.');
+      } else {
+        setDemoSaveError('Failed to process image upload.');
+      }
+    } catch (err) {
+      setDemoSaveError(err.message || 'Error uploading image');
+    } finally {
+      setUploadingDemoImage(false);
+    }
+  };
+
+  const handleRemoveDemoImage = () => {
+    setDemoForm(prev => ({ ...prev, avatar: '', logo: '' }));
+    setDemoSaveSuccess('Photo removed. Demo will show the "YOUR LOGO" placeholder.');
+  };
+
+  const handleSaveDemoSettings = (e) => {
+    if (e && e.preventDefault) e.preventDefault();
+    setDemoSaveError('');
+    const res = saveDemoConfig(demoForm, user?.role || 'admin', user?.email || 'admin@flocard.in');
+    if (res?.success) {
+      setDemoSaveSuccess('Demo showcase settings successfully saved & published to Homepage!');
+      setTimeout(() => setDemoSaveSuccess(''), 4000);
+    } else {
+      setDemoSaveError(res?.error || 'Failed to save demo settings');
+    }
+  };
+
+  const handleResetDemoSettings = () => {
+    if (window.confirm('Reset demo showcase settings to factory defaults ("Your Name", "Your Role", etc.)?')) {
+      resetDemoConfig();
+      setDemoSaveSuccess('Demo settings reset to factory defaults.');
+      setTimeout(() => setDemoSaveSuccess(''), 4000);
+    }
+  };
   const [newAdminForm, setNewAdminForm] = useState({ email: '', name: '', role: 'admin' });
   const [newTmplForm, setNewTmplForm] = useState({
     name: '',
@@ -208,6 +296,7 @@ export default function AdminDashboard({ initialTab = 'overview', initialOrderId
     { id: 'cards', label: 'NFC Cards', icon: Radio, badge: cards.length },
     { id: 'pricing', label: 'Products & Pricing', icon: Tag, badge: products?.length || 3 },
     { id: 'templates', label: 'Card Templates', icon: Layers },
+    { id: 'demo', label: 'Demo Showcase', icon: Sparkles },
     { id: 'analytics', label: 'Analytics', icon: BarChart3 },
     { id: 'admin-access', label: 'Admin Access', icon: ShieldCheck, ownerOnly: true },
     { id: 'audit-logs', label: 'Audit Logs', icon: ClipboardList },
@@ -824,6 +913,7 @@ export default function AdminDashboard({ initialTab = 'overview', initialOrderId
                 {activeTab === 'cards' && 'NFC Cards'}
                 {activeTab === 'pricing' && 'Card Products & Pricing'}
                 {activeTab === 'templates' && 'Card Templates'}
+                {activeTab === 'demo' && 'Demo Showcase Settings'}
                 {activeTab === 'analytics' && 'Analytics'}
                 {activeTab === 'admin-access' && 'Admin Access'}
                 {activeTab === 'audit-logs' && 'Audit Logs'}
@@ -838,6 +928,7 @@ export default function AdminDashboard({ initialTab = 'overview', initialOrderId
                 {activeTab === 'cards' && 'NTAG216 chip inventory, NFC encoding, and permanent redirect routes.'}
                 {activeTab === 'pricing' && 'Configure authoritative physical NFC card pricing, compare prices, included specifications, and live store availability.'}
                 {activeTab === 'templates' && 'Manage Standard FLOCARD (Without Customer Logo) and Customer Logo (With Customer Logo) brand templates.'}
+                {activeTab === 'demo' && 'Customize default demo name, role, tagline, company, and brand logo across Homepage and demo card previews.'}
                 {activeTab === 'analytics' && 'Real-time contactless tap metrics and telemetry logs.'}
                 {activeTab === 'admin-access' && 'Owner-governed administrator invitations and security roles.'}
                 {activeTab === 'audit-logs' && 'Immutable system audit trail of all operations and administrative changes.'}
@@ -3198,6 +3289,385 @@ export default function AdminDashboard({ initialTab = 'overview', initialOrderId
                     </div>
                   </div>
                 ))}
+              </div>
+            </div>
+          )}
+
+          {/* ====================================================================
+              VIEW: DEMO SHOWCASE CONFIGURATION
+              ==================================================================== */}
+          {activeTab === 'demo' && (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
+              {/* Header Card */}
+              <div
+                style={{
+                  backgroundColor: '#FFFFFF',
+                  borderRadius: '16px',
+                  border: '1px solid #E8E3EF',
+                  padding: '24px',
+                  display: 'flex',
+                  justifyContent: 'space-between',
+                  alignItems: 'center',
+                  flexWrap: 'wrap',
+                  gap: '16px'
+                }}
+              >
+                <div>
+                  <div style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', padding: '4px 10px', borderRadius: '9999px', background: '#F3EEFF', color: '#6B00FF', fontSize: '0.72rem', fontWeight: 700, textTransform: 'uppercase', marginBottom: '8px' }}>
+                    <Sparkles size={12} />
+                    <span>Global Demo Showcase Control</span>
+                  </div>
+                  <h3 style={{ margin: 0, fontSize: '1.25rem', fontWeight: 800, color: '#191522' }}>
+                    Demo Showcase Configuration
+                  </h3>
+                  <p style={{ margin: '4px 0 0', fontSize: '0.84rem', color: '#777184', maxWidth: '650px' }}>
+                    Control the default placeholders and branding across the Homepage 3D card previews and luxury digital profile demo. If no photo is uploaded, cards cleanly display the &quot;YOUR LOGO&quot; placeholder.
+                  </p>
+                </div>
+
+                <div style={{ display: 'flex', gap: '10px' }}>
+                  <button
+                    type="button"
+                    onClick={handleResetDemoSettings}
+                    style={{
+                      padding: '8px 16px',
+                      borderRadius: '10px',
+                      border: '1px solid #E8E3EF',
+                      background: '#FFFFFF',
+                      color: '#64748B',
+                      fontSize: '0.82rem',
+                      fontWeight: 600,
+                      cursor: 'pointer'
+                    }}
+                  >
+                    Reset to Default
+                  </button>
+                  <button
+                    type="button"
+                    onClick={handleSaveDemoSettings}
+                    style={{
+                      padding: '8px 20px',
+                      borderRadius: '10px',
+                      border: 'none',
+                      background: 'linear-gradient(135deg, #6B00FF, #4D00B8)',
+                      color: '#FFFFFF',
+                      fontSize: '0.82rem',
+                      fontWeight: 700,
+                      cursor: 'pointer',
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: '6px',
+                      boxShadow: '0 4px 14px rgba(107, 0, 255, 0.35)'
+                    }}
+                  >
+                    <Check size={15} />
+                    <span>Save &amp; Publish</span>
+                  </button>
+                </div>
+              </div>
+
+              {/* Status Alerts */}
+              {demoSaveSuccess && (
+                <div style={{ padding: '12px 16px', borderRadius: '12px', background: '#F0FDF4', border: '1px solid #BBF7D0', color: '#166534', fontSize: '0.85rem', fontWeight: 600, display: 'flex', alignItems: 'center', gap: '8px' }}>
+                  <Check size={16} />
+                  <span>{demoSaveSuccess}</span>
+                </div>
+              )}
+              {demoSaveError && (
+                <div style={{ padding: '12px 16px', borderRadius: '12px', background: '#FEF2F2', border: '1px solid #FECACA', color: '#991B1B', fontSize: '0.85rem', fontWeight: 600 }}>
+                  {demoSaveError}
+                </div>
+              )}
+
+              {/* Main Grid: Form Controls (Left) & Real-Time Card Previews (Right) */}
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 420px), 1fr))', gap: '24px', alignItems: 'start' }}>
+                {/* Form Controls */}
+                <div style={{ backgroundColor: '#FFFFFF', borderRadius: '16px', border: '1px solid #E8E3EF', padding: '24px' }}>
+                  <form onSubmit={handleSaveDemoSettings} style={{ display: 'flex', flexDirection: 'column', gap: '18px' }}>
+                    <div style={{ fontSize: '0.9rem', fontWeight: 800, textTransform: 'uppercase', letterSpacing: '0.05em', color: '#6B00FF', borderBottom: '1px solid #F3EEFF', paddingBottom: '8px' }}>
+                      Primary Identity &amp; Typography
+                    </div>
+
+                    {/* Name */}
+                    <div>
+                      <label style={{ display: 'block', fontSize: '0.78rem', fontWeight: 700, color: '#334155', marginBottom: '6px' }}>
+                        Full Name (Replaces &quot;Akhil Anvar&quot;)
+                      </label>
+                      <input
+                        type="text"
+                        value={demoForm.name}
+                        onChange={(e) => setDemoForm(prev => ({ ...prev, name: e.target.value }))}
+                        placeholder="e.g. Your Name"
+                        style={{ width: '100%', padding: '10px 14px', borderRadius: '10px', border: '1px solid #CBD5E1', fontSize: '0.88rem' }}
+                      />
+                    </div>
+
+                    {/* Role & Tagline Row */}
+                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
+                      <div>
+                        <label style={{ display: 'block', fontSize: '0.78rem', fontWeight: 700, color: '#334155', marginBottom: '6px' }}>
+                          Role / Title (Replaces &quot;CEO &amp; Founder&quot;)
+                        </label>
+                        <input
+                          type="text"
+                          value={demoForm.role}
+                          onChange={(e) => setDemoForm(prev => ({ ...prev, role: e.target.value }))}
+                          placeholder="e.g. Your Role"
+                          style={{ width: '100%', padding: '10px 14px', borderRadius: '10px', border: '1px solid #CBD5E1', fontSize: '0.88rem' }}
+                        />
+                      </div>
+                      <div>
+                        <label style={{ display: 'block', fontSize: '0.78rem', fontWeight: 700, color: '#334155', marginBottom: '6px' }}>
+                          Front Card Tagline
+                        </label>
+                        <input
+                          type="text"
+                          value={demoForm.tagline}
+                          onChange={(e) => setDemoForm(prev => ({ ...prev, tagline: e.target.value }))}
+                          placeholder="e.g. Your Tagline"
+                          style={{ width: '100%', padding: '10px 14px', borderRadius: '10px', border: '1px solid #CBD5E1', fontSize: '0.88rem' }}
+                        />
+                      </div>
+                    </div>
+
+                    {/* Company */}
+                    <div>
+                      <label style={{ display: 'block', fontSize: '0.78rem', fontWeight: 700, color: '#334155', marginBottom: '6px' }}>
+                        Company Name
+                      </label>
+                      <input
+                        type="text"
+                        value={demoForm.company}
+                        onChange={(e) => setDemoForm(prev => ({ ...prev, company: e.target.value }))}
+                        placeholder="e.g. Your Company"
+                        style={{ width: '100%', padding: '10px 14px', borderRadius: '10px', border: '1px solid #CBD5E1', fontSize: '0.88rem' }}
+                      />
+                    </div>
+
+                    {/* Custom Image / Logo Upload */}
+                    <div>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '6px' }}>
+                        <label style={{ fontSize: '0.78rem', fontWeight: 700, color: '#334155' }}>
+                          Custom Brand Photo or Logo
+                        </label>
+                        {(demoForm.avatar || demoForm.logo) && (
+                          <button
+                            type="button"
+                            onClick={handleRemoveDemoImage}
+                            style={{ background: 'none', border: 'none', color: '#DC2626', fontSize: '0.74rem', fontWeight: 700, cursor: 'pointer' }}
+                          >
+                            Remove Photo (Revert to &quot;YOUR LOGO&quot;)
+                          </button>
+                        )}
+                      </div>
+
+                      <div
+                        style={{
+                          border: '2px dashed #CBD5E1',
+                          borderRadius: '12px',
+                          padding: '16px',
+                          textAlign: 'center',
+                          backgroundColor: '#F8FAFC',
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                          gap: '14px'
+                        }}
+                      >
+                        {(demoForm.avatar || demoForm.logo) ? (
+                          <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                            <img
+                              src={demoForm.avatar || demoForm.logo}
+                              alt="Demo Logo"
+                              style={{ width: '50px', height: '50px', borderRadius: '10px', objectFit: 'cover', border: '1px solid #CBD5E1' }}
+                            />
+                            <div style={{ textAlign: 'left' }}>
+                              <div style={{ fontSize: '0.8rem', fontWeight: 700, color: '#0F172A' }}>Active Custom Image</div>
+                              <div style={{ fontSize: '0.72rem', color: '#64748B' }}>Displayed on demo cards and profile</div>
+                            </div>
+                          </div>
+                        ) : (
+                          <div style={{ textAlign: 'left' }}>
+                            <div style={{ fontSize: '0.82rem', fontWeight: 700, color: '#475569' }}>
+                              No custom photo uploaded
+                            </div>
+                            <div style={{ fontSize: '0.72rem', color: '#94A3B8' }}>
+                              Cards will display the luxury &quot;YOUR LOGO&quot; text placeholder
+                            </div>
+                          </div>
+                        )}
+
+                        <label
+                          style={{
+                            marginLeft: 'auto',
+                            padding: '7px 14px',
+                            borderRadius: '8px',
+                            background: '#F1F5F9',
+                            border: '1px solid #CBD5E1',
+                            fontSize: '0.78rem',
+                            fontWeight: 700,
+                            color: '#334155',
+                            cursor: uploadingDemoImage ? 'wait' : 'pointer',
+                            display: 'inline-flex',
+                            alignItems: 'center',
+                            gap: '6px'
+                          }}
+                        >
+                          <Upload size={13} />
+                          <span>{uploadingDemoImage ? 'Uploading...' : 'Choose File'}</span>
+                          <input
+                            type="file"
+                            accept="image/*"
+                            onChange={handleDemoImageUpload}
+                            disabled={uploadingDemoImage}
+                            style={{ display: 'none' }}
+                          />
+                        </label>
+                      </div>
+                    </div>
+
+                    {/* Contact & Card Finish */}
+                    <div style={{ fontSize: '0.9rem', fontWeight: 800, textTransform: 'uppercase', letterSpacing: '0.05em', color: '#6B00FF', borderBottom: '1px solid #F3EEFF', paddingBottom: '8px', marginTop: '6px' }}>
+                      Contact Details &amp; Card Finish
+                    </div>
+
+                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
+                      <div>
+                        <label style={{ display: 'block', fontSize: '0.78rem', fontWeight: 700, color: '#334155', marginBottom: '6px' }}>
+                          Phone Number
+                        </label>
+                        <input
+                          type="text"
+                          value={demoForm.phone}
+                          onChange={(e) => setDemoForm(prev => ({ ...prev, phone: e.target.value }))}
+                          placeholder="+91 98765 43210"
+                          style={{ width: '100%', padding: '10px 14px', borderRadius: '10px', border: '1px solid #CBD5E1', fontSize: '0.88rem' }}
+                        />
+                      </div>
+                      <div>
+                        <label style={{ display: 'block', fontSize: '0.78rem', fontWeight: 700, color: '#334155', marginBottom: '6px' }}>
+                          Email Address
+                        </label>
+                        <input
+                          type="email"
+                          value={demoForm.email}
+                          onChange={(e) => setDemoForm(prev => ({ ...prev, email: e.target.value }))}
+                          placeholder="contact@flocard.in"
+                          style={{ width: '100%', padding: '10px 14px', borderRadius: '10px', border: '1px solid #CBD5E1', fontSize: '0.88rem' }}
+                        />
+                      </div>
+                    </div>
+
+                    {/* Card Finish Selector */}
+                    <div>
+                      <label style={{ display: 'block', fontSize: '0.78rem', fontWeight: 700, color: '#334155', marginBottom: '6px' }}>
+                        Card Finish Theme
+                      </label>
+                      <div style={{ display: 'flex', gap: '10px' }}>
+                        {[
+                          { id: 'purple', label: 'Purple Edition', color: '#A855F7', bg: '#1E122E' },
+                          { id: 'gold', label: 'Gold Edition', color: '#E9C766', bg: '#251E11' },
+                          { id: 'steel', label: 'Platinum / Steel', color: '#94A3B8', bg: '#181C22' }
+                        ].map(finish => (
+                          <button
+                            key={finish.id}
+                            type="button"
+                            onClick={() => setDemoForm(prev => ({ ...prev, cardFinish: finish.id, cardEdition: finish.id }))}
+                            style={{
+                              flex: 1,
+                              padding: '10px',
+                              borderRadius: '10px',
+                              border: demoForm.cardFinish === finish.id ? `2px solid ${finish.color}` : '1px solid #E2E8F0',
+                              background: finish.bg,
+                              color: '#FFFFFF',
+                              fontSize: '0.78rem',
+                              fontWeight: 700,
+                              cursor: 'pointer',
+                              display: 'flex',
+                              alignItems: 'center',
+                              justifyContent: 'center',
+                              gap: '6px'
+                            }}
+                          >
+                            <span style={{ width: '10px', height: '10px', borderRadius: '50%', backgroundColor: finish.color }} />
+                            <span>{finish.label}</span>
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+
+                    <button
+                      type="submit"
+                      style={{
+                        marginTop: '10px',
+                        width: '100%',
+                        padding: '12px',
+                        borderRadius: '10px',
+                        border: 'none',
+                        background: 'linear-gradient(135deg, #6B00FF, #4D00B8)',
+                        color: '#FFFFFF',
+                        fontSize: '0.9rem',
+                        fontWeight: 700,
+                        cursor: 'pointer',
+                        boxShadow: '0 4px 16px rgba(107, 0, 255, 0.35)'
+                      }}
+                    >
+                      Save Demo Settings
+                    </button>
+                  </form>
+                </div>
+
+                {/* Live Previews Column (Right) */}
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
+                  {/* Shiny Card Preview */}
+                  <div style={{ backgroundColor: '#09060F', borderRadius: '16px', border: '1px solid #281D3D', padding: '24px', textAlign: 'center' }}>
+                    <div style={{ fontSize: '0.75rem', fontWeight: 700, textTransform: 'uppercase', color: '#A855F7', marginBottom: '14px', letterSpacing: '0.08em' }}>
+                      Live Digital Profile Shiny Card Preview
+                    </div>
+                    <div style={{ display: 'flex', justifyContent: 'center' }}>
+                      <CompactProfileCard
+                        profile={{
+                          name: demoForm.name,
+                          role: demoForm.role,
+                          tagline: demoForm.tagline,
+                          company: demoForm.company,
+                          avatar: demoForm.avatar,
+                          logo: demoForm.logo,
+                          phone: demoForm.phone,
+                          email: demoForm.email,
+                          cardFinish: demoForm.cardFinish,
+                          isVerified: true
+                        }}
+                        allowColorSwitch={false}
+                      />
+                    </div>
+                  </div>
+
+                  {/* 3D Physical Card Preview */}
+                  <div style={{ backgroundColor: '#09060F', borderRadius: '16px', border: '1px solid #281D3D', padding: '24px', textAlign: 'center' }}>
+                    <div style={{ fontSize: '0.75rem', fontWeight: 700, textTransform: 'uppercase', color: '#A855F7', marginBottom: '14px', letterSpacing: '0.08em' }}>
+                      Live 3D NFC Card Artwork Preview
+                    </div>
+                    <div style={{ display: 'flex', justifyContent: 'center' }}>
+                      <Card3DPreview
+                        edition={demoForm.cardFinish === 'steel' ? 'platinum' : demoForm.cardFinish}
+                        width={300}
+                        allowFlip={true}
+                        config={{
+                          front: {
+                            name: (demoForm.name || 'YOUR NAME').toUpperCase(),
+                            role: (demoForm.role || 'YOUR ROLE').toUpperCase(),
+                            tagline: demoForm.tagline || 'Your Tagline'
+                          },
+                          customerLogo: { url: demoForm.logo || null },
+                          back: {
+                            brandUrl: `flocard.in/${(demoForm.name || 'yourname').toLowerCase().replace(/\s+/g, '')}`
+                          }
+                        }}
+                      />
+                    </div>
+                  </div>
+                </div>
               </div>
             </div>
           )}

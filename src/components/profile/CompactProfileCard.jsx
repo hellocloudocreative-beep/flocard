@@ -244,20 +244,52 @@ export default function CompactProfileCard({
                   boxShadow: `0 8px 26px ${glowColor}65, 0 0 0 1px ${accentColor}40`,
                   overflow: 'hidden',
                   marginBottom: '14px',
-                  position: 'relative'
+                  position: 'relative',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center'
                 }}
               >
-                <img
-                  src={profile?.avatar || profile?.logo || '/assets/akhil.jpg'}
-                  alt={profile?.name || 'User Portrait'}
-                  style={{
-                    width: '100%',
-                    height: '100%',
-                    borderRadius: isCircle ? '50%' : '21px',
-                    objectFit: 'cover',
-                    display: 'block'
-                  }}
-                />
+                {(profile?.avatar || profile?.logo) ? (
+                  <img
+                    src={profile.avatar || profile.logo}
+                    alt={profile?.name || 'User Avatar'}
+                    style={{
+                      width: '100%',
+                      height: '100%',
+                      borderRadius: isCircle ? '50%' : '21px',
+                      objectFit: 'cover',
+                      display: 'block'
+                    }}
+                  />
+                ) : (
+                  <div
+                    style={{
+                      width: '100%',
+                      height: '100%',
+                      borderRadius: isCircle ? '50%' : '21px',
+                      background: isLight ? 'rgba(0, 0, 0, 0.05)' : 'rgba(255, 255, 255, 0.07)',
+                      display: 'flex',
+                      flexDirection: 'column',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      gap: '4px'
+                    }}
+                  >
+                    <Sparkles size={20} color={accentColor} />
+                    <span
+                      style={{
+                        fontSize: '0.66rem',
+                        fontWeight: 800,
+                        letterSpacing: '0.08em',
+                        textTransform: 'uppercase',
+                        color: isLight ? '#18181b' : '#ffffff'
+                      }}
+                    >
+                      YOUR LOGO
+                    </span>
+                  </div>
+                )}
               </motion.div>
 
               {/* User Name */}
@@ -272,7 +304,7 @@ export default function CompactProfileCard({
                   lineHeight: 1.2
                 }}
               >
-                {profile?.name}
+                {profile?.name || 'YOUR NAME'}
               </h2>
 
               {/* Role & Company */}
@@ -284,7 +316,7 @@ export default function CompactProfileCard({
                   marginBottom: '6px'
                 }}
               >
-                {profile?.role || 'Executive'}{profile?.company ? ` • ${profile.company}` : ''}
+                {profile?.role || profile?.tagline || 'YOUR ROLE / TAGLINE'}{profile?.company ? ` • ${profile.company}` : ''}
               </div>
 
               {/* Short Biography / Tagline */}

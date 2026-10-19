@@ -147,6 +147,9 @@ export default function App() {
     content = <CardCollection />;
   }
   // 5. Individual Card Editions
+  else if (path === '/cards/metal') {
+    content = <CardDetail editionKey="metal" />;
+  }
   else if (path === '/cards/gold') {
     content = <CardDetail editionKey="gold" />;
   }

@@ -134,12 +134,47 @@ export const EDITIONS = {
       capacity: '888 Bytes usable EEPROM memory',
       durability: 'Bend-proof reinforced structure'
     }
+  },
+  metal: {
+    id: 'metal',
+    name: 'Metal Edition',
+    badge: 'Stealth',
+    popular: false,
+    tagline: 'Precision-engineered brushed gunmetal for modern leaders.',
+    description: 'Dark brushed gunmetal finish with ultra-crisp laser-white typography and executive minimalism.',
+    accentColor: '#CBD5E1',
+    secondaryColor: '#64748B',
+    textColor: '#FFFFFF',
+    gradient: 'linear-gradient(135deg, #18191C 0%, #2B2D31 55%, #121316 100%)',
+    bgImage: '/assets/cardbg-metal.png',
+    logoAsset: '/assets/flocard-logo-white.png',
+    border: '1px solid rgba(148, 163, 184, 0.35)',
+    glow: 'rgba(148, 163, 184, 0.25)',
+    cardBg: '#18191C',
+    highlightText: 'Brushed Gunmetal Titanium Finish',
+    defaults: {
+      primaryAccent: '#CBD5E1',
+      secondaryAccent: '#64748B',
+      nameColor: '#FFFFFF',
+      roleColor: '#CBD5E1',
+      taglineColor: '#94A3B8',
+      nfcColor: '#CBD5E1',
+      qrColor: '#FFFFFF'
+    },
+    specs: {
+      material: 'Brushed Gunmetal Steel & Composite Core',
+      finish: 'Matte Brushed Metal with Laser Precision Etching',
+      chip: 'NXP NTAG216 High Frequency 13.56 MHz',
+      capacity: '888 Bytes usable EEPROM memory',
+      durability: 'Scratch-resistant PVD coating, Waterproof IP68'
+    }
   }
 };
 
 export function getFlocardLogoAsset(edition = 'purple', primaryAccent = null) {
   if (edition === 'gold') return '/assets/flocard-logo-gold.png';
   if (edition === 'platinum') return '/assets/flocard-logo-platinum.png';
+  if (edition === 'metal') return '/assets/flocard-logo-white.png';
   return '/assets/flocard-logo-white.png';
 }
 

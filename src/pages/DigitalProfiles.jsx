@@ -2,14 +2,30 @@
    FLOCARD DIGITAL PROFILES SHOWCASE
    ========================================================================== */
 
-import React from 'react';
+import React, { useState } from 'react';
 import { ArrowRight, Bookmark, Share2, Check, ExternalLink, Sparkles, Smartphone, ShieldCheck, Zap, Globe, Layers } from 'lucide-react';
 import PhoneProfileMockup from '../components/PhoneProfileMockup';
+import CompactProfileCard from '../components/profile/CompactProfileCard';
 import { useData } from '../context/DataContext';
+import { useTheme } from '../context/ThemeContext';
 
 export default function DigitalProfiles() {
-  const { profiles } = useData();
-  const akhilProfile = profiles.find(p => p.slug === 'akhil') || profiles[0];
+  const { profiles, demoConfig } = useData();
+  const { isLight } = useTheme();
+
+  const demoProfile = {
+    ...(profiles.find(p => p.slug === 'akhil') || profiles[0] || {}),
+    name: demoConfig?.name || 'Your Name',
+    role: demoConfig?.role || 'Your Role',
+    tagline: demoConfig?.tagline || 'Your Tagline',
+    company: demoConfig?.company || 'Your Company',
+    avatar: demoConfig?.avatar || '',
+    logo: demoConfig?.logo || '',
+    phone: demoConfig?.phone || '+91 98765 43210',
+    email: demoConfig?.email || 'contact@flocard.in',
+    website: demoConfig?.website || 'https://flocard.in',
+    cardFinish: demoConfig?.cardFinish || 'purple'
+  };
 
   return (
     <div style={{ paddingTop: 'calc(var(--header-height) + 40px)', paddingBottom: '100px' }}>
@@ -37,8 +53,13 @@ export default function DigitalProfiles() {
             marginBottom: '90px'
           }}
         >
-          <div style={{ display: 'flex', justifyContent: 'center' }}>
-            <PhoneProfileMockup profile={akhilProfile} />
+          {/* Left: Shiny Card Demo Showcase */}
+          <div style={{ display: 'flex', justifyContent: 'center', width: '100%', minHeight: '580px', alignItems: 'center' }}>
+            <CompactProfileCard
+              profile={demoProfile}
+              onExpand={() => window.open(`/p/${demoProfile?.slug || 'akhil'}`, '_blank')}
+              isLight={isLight}
+            />
           </div>
 
           <div>

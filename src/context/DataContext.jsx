@@ -19,6 +19,7 @@ export function DataProvider({ children }) {
   const [auditLogs, setAuditLogs] = useState(() => StorageEngine.getAuditLogs());
   const [studioBackground, setStudioBackground] = useState(() => StorageEngine.getStudioBackground());
   const [adminAccounts, setAdminAccounts] = useState(() => StorageEngine.getAdminAccounts());
+  const [demoConfig, setDemoConfig] = useState(() => StorageEngine.getDemoConfig());
   const [lastOrderUpdate, setLastOrderUpdate] = useState(null);
 
   const refreshAll = () => {
@@ -32,6 +33,7 @@ export function DataProvider({ children }) {
     setAuditLogs(StorageEngine.getAuditLogs());
     setStudioBackground(StorageEngine.getStudioBackground());
     setAdminAccounts(StorageEngine.getAdminAccounts());
+    setDemoConfig(StorageEngine.getDemoConfig());
   };
 
   // Real-time synchronization listeners across browser windows, tabs, and local dispatches
@@ -58,6 +60,7 @@ export function DataProvider({ children }) {
     window.addEventListener('flocard_card_updated', refreshAll);
     window.addEventListener('flocard_notification_created', refreshAll);
     window.addEventListener('flocard_products_updated', refreshAll);
+    window.addEventListener('flocard_demo_updated', refreshAll);
     window.addEventListener('storage', handleStorageChange);
     window.addEventListener('focus', handleWindowFocus);
 
@@ -67,6 +70,7 @@ export function DataProvider({ children }) {
       window.removeEventListener('flocard_card_updated', refreshAll);
       window.removeEventListener('flocard_notification_created', refreshAll);
       window.removeEventListener('flocard_products_updated', refreshAll);
+      window.removeEventListener('flocard_demo_updated', refreshAll);
       window.removeEventListener('storage', handleStorageChange);
       window.removeEventListener('focus', handleWindowFocus);
     };
@@ -236,6 +240,9 @@ export function DataProvider({ children }) {
       studioBackground,
       updateStudioBackground,
       resetStudioBg,
+      demoConfig,
+      saveDemoConfig: StorageEngine.saveDemoConfig,
+      resetDemoConfig: StorageEngine.resetDemoConfig,
       refreshAll,
       saveProfile,
       deleteProfile,

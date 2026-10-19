@@ -7,16 +7,31 @@ import React, { useState } from 'react';
 import { ArrowRight, Sparkles, Radio, Layers, Users, ShieldCheck, CheckCircle2, ChevronRight, Smartphone, Eye, ExternalLink, Zap } from 'lucide-react';
 import Card3DPreview from '../components/Card3DPreview';
 import PhoneProfileMockup from '../components/PhoneProfileMockup';
+import CompactProfileCard from '../components/profile/CompactProfileCard';
 import { BRAND, EDITIONS, HOW_IT_WORKS_STEPS } from '../lib/constants';
 import { useData } from '../context/DataContext';
 import { useTheme } from '../context/ThemeContext';
 import { formatCurrencyINR } from '../lib/storage';
 
 export default function Home() {
-  const { profiles, getProductByEdition } = useData();
+  const { profiles, getProductByEdition, demoConfig } = useData();
   const { isLight } = useTheme();
-  const akhilProfile = profiles.find(p => p.slug === 'akhil') || profiles[0];
 
+  const demoProfile = {
+    ...(profiles.find(p => p.slug === 'akhil') || profiles[0] || {}),
+    name: demoConfig?.name || 'Your Name',
+    role: demoConfig?.role || 'Your Role',
+    tagline: demoConfig?.tagline || 'Your Tagline',
+    company: demoConfig?.company || 'Your Company',
+    avatar: demoConfig?.avatar || '',
+    logo: demoConfig?.logo || '',
+    phone: demoConfig?.phone || '+91 98765 43210',
+    email: demoConfig?.email || 'contact@flocard.in',
+    website: demoConfig?.website || 'https://flocard.in',
+    cardFinish: demoConfig?.cardFinish || 'purple'
+  };
+
+  const metalProduct = getProductByEdition('metal') || EDITIONS.metal;
   const goldProduct = getProductByEdition('gold') || EDITIONS.gold;
   const platinumProduct = getProductByEdition('platinum') || EDITIONS.platinum;
   const purpleProduct = getProductByEdition('purple') || EDITIONS.purple;
@@ -172,10 +187,18 @@ export default function Home() {
                 width={390}
                 initialSide="front"
                 allowFlip={true}
+                config={{
+                  front: {
+                    name: (demoConfig?.name || 'YOUR NAME').toUpperCase(),
+                    role: (demoConfig?.role || 'YOUR ROLE').toUpperCase(),
+                    tagline: demoConfig?.tagline || 'Your Tagline'
+                  },
+                  customerLogo: { url: demoConfig?.logo || null }
+                }}
               />
             </div>
 
-            {/* Back Card Preview (showing real scannable QR code to akhil profile) */}
+            {/* Back Card Preview */}
             <div
               className="hero-card-right"
               style={{
@@ -190,6 +213,11 @@ export default function Home() {
                 width={390}
                 initialSide="back"
                 allowFlip={true}
+                config={{
+                  back: {
+                    brandUrl: `flocard.in/${(demoConfig?.name || 'yourname').toLowerCase().replace(/\s+/g, '')}`
+                  }
+                }}
               />
             </div>
           </div>
@@ -338,7 +366,7 @@ export default function Home() {
                 CHOOSE <span className="text-gradient-purple">YOUR STYLE</span>
               </h2>
               <p style={{ fontSize: '1rem', color: 'var(--text-secondary)', marginTop: '8px', maxWidth: '520px' }}>
-                Three premium designs. Same powerful technology. Find the style that fits your personal and corporate brand.
+                Four premium designs. Same powerful technology. Find the style that fits your personal and corporate brand.
               </p>
             </div>
 
@@ -349,16 +377,93 @@ export default function Home() {
           </div>
 
           {/* Cards Grid */}
-          <div className="grid-3" style={{ alignItems: 'stretch' }}>
-            {/* Gold Edition */}
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: '32px 24px', paddingTop: '18px', alignItems: 'stretch' }}>
+            {/* Metal Edition (New Stealth Release) */}
             <div
               className="glass-panel"
               style={{
-                padding: '28px',
+                padding: '24px 16px 22px',
                 display: 'flex',
                 flexDirection: 'column',
                 justifyContent: 'space-between',
                 borderRadius: '16px',
+                height: '100%',
+                transition: 'transform 0.3s ease, border-color 0.3s ease, box-shadow 0.3s ease'
+              }}
+              onMouseEnter={(e) => {
+                e.currentTarget.style.borderColor = 'rgba(203, 213, 225, 0.6)';
+                e.currentTarget.style.transform = 'translateY(-6px)';
+              }}
+              onMouseLeave={(e) => {
+                e.currentTarget.style.borderColor = 'var(--border-color)';
+                e.currentTarget.style.transform = 'translateY(0)';
+              }}
+            >
+              <div>
+                <div style={{ marginBottom: '24px', width: '100%', display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
+                  <Card3DPreview edition="metal" width={248} allowFlip={true} />
+                </div>
+                <div style={{ fontSize: '0.68rem', fontWeight: 800, textTransform: 'uppercase', letterSpacing: '0.08em', color: '#CBD5E1', marginBottom: '4px' }}>
+                  METAL EDITION
+                </div>
+                <h3 style={{ fontSize: '1.22rem', fontWeight: 800, color: 'var(--text-primary)', textTransform: 'uppercase', letterSpacing: '-0.01em', marginBottom: '8px' }}>
+                  {metalProduct.name || EDITIONS.metal.name}
+                </h3>
+
+                {/* Authoritative Price Display */}
+                <div style={{ display: 'flex', alignItems: 'baseline', gap: '8px', marginBottom: '10px' }}>
+                  {formatCurrencyINR(metalProduct.price) ? (
+                    <>
+                      <span style={{ fontSize: '1.45rem', fontWeight: 800, color: 'var(--text-primary)' }}>
+                        {formatCurrencyINR(metalProduct.price)}
+                      </span>
+                      {metalProduct.comparePrice && metalProduct.comparePrice > metalProduct.price && (
+                        <span style={{ fontSize: '0.88rem', color: 'var(--text-muted)', textDecoration: 'line-through' }}>
+                          {formatCurrencyINR(metalProduct.comparePrice)}
+                        </span>
+                      )}
+                    </>
+                  ) : (
+                    <span style={{ fontSize: '1.05rem', fontWeight: 700, color: '#F59E0B' }}>
+                      Price coming soon
+                    </span>
+                  )}
+                </div>
+
+                <p style={{ fontSize: '0.82rem', color: 'var(--text-secondary)', lineHeight: 1.45, marginBottom: '18px' }}>
+                  {metalProduct.description || EDITIONS.metal.description}
+                </p>
+              </div>
+              <a
+                href="/designer?edition=metal"
+                className="btn btn-secondary"
+                style={{
+                  width: '100%',
+                  borderRadius: '10px',
+                  fontWeight: 700,
+                  fontSize: '0.84rem',
+                  padding: '11px 18px',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  gap: '8px'
+                }}
+              >
+                <span>Customize Metal Card</span>
+                <ArrowRight size={15} />
+              </a>
+            </div>
+
+            {/* Gold Edition */}
+            <div
+              className="glass-panel"
+              style={{
+                padding: '24px 16px 22px',
+                display: 'flex',
+                flexDirection: 'column',
+                justifyContent: 'space-between',
+                borderRadius: '16px',
+                height: '100%',
                 transition: 'transform 0.3s ease, border-color 0.3s ease, box-shadow 0.3s ease'
               }}
               onMouseEnter={(e) => {
@@ -371,37 +476,37 @@ export default function Home() {
               }}
             >
               <div>
-                <div style={{ marginBottom: '20px' }}>
-                  <Card3DPreview edition="gold" width={320} allowFlip={true} />
+                <div style={{ marginBottom: '24px', width: '100%', display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
+                  <Card3DPreview edition="gold" width={248} allowFlip={true} />
                 </div>
-                <div style={{ fontSize: '0.74rem', fontWeight: 800, textTransform: 'uppercase', letterSpacing: '0.06em', color: '#E9C766', marginBottom: '4px' }}>
+                <div style={{ fontSize: '0.68rem', fontWeight: 800, textTransform: 'uppercase', letterSpacing: '0.08em', color: '#E9C766', marginBottom: '4px' }}>
                   GOLD EDITION
                 </div>
-                <h3 style={{ fontSize: '1.4rem', color: 'var(--text-primary)', textTransform: 'uppercase', marginBottom: '8px' }}>
+                <h3 style={{ fontSize: '1.22rem', fontWeight: 800, color: 'var(--text-primary)', textTransform: 'uppercase', letterSpacing: '-0.01em', marginBottom: '8px' }}>
                   {goldProduct.name || EDITIONS.gold.name}
                 </h3>
                 
                 {/* Authoritative Price Display */}
-                <div style={{ display: 'flex', alignItems: 'baseline', gap: '8px', marginBottom: '12px' }}>
+                <div style={{ display: 'flex', alignItems: 'baseline', gap: '8px', marginBottom: '10px' }}>
                   {formatCurrencyINR(goldProduct.price) ? (
                     <>
-                      <span style={{ fontSize: '1.6rem', fontWeight: 900, color: 'var(--text-primary)' }}>
+                      <span style={{ fontSize: '1.45rem', fontWeight: 800, color: 'var(--text-primary)' }}>
                         {formatCurrencyINR(goldProduct.price)}
                       </span>
                       {goldProduct.comparePrice && goldProduct.comparePrice > goldProduct.price && (
-                        <span style={{ fontSize: '0.95rem', color: 'var(--text-muted)', textDecoration: 'line-through' }}>
+                        <span style={{ fontSize: '0.88rem', color: 'var(--text-muted)', textDecoration: 'line-through' }}>
                           {formatCurrencyINR(goldProduct.comparePrice)}
                         </span>
                       )}
                     </>
                   ) : (
-                    <span style={{ fontSize: '1.1rem', fontWeight: 700, color: '#F59E0B' }}>
+                    <span style={{ fontSize: '1.05rem', fontWeight: 700, color: '#F59E0B' }}>
                       Price coming soon
                     </span>
                   )}
                 </div>
 
-                <p style={{ fontSize: '0.88rem', color: 'var(--text-secondary)', lineHeight: 1.5, marginBottom: '20px' }}>
+                <p style={{ fontSize: '0.82rem', color: 'var(--text-secondary)', lineHeight: 1.45, marginBottom: '18px' }}>
                   {goldProduct.description || EDITIONS.gold.description}
                 </p>
               </div>
@@ -412,6 +517,8 @@ export default function Home() {
                   width: '100%',
                   borderRadius: '10px',
                   fontWeight: 700,
+                  fontSize: '0.84rem',
+                  padding: '11px 18px',
                   display: 'flex',
                   alignItems: 'center',
                   justifyContent: 'center',
@@ -427,11 +534,12 @@ export default function Home() {
             <div
               className="glass-panel"
               style={{
-                padding: '28px',
+                padding: '24px 16px 22px',
                 display: 'flex',
                 flexDirection: 'column',
                 justifyContent: 'space-between',
                 borderRadius: '16px',
+                height: '100%',
                 transition: 'transform 0.3s ease, border-color 0.3s ease, box-shadow 0.3s ease'
               }}
               onMouseEnter={(e) => {
@@ -444,37 +552,37 @@ export default function Home() {
               }}
             >
               <div>
-                <div style={{ marginBottom: '20px' }}>
-                  <Card3DPreview edition="platinum" width={320} allowFlip={true} />
+                <div style={{ marginBottom: '24px', width: '100%', display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
+                  <Card3DPreview edition="platinum" width={248} allowFlip={true} />
                 </div>
-                <div style={{ fontSize: '0.74rem', fontWeight: 800, textTransform: 'uppercase', letterSpacing: '0.06em', color: '#CBD5E1', marginBottom: '4px' }}>
+                <div style={{ fontSize: '0.68rem', fontWeight: 800, textTransform: 'uppercase', letterSpacing: '0.08em', color: '#CBD5E1', marginBottom: '4px' }}>
                   PLATINUM EDITION
                 </div>
-                <h3 style={{ fontSize: '1.4rem', color: 'var(--text-primary)', textTransform: 'uppercase', marginBottom: '8px' }}>
+                <h3 style={{ fontSize: '1.22rem', fontWeight: 800, color: 'var(--text-primary)', textTransform: 'uppercase', letterSpacing: '-0.01em', marginBottom: '8px' }}>
                   {platinumProduct.name || EDITIONS.platinum.name}
                 </h3>
 
                 {/* Authoritative Price Display */}
-                <div style={{ display: 'flex', alignItems: 'baseline', gap: '8px', marginBottom: '12px' }}>
+                <div style={{ display: 'flex', alignItems: 'baseline', gap: '8px', marginBottom: '10px' }}>
                   {formatCurrencyINR(platinumProduct.price) ? (
                     <>
-                      <span style={{ fontSize: '1.6rem', fontWeight: 900, color: 'var(--text-primary)' }}>
+                      <span style={{ fontSize: '1.45rem', fontWeight: 800, color: 'var(--text-primary)' }}>
                         {formatCurrencyINR(platinumProduct.price)}
                       </span>
                       {platinumProduct.comparePrice && platinumProduct.comparePrice > platinumProduct.price && (
-                        <span style={{ fontSize: '0.95rem', color: 'var(--text-muted)', textDecoration: 'line-through' }}>
+                        <span style={{ fontSize: '0.88rem', color: 'var(--text-muted)', textDecoration: 'line-through' }}>
                           {formatCurrencyINR(platinumProduct.comparePrice)}
                         </span>
                       )}
                     </>
                   ) : (
-                    <span style={{ fontSize: '1.1rem', fontWeight: 700, color: '#F59E0B' }}>
+                    <span style={{ fontSize: '1.05rem', fontWeight: 700, color: '#F59E0B' }}>
                       Price coming soon
                     </span>
                   )}
                 </div>
 
-                <p style={{ fontSize: '0.88rem', color: 'var(--text-secondary)', lineHeight: 1.5, marginBottom: '20px' }}>
+                <p style={{ fontSize: '0.82rem', color: 'var(--text-secondary)', lineHeight: 1.45, marginBottom: '18px' }}>
                   {platinumProduct.description || EDITIONS.platinum.description}
                 </p>
               </div>
@@ -485,6 +593,8 @@ export default function Home() {
                   width: '100%',
                   borderRadius: '10px',
                   fontWeight: 700,
+                  fontSize: '0.84rem',
+                  padding: '11px 18px',
                   display: 'flex',
                   alignItems: 'center',
                   justifyContent: 'center',
@@ -498,95 +608,113 @@ export default function Home() {
 
             {/* Purple Edition (Signature & Most Popular) */}
             <div
-              className="glass-panel glass-panel-glow"
               style={{
-                padding: '28px',
+                position: 'relative',
                 display: 'flex',
                 flexDirection: 'column',
-                justifyContent: 'space-between',
-                borderRadius: '16px',
-                borderColor: isLight ? 'rgba(107, 0, 255, 0.35)' : 'rgba(168, 85, 247, 0.5)',
-                background: isLight 
-                  ? '#FFFFFF' 
-                  : 'linear-gradient(180deg, rgba(23, 16, 32, 0.9) 0%, rgba(32, 11, 59, 0.4) 100%)',
-                position: 'relative',
-                transition: 'transform 0.3s ease, box-shadow 0.3s ease'
+                height: '100%',
+                transition: 'transform 0.3s ease'
               }}
               onMouseEnter={(e) => (e.currentTarget.style.transform = 'translateY(-6px)')}
               onMouseLeave={(e) => (e.currentTarget.style.transform = 'translateY(0)')}
             >
+              {/* Floating Most Popular Badge placed outside glass-panel to prevent overflow:hidden clipping */}
               <div
                 style={{
                   position: 'absolute',
-                  top: '16px',
-                  right: '16px',
+                  top: '-13px',
+                  right: '24px',
                   background: 'linear-gradient(135deg, var(--primary-purple), var(--deep-violet))',
-                  padding: '4px 12px',
-                  borderRadius: '10px',
-                  fontSize: '0.72rem',
-                  fontWeight: 700,
+                  padding: '5px 14px',
+                  borderRadius: '9999px',
+                  fontSize: '0.74rem',
+                  fontWeight: 800,
+                  letterSpacing: '0.04em',
+                  textTransform: 'uppercase',
                   display: 'flex',
                   alignItems: 'center',
-                  gap: '4px',
+                  gap: '5px',
                   color: '#ffffff',
-                  boxShadow: '0 4px 12px rgba(107, 0, 255, 0.35)'
+                  boxShadow: '0 4px 16px rgba(107, 0, 255, 0.45), 0 0 0 1px rgba(168, 85, 247, 0.4)',
+                  zIndex: 30,
+                  pointerEvents: 'none'
                 }}
               >
-                <Sparkles size={11} />
+                <Sparkles size={12} />
                 <span>Most Popular</span>
               </div>
 
-              <div>
-                <div style={{ marginBottom: '20px' }}>
-                  <Card3DPreview edition="purple" width={320} allowFlip={true} />
-                </div>
-                <div style={{ fontSize: '0.74rem', fontWeight: 800, textTransform: 'uppercase', letterSpacing: '0.06em', color: '#A855F7', marginBottom: '4px' }}>
-                  PURPLE EDITION
-                </div>
-                <h3 style={{ fontSize: '1.35rem', color: 'var(--text-primary)', textTransform: 'uppercase', marginBottom: '8px' }}>
-                  {purpleProduct.name || EDITIONS.purple.name}
-                </h3>
-
-                {/* Authoritative Price Display */}
-                <div style={{ display: 'flex', alignItems: 'baseline', gap: '8px', marginBottom: '12px' }}>
-                  {formatCurrencyINR(purpleProduct.price) ? (
-                    <>
-                      <span style={{ fontSize: '1.6rem', fontWeight: 900, color: 'var(--text-primary)' }}>
-                        {formatCurrencyINR(purpleProduct.price)}
-                      </span>
-                      {purpleProduct.comparePrice && purpleProduct.comparePrice > purpleProduct.price && (
-                        <span style={{ fontSize: '0.95rem', color: 'var(--text-muted)', textDecoration: 'line-through' }}>
-                          {formatCurrencyINR(purpleProduct.comparePrice)}
-                        </span>
-                      )}
-                    </>
-                  ) : (
-                    <span style={{ fontSize: '1.1rem', fontWeight: 700, color: '#F59E0B' }}>
-                      Price coming soon
-                    </span>
-                  )}
-                </div>
-
-                <p style={{ fontSize: '0.88rem', color: 'var(--text-secondary)', lineHeight: 1.5, marginBottom: '20px' }}>
-                  {purpleProduct.description || EDITIONS.purple.description}
-                </p>
-              </div>
-              <a
-                href="/designer?edition=purple"
-                className="btn btn-primary"
+              <div
+                className="glass-panel glass-panel-glow"
                 style={{
-                  width: '100%',
-                  borderRadius: '10px',
-                  fontWeight: 700,
+                  padding: '24px 16px 22px',
                   display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  gap: '8px'
+                  flexDirection: 'column',
+                  justifyContent: 'space-between',
+                  borderRadius: '16px',
+                  borderColor: isLight ? 'rgba(107, 0, 255, 0.35)' : 'rgba(168, 85, 247, 0.5)',
+                  background: isLight 
+                    ? '#FFFFFF' 
+                    : 'linear-gradient(180deg, rgba(23, 16, 32, 0.9) 0%, rgba(32, 11, 59, 0.4) 100%)',
+                  position: 'relative',
+                  height: '100%',
+                  flex: 1,
+                  overflow: 'visible',
+                  transition: 'box-shadow 0.3s ease'
                 }}
               >
-                <span>Customize Purple Card</span>
-                <ArrowRight size={15} />
-              </a>
+                <div>
+                  <div style={{ marginBottom: '24px', width: '100%', display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
+                    <Card3DPreview edition="purple" width={248} allowFlip={true} />
+                  </div>
+                  <div style={{ fontSize: '0.68rem', fontWeight: 800, textTransform: 'uppercase', letterSpacing: '0.08em', color: '#A855F7', marginBottom: '4px' }}>
+                    PURPLE EDITION
+                  </div>
+                  <h3 style={{ fontSize: '1.22rem', fontWeight: 800, color: 'var(--text-primary)', textTransform: 'uppercase', letterSpacing: '-0.01em', marginBottom: '8px' }}>
+                    {purpleProduct.name || EDITIONS.purple.name}
+                  </h3>
+
+                  {/* Authoritative Price Display */}
+                  <div style={{ display: 'flex', alignItems: 'baseline', gap: '8px', marginBottom: '10px' }}>
+                    {formatCurrencyINR(purpleProduct.price) ? (
+                      <>
+                        <span style={{ fontSize: '1.45rem', fontWeight: 800, color: 'var(--text-primary)' }}>
+                          {formatCurrencyINR(purpleProduct.price)}
+                        </span>
+                        {purpleProduct.comparePrice && purpleProduct.comparePrice > purpleProduct.price && (
+                          <span style={{ fontSize: '0.88rem', color: 'var(--text-muted)', textDecoration: 'line-through' }}>
+                            {formatCurrencyINR(purpleProduct.comparePrice)}
+                          </span>
+                        )}
+                      </>
+                    ) : (
+                      <span style={{ fontSize: '1.05rem', fontWeight: 700, color: '#F59E0B' }}>
+                        Price coming soon
+                      </span>
+                    )}
+                  </div>
+
+                  <p style={{ fontSize: '0.82rem', color: 'var(--text-secondary)', lineHeight: 1.45, marginBottom: '18px' }}>
+                    {purpleProduct.description || EDITIONS.purple.description}
+                  </p>
+                </div>
+                <a
+                  href="/designer?edition=purple"
+                  className="btn btn-primary"
+                  style={{
+                    width: '100%',
+                    borderRadius: '10px',
+                    fontWeight: 700,
+                    fontSize: '0.84rem',
+                    padding: '11px 18px',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    gap: '8px'
+                  }}
+                >
+                </a>
+              </div>
             </div>
           </div>
         </div>
@@ -711,9 +839,13 @@ export default function Home() {
               alignItems: 'center'
             }}
           >
-            {/* Left: Interactive Phone Mockup */}
-            <div style={{ display: 'flex', justifyContent: 'center' }}>
-              <PhoneProfileMockup profile={akhilProfile} />
+            {/* Left: Shiny Card Demo Showcase (Luxury ReflectiveCard) */}
+            <div style={{ display: 'flex', justifyContent: 'center', width: '100%', minHeight: '580px', alignItems: 'center' }}>
+              <CompactProfileCard
+                profile={demoProfile}
+                onExpand={() => window.open(`/p/${demoProfile?.slug || 'akhil'}`, '_blank')}
+                isLight={isLight}
+              />
             </div>
 
             {/* Right: Digital Profile Description & Bullet Points */}

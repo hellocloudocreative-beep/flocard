@@ -18,8 +18,8 @@ export default function CardCollection() {
   const { isLight } = useTheme();
   const { products, getProductByEdition } = useData();
 
-  // Three signature editions in prompt order: Gold, Platinum, Purple
-  const editionKeys = filter === 'all' ? ['gold', 'platinum', 'purple'] : [filter];
+  // Master-crafted editions: Metal, Gold, Platinum, Purple
+  const editionKeys = filter === 'all' ? ['metal', 'gold', 'platinum', 'purple'] : [filter];
 
   return (
     <div style={{ paddingTop: 'calc(var(--header-height) + 40px)', paddingBottom: '100px' }}>
@@ -33,7 +33,7 @@ export default function CardCollection() {
             THE FLOCARD <span className="text-gradient-purple">COLLECTION</span>
           </h1>
           <p style={{ fontSize: '1.1rem', color: 'var(--text-secondary)' }}>
-            Three master-crafted editions combining aerospace-grade physical materials with secure encrypted NFC microcontrollers.
+            Four master-crafted editions combining aerospace-grade physical materials with secure encrypted NFC microcontrollers.
           </p>
 
           {/* Template & Edition Filter Controls */}
@@ -95,11 +95,14 @@ export default function CardCollection() {
                 borderRadius: 'var(--radius-full)',
                 border: '1px solid var(--border-color)',
                 gap: '4px',
-                boxShadow: 'var(--shadow-soft)'
+                boxShadow: 'var(--shadow-soft)',
+                flexWrap: 'wrap',
+                justifyContent: 'center'
               }}
             >
               {[
                 { id: 'all', label: 'All Editions' },
+                { id: 'metal', label: 'Metal Edition (New)' },
                 { id: 'gold', label: 'Gold Edition' },
                 { id: 'platinum', label: 'Platinum Edition' },
                 { id: 'purple', label: 'Purple Edition (Signature)' }
@@ -128,10 +131,11 @@ export default function CardCollection() {
         </div>
 
         {/* Editions Grid with React Bits <SpotlightCard /> */}
-        <div className="grid-3" style={{ marginBottom: '80px', alignItems: 'stretch' }}>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: '32px 24px', paddingTop: '18px', marginBottom: '80px', alignItems: 'stretch' }}>
           {editionKeys.map(key => {
             const fallbackItem = EDITIONS[key] || EDITIONS.gold;
             const product = getProductByEdition(key) || fallbackItem;
+            const isMetal = key === 'metal';
             const isGold = key === 'gold';
             const isPlatinum = key === 'platinum';
             const isPurple = key === 'purple';
@@ -140,9 +144,11 @@ export default function CardCollection() {
               ? 'rgba(233, 199, 102, 0.42)'
               : isPlatinum
                 ? 'rgba(203, 213, 225, 0.42)'
-                : 'rgba(168, 85, 247, 0.52)';
+                : isMetal
+                  ? 'rgba(148, 163, 184, 0.42)'
+                  : 'rgba(168, 85, 247, 0.52)';
 
-            const accentColor = isGold ? '#E9C766' : isPlatinum ? '#CBD5E1' : '#A855F7';
+            const accentColor = isGold ? '#E9C766' : isPlatinum ? '#CBD5E1' : isMetal ? '#CBD5E1' : '#A855F7';
 
             const formattedPrice = formatCurrencyINR(product.price);
             const formattedCompare = product.comparePrice && product.comparePrice > product.price
@@ -154,7 +160,9 @@ export default function CardCollection() {
               ? 'Customize Gold Card'
               : isPlatinum
                 ? 'Customize Platinum Card'
-                : 'Customize Purple Card';
+                : isMetal
+                  ? 'Customize Metal Card'
+                  : 'Customize Purple Card';
 
             // Features actually included in the product configuration
             const includedFeatures = product.features || [
@@ -166,75 +174,82 @@ export default function CardCollection() {
             ];
 
             return (
-              <SpotlightCard
+              <div
                 key={key}
-                theme="dark"
-                spotlightColor={spotlightColor}
-                intensity={0.22}
-                spotlightSize={280}
-                softness={0.7}
-                borderGlow={0.65}
-                proximity={80}
-                className="flocard-edition-pricing-card"
                 style={{
-                  padding: '30px 24px',
+                  position: 'relative',
                   display: 'flex',
                   flexDirection: 'column',
-                  justifyContent: 'space-between',
-                  borderRadius: '16px',
-                  border: `1px solid ${accentColor}38`,
-                  background: isPurple
-                    ? 'linear-gradient(180deg, rgba(23, 16, 32, 0.96) 0%, rgba(32, 11, 59, 0.6) 100%)'
-                    : isGold
-                      ? 'linear-gradient(180deg, rgba(22, 19, 14, 0.96) 0%, rgba(32, 26, 15, 0.55) 100%)'
-                      : 'linear-gradient(180deg, rgba(18, 20, 24, 0.96) 0%, rgba(26, 30, 36, 0.55) 100%)',
-                  position: 'relative',
-                  overflow: 'hidden'
+                  height: '100%'
                 }}
               >
-                {/* Featured / Popular Badge */}
-                {(product.featured || isPurple) && (
+                {/* Most Popular Badge on Purple Edition (Placed outside SpotlightCard to prevent overflow clipping) */}
+                {isPurple && (
                   <div
                     style={{
                       position: 'absolute',
-                      top: '16px',
-                      right: '16px',
-                      background: isGold
-                        ? 'linear-gradient(135deg, #FFF0A6, #C9972C)'
-                        : isPlatinum
-                          ? 'linear-gradient(135deg, #FFFFFF, #94A3B8)'
-                          : 'linear-gradient(135deg, var(--primary-purple), var(--deep-violet))',
-                      color: isGold || isPlatinum ? '#0F0E13' : '#FFFFFF',
-                      fontSize: '0.7rem',
+                      top: '-13px',
+                      right: '24px',
+                      background: 'linear-gradient(135deg, var(--primary-purple), var(--deep-violet))',
+                      color: '#FFFFFF',
+                      fontSize: '0.74rem',
                       fontWeight: 800,
-                      padding: '4px 12px',
-                      borderRadius: '10px',
+                      letterSpacing: '0.04em',
+                      textTransform: 'uppercase',
+                      padding: '5px 14px',
+                      borderRadius: '9999px',
                       display: 'flex',
                       alignItems: 'center',
-                      gap: '4px',
-                      boxShadow: `0 4px 12px ${accentColor}40`,
-                      zIndex: 3
+                      gap: '5px',
+                      boxShadow: '0 4px 16px rgba(107, 0, 255, 0.45), 0 0 0 1px rgba(168, 85, 247, 0.4)',
+                      zIndex: 30,
+                      pointerEvents: 'none'
                     }}
                   >
-                    <Sparkles size={11} />
-                    <span>{product.featured ? 'Featured Edition' : 'Most Popular'}</span>
+                    <Sparkles size={12} />
+                    <span>Most Popular</span>
                   </div>
                 )}
 
+                <SpotlightCard
+                  theme="dark"
+                  spotlightColor={spotlightColor}
+                  intensity={0.22}
+                  spotlightSize={280}
+                  softness={0.7}
+                  borderGlow={0.65}
+                  proximity={80}
+                  className="flocard-edition-pricing-card"
+                  style={{
+                    padding: '24px 16px 22px',
+                    display: 'flex',
+                    flexDirection: 'column',
+                    justifyContent: 'space-between',
+                    borderRadius: '16px',
+                    border: `1px solid ${accentColor}38`,
+                    background: isPurple
+                      ? 'linear-gradient(180deg, rgba(23, 16, 32, 0.96) 0%, rgba(32, 11, 59, 0.6) 100%)'
+                      : isGold
+                        ? 'linear-gradient(180deg, rgba(22, 19, 14, 0.96) 0%, rgba(32, 26, 15, 0.55) 100%)'
+                        : 'linear-gradient(180deg, rgba(18, 20, 24, 0.96) 0%, rgba(26, 30, 36, 0.55) 100%)',
+                    height: '100%',
+                    flex: 1
+                  }}
+                >
                 <div>
                   {/* Card 3D Preview (Front & Back interactive flip) */}
-                  <div style={{ marginBottom: '24px', textAlign: 'center' }}>
-                    <Card3DPreview edition={key} templateType={templateType} width={300} allowFlip={true} />
-                    <div style={{ marginTop: '10px', fontSize: '0.74rem', color: 'var(--text-muted)' }}>
+                  <div style={{ marginBottom: '24px', textAlign: 'center', width: '100%', display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
+                    <Card3DPreview edition={key} templateType={templateType} width={248} allowFlip={true} />
+                    <div style={{ marginTop: '20px', fontSize: '0.7rem', color: 'var(--text-muted)' }}>
                       Click card to flip front & back &bull; Hover to tilt
                     </div>
                   </div>
 
                   {/* Edition Name */}
-                  <div style={{ marginBottom: '6px' }}>
+                  <div style={{ marginBottom: '4px' }}>
                     <span
                       style={{
-                        fontSize: '0.72rem',
+                        fontSize: '0.68rem',
                         fontWeight: 800,
                         textTransform: 'uppercase',
                         letterSpacing: '0.08em',
@@ -247,7 +262,7 @@ export default function CardCollection() {
                     </span>
                     <h3
                       style={{
-                        fontSize: '1.5rem',
+                        fontSize: '1.25rem',
                         fontWeight: 800,
                         color: '#FFFFFF',
                         textTransform: 'uppercase',
@@ -260,14 +275,14 @@ export default function CardCollection() {
                   </div>
 
                   {/* Authoritative Price Display */}
-                  <div style={{ margin: '14px 0 16px', padding: '12px 14px', borderRadius: '10px', backgroundColor: 'rgba(255, 255, 255, 0.04)', border: '1px solid rgba(255, 255, 255, 0.07)' }}>
+                  <div style={{ margin: '12px 0 14px', padding: '10px 12px', borderRadius: '10px', backgroundColor: 'rgba(255, 255, 255, 0.04)', border: '1px solid rgba(255, 255, 255, 0.07)' }}>
                     <div style={{ display: 'flex', alignItems: 'baseline', gap: '8px', flexWrap: 'wrap' }}>
                       {formattedPrice ? (
                         <>
                           <span
                             style={{
-                              fontSize: '1.85rem',
-                              fontWeight: 900,
+                              fontSize: '1.45rem',
+                              fontWeight: 800,
                               color: '#FFFFFF',
                               fontFamily: 'var(--font-heading, Sora, sans-serif)',
                               letterSpacing: '-0.02em'
@@ -278,7 +293,7 @@ export default function CardCollection() {
                           {formattedCompare && (
                             <span
                               style={{
-                                fontSize: '1.05rem',
+                                fontSize: '0.88rem',
                                 color: 'rgba(255, 255, 255, 0.45)',
                                 textDecoration: 'line-through'
                               }}
@@ -290,7 +305,7 @@ export default function CardCollection() {
                       ) : (
                         <span
                           style={{
-                            fontSize: '1.25rem',
+                            fontSize: '1.05rem',
                             fontWeight: 700,
                             color: '#F59E0B'
                           }}
@@ -299,26 +314,26 @@ export default function CardCollection() {
                         </span>
                       )}
                     </div>
-                    <div style={{ fontSize: '0.72rem', color: 'rgba(255, 255, 255, 0.55)', marginTop: '4px' }}>
+                    <div style={{ fontSize: '0.68rem', color: 'rgba(255, 255, 255, 0.55)', marginTop: '4px' }}>
                       MRP incl. of all taxes &bull; Includes dynamic NFC redirection
                     </div>
                   </div>
 
                   {/* Short description */}
-                  <p style={{ fontSize: '0.88rem', color: 'rgba(255, 255, 255, 0.72)', lineHeight: 1.55, marginBottom: '20px' }}>
+                  <p style={{ fontSize: '0.82rem', color: 'rgba(255, 255, 255, 0.72)', lineHeight: 1.45, marginBottom: '16px' }}>
                     {product.description || fallbackItem.description}
                   </p>
 
                   {/* Key Included Features (Strictly configured features) */}
-                  <div style={{ borderTop: '1px solid rgba(255, 255, 255, 0.08)', paddingTop: '16px', marginBottom: '26px' }}>
-                    <div style={{ fontSize: '0.74rem', fontWeight: 700, color: accentColor, textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: '12px' }}>
+                  <div style={{ borderTop: '1px solid rgba(255, 255, 255, 0.08)', paddingTop: '14px', marginBottom: '20px' }}>
+                    <div style={{ fontSize: '0.7rem', fontWeight: 700, color: accentColor, textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: '10px' }}>
                       Key Included Features
                     </div>
-                    <ul style={{ listStyle: 'none', margin: 0, padding: 0, display: 'flex', flexDirection: 'column', gap: '9px', fontSize: '0.82rem', color: 'rgba(255, 255, 255, 0.82)' }}>
+                    <ul style={{ listStyle: 'none', margin: 0, padding: 0, display: 'flex', flexDirection: 'column', gap: '8px', fontSize: '0.78rem', color: 'rgba(255, 255, 255, 0.82)' }}>
                       {includedFeatures.map((feat, idx) => (
-                        <li key={idx} style={{ display: 'flex', alignItems: 'flex-start', gap: '9px' }}>
-                          <Check size={14} color={accentColor} style={{ marginTop: '2px', flexShrink: 0 }} />
-                          <span style={{ lineHeight: 1.45 }}>{feat}</span>
+                        <li key={idx} style={{ display: 'flex', alignItems: 'flex-start', gap: '8px' }}>
+                          <Check size={13} color={accentColor} style={{ marginTop: '2px', flexShrink: 0 }} />
+                          <span style={{ lineHeight: 1.4 }}>{feat}</span>
                         </li>
                       ))}
                     </ul>
@@ -332,34 +347,36 @@ export default function CardCollection() {
                     className="btn"
                     style={{
                       width: '100%',
-                      padding: '12px 20px',
+                      padding: '11px 18px',
                       borderRadius: '10px',
                       display: 'flex',
                       alignItems: 'center',
                       justifyContent: 'center',
                       gap: '8px',
                       fontWeight: 700,
-                      fontSize: '0.9rem',
+                      fontSize: '0.85rem',
                       textDecoration: 'none',
                       transition: 'transform 0.2s ease, box-shadow 0.2s ease',
                       background: isGold
                         ? 'linear-gradient(135deg, #FFF0A6 0%, #E9C766 50%, #C9972C 100%)'
                         : isPlatinum
                           ? 'linear-gradient(135deg, #FFFFFF 0%, #E2E8F0 50%, #94A3B8 100%)'
-                          : 'linear-gradient(135deg, #A855F7 0%, #6B00FF 100%)',
-                      color: isGold || isPlatinum ? '#0F0E13' : '#FFFFFF',
+                          : isMetal
+                            ? 'linear-gradient(135deg, #F8FAFC 0%, #CBD5E1 50%, #64748B 100%)'
+                            : 'linear-gradient(135deg, #A855F7 0%, #6B00FF 100%)',
+                      color: isGold || isPlatinum || isMetal ? '#0F0E13' : '#FFFFFF',
                       boxShadow: `0 4px 16px ${accentColor}40`
                     }}
                   >
                     <span>{ctaText}</span>
-                    <ArrowRight size={16} />
+                    <ArrowRight size={15} />
                   </a>
 
                   <a
                     href={key === 'purple' ? '/cards/custom-purple' : `/cards/${key}`}
                     style={{
                       textAlign: 'center',
-                      fontSize: '0.82rem',
+                      fontSize: '0.78rem',
                       color: accentColor,
                       fontWeight: 600,
                       padding: '6px',
@@ -371,8 +388,9 @@ export default function CardCollection() {
                   </a>
                 </div>
               </SpotlightCard>
-            );
-          })}
+            </div>
+          );
+        })}
         </div>
 
         {/* Technical Specification Matrix */}
@@ -387,10 +405,11 @@ export default function CardCollection() {
           </div>
 
           <div style={{ overflowX: 'auto' }}>
-            <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left', minWidth: '600px' }}>
+            <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left', minWidth: '700px' }}>
               <thead>
                 <tr style={{ borderBottom: '1px solid var(--border-color)', color: 'var(--primary-purple)', fontSize: '0.82rem', textTransform: 'uppercase', letterSpacing: '0.08em' }}>
                   <th style={{ padding: '14px 16px' }}>Feature</th>
+                  <th style={{ padding: '14px 16px' }}>Metal Edition</th>
                   <th style={{ padding: '14px 16px' }}>Purple Edition</th>
                   <th style={{ padding: '14px 16px' }}>Gold Edition</th>
                   <th style={{ padding: '14px 16px' }}>Platinum Edition</th>
@@ -399,6 +418,7 @@ export default function CardCollection() {
               <tbody style={{ fontSize: '0.88rem', color: 'var(--text-secondary)' }}>
                 <tr style={{ borderBottom: '1px solid var(--border-color)' }}>
                   <td style={{ padding: '14px 16px', color: 'var(--text-primary)', fontWeight: 600 }}>Surface Material</td>
+                  <td style={{ padding: '14px 16px', color: '#CBD5E1', fontWeight: 600 }}>Brushed Gunmetal Steel</td>
                   <td style={{ padding: '14px 16px', color: 'var(--primary-purple)', fontWeight: 600 }}>Matte Obsidian + UV Gloss</td>
                   <td style={{ padding: '14px 16px' }}>Obsidian + 24K Gold Foil</td>
                   <td style={{ padding: '14px 16px' }}>Satin Alloy Stainless Steel</td>
@@ -408,9 +428,11 @@ export default function CardCollection() {
                   <td style={{ padding: '14px 16px' }}>NXP NTAG216 (High-Freq)</td>
                   <td style={{ padding: '14px 16px' }}>NXP NTAG216 (High-Freq)</td>
                   <td style={{ padding: '14px 16px' }}>NXP NTAG216 (High-Freq)</td>
+                  <td style={{ padding: '14px 16px' }}>NXP NTAG216 (High-Freq)</td>
                 </tr>
                 <tr style={{ borderBottom: '1px solid var(--border-color)' }}>
                   <td style={{ padding: '14px 16px', color: 'var(--text-primary)', fontWeight: 600 }}>Memory Storage</td>
+                  <td style={{ padding: '14px 16px' }}>888 Bytes EEPROM</td>
                   <td style={{ padding: '14px 16px' }}>888 Bytes EEPROM</td>
                   <td style={{ padding: '14px 16px' }}>888 Bytes EEPROM</td>
                   <td style={{ padding: '14px 16px' }}>888 Bytes EEPROM</td>
@@ -420,9 +442,11 @@ export default function CardCollection() {
                   <td style={{ padding: '14px 16px' }}>13.56 MHz (ISO 14443A)</td>
                   <td style={{ padding: '14px 16px' }}>13.56 MHz (ISO 14443A)</td>
                   <td style={{ padding: '14px 16px' }}>13.56 MHz (ISO 14443A)</td>
+                  <td style={{ padding: '14px 16px' }}>13.56 MHz (ISO 14443A)</td>
                 </tr>
                 <tr style={{ borderBottom: '1px solid var(--border-color)' }}>
                   <td style={{ padding: '14px 16px', color: 'var(--text-primary)', fontWeight: 600 }}>Dynamic QR Code</td>
+                  <td style={{ padding: '14px 16px' }}>Scannable Vector (White)</td>
                   <td style={{ padding: '14px 16px' }}>Scannable Vector (Violet)</td>
                   <td style={{ padding: '14px 16px' }}>Scannable Vector (Gold)</td>
                   <td style={{ padding: '14px 16px' }}>Scannable Vector (Chrome)</td>
@@ -432,9 +456,11 @@ export default function CardCollection() {
                   <td style={{ padding: '14px 16px' }}>IP68 Submersible</td>
                   <td style={{ padding: '14px 16px' }}>IP68 Submersible</td>
                   <td style={{ padding: '14px 16px' }}>IP68 Submersible</td>
+                  <td style={{ padding: '14px 16px' }}>IP68 Submersible</td>
                 </tr>
                 <tr>
                   <td style={{ padding: '14px 16px', color: 'var(--text-primary)', fontWeight: 600 }}>App Required?</td>
+                  <td style={{ padding: '14px 16px', color: 'var(--success)', fontWeight: 600 }}>No App Needed</td>
                   <td style={{ padding: '14px 16px', color: 'var(--success)', fontWeight: 600 }}>No App Needed</td>
                   <td style={{ padding: '14px 16px', color: 'var(--success)', fontWeight: 600 }}>No App Needed</td>
                   <td style={{ padding: '14px 16px', color: 'var(--success)', fontWeight: 600 }}>No App Needed</td>

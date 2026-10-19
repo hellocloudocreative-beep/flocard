@@ -32,7 +32,7 @@ export default function Card3DPreview({
     const handleResize = () => {
       if (typeof window !== 'undefined') {
         const available = Math.min(width, window.innerWidth - 32);
-        setResponsiveWidth(Math.max(260, available));
+        setResponsiveWidth(available);
       }
     };
     handleResize();
@@ -189,19 +189,19 @@ export default function Card3DPreview({
           aria-label={`Flip to ${activeSide === 'front' ? 'back' : 'front'} view`}
           style={{
             position: 'absolute',
-            bottom: '-16px',
+            bottom: '-14px',
             left: '50%',
             transform: 'translateX(-50%)',
             background: 'var(--pill-bg)',
             border: '1px solid var(--pill-border)',
             color: 'var(--pill-text)',
             borderRadius: 'var(--radius-full)',
-            padding: '7px 16px',
-            fontSize: '0.78rem',
+            padding: '5px 14px',
+            fontSize: '0.72rem',
             fontWeight: 600,
             display: 'flex',
             alignItems: 'center',
-            gap: '7px',
+            gap: '6px',
             backdropFilter: 'blur(12px)',
             WebkitBackdropFilter: 'blur(12px)',
             cursor: 'pointer',
