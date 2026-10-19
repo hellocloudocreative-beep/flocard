@@ -30,11 +30,22 @@ import {
 } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 import { useData } from '../../context/DataContext';
+import { useTheme } from '../../context/ThemeContext';
 import { ORDER_STAGES, EXCEPTION_STAGES, getOrderStageInfo, normalizeOrderStatus } from '../../lib/storage';
 import { EDITIONS } from '../../lib/constants';
 
 export default function AdminOrderManager({ initialOrderId = null }) {
   const { user } = useAuth();
+  const themeContext = useTheme();
+  const isLight = themeContext ? themeContext.isLight : true;
+  const isDark = themeContext ? themeContext.isDark : false;
+
+  const cardBg = isLight ? '#FFFFFF' : '#100B19';
+  const cardBorder = isLight ? '#E8E3EF' : '#2A1D3B';
+  const elevatedBg = isLight ? '#F7F6FA' : '#171022';
+  const textPrimary = isLight ? '#191522' : '#FFFFFF';
+  const textSecondary = isLight ? '#777184' : '#B8AEC8';
+  const textMuted = isLight ? '#9CA3AF' : '#7C728E';
   const {
     orders = [],
     updateOrderStatus,
@@ -169,28 +180,28 @@ export default function AdminOrderManager({ initialOrderId = null }) {
           gap: '14px'
         }}
       >
-        <div style={{ backgroundColor: 'var(--card-surface)', borderRadius: '14px', border: '1px solid var(--border-color)', padding: '16px 20px' }}>
-          <div style={{ fontSize: '0.74rem', color: 'var(--text-muted)', textTransform: 'uppercase', fontWeight: 600 }}>Total Orders</div>
-          <div style={{ fontSize: '1.8rem', fontWeight: 800, color: 'var(--text-primary)', marginTop: '4px' }}>{orders.length}</div>
+        <div style={{ backgroundColor: cardBg, borderRadius: '16px', border: `1px solid ${cardBorder}`, padding: '18px 20px', boxShadow: '0 2px 8px rgba(0, 0, 0, 0.02)' }}>
+          <div style={{ fontSize: '0.78rem', color: textSecondary, fontWeight: 500 }}>Total Orders</div>
+          <div style={{ fontSize: '1.75rem', fontWeight: 800, color: textPrimary, marginTop: '4px', fontFamily: 'var(--font-heading, Sora)' }}>{orders.length}</div>
         </div>
 
-        <div style={{ backgroundColor: 'var(--card-surface)', borderRadius: '14px', border: '1px solid var(--border-color)', padding: '16px 20px' }}>
-          <div style={{ fontSize: '0.74rem', color: '#F59E0B', textTransform: 'uppercase', fontWeight: 600 }}>In Production</div>
-          <div style={{ fontSize: '1.8rem', fontWeight: 800, color: '#F59E0B', marginTop: '4px' }}>
+        <div style={{ backgroundColor: cardBg, borderRadius: '16px', border: `1px solid ${cardBorder}`, padding: '18px 20px', boxShadow: '0 2px 8px rgba(0, 0, 0, 0.02)' }}>
+          <div style={{ fontSize: '0.78rem', color: '#D97706', fontWeight: 500 }}>In Production</div>
+          <div style={{ fontSize: '1.75rem', fontWeight: 800, color: '#D97706', marginTop: '4px', fontFamily: 'var(--font-heading, Sora)' }}>
             {orders.filter(o => ['design_submitted', 'artwork_approved', 'manufacturing_started', 'quality_inspection'].includes(normalizeOrderStatus(o.status))).length}
           </div>
         </div>
 
-        <div style={{ backgroundColor: 'var(--card-surface)', borderRadius: '14px', border: '1px solid var(--border-color)', padding: '16px 20px' }}>
-          <div style={{ fontSize: '0.74rem', color: '#3B82F6', textTransform: 'uppercase', fontWeight: 600 }}>Dispatched</div>
-          <div style={{ fontSize: '1.8rem', fontWeight: 800, color: '#3B82F6', marginTop: '4px' }}>
+        <div style={{ backgroundColor: cardBg, borderRadius: '16px', border: `1px solid ${cardBorder}`, padding: '18px 20px', boxShadow: '0 2px 8px rgba(0, 0, 0, 0.02)' }}>
+          <div style={{ fontSize: '0.78rem', color: '#2563EB', fontWeight: 500 }}>Dispatched</div>
+          <div style={{ fontSize: '1.75rem', fontWeight: 800, color: '#2563EB', marginTop: '4px', fontFamily: 'var(--font-heading, Sora)' }}>
             {orders.filter(o => normalizeOrderStatus(o.status) === 'dispatched').length}
           </div>
         </div>
 
-        <div style={{ backgroundColor: 'var(--card-surface)', borderRadius: '14px', border: '1px solid var(--border-color)', padding: '16px 20px' }}>
-          <div style={{ fontSize: '0.74rem', color: '#10B981', textTransform: 'uppercase', fontWeight: 600 }}>Delivered & Live</div>
-          <div style={{ fontSize: '1.8rem', fontWeight: 800, color: '#10B981', marginTop: '4px' }}>
+        <div style={{ backgroundColor: cardBg, borderRadius: '16px', border: `1px solid ${cardBorder}`, padding: '18px 20px', boxShadow: '0 2px 8px rgba(0, 0, 0, 0.02)' }}>
+          <div style={{ fontSize: '0.78rem', color: '#059669', fontWeight: 500 }}>Delivered & Live</div>
+          <div style={{ fontSize: '1.75rem', fontWeight: 800, color: '#059669', marginTop: '4px', fontFamily: 'var(--font-heading, Sora)' }}>
             {orders.filter(o => normalizeOrderStatus(o.status) === 'delivered').length}
           </div>
         </div>
@@ -198,26 +209,38 @@ export default function AdminOrderManager({ initialOrderId = null }) {
 
       {/* Main Table Container */}
       <div
-        className="glass-panel"
         style={{
           padding: '24px',
-          backgroundColor: 'var(--card-surface)',
+          backgroundColor: cardBg,
           borderRadius: '16px',
-          border: '1px solid var(--border-color)'
+          border: `1px solid ${cardBorder}`,
+          boxShadow: '0 2px 8px rgba(0, 0, 0, 0.02)'
         }}
       >
         {/* Controls: Search & Status Filter Chips */}
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '14px', marginBottom: '20px' }}>
           {/* Search Input */}
           <div style={{ position: 'relative', width: '280px', maxWidth: '100%' }}>
-            <Search size={15} style={{ position: 'absolute', left: '12px', top: '50%', transform: 'translateY(-50%)', color: 'var(--text-muted)' }} />
+            <Search size={15} style={{ position: 'absolute', left: '12px', top: '50%', transform: 'translateY(-50%)', color: textSecondary }} />
             <input
               type="text"
               value={searchQuery}
               onChange={e => setSearchQuery(e.target.value)}
               placeholder="Search reference, customer, email..."
-              className="input"
-              style={{ width: '100%', paddingLeft: '34px', fontSize: '0.82rem', borderRadius: '8px' }}
+              style={{
+                width: '100%',
+                paddingLeft: '34px',
+                paddingRight: '12px',
+                paddingTop: '8px',
+                paddingBottom: '8px',
+                fontSize: '0.82rem',
+                borderRadius: '8px',
+                border: `1px solid ${cardBorder}`,
+                backgroundColor: elevatedBg,
+                color: textPrimary,
+                outline: 'none',
+                boxSizing: 'border-box'
+              }}
             />
           </div>
 
@@ -234,13 +257,15 @@ export default function AdminOrderManager({ initialOrderId = null }) {
                   style={{
                     padding: '6px 12px',
                     borderRadius: '8px',
-                    border: isActive ? '1px solid var(--primary-purple)' : '1px solid var(--border-color)',
-                    backgroundColor: isActive ? 'var(--primary-purple)' : 'var(--elevated-surface)',
-                    color: isActive ? '#FFFFFF' : 'var(--text-secondary)',
+                    border: isActive ? '1px solid #6B00FF' : `1px solid ${cardBorder}`,
+                    backgroundColor: isActive ? '#6B00FF' : elevatedBg,
+                    color: isActive ? '#FFFFFF' : textSecondary,
                     fontSize: '0.74rem',
                     fontWeight: 600,
                     cursor: 'pointer',
-                    textTransform: 'capitalize'
+                    textTransform: 'capitalize',
+                    boxShadow: isActive ? '0 2px 8px rgba(107, 0, 255, 0.3)' : 'none',
+                    transition: 'all 0.15s ease'
                   }}
                 >
                   {st === 'all' ? `All (${count})` : `${getOrderStageInfo(st).label} (${count})`}
@@ -254,7 +279,7 @@ export default function AdminOrderManager({ initialOrderId = null }) {
         <div style={{ overflowX: 'auto' }}>
           <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left', fontSize: '0.82rem' }}>
             <thead>
-              <tr style={{ borderBottom: '1px solid var(--border-color)', color: 'var(--text-muted)', fontSize: '0.72rem', textTransform: 'uppercase' }}>
+              <tr style={{ borderBottom: `1px solid ${cardBorder}`, color: textSecondary, fontSize: '0.72rem', textTransform: 'uppercase', fontWeight: 600 }}>
                 <th style={{ padding: '12px 14px' }}>Order Reference</th>
                 <th style={{ padding: '12px 14px' }}>Customer & Company</th>
                 <th style={{ padding: '12px 14px' }}>Card Edition</th>
@@ -266,12 +291,12 @@ export default function AdminOrderManager({ initialOrderId = null }) {
             <tbody>
               {filteredOrders.length === 0 ? (
                 <tr>
-                  <td colSpan={6} style={{ padding: '48px 16px', textAlign: 'center', color: 'var(--text-secondary)' }}>
-                    <Package size={36} color="var(--border-color)" style={{ margin: '0 auto 10px', display: 'block' }} />
-                    <div style={{ fontWeight: 600, color: 'var(--text-primary)', marginBottom: '4px' }}>
+                  <td colSpan={6} style={{ padding: '48px 16px', textAlign: 'center', color: textSecondary }}>
+                    <Package size={36} color={cardBorder} style={{ margin: '0 auto 10px', display: 'block' }} />
+                    <div style={{ fontWeight: 600, color: textPrimary, marginBottom: '4px' }}>
                       {orders.length === 0 ? 'No manufacturing orders in queue' : 'No orders matching filter'}
                     </div>
-                    <div style={{ fontSize: '0.76rem', color: 'var(--text-muted)' }}>
+                    <div style={{ fontSize: '0.76rem', color: textMuted }}>
                       {orders.length === 0 ? 'Approved designs from the Card Designs queue will appear here as real production orders.' : 'Try adjusting your search query or status filter.'}
                     </div>
                   </td>
@@ -285,22 +310,22 @@ export default function AdminOrderManager({ initialOrderId = null }) {
                   const ed = EDITIONS[order.edition] || EDITIONS.purple;
 
                   return (
-                    <tr key={order.id} style={{ borderBottom: '1px solid var(--border-color)' }}>
+                    <tr key={order.id} style={{ borderBottom: `1px solid ${cardBorder}` }}>
                       {/* Order Reference */}
                       <td style={{ padding: '12px 14px' }}>
-                        <div style={{ fontFamily: 'monospace', fontWeight: 700, color: 'var(--accent-purple)' }}>
+                        <div style={{ fontFamily: 'monospace', fontWeight: 700, color: '#6B00FF' }}>
                           {order.orderReference || order.id}
                         </div>
-                        <div style={{ fontSize: '0.7rem', color: 'var(--text-muted)', marginTop: '2px' }}>
+                        <div style={{ fontSize: '0.7rem', color: textMuted, marginTop: '2px' }}>
                           {new Date(order.orderDate || order.createdAt).toLocaleDateString()}
                         </div>
                       </td>
 
                       {/* Customer */}
                       <td style={{ padding: '12px 14px' }}>
-                        <div style={{ fontWeight: 700, color: 'var(--text-primary)' }}>{order.customerName}</div>
-                        <div style={{ fontSize: '0.74rem', color: 'var(--text-secondary)' }}>{order.customerEmail}</div>
-                        {order.company && <div style={{ fontSize: '0.7rem', color: 'var(--accent-purple)' }}>{order.company}</div>}
+                        <div style={{ fontWeight: 700, color: textPrimary }}>{order.customerName}</div>
+                        <div style={{ fontSize: '0.74rem', color: textSecondary }}>{order.customerEmail}</div>
+                        {order.company && <div style={{ fontSize: '0.7rem', color: '#6B00FF', fontWeight: 600 }}>{order.company}</div>}
                       </td>
 
                       {/* Card Edition */}
@@ -319,7 +344,7 @@ export default function AdminOrderManager({ initialOrderId = null }) {
                         >
                           {ed.name}
                         </span>
-                        <div style={{ fontSize: '0.7rem', color: 'var(--text-muted)', marginTop: '4px' }}>
+                        <div style={{ fontSize: '0.7rem', color: textMuted, marginTop: '4px' }}>
                           {order.templateType === 'customer_logo' ? 'With Customer Logo' : 'Standard Format'}
                         </div>
                       </td>
@@ -332,9 +357,9 @@ export default function AdminOrderManager({ initialOrderId = null }) {
                             fontWeight: 700,
                             padding: '3px 10px',
                             borderRadius: '9999px',
-                            backgroundColor: isDelivered ? 'rgba(16, 185, 129, 0.15)' : isException ? 'rgba(239, 68, 68, 0.15)' : 'rgba(107, 0, 255, 0.15)',
-                            color: isDelivered ? '#10B981' : isException ? '#EF4444' : 'var(--accent-purple)',
-                            border: '1px solid var(--border-color)',
+                            backgroundColor: isDelivered ? (isLight ? '#ECFDF5' : 'rgba(16, 185, 129, 0.15)') : isException ? (isLight ? '#FEF2F2' : 'rgba(239, 68, 68, 0.15)') : (isLight ? '#F3EEFF' : 'rgba(107, 0, 255, 0.15)'),
+                            color: isDelivered ? '#059669' : isException ? '#DC2626' : '#6B00FF',
+                            border: `1px solid ${isDelivered ? (isLight ? '#A7F3D0' : 'rgba(16, 185, 129, 0.3)') : isException ? (isLight ? '#FECACA' : 'rgba(239, 68, 68, 0.3)') : (isLight ? '#DDD6FE' : 'rgba(107, 0, 255, 0.3)')}`,
                             display: 'inline-flex',
                             alignItems: 'center',
                             gap: '4px'
@@ -348,15 +373,15 @@ export default function AdminOrderManager({ initialOrderId = null }) {
                       <td style={{ padding: '12px 14px' }}>
                         {order.trackingNumber ? (
                           <div>
-                            <div style={{ fontSize: '0.76rem', color: '#3B82F6', fontWeight: 600 }}>
+                            <div style={{ fontSize: '0.76rem', color: '#2563EB', fontWeight: 600 }}>
                               {order.trackingNumber}
                             </div>
-                            <div style={{ fontSize: '0.7rem', color: 'var(--text-muted)' }}>
+                            <div style={{ fontSize: '0.7rem', color: textMuted }}>
                               {order.carrierName || 'Courier'}
                             </div>
                           </div>
                         ) : (
-                          <span style={{ fontSize: '0.74rem', color: 'var(--text-muted)', fontStyle: 'italic' }}>
+                          <span style={{ fontSize: '0.74rem', color: textMuted, fontStyle: 'italic' }}>
                             Unassigned
                           </span>
                         )}
@@ -401,32 +426,31 @@ export default function AdminOrderManager({ initialOrderId = null }) {
           }}
         >
           <div
-            className="glass-panel"
             style={{
               maxWidth: '620px',
               width: '100%',
-              backgroundColor: 'var(--card-surface)',
+              backgroundColor: cardBg,
               borderRadius: '20px',
-              border: '1px solid var(--border-highlight)',
+              border: `1px solid ${cardBorder}`,
               padding: '28px',
-              boxShadow: 'var(--shadow-card)',
+              boxShadow: isLight ? '0 20px 45px rgba(76, 29, 149, 0.12)' : '0 20px 50px rgba(0, 0, 0, 0.6)',
               maxHeight: '90vh',
               overflowY: 'auto'
             }}
           >
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '18px' }}>
               <div>
-                <h3 style={{ margin: 0, fontSize: '1.25rem', color: 'var(--text-primary)', fontWeight: 700 }}>
+                <h3 style={{ margin: 0, fontSize: '1.25rem', color: textPrimary, fontWeight: 700 }}>
                   Update Order Journey: {selectedOrder.orderReference || selectedOrder.id}
                 </h3>
-                <p style={{ margin: '4px 0 0', fontSize: '0.8rem', color: 'var(--text-secondary)' }}>
+                <p style={{ margin: '4px 0 0', fontSize: '0.8rem', color: textSecondary }}>
                   Customer: <strong>{selectedOrder.customerName}</strong> ({selectedOrder.customerEmail})
                 </p>
               </div>
               <button
                 type="button"
                 onClick={() => setIsUpdateModalOpen(false)}
-                style={{ background: 'none', border: 'none', color: 'var(--text-muted)', cursor: 'pointer' }}
+                style={{ background: 'none', border: 'none', color: textMuted, cursor: 'pointer' }}
               >
                 <X size={20} />
               </button>
@@ -435,14 +459,13 @@ export default function AdminOrderManager({ initialOrderId = null }) {
             <form onSubmit={handleStatusChangePrecheck} style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
               {/* Select Stage */}
               <div>
-                <label style={{ fontSize: '0.78rem', fontWeight: 600, color: 'var(--text-secondary)', display: 'block', marginBottom: '6px' }}>
+                <label style={{ fontSize: '0.78rem', fontWeight: 600, color: textSecondary, display: 'block', marginBottom: '6px' }}>
                   Fulfillment Stage
                 </label>
                 <select
                   value={targetStatus}
                   onChange={e => setTargetStatus(e.target.value)}
-                  className="input"
-                  style={{ width: '100%', fontSize: '0.86rem', padding: '10px 12px', borderRadius: '8px' }}
+                  style={{ width: '100%', fontSize: '0.86rem', padding: '10px 12px', borderRadius: '8px', border: `1px solid ${cardBorder}`, backgroundColor: elevatedBg, color: textPrimary }}
                 >
                   <optgroup label="Standard Sequential Pipeline">
                     {ORDER_STAGES.map(s => (
@@ -463,7 +486,7 @@ export default function AdminOrderManager({ initialOrderId = null }) {
 
               {/* Customer-Facing Public Update Message */}
               <div>
-                <label style={{ fontSize: '0.78rem', fontWeight: 600, color: 'var(--text-secondary)', display: 'block', marginBottom: '6px' }}>
+                <label style={{ fontSize: '0.78rem', fontWeight: 600, color: textSecondary, display: 'block', marginBottom: '6px' }}>
                   Customer-Facing Update Message (Visible in customer timeline & in-app notification)
                 </label>
                 <textarea
@@ -471,13 +494,12 @@ export default function AdminOrderManager({ initialOrderId = null }) {
                   value={publicMessage}
                   onChange={e => setPublicMessage(e.target.value)}
                   placeholder="Optional custom message explaining this stage to the client..."
-                  className="input"
-                  style={{ width: '100%', fontSize: '0.82rem', resize: 'vertical', borderRadius: '8px' }}
+                  style={{ width: '100%', fontSize: '0.82rem', resize: 'vertical', borderRadius: '8px', border: `1px solid ${cardBorder}`, backgroundColor: elevatedBg, color: textPrimary, padding: '10px 12px' }}
                 />
               </div>
 
               {/* Private Administrative Internal Note (Protected - Never Exposed to Customers) */}
-              <div style={{ backgroundColor: 'rgba(239, 68, 68, 0.05)', padding: '14px', borderRadius: '10px', border: '1px solid rgba(239, 68, 68, 0.2)' }}>
+              <div style={{ backgroundColor: isLight ? '#FEF2F2' : 'rgba(239, 68, 68, 0.05)', padding: '14px', borderRadius: '10px', border: `1px solid ${isLight ? '#FECACA' : 'rgba(239, 68, 68, 0.2)'}` }}>
                 <label style={{ fontSize: '0.78rem', fontWeight: 700, color: '#EF4444', display: 'flex', alignItems: 'center', gap: '6px', marginBottom: '6px' }}>
                   <Lock size={13} />
                   <span>Private Internal Administrative Note (ADMIN ONLY — Never sent to customer)</span>
@@ -487,15 +509,14 @@ export default function AdminOrderManager({ initialOrderId = null }) {
                   value={internalNote}
                   onChange={e => setInternalNote(e.target.value)}
                   placeholder="e.g. Quality inspection passed on batch #882. Courier waybill printed."
-                  className="input"
-                  style={{ width: '100%', fontSize: '0.82rem', resize: 'vertical', backgroundColor: 'var(--card-surface)', borderRadius: '8px' }}
+                  style={{ width: '100%', fontSize: '0.82rem', resize: 'vertical', backgroundColor: cardBg, borderRadius: '8px', border: `1px solid ${cardBorder}`, color: textPrimary, padding: '8px 10px' }}
                 />
               </div>
 
               {/* Carrier Tracking Information */}
               <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 220px), 1fr))', gap: '12px' }}>
                 <div>
-                  <label style={{ fontSize: '0.76rem', fontWeight: 600, color: 'var(--text-secondary)', display: 'block', marginBottom: '4px' }}>
+                  <label style={{ fontSize: '0.76rem', fontWeight: 600, color: textSecondary, display: 'block', marginBottom: '4px' }}>
                     Courier / Carrier Name
                   </label>
                   <input
@@ -503,12 +524,11 @@ export default function AdminOrderManager({ initialOrderId = null }) {
                     value={carrierName}
                     onChange={e => setCarrierName(e.target.value)}
                     placeholder="e.g. BlueDart / DHL / FedEx"
-                    className="input"
-                    style={{ width: '100%', fontSize: '0.82rem', borderRadius: '8px' }}
+                    style={{ width: '100%', fontSize: '0.82rem', borderRadius: '8px', border: `1px solid ${cardBorder}`, backgroundColor: elevatedBg, color: textPrimary, padding: '8px 12px' }}
                   />
                 </div>
                 <div>
-                  <label style={{ fontSize: '0.76rem', fontWeight: 600, color: 'var(--text-secondary)', display: 'block', marginBottom: '4px' }}>
+                  <label style={{ fontSize: '0.76rem', fontWeight: 600, color: textSecondary, display: 'block', marginBottom: '4px' }}>
                     Tracking / Waybill Number
                   </label>
                   <input
@@ -516,15 +536,14 @@ export default function AdminOrderManager({ initialOrderId = null }) {
                     value={trackingNumber}
                     onChange={e => setTrackingNumber(e.target.value)}
                     placeholder="e.g. BD98712345"
-                    className="input"
-                    style={{ width: '100%', fontSize: '0.82rem', borderRadius: '8px' }}
+                    style={{ width: '100%', fontSize: '0.82rem', borderRadius: '8px', border: `1px solid ${cardBorder}`, backgroundColor: elevatedBg, color: textPrimary, padding: '8px 12px' }}
                   />
                 </div>
               </div>
 
               <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 220px), 1fr))', gap: '12px' }}>
                 <div>
-                  <label style={{ fontSize: '0.76rem', fontWeight: 600, color: 'var(--text-secondary)', display: 'block', marginBottom: '4px' }}>
+                  <label style={{ fontSize: '0.76rem', fontWeight: 600, color: textSecondary, display: 'block', marginBottom: '4px' }}>
                     Tracking URL
                   </label>
                   <input
@@ -532,20 +551,18 @@ export default function AdminOrderManager({ initialOrderId = null }) {
                     value={trackingUrl}
                     onChange={e => setTrackingUrl(e.target.value)}
                     placeholder="https://..."
-                    className="input"
-                    style={{ width: '100%', fontSize: '0.82rem', borderRadius: '8px' }}
+                    style={{ width: '100%', fontSize: '0.82rem', borderRadius: '8px', border: `1px solid ${cardBorder}`, backgroundColor: elevatedBg, color: textPrimary, padding: '8px 12px' }}
                   />
                 </div>
                 <div>
-                  <label style={{ fontSize: '0.76rem', fontWeight: 600, color: 'var(--text-secondary)', display: 'block', marginBottom: '4px' }}>
+                  <label style={{ fontSize: '0.76rem', fontWeight: 600, color: textSecondary, display: 'block', marginBottom: '4px' }}>
                     Estimated Delivery Date
                   </label>
                   <input
                     type="date"
                     value={estimatedDeliveryAt}
                     onChange={e => setEstimatedDeliveryAt(e.target.value)}
-                    className="input"
-                    style={{ width: '100%', fontSize: '0.82rem', borderRadius: '8px' }}
+                    style={{ width: '100%', fontSize: '0.82rem', borderRadius: '8px', border: `1px solid ${cardBorder}`, backgroundColor: elevatedBg, color: textPrimary, padding: '8px 12px' }}
                   />
                 </div>
               </div>
@@ -566,7 +583,16 @@ export default function AdminOrderManager({ initialOrderId = null }) {
                 <button
                   type="button"
                   onClick={() => setIsUpdateModalOpen(false)}
-                  className="btn btn-outline btn-sm"
+                  style={{
+                    padding: '8px 16px',
+                    borderRadius: '8px',
+                    border: `1px solid ${cardBorder}`,
+                    backgroundColor: elevatedBg,
+                    color: textPrimary,
+                    fontSize: '0.84rem',
+                    fontWeight: 600,
+                    cursor: 'pointer'
+                  }}
                 >
                   Cancel
                 </button>
@@ -600,29 +626,38 @@ export default function AdminOrderManager({ initialOrderId = null }) {
           }}
         >
           <div
-            className="glass-panel"
             style={{
               maxWidth: '440px',
               width: '100%',
-              backgroundColor: 'var(--card-surface)',
+              backgroundColor: cardBg,
               borderRadius: '16px',
-              border: '1px solid var(--border-highlight)',
+              border: `1px solid ${cardBorder}`,
               padding: '24px',
-              textAlign: 'center'
+              textAlign: 'center',
+              boxShadow: isLight ? '0 20px 45px rgba(76, 29, 149, 0.12)' : '0 20px 50px rgba(0, 0, 0, 0.6)'
             }}
           >
             <AlertTriangle size={36} color="#F59E0B" style={{ margin: '0 auto 12px', display: 'block' }} />
-            <h3 style={{ margin: '0 0 8px', fontSize: '1.15rem', color: 'var(--text-primary)' }}>
+            <h3 style={{ margin: '0 0 8px', fontSize: '1.15rem', color: textPrimary }}>
               {confirmDialog.title}
             </h3>
-            <p style={{ margin: '0 0 20px', fontSize: '0.82rem', color: 'var(--text-secondary)', lineHeight: 1.5 }}>
+            <p style={{ margin: '0 0 20px', fontSize: '0.82rem', color: textSecondary, lineHeight: 1.5 }}>
               {confirmDialog.message}
             </p>
             <div style={{ display: 'flex', gap: '10px', justifyContent: 'center' }}>
               <button
                 type="button"
                 onClick={() => setConfirmDialog(null)}
-                className="btn btn-outline btn-sm"
+                style={{
+                  padding: '8px 16px',
+                  borderRadius: '8px',
+                  border: `1px solid ${cardBorder}`,
+                  backgroundColor: elevatedBg,
+                  color: textPrimary,
+                  fontSize: '0.84rem',
+                  fontWeight: 600,
+                  cursor: 'pointer'
+                }}
               >
                 Go Back
               </button>

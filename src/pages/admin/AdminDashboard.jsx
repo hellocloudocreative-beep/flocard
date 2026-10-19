@@ -58,10 +58,13 @@ import {
   Building2,
   Upload,
   Camera,
-  Tag
+  Tag,
+  Sun,
+  Moon
 } from 'lucide-react';
 import { useData } from '../../context/DataContext';
 import { useAuth } from '../../context/AuthContext';
+import { useTheme } from '../../context/ThemeContext';
 import Card3DPreview from '../../components/Card3DPreview';
 import CompactProfileCard from '../../components/profile/CompactProfileCard';
 import { uploadImage } from '../../lib/uploadImage';
@@ -78,6 +81,10 @@ import AdminLogin from '../auth/AdminLogin';
 
 export default function AdminDashboard({ initialTab = 'overview', initialOrderId = null }) {
   const { user, isOwner, isAdmin, logout, switchPersona } = useAuth();
+  const themeContext = useTheme();
+  const isDark = themeContext ? themeContext.isDark : false;
+  const isLight = themeContext ? themeContext.isLight : true;
+  const toggleTheme = themeContext ? themeContext.toggleTheme : () => {};
 
   const {
     profiles = [],
@@ -607,8 +614,8 @@ export default function AdminDashboard({ initialTab = 'overview', initialOrderId
       style={{
         display: 'flex',
         minHeight: '100vh',
-        backgroundColor: '#F7F6FA',
-        color: '#191522',
+        backgroundColor: isDark ? '#08060D' : '#F7F6FA',
+        color: isDark ? '#FFFFFF' : '#191522',
         fontFamily: 'var(--font-body, Inter, sans-serif)',
         position: 'relative',
         overflowX: 'clip',
@@ -624,13 +631,13 @@ export default function AdminDashboard({ initialTab = 'overview', initialOrderId
         />
       )}
       {/* ====================================================================
-          1. DARK BRANDED SIDEBAR NAVIGATION (#100819)
+          1. BRANDED SIDEBAR NAVIGATION (Light/Dark aware)
           ==================================================================== */}
       <aside
         style={{
           width: '260px',
-          backgroundColor: '#100819',
-          borderRight: '1px solid #1B1028',
+          backgroundColor: isLight ? '#FFFFFF' : '#100819',
+          borderRight: isLight ? '1px solid #E8E3EF' : '1px solid #1B1028',
           display: 'flex',
           flexDirection: 'column',
           justifyContent: 'space-between',
@@ -643,7 +650,7 @@ export default function AdminDashboard({ initialTab = 'overview', initialOrderId
           boxSizing: 'border-box',
           overflowX: 'hidden',
           overflowY: 'auto',
-          transition: 'transform 0.3s ease'
+          transition: 'transform 0.3s ease, background-color 0.25s ease, border-color 0.25s ease'
         }}
         className={`admin-sidebar ${sidebarOpen ? 'mobile-open' : ''}`}
       >
@@ -652,7 +659,7 @@ export default function AdminDashboard({ initialTab = 'overview', initialOrderId
           <div style={{ padding: '0 8px 24px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', overflow: 'hidden' }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: '8px', maxWidth: '100%', overflow: 'hidden' }}>
               <img
-                src="/assets/logo-light.png"
+                src={isLight ? '/assets/logo-dark.png' : '/assets/logo-light.png'}
                 alt="FLOCARD"
                 style={{ height: '24px', width: 'auto', display: 'block', maxWidth: '160px', objectFit: 'contain' }}
                 onError={(e) => {
@@ -718,7 +725,7 @@ export default function AdminDashboard({ initialTab = 'overview', initialOrderId
                     background: active
                       ? 'linear-gradient(135deg, #6B00FF 0%, #8B5CF6 100%)'
                       : 'transparent',
-                    color: active ? '#FFFFFF' : '#B8AEC8',
+                    color: active ? '#FFFFFF' : (isLight ? '#5C546B' : '#B8AEC8'),
                     fontWeight: active ? 600 : 500,
                     fontSize: '0.88rem',
                     textAlign: 'left',
@@ -727,32 +734,32 @@ export default function AdminDashboard({ initialTab = 'overview', initialOrderId
                   }}
                   onMouseEnter={(e) => {
                     if (!active) {
-                      e.currentTarget.style.backgroundColor = '#1B1028';
-                      e.currentTarget.style.color = '#FFFFFF';
+                      e.currentTarget.style.backgroundColor = isLight ? '#F4EFFC' : '#1B1028';
+                      e.currentTarget.style.color = isLight ? '#6B00FF' : '#FFFFFF';
                     }
                   }}
                   onMouseLeave={(e) => {
                     if (!active) {
                       e.currentTarget.style.backgroundColor = 'transparent';
-                      e.currentTarget.style.color = '#B8AEC8';
+                      e.currentTarget.style.color = isLight ? '#5C546B' : '#B8AEC8';
                     }
                   }}
                 >
                   <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-                    <Icon size={18} color={active ? '#FFFFFF' : '#82758F'} />
+                    <Icon size={18} color={active ? '#FFFFFF' : (isLight ? '#6B5F7F' : '#82758F')} />
                     <span>{item.label}</span>
                   </div>
 
                   {item.badge !== undefined && item.badge !== null && (
                     <span
                       style={{
-                        background: active ? 'rgba(255, 255, 255, 0.22)' : '#1B1028',
-                        color: active ? '#FFFFFF' : '#A855F7',
+                        background: active ? 'rgba(255, 255, 255, 0.22)' : (isLight ? '#F3EEFF' : '#1B1028'),
+                        color: active ? '#FFFFFF' : (isLight ? '#6B00FF' : '#A855F7'),
                         fontSize: '0.7rem',
                         fontWeight: 700,
                         padding: '2px 8px',
                         borderRadius: '9999px',
-                        border: active ? 'none' : '1px solid #30223F'
+                        border: active ? 'none' : (isLight ? '1px solid #E4D9F8' : '1px solid #30223F')
                       }}
                     >
                       {item.badge}
@@ -764,17 +771,17 @@ export default function AdminDashboard({ initialTab = 'overview', initialOrderId
           </nav>
         </div>
 
-        {/* Bottom NFC Obsidian Card Graphic & Tagline Widget */}
+        {/* Bottom NFC Card Graphic & Tagline Widget */}
         <div>
           <div
             style={{
-              background: 'linear-gradient(180deg, #1B1028 0%, #120A1D 100%)',
-              border: '1px solid #30223F',
+              background: isLight ? 'linear-gradient(180deg, #F6EFFE 0%, #EDE3FC 100%)' : 'linear-gradient(180deg, #1B1028 0%, #120A1D 100%)',
+              border: isLight ? '1px solid #E4D7F8' : '1px solid #30223F',
               borderRadius: '16px',
               padding: '16px 14px',
               position: 'relative',
               overflow: 'hidden',
-              boxShadow: '0 8px 24px rgba(0, 0, 0, 0.4)'
+              boxShadow: isLight ? '0 4px 16px rgba(107, 0, 255, 0.08)' : '0 8px 24px rgba(0, 0, 0, 0.4)'
             }}
           >
             {/* Tilted NFC Obsidian Cards Illustration */}
@@ -824,10 +831,10 @@ export default function AdminDashboard({ initialTab = 'overview', initialOrderId
             </div>
 
             <div style={{ textAlign: 'center' }}>
-              <div style={{ fontSize: '0.82rem', fontWeight: 700, color: '#FFFFFF', letterSpacing: '-0.01em' }}>
+              <div style={{ fontSize: '0.82rem', fontWeight: 700, color: isLight ? '#191522' : '#FFFFFF', letterSpacing: '-0.01em' }}>
                 One Tap. Every Connection.
               </div>
-              <div style={{ fontSize: '0.68rem', color: '#82758F', marginTop: '2px' }}>
+              <div style={{ fontSize: '0.68rem', color: isLight ? '#6B637B' : '#82758F', marginTop: '2px' }}>
                 NFC Enterprise Identity
               </div>
             </div>
@@ -855,8 +862,8 @@ export default function AdminDashboard({ initialTab = 'overview', initialOrderId
         <header
           className="admin-header"
           style={{
-            backgroundColor: '#FFFFFF',
-            borderBottom: '1px solid #E8E3EF',
+            backgroundColor: isDark ? '#0E0A16' : '#FFFFFF',
+            borderBottom: isDark ? '1px solid #1F162B' : '1px solid #E8E3EF',
             padding: '16px 32px',
             display: 'flex',
             alignItems: 'center',
@@ -864,7 +871,8 @@ export default function AdminDashboard({ initialTab = 'overview', initialOrderId
             position: 'sticky',
             top: 0,
             zIndex: 90,
-            boxShadow: '0 1px 3px rgba(0, 0, 0, 0.02)'
+            boxShadow: isDark ? '0 4px 20px rgba(0, 0, 0, 0.4)' : '0 1px 3px rgba(0, 0, 0, 0.02)',
+            transition: 'background-color 0.25s ease, border-color 0.25s ease'
           }}
         >
           {/* Left: Mobile Toggle + Page Heading */}
@@ -877,7 +885,7 @@ export default function AdminDashboard({ initialTab = 'overview', initialOrderId
                 display: 'none',
                 background: 'none',
                 border: 'none',
-                color: '#191522',
+                color: isDark ? '#FFFFFF' : '#191522',
                 cursor: 'pointer',
                 padding: '4px',
                 flexShrink: 0
@@ -894,7 +902,7 @@ export default function AdminDashboard({ initialTab = 'overview', initialOrderId
                   margin: 0,
                   fontSize: '1.45rem',
                   fontWeight: 800,
-                  color: '#191522',
+                  color: isDark ? '#FFFFFF' : '#191522',
                   fontFamily: 'var(--font-heading, Sora)',
                   letterSpacing: '-0.02em',
                   whiteSpace: 'nowrap',
@@ -916,7 +924,7 @@ export default function AdminDashboard({ initialTab = 'overview', initialOrderId
                 {activeTab === 'audit-logs' && 'Audit Logs'}
                 {activeTab === 'settings' && 'Settings'}
               </h1>
-              <p className="admin-page-subtitle" style={{ margin: '2px 0 0', fontSize: '0.84rem', color: '#777184' }}>
+              <p className="admin-page-subtitle" style={{ margin: '2px 0 0', fontSize: '0.84rem', color: isDark ? '#9B90AD' : '#777184' }}>
                 {activeTab === 'overview' && "Welcome back! Here's what's happening with FLOCARD."}
                 {activeTab === 'customers' && 'Manage authenticated customer accounts and enterprise partners.'}
                 {activeTab === 'profiles' && 'Public digital identity profiles, slugs, and live resolutions.'}
@@ -934,7 +942,7 @@ export default function AdminDashboard({ initialTab = 'overview', initialOrderId
             </div>
           </div>
 
-          {/* Right: Search, Notifications, Date Filter & Profile Pill */}
+          {/* Right: Search, Notifications, Theme Toggle, Date Filter & Profile Pill */}
           <div className="admin-header-actions" style={{ display: 'flex', alignItems: 'center', gap: '14px', flexShrink: 0 }}>
             {/* Mobile Search Toggle Button */}
             <button
@@ -947,9 +955,9 @@ export default function AdminDashboard({ initialTab = 'overview', initialOrderId
                 width: '38px',
                 height: '38px',
                 borderRadius: '50%',
-                border: '1px solid #E8E3EF',
-                backgroundColor: mobileSearchOpen ? '#F3EEFF' : '#FFFFFF',
-                color: mobileSearchOpen ? '#6B00FF' : '#191522',
+                border: isDark ? '1px solid #2B1E3E' : '1px solid #E8E3EF',
+                backgroundColor: mobileSearchOpen ? (isDark ? '#261A3B' : '#F3EEFF') : (isDark ? '#161022' : '#FFFFFF'),
+                color: mobileSearchOpen ? '#A855F7' : (isDark ? '#FFFFFF' : '#191522'),
                 alignItems: 'center',
                 justifyContent: 'center',
                 cursor: 'pointer'
@@ -963,7 +971,7 @@ export default function AdminDashboard({ initialTab = 'overview', initialOrderId
               className={`admin-header-search ${mobileSearchOpen ? 'mobile-visible' : ''}`}
               style={{ position: 'relative', width: '260px' }}
             >
-              <Search size={16} color="#777184" style={{ position: 'absolute', left: '12px', top: '50%', transform: 'translateY(-50%)' }} />
+              <Search size={16} color={isDark ? '#8A7D9D' : '#777184'} style={{ position: 'absolute', left: '12px', top: '50%', transform: 'translateY(-50%)' }} />
               <input
                 type="text"
                 placeholder="Search customers, profiles, cards..."
@@ -973,18 +981,42 @@ export default function AdminDashboard({ initialTab = 'overview', initialOrderId
                   width: '100%',
                   padding: '9px 12px 9px 36px',
                   borderRadius: '9999px',
-                  border: '1px solid #E8E3EF',
-                  backgroundColor: '#FFFFFF',
+                  border: isDark ? '1px solid #2B1E3E' : '1px solid #E8E3EF',
+                  backgroundColor: isDark ? '#161022' : '#FFFFFF',
                   fontSize: '0.82rem',
-                  color: '#191522',
+                  color: isDark ? '#FFFFFF' : '#191522',
                   outline: 'none',
                   boxShadow: '0 1px 2px rgba(0, 0, 0, 0.02)',
-                  transition: 'border-color 0.2s ease'
+                  transition: 'border-color 0.2s ease, background-color 0.2s ease'
                 }}
                 onFocus={(e) => { e.target.style.borderColor = '#6B00FF'; }}
-                onBlur={(e) => { e.target.style.borderColor = '#E8E3EF'; }}
+                onBlur={(e) => { e.target.style.borderColor = isDark ? '#2B1E3E' : '#E8E3EF'; }}
               />
             </div>
+
+            {/* Theme Toggle Button */}
+            <button
+              type="button"
+              onClick={toggleTheme}
+              aria-label={`Switch to ${isDark ? 'light' : 'dark'} mode`}
+              title={`Switch to ${isDark ? 'light' : 'dark'} mode`}
+              style={{
+                width: '38px',
+                height: '38px',
+                borderRadius: '50%',
+                border: isDark ? '1px solid #2B1E3E' : '1px solid #E8E3EF',
+                backgroundColor: isDark ? '#161022' : '#FFFFFF',
+                color: isDark ? '#FBBF24' : '#6B00FF',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                cursor: 'pointer',
+                transition: 'all 0.2s ease',
+                flexShrink: 0
+              }}
+            >
+              {isDark ? <Sun size={17} color="#FBBF24" /> : <Moon size={17} color="#6B00FF" />}
+            </button>
 
             {/* Notification Bell */}
             <div style={{ position: 'relative' }}>
@@ -995,9 +1027,9 @@ export default function AdminDashboard({ initialTab = 'overview', initialOrderId
                   width: '38px',
                   height: '38px',
                   borderRadius: '50%',
-                  border: '1px solid #E8E3EF',
-                  backgroundColor: '#FFFFFF',
-                  color: '#191522',
+                  border: isDark ? '1px solid #2B1E3E' : '1px solid #E8E3EF',
+                  backgroundColor: isDark ? '#161022' : '#FFFFFF',
+                  color: isDark ? '#FFFFFF' : '#191522',
                   display: 'flex',
                   alignItems: 'center',
                   justifyContent: 'center',
@@ -1026,23 +1058,23 @@ export default function AdminDashboard({ initialTab = 'overview', initialOrderId
                     right: 0,
                     top: '46px',
                     width: '300px',
-                    backgroundColor: '#FFFFFF',
+                    backgroundColor: isDark ? '#130C1E' : '#FFFFFF',
                     borderRadius: '16px',
-                    border: '1px solid #E8E3EF',
-                    boxShadow: '0 12px 30px rgba(0, 0, 0, 0.1)',
+                    border: isDark ? '1px solid #2B1E3E' : '1px solid #E8E3EF',
+                    boxShadow: '0 12px 30px rgba(0, 0, 0, 0.2)',
                     padding: '16px',
                     zIndex: 200
                   }}
                 >
                   <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '12px' }}>
-                    <span style={{ fontWeight: 700, fontSize: '0.88rem', color: '#191522' }}>Live Notifications</span>
+                    <span style={{ fontWeight: 700, fontSize: '0.88rem', color: isDark ? '#FFFFFF' : '#191522' }}>Live Notifications</span>
                     <span style={{ fontSize: '0.72rem', color: '#6B00FF', fontWeight: 600 }}>{auditLogs.length} events</span>
                   </div>
                   <div style={{ display: 'flex', flexDirection: 'column', gap: '10px', maxHeight: '240px', overflowY: 'auto' }}>
                     {auditLogs.slice(0, 4).map((log) => (
-                      <div key={log.id} style={{ fontSize: '0.78rem', padding: '8px', borderRadius: '8px', backgroundColor: '#F7F6FA' }}>
-                        <div style={{ fontWeight: 600, color: '#191522' }}>{log.type}</div>
-                        <div style={{ color: '#777184', marginTop: '2px' }}>{log.details}</div>
+                      <div key={log.id} style={{ fontSize: '0.78rem', padding: '8px', borderRadius: '8px', backgroundColor: isDark ? '#1C132A' : '#F7F6FA' }}>
+                        <div style={{ fontWeight: 600, color: isDark ? '#FFFFFF' : '#191522' }}>{log.type}</div>
+                        <div style={{ color: isDark ? '#9B90AD' : '#777184', marginTop: '2px' }}>{log.details}</div>
                         <div style={{ color: '#A855F7', fontSize: '0.7rem', marginTop: '4px' }}>{log.timeAgo}</div>
                       </div>
                     ))}
@@ -1060,10 +1092,10 @@ export default function AdminDashboard({ initialTab = 'overview', initialOrderId
                 gap: '8px',
                 padding: '8px 14px',
                 borderRadius: '9999px',
-                border: '1px solid #E8E3EF',
-                backgroundColor: '#FFFFFF',
+                border: isDark ? '1px solid #2B1E3E' : '1px solid #E8E3EF',
+                backgroundColor: isDark ? '#161022' : '#FFFFFF',
                 fontSize: '0.82rem',
-                color: '#191522',
+                color: isDark ? '#FFFFFF' : '#191522',
                 fontWeight: 500,
                 boxShadow: '0 1px 2px rgba(0, 0, 0, 0.02)'
               }}
@@ -1084,8 +1116,8 @@ export default function AdminDashboard({ initialTab = 'overview', initialOrderId
                   gap: '10px',
                   padding: '4px 10px 4px 4px',
                   borderRadius: '9999px',
-                  border: '1px solid #E8E3EF',
-                  backgroundColor: '#FFFFFF',
+                  border: isDark ? '1px solid #2B1E3E' : '1px solid #E8E3EF',
+                  backgroundColor: isDark ? '#161022' : '#FFFFFF',
                   cursor: 'pointer',
                   boxShadow: '0 1px 2px rgba(0, 0, 0, 0.02)'
                 }}
@@ -1114,15 +1146,15 @@ export default function AdminDashboard({ initialTab = 'overview', initialOrderId
                 </div>
 
                 <div className="admin-user-details" style={{ textAlign: 'left', lineHeight: 1.2 }}>
-                  <div style={{ fontSize: '0.82rem', fontWeight: 700, color: '#191522', whiteSpace: 'nowrap' }}>
+                  <div style={{ fontSize: '0.82rem', fontWeight: 700, color: isDark ? '#FFFFFF' : '#191522', whiteSpace: 'nowrap' }}>
                     {user?.name || 'Akhil Anvar'}
                   </div>
-                  <div style={{ fontSize: '0.7rem', color: '#777184', whiteSpace: 'nowrap' }}>
+                  <div style={{ fontSize: '0.7rem', color: isDark ? '#9B90AD' : '#777184', whiteSpace: 'nowrap' }}>
                     {isOwner ? 'Owner' : 'Administrator'}
                   </div>
                 </div>
 
-                <ChevronDown className="admin-user-chevron" size={14} color="#777184" />
+                <ChevronDown className="admin-user-chevron" size={14} color={isDark ? '#9B90AD' : '#777184'} />
               </button>
 
               {userDropdownOpen && (
@@ -1132,16 +1164,16 @@ export default function AdminDashboard({ initialTab = 'overview', initialOrderId
                     right: 0,
                     top: '46px',
                     width: '200px',
-                    backgroundColor: '#FFFFFF',
+                    backgroundColor: isDark ? '#130C1E' : '#FFFFFF',
                     borderRadius: '14px',
-                    border: '1px solid #E8E3EF',
-                    boxShadow: '0 12px 30px rgba(0, 0, 0, 0.1)',
+                    border: isDark ? '1px solid #2B1E3E' : '1px solid #E8E3EF',
+                    boxShadow: '0 12px 30px rgba(0, 0, 0, 0.2)',
                     padding: '8px',
                     zIndex: 200
                   }}
                 >
-                  <div style={{ padding: '8px 12px', borderBottom: '1px solid #F2ECFF' }}>
-                    <div style={{ fontSize: '0.82rem', fontWeight: 600, color: '#191522' }}>{user?.email || 'akhil@flocard.in'}</div>
+                  <div style={{ padding: '8px 12px', borderBottom: isDark ? '1px solid #261A3B' : '1px solid #F2ECFF' }}>
+                    <div style={{ fontSize: '0.82rem', fontWeight: 600, color: isDark ? '#FFFFFF' : '#191522' }}>{user?.email || 'akhil@flocard.in'}</div>
                     <div style={{ fontSize: '0.72rem', color: '#6B00FF', fontWeight: 600 }}>{isOwner ? 'Platform Owner' : 'Administrator'}</div>
                   </div>
 
@@ -1155,11 +1187,11 @@ export default function AdminDashboard({ initialTab = 'overview', initialOrderId
                       gap: '8px',
                       padding: '8px 12px',
                       fontSize: '0.82rem',
-                      color: '#191522',
+                      color: isDark ? '#FFFFFF' : '#191522',
                       textDecoration: 'none',
                       borderRadius: '8px'
                     }}
-                    onMouseEnter={(e) => { e.currentTarget.style.backgroundColor = '#F7F6FA'; }}
+                    onMouseEnter={(e) => { e.currentTarget.style.backgroundColor = isDark ? '#201533' : '#F7F6FA'; }}
                     onMouseLeave={(e) => { e.currentTarget.style.backgroundColor = 'transparent'; }}
                   >
                     <ExternalLink size={14} color="#6B00FF" />
