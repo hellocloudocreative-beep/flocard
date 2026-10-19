@@ -1,7 +1,9 @@
 /* ==========================================================================
    FLOCARD INTERACTIVE CARD DESIGNER STUDIO
-   Supports Theme 1 (Pages 1–3) & Theme 2 (Pages 4–6), Logo Scaling,
-   Color Customization, Admin-Only Studio Background, and 300 DPI Export.
+   Premium Dark Violet Studio UI matching reference image
+   Supports Theme 1 (Pages 1–3) & Theme 2 (Pages 4–6), Signature Finishes,
+   CR80 Real-Time 3D/2D NFC Preview, GradientASCII horizon background,
+   SwipeToast notifications, SlideCommit for print submission & 300 DPI exports.
    ========================================================================== */
 
 import React, { useState, useRef, useEffect } from 'react';
@@ -13,38 +15,42 @@ import {
   Check,
   Sparkles,
   Upload,
-  ZoomIn,
-  ZoomOut,
-  Maximize2,
-  Sliders,
   Layers,
   QrCode,
   Radio,
   FileText,
   ChevronDown,
-  ChevronUp,
   Save,
   ArrowRight,
   ExternalLink,
   Palette,
   Image as ImageIcon,
-  ShieldAlert,
   AlertTriangle,
   RefreshCw,
   Lock,
-  Plus,
-  Minus,
   Type,
   X,
   Copy,
   Share2,
   CheckCircle2,
   ShieldCheck,
-  PackageCheck
+  PackageCheck,
+  Sun,
+  Moon,
+  ChevronLeft,
+  Sliders,
+  Box,
+  Maximize2,
+  ZoomIn,
+  Compass
 } from 'lucide-react';
+import { motion, AnimatePresence } from 'motion/react';
 import CardCanvas from '../components/CardCanvas';
 import Card3DPreview from '../components/Card3DPreview';
-import { motion, AnimatePresence } from 'motion/react';
+import GradientASCII from '../components/GradientASCII';
+import SwipeToast from '../components/SwipeToast';
+import SlideCommit from '../components/SlideCommit';
+
 import { EDITIONS, TEMPLATES, BRAND } from '../lib/constants';
 import {
   exportCardPDF,
@@ -97,15 +103,15 @@ function InteractiveFontPicker({
   const displayFont = isFieldHovered ? hoveredFont.font : (value || 'Space Grotesk');
 
   return (
-    <div ref={dropdownRef} style={{ position: 'relative', width: '100%', marginBottom: '8px' }}>
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '4px' }}>
-        <span style={{ fontSize: '0.72rem', color: 'var(--text-muted)' }}>{label}</span>
+    <div ref={dropdownRef} style={{ position: 'relative', width: '100%' }}>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '6px' }}>
+        <span style={{ fontSize: '0.72rem', color: '#94a3b8', fontWeight: 500 }}>{label}</span>
         {isFieldHovered ? (
-          <span style={{ fontSize: '0.66rem', color: '#10B981', fontWeight: 700 }}>
+          <span style={{ fontSize: '0.66rem', color: '#10B981', fontWeight: 600 }}>
             Hovering: {hoveredFont.font}
           </span>
         ) : (
-          <span style={{ fontSize: '0.7rem', color: 'var(--accent-purple)', fontWeight: 600 }}>
+          <span style={{ fontSize: '0.7rem', color: '#cda5ff', fontWeight: 500 }}>
             {value}
           </span>
         )}
@@ -119,20 +125,20 @@ function InteractiveFontPicker({
           display: 'flex',
           alignItems: 'center',
           justifyContent: 'space-between',
-          padding: '7px 10px',
-          background: 'var(--card-surface)',
-          border: isFieldHovered ? '1px solid #10B981' : isOpen ? '1px solid var(--accent-purple)' : '1px solid var(--border-color)',
+          padding: '8px 12px',
+          background: 'rgba(255, 255, 255, 0.04)',
+          border: isFieldHovered ? '1px solid #10B981' : isOpen ? '1px solid #7038f8' : '1px solid rgba(255, 255, 255, 0.08)',
           borderRadius: '8px',
-          color: 'var(--text-primary)',
+          color: '#f8fafc',
           cursor: 'pointer',
           textAlign: 'left',
           transition: 'all 0.15s ease'
         }}
       >
-        <span style={{ fontFamily: `"${displayFont}", sans-serif`, fontSize: '0.84rem', fontWeight: 600 }}>
+        <span style={{ fontFamily: `"${displayFont}", sans-serif`, fontSize: '0.82rem', fontWeight: 500 }}>
           {displayFont}
         </span>
-        <ChevronDown size={14} style={{ color: 'var(--text-muted)', transform: isOpen ? 'rotate(180deg)' : 'none', transition: 'transform 0.2s' }} />
+        <ChevronDown size={14} style={{ color: '#94a3b8', transform: isOpen ? 'rotate(180deg)' : 'none', transition: 'transform 0.2s' }} />
       </button>
 
       {isOpen && (
@@ -143,14 +149,14 @@ function InteractiveFontPicker({
             left: 0,
             right: 0,
             zIndex: 120,
-            background: 'var(--card-surface)',
-            border: '1px solid var(--border-color)',
+            background: '#130d22',
+            border: '1px solid rgba(112, 56, 248, 0.3)',
             borderRadius: '10px',
-            boxShadow: 'var(--card-shadow)',
+            boxShadow: '0 12px 36px rgba(0, 0, 0, 0.8)',
             padding: '6px',
             maxHeight: '220px',
             overflowY: 'auto',
-            backdropFilter: 'blur(16px)'
+            backdropFilter: 'blur(20px)'
           }}
         >
           {FONT_OPTIONS.map(font => {
@@ -172,21 +178,21 @@ function InteractiveFontPicker({
                   justifyContent: 'space-between',
                   padding: '7px 10px',
                   borderRadius: '6px',
-                  background: isThisHovered ? 'rgba(168, 85, 247, 0.3)' : isSelected ? 'rgba(107, 0, 255, 0.2)' : 'transparent',
+                  background: isThisHovered ? 'rgba(112, 56, 248, 0.35)' : isSelected ? 'rgba(112, 56, 248, 0.2)' : 'transparent',
                   transform: isThisHovered ? 'translateX(4px)' : 'none',
                   cursor: 'pointer',
-                  transition: 'transform 0.15s cubic-bezier(0.16, 1, 0.3, 1), background 0.15s ease'
+                  transition: 'all 0.15s ease'
                 }}
               >
                 <div style={{ display: 'flex', flexDirection: 'column' }}>
-                  <span style={{ fontFamily: `"${font.id}", sans-serif`, fontSize: '0.84rem', fontWeight: 600, color: 'var(--text-primary)' }}>
+                  <span style={{ fontFamily: `"${font.id}", sans-serif`, fontSize: '0.82rem', fontWeight: 500, color: '#f8fafc' }}>
                     {font.name}
                   </span>
-                  <span style={{ fontSize: '0.62rem', color: 'var(--text-muted)' }}>
+                  <span style={{ fontSize: '0.62rem', color: '#94a3b8' }}>
                     {font.style}
                   </span>
                 </div>
-                {isSelected && <Check size={14} color="var(--accent-purple)" />}
+                {isSelected && <Check size={14} color="#cda5ff" />}
               </div>
             );
           })}
@@ -198,10 +204,10 @@ function InteractiveFontPicker({
 
 export default function Designer() {
   const { user, isAdmin } = useAuth();
-  const { isLight } = useTheme();
+  const { isLight, toggleTheme } = useTheme();
   const { saveDesign, designs, studioBackground, updateStudioBackground, resetStudioBg, createOrderFromDesign, getProductByEdition } = useData();
 
-  // URL query params support (e.g. /designer?edition=gold&template=customer_logo&tagline=...&font=...)
+  // URL query params
   const urlParams = new URLSearchParams(window.location.search);
   const initialEdition = urlParams.get('edition') || 'purple';
   const initialTemplate = urlParams.get('template') || 'standard';
@@ -211,12 +217,12 @@ export default function Designer() {
 
   const existingDesign = initialDesignId ? designs.find(d => d.id === initialDesignId) : null;
 
-  // Active template: 'standard' (Pages 1-3) or 'customer_logo' (Pages 4-6)
+  // Active template: 'standard' | 'customer_logo'
   const [templateType, setTemplateType] = useState(
     existingDesign?.templateType || initialTemplate
   );
 
-  // Active color edition: 'purple' | 'gold' | 'platinum'
+  // Active signature finish: 'platinum' | 'purple' | 'gold' | 'metal'
   const [edition, setEdition] = useState(
     existingDesign?.edition || initialEdition
   );
@@ -224,24 +230,37 @@ export default function Designer() {
   const currentEditionProduct = getProductByEdition(edition);
 
   const [side, setSide] = useState('front'); // 'front' | 'back'
-  const [zoom, setZoom] = useState(1);
-  const [showGuides, setShowGuides] = useState(true);
+  const [previewMode, setPreviewMode] = useState('front'); // 'front' | 'back' | 'angled' | 'floating' | 'close-up'
+  const [showGuides, setShowGuides] = useState(false);
   const [showBleed, setShowBleed] = useState(false);
-  const [activeTab, setActiveTab] = useState('identity'); // 'identity' | 'logos' | 'nfc' | 'qr'
-  const [saveSuccess, setSaveSuccess] = useState('');
+  const [dynamicLighting, setDynamicLighting] = useState(true);
+  const [is3DPreview, setIs3DPreview] = useState(true);
+
+  // Active element tab in step 3: 'text' | 'logo' | 'nfc' | 'qr'
+  const [activeElementTab, setActiveElementTab] = useState('text');
+
+  // SwipeToast feedback state
+  const [toastOpen, setToastOpen] = useState(false);
+  const [toastMessage, setToastMessage] = useState({ title: '', desc: '', actionLabel: '', onAction: null });
+
+  const notify = (title, desc = '', actionLabel = '', onAction = null) => {
+    setToastMessage({ title, desc, actionLabel, onAction });
+    setToastOpen(true);
+  };
+
   const [isExporting, setIsExporting] = useState(false);
   const [logoWarning, setLogoWarning] = useState(false);
   const [adminBgMessage, setAdminBgMessage] = useState('');
-  const [hoveredFont, setHoveredFont] = useState(null); // { field: 'name' | 'role' | 'details' | 'tagline', font: string }
+  const [hoveredFont, setHoveredFont] = useState(null);
   const [showAuthModal, setShowAuthModal] = useState(false);
   const [showOrderSubmittedModal, setShowOrderSubmittedModal] = useState(false);
   const [submittedOrder, setSubmittedOrder] = useState(null);
 
-  // Helper to dynamically format card name as `<Username>'s FLOCARD (<Edition> Edition)`
+  // Helper to dynamically format card name
   const getDynamicCardTitle = (name, editionKey) => {
     const raw = (name || user?.name || 'Customer').trim();
     const edName = EDITIONS[editionKey]?.name || 'Purple Edition';
-    return `${raw}'s FLOCARD (${edName})`;
+    return `${raw}'s FLOCARD`;
   };
 
   // Responsive mobile scaling
@@ -257,7 +276,7 @@ export default function Designer() {
 
   const BASE_CARD_WIDTH = 520;
   const BASE_CARD_HEIGHT = Math.round(520 / 1.585); // 328px
-  const maxAvailableCardWidth = Math.max(260, Math.min(BASE_CARD_WIDTH, viewportWidth - (viewportWidth < 640 ? 56 : 96)));
+  const maxAvailableCardWidth = Math.max(260, Math.min(BASE_CARD_WIDTH, viewportWidth - (viewportWidth < 640 ? 40 : 80)));
   const fitScale = Math.min(1, maxAvailableCardWidth / BASE_CARD_WIDTH);
 
   // Default color palette for current edition
@@ -275,18 +294,18 @@ export default function Designer() {
     qrColor: existingDesign?.customColors?.qrColor || currentEditionDefaults.qrColor
   });
 
-  // Customer Logo state (with scale, offset, and badge)
+  // Customer Logo state
   const [customerLogo, setCustomerLogo] = useState({
     url: existingDesign?.customerLogo?.url || existingDesign?.front?.customLogo || null,
-    size: existingDesign?.customerLogo?.size ?? 100, // 50 to 180%
+    size: existingDesign?.customerLogo?.size ?? 100,
     posX: existingDesign?.customerLogo?.posX ?? 0,
     posY: existingDesign?.customerLogo?.posY ?? 0,
     showCircleBadge: existingDesign?.customerLogo?.showCircleBadge ?? true
   });
 
-  // FLOCARD Logo state (independent scale & position presets)
+  // FLOCARD Logo state
   const [flocardLogo, setFlocardLogo] = useState({
-    size: existingDesign?.flocardLogo?.size ?? 100, // 60 to 150%
+    size: existingDesign?.flocardLogo?.size ?? 100,
     position: existingDesign?.flocardLogo?.position || (templateType === 'customer_logo' ? 'bottom-right' : 'top-left')
   });
 
@@ -322,24 +341,18 @@ export default function Designer() {
     existingDesign?.title || getDynamicCardTitle(existingDesign?.front?.name || user?.name || 'AKHIL ANVAR', existingDesign?.edition || initialEdition)
   );
   const [designStatus, setDesignStatus] = useState(existingDesign?.status || 'draft');
+  const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
+
+  // Mark changes
+  useEffect(() => {
+    setHasUnsavedChanges(true);
+  }, [frontConfig, backConfig, customColors, customerLogo, flocardLogo, templateType, edition]);
 
   // Hidden export canvases for 300 DPI exports
   const frontExportCanvasRef = useRef(null);
   const backExportCanvasRef = useRef(null);
 
-  // Clipboard & Web Share API states for automatic attachments & copy
-  const [copiedClipboard, setCopiedClipboard] = useState(false);
-  const [clipboardTarget, setClipboardTarget] = useState('both');
-  const [shareSupported, setShareSupported] = useState(false);
-  const [isSharing, setIsSharing] = useState(false);
-
-  useEffect(() => {
-    if (typeof navigator !== 'undefined' && typeof navigator.share === 'function') {
-      setShareSupported(true);
-    }
-  }, []);
-
-  // Switch edition: dynamically updates card title, preserves template, logos, text, and updates colors
+  // Switch edition
   const handleEditionChange = (newEdition) => {
     setEdition(newEdition);
     setDesignTitle(getDynamicCardTitle(frontConfig.name, newEdition));
@@ -354,23 +367,10 @@ export default function Designer() {
       nfcColor: def.nfcColor,
       qrColor: def.qrColor
     });
+    notify(`${EDITIONS[newEdition]?.name || 'Edition'} Applied`, 'Palette and signature finish updated');
   };
 
-  // Reset colors to active edition defaults
-  const handleResetColors = () => {
-    const def = EDITIONS[edition]?.defaults || {};
-    setCustomColors({
-      primaryAccent: def.primaryAccent,
-      secondaryAccent: def.secondaryAccent,
-      nameColor: def.nameColor,
-      roleColor: def.roleColor,
-      taglineColor: def.taglineColor,
-      nfcColor: def.nfcColor,
-      qrColor: def.qrColor
-    });
-  };
-
-  // Switch template (Standard vs Customer Logo) while preserving all customer info
+  // Switch template
   const handleTemplateChange = (newTemplate) => {
     setTemplateType(newTemplate);
     if (newTemplate === 'customer_logo') {
@@ -378,21 +378,20 @@ export default function Designer() {
     } else {
       setFlocardLogo(prev => ({ ...prev, position: 'top-left' }));
     }
+    notify(newTemplate === 'customer_logo' ? 'Custom Logo Design Layout' : 'Standard Design Layout', 'Card layout updated');
   };
 
-  // Customer Logo upload with robust validation
+  // Upload logo
   const handleCustomerLogoUpload = (e) => {
     const file = e.target.files?.[0];
     if (!file) return;
 
-    // Validate type - support all image MIME types or file extensions
     const isImage = file.type.startsWith('image/') || /\.(png|jpe?g|svg|webp|gif|bmp|avif)$/i.test(file.name);
     if (!isImage) {
       alert('Please upload a valid image file (PNG, SVG, JPG, or WEBP). Transparent PNG is recommended.');
       return;
     }
 
-    // Validate size (max 10MB)
     if (file.size > 10 * 1024 * 1024) {
       alert('File size exceeds 10MB limit. Please select a smaller file.');
       return;
@@ -403,115 +402,15 @@ export default function Designer() {
       const dataUrl = reader.result;
       setCustomerLogo(prev => ({ ...prev, url: dataUrl }));
       setFrontConfig(prev => ({ ...prev, customLogo: dataUrl }));
-      // Automatically switch to customer logo template and front face so the logo is immediately visible
       setTemplateType('customer_logo');
       setSide('front');
+      notify('Logo Uploaded', 'Custom logo placed on card front');
     };
     reader.readAsDataURL(file);
-    // Reset file input so re-uploading the same file works
     e.target.value = '';
   };
 
-  // Admin-only studio background upload
-  const handleStudioBgUpload = (e) => {
-    if (!isAdmin) {
-      setAdminBgMessage('Unauthorized: Only administrators can modify the studio environment.');
-      return;
-    }
-
-    const file = e.target.files?.[0];
-    if (!file) return;
-
-    const reader = new FileReader();
-    reader.onload = () => {
-      const res = updateStudioBackground(reader.result, user?.role);
-      if (res.success) {
-        setAdminBgMessage('Studio background updated successfully!');
-        setTimeout(() => setAdminBgMessage(''), 3000);
-      } else {
-        setAdminBgMessage(res.error);
-      }
-    };
-    reader.readAsDataURL(file);
-  };
-
-  // Auto-sync initial name and card title with logged in user if currently default
-  useEffect(() => {
-    if (user && !existingDesign) {
-      if ((frontConfig.name === 'AKHIL ANVAR' || !frontConfig.name) && user.name) {
-        setFrontConfig(prev => ({ ...prev, name: user.name }));
-        setDesignTitle(getDynamicCardTitle(user.name, edition));
-      }
-    }
-  }, [user, existingDesign, edition]);
-
-  const hasRestoredPendingRef = useRef(false);
-
-  // Auto-restore and submit pending design after login redirect directly to Admin Panel
-  useEffect(() => {
-    const isSubmitQuery = urlParams.get('submit') === 'true';
-    if (isSubmitQuery && user && !hasRestoredPendingRef.current) {
-      const savedPending = localStorage.getItem('flocard_pending_design');
-      if (savedPending) {
-        hasRestoredPendingRef.current = true;
-        try {
-          const parsed = JSON.parse(savedPending);
-          if (parsed.front) setFrontConfig(parsed.front);
-          if (parsed.back) setBackConfig(parsed.back);
-          if (parsed.customColors) setCustomColors(parsed.customColors);
-          if (parsed.customerLogo) setCustomerLogo(parsed.customerLogo);
-          if (parsed.flocardLogo) setFlocardLogo(parsed.flocardLogo);
-          if (parsed.templateType) setTemplateType(parsed.templateType);
-          if (parsed.edition) setEdition(parsed.edition);
-          if (parsed.title) setDesignTitle(parsed.title);
-
-          const clientName = user?.name || parsed.front?.name || 'Valued Client';
-          const clientSlug = clientName.toLowerCase().replace(/[^a-z0-9]/g, '') || 'client';
-          const designObj = {
-            id: `des_${Date.now()}`,
-            customerId: user?.id || (user?.email ? `cust_${user.email}` : `cust_${Date.now()}`),
-            customerName: clientName,
-            customerEmail: user?.email || `${clientSlug}@example.com`,
-            customerPhone: user?.phone || '+91 97782 78522',
-            company: user?.company || parsed.front?.company || 'FLOCARD Enterprise',
-            title: parsed.title || getDynamicCardTitle(clientName, parsed.edition || 'purple'),
-            templateType: parsed.templateType || 'standard',
-            edition: parsed.edition || 'purple',
-            customColors: parsed.customColors,
-            customerLogo: parsed.customerLogo,
-            flocardLogo: parsed.flocardLogo,
-            front: parsed.front,
-            back: parsed.back,
-            status: 'submitted'
-          };
-          saveDesign(designObj);
-          setDesignStatus('submitted');
-          setSaveSuccess('Welcome back! Your design has been submitted directly to the Admin Panel.');
-          localStorage.removeItem('flocard_pending_design');
-
-          const order = createOrderFromDesign(
-            designObj,
-            'Submitted via Card Designer for Print Production (Post-Login)',
-            user
-          );
-          setSubmittedOrder(order);
-
-          setTimeout(() => {
-            try {
-              handleDownloadBothSides();
-            } catch (e) {}
-            setShowOrderSubmittedModal(true);
-          }, 400);
-
-          setTimeout(() => setSaveSuccess(''), 4500);
-        } catch (e) {
-          console.error('Error restoring pending design:', e);
-        }
-      }
-    }
-  }, [user]);
-
-  // Save design to account / data context (Customer must be logged in to submit)
+  // Save design to account or submit for print
   const handleSaveDesign = (submit = false) => {
     if (submit && !user) {
       const pendingDesign = {
@@ -556,39 +455,39 @@ export default function Designer() {
 
     saveDesign(designObj);
     setDesignStatus(newStatus);
-    setSaveSuccess(submit ? 'Design submitted directly to Admin Panel for print production!' : 'Design saved to account!');
-    setTimeout(() => setSaveSuccess(''), 3500);
+    setHasUnsavedChanges(false);
 
     if (submit) {
-      // 1. Create order directly in Admin Panel
       const createdOrder = createOrderFromDesign(
         designObj,
         'Submitted via Card Designer for Print Production',
         user
       );
       setSubmittedOrder(createdOrder);
+      notify('Submitted for Print!', 'Order placed in production queue', 'View Details', () => setShowOrderSubmittedModal(true));
 
-      // 2. Download both front & back card artworks cleanly (300 DPI PNG sheet)
       try {
         handleDownloadBothSides();
       } catch (e) {
         console.warn('Artwork download issue:', e);
       }
-
-      // 3. Display in-app confirmation modal with live order tracking
       setShowOrderSubmittedModal(true);
+    } else {
+      notify('Draft Saved', 'Card design stored to your account');
     }
   };
 
-  // Export high-res individual PNG
-  const handleExportPNG = (exportSide) => {
-    const canvas = exportSide === 'front' ? frontExportCanvasRef.current : backExportCanvasRef.current;
-    if (canvas) {
-      downloadCanvasPNG(canvas, `${designTitle.replace(/[^a-zA-Z0-9_-]/g, '_')}_${exportSide}_300dpi.png`);
+  // Handle preview mode change
+  const handlePreviewModeSelect = (mode) => {
+    setPreviewMode(mode);
+    if (mode === 'front') {
+      setSide('front');
+    } else if (mode === 'back') {
+      setSide('back');
     }
   };
 
-  // Download both sides (guaranteed combined dual-sided sheet + front + back)
+  // Download both sides
   const handleDownloadBothSides = () => {
     downloadBothSides({
       frontCanvas: frontExportCanvasRef.current,
@@ -598,52 +497,23 @@ export default function Designer() {
     });
   };
 
-  // Copy card artwork to clipboard (both sides combined or individual)
-  const handleCopyArtwork = async (target = 'both') => {
-    let targetCanvas = null;
-    if (target === 'both') {
-      targetCanvas = createCombinedArtworkCanvas({
-        frontCanvas: frontExportCanvasRef.current,
-        backCanvas: backExportCanvasRef.current,
-        designName: designTitle,
-        editionName: EDITIONS[edition]?.name
-      });
-    } else if (target === 'front') {
-      targetCanvas = frontExportCanvasRef.current;
+  // Share link
+  const handleShare = async () => {
+    if (navigator.share) {
+      try {
+        await navigator.share({
+          title: designTitle,
+          text: `Check out my FLOCARD NFC Business Card design: ${frontConfig.name} - ${frontConfig.role}`,
+          url: window.location.href
+        });
+      } catch (e) {}
     } else {
-      targetCanvas = backExportCanvasRef.current;
-    }
-
-    if (targetCanvas) {
-      const ok = await copyCanvasToClipboard(targetCanvas);
-      if (ok) {
-        setCopiedClipboard(true);
-        setClipboardTarget(target);
-        setTimeout(() => setCopiedClipboard(false), 3500);
-        return true;
-      }
-    }
-    return false;
-  };
-
-  // Export print-ready double-sided PDF
-  const handleExportPDF = async () => {
-    setIsExporting(true);
-    try {
-      await exportCardPDF({
-        frontCanvas: frontExportCanvasRef.current,
-        backCanvas: backExportCanvasRef.current,
-        designName: designTitle,
-        edition: EDITIONS[edition]?.name
-      });
-    } catch (err) {
-      console.error('PDF export error:', err);
-    } finally {
-      setIsExporting(false);
+      navigator.clipboard.writeText(window.location.href);
+      notify('Link Copied', 'Share URL copied to clipboard');
     }
   };
 
-  // Pack combined config for CardCanvas with live hovered font preview support
+  // Combined config for CardCanvas
   const combinedConfig = {
     front: {
       ...frontConfig,
@@ -659,1544 +529,1670 @@ export default function Designer() {
     templateType
   };
 
+  // Calculate dynamic 3D transform based on selected thumbnail preview mode
+  const getPreviewTransform = () => {
+    if (previewMode === 'angled') {
+      return 'perspective(1200px) rotateY(-24deg) rotateX(12deg) scale(0.96)';
+    }
+    if (previewMode === 'floating') {
+      return 'perspective(1000px) translateY(-14px) rotateX(6deg) scale(1.02)';
+    }
+    if (previewMode === 'close-up') {
+      return 'scale(1.28)';
+    }
+    return 'none';
+  };
+
   return (
     <div
-      className="designer-studio-page"
+      className="flocard-studio-root"
       style={{
-        paddingTop: 'calc(var(--header-height) + 16px)',
-        paddingBottom: '80px',
         minHeight: '100vh',
-        background: 'var(--bg-main)'
+        background: '#07050d',
+        color: '#f8fafc',
+        fontFamily: "'Space Grotesk', -apple-system, BlinkMacSystemFont, sans-serif",
+        position: 'relative',
+        overflowX: 'hidden',
+        paddingBottom: '60px'
       }}
     >
-      <div className="container" style={{ maxWidth: '1440px' }}>
-        {/* Top Control Header */}
+      {/* ======================================================================
+          1. TOP NAVIGATION BAR (Refined Floating Dark Glass)
+          ====================================================================== */}
+      <header
+        style={{
+          position: 'sticky',
+          top: 0,
+          zIndex: 100,
+          backdropFilter: 'blur(16px)',
+          WebkitBackdropFilter: 'blur(16px)',
+          background: 'rgba(9, 6, 17, 0.75)',
+          borderBottom: '1px solid rgba(112, 56, 248, 0.12)',
+          padding: '12px 24px',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'space-between',
+          gap: '16px'
+        }}
+      >
+        {/* Left: FLOCARD Logo */}
+        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+          <a
+            href="/"
+            style={{
+              textDecoration: 'none',
+              display: 'flex',
+              alignItems: 'center',
+              gap: '6px'
+            }}
+          >
+            <span
+              style={{
+                fontFamily: "'Space Grotesk', sans-serif",
+                fontWeight: 800,
+                fontSize: '1.25rem',
+                letterSpacing: '0.08em',
+                color: '#ffffff'
+              }}
+            >
+              FLOCARD
+            </span>
+          </a>
+        </div>
+
+        {/* Center: Stage Nav Tabs (Design, Preview, Details, Checkout) */}
         <div
-          className="designer-top-bar glass-panel"
+          style={{
+            display: 'inline-flex',
+            alignItems: 'center',
+            background: 'rgba(18, 14, 28, 0.85)',
+            border: '1px solid rgba(112, 56, 248, 0.2)',
+            borderRadius: '9999px',
+            padding: '3px 4px',
+            gap: '2px',
+            boxShadow: '0 4px 20px rgba(0, 0, 0, 0.3)'
+          }}
+        >
+          <button
+            type="button"
+            style={{
+              display: 'inline-flex',
+              alignItems: 'center',
+              gap: '6px',
+              padding: '6px 14px',
+              borderRadius: '9999px',
+              background: 'rgba(112, 56, 248, 0.24)',
+              border: '1px solid rgba(139, 92, 246, 0.5)',
+              color: '#ffffff',
+              fontSize: '0.8rem',
+              fontWeight: 600,
+              cursor: 'pointer'
+            }}
+          >
+            <Sparkles size={13} color="#cda5ff" />
+            <span>Design</span>
+          </button>
+
+          <button
+            type="button"
+            onClick={() => handlePreviewModeSelect(side === 'front' ? 'angled' : 'front')}
+            style={{
+              display: 'inline-flex',
+              alignItems: 'center',
+              gap: '6px',
+              padding: '6px 14px',
+              borderRadius: '9999px',
+              background: 'transparent',
+              border: 'none',
+              color: '#94a3b8',
+              fontSize: '0.8rem',
+              fontWeight: 500,
+              cursor: 'pointer'
+            }}
+          >
+            <Eye size={13} />
+            <span>Preview</span>
+          </button>
+
+          <button
+            type="button"
+            onClick={() => setActiveElementTab('text')}
+            style={{
+              display: 'inline-flex',
+              alignItems: 'center',
+              gap: '6px',
+              padding: '6px 14px',
+              borderRadius: '9999px',
+              background: 'transparent',
+              border: 'none',
+              color: '#94a3b8',
+              fontSize: '0.8rem',
+              fontWeight: 500,
+              cursor: 'pointer'
+            }}
+          >
+            <FileText size={13} />
+            <span>Details</span>
+          </button>
+
+          <a
+            href="/checkout"
+            style={{
+              textDecoration: 'none',
+              display: 'inline-flex',
+              alignItems: 'center',
+              gap: '6px',
+              padding: '6px 14px',
+              borderRadius: '9999px',
+              background: 'transparent',
+              border: 'none',
+              color: '#94a3b8',
+              fontSize: '0.8rem',
+              fontWeight: 500,
+              cursor: 'pointer'
+            }}
+          >
+            <ShieldCheck size={13} />
+            <span>Checkout</span>
+          </a>
+        </div>
+
+        {/* Right: Theme Toggle, Save Draft, Submit for Print */}
+        <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+          <button
+            type="button"
+            onClick={toggleTheme}
+            title="Toggle Theme"
+            style={{
+              width: '36px',
+              height: '36px',
+              borderRadius: '50%',
+              background: 'rgba(255, 255, 255, 0.05)',
+              border: '1px solid rgba(255, 255, 255, 0.1)',
+              color: '#e2e8f0',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              cursor: 'pointer'
+            }}
+          >
+            {isLight ? <Moon size={15} /> : <Sun size={15} />}
+          </button>
+
+          <button
+            type="button"
+            onClick={() => handleSaveDesign(false)}
+            style={{
+              display: 'inline-flex',
+              alignItems: 'center',
+              gap: '6px',
+              padding: '8px 16px',
+              borderRadius: '9999px',
+              background: 'rgba(255, 255, 255, 0.05)',
+              border: '1px solid rgba(255, 255, 255, 0.12)',
+              color: '#f1f5f9',
+              fontSize: '0.82rem',
+              fontWeight: 600,
+              cursor: 'pointer'
+            }}
+          >
+            <Save size={14} />
+            <span>Save Draft</span>
+          </button>
+
+          <button
+            type="button"
+            onClick={() => handleSaveDesign(true)}
+            style={{
+              display: 'inline-flex',
+              alignItems: 'center',
+              gap: '6px',
+              padding: '8px 18px',
+              borderRadius: '9999px',
+              background: 'linear-gradient(135deg, #7038f8, #8b5cf6)',
+              border: 'none',
+              color: '#ffffff',
+              fontSize: '0.82rem',
+              fontWeight: 700,
+              cursor: 'pointer',
+              boxShadow: '0 4px 18px rgba(112, 56, 248, 0.45)'
+            }}
+          >
+            <span>Submit for Print</span>
+            <ArrowRight size={14} />
+          </button>
+        </div>
+      </header>
+
+      {/* Main Studio Container */}
+      <div style={{ maxWidth: '1440px', margin: '0 auto', padding: '16px 20px' }}>
+
+        {/* ====================================================================
+            2. PROJECT INFORMATION BAR
+            ==================================================================== */}
+        <div
           style={{
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'space-between',
             flexWrap: 'wrap',
-            gap: '16px',
-            marginBottom: '24px',
-            padding: '16px 20px',
-            background: 'var(--glass-panel-bg)',
-            border: '1px solid var(--border-color)',
-            borderRadius: 'var(--radius-md)',
-            backdropFilter: 'blur(12px)'
+            gap: '12px',
+            background: 'rgba(16, 12, 26, 0.7)',
+            border: '1px solid rgba(112, 56, 248, 0.18)',
+            borderRadius: '16px',
+            padding: '10px 16px',
+            marginBottom: '20px',
+            backdropFilter: 'blur(16px)',
+            boxShadow: '0 6px 24px rgba(0, 0, 0, 0.25)'
           }}
         >
-          <div className="designer-title-row" style={{ display: 'flex', alignItems: 'center', gap: '12px', flex: 1, minWidth: 0 }}>
-            <span className="badge-tag" style={{ flexShrink: 0 }}>
-              {TEMPLATES[templateType]?.badge}
-            </span>
-            <span
+          {/* Left: Back button, Edition name pill, Product price pill */}
+          <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+            <button
+              type="button"
+              onClick={() => window.history.back()}
+              title="Go back"
               style={{
-                fontSize: '0.78rem',
-                fontWeight: 700,
-                padding: '4px 10px',
+                width: '32px',
+                height: '32px',
                 borderRadius: '8px',
-                backgroundColor: edition === 'gold' ? 'rgba(233, 199, 102, 0.15)' : edition === 'platinum' ? 'rgba(203, 213, 225, 0.15)' : edition === 'metal' ? 'rgba(148, 163, 184, 0.15)' : 'rgba(168, 85, 247, 0.15)',
-                color: edition === 'gold' ? '#E9C766' : edition === 'platinum' ? '#CBD5E1' : edition === 'metal' ? '#CBD5E1' : '#A855F7',
-                border: `1px solid ${edition === 'gold' ? '#E9C76644' : edition === 'platinum' ? '#CBD5E144' : edition === 'metal' ? '#CBD5E144' : '#A855F744'}`,
+                background: 'rgba(255, 255, 255, 0.05)',
+                border: '1px solid rgba(255, 255, 255, 0.1)',
+                color: '#cbd5e1',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                cursor: 'pointer'
+              }}
+            >
+              <ChevronLeft size={16} />
+            </button>
+
+            <div
+              style={{
                 display: 'inline-flex',
                 alignItems: 'center',
                 gap: '6px',
-                flexShrink: 0
+                padding: '5px 12px',
+                borderRadius: '9999px',
+                background: 'rgba(255, 255, 255, 0.05)',
+                border: '1px solid rgba(255, 255, 255, 0.12)',
+                fontSize: '0.8rem',
+                fontWeight: 600,
+                color: '#e2e8f0'
               }}
             >
-              <span>{EDITIONS[edition]?.name || 'Edition'}</span>
-              <span>&bull;</span>
-              <span>{formatCurrencyINR(currentEditionProduct?.price) || 'Price coming soon'}</span>
-            </span>
-            <div style={{ position: 'relative', display: 'flex', alignItems: 'center', flex: 1, minWidth: 0 }}>
-              <input
-                type="text"
-                value={designTitle}
-                onChange={(e) => setDesignTitle(e.target.value)}
-                className="designer-title-input"
-                placeholder="e.g. Username's FLOCARD (Purple Edition)"
-                title="Card Design Title (Click refresh icon to re-sync with your name & edition)"
+              <span
                 style={{
-                  background: 'transparent',
-                  border: 'none',
-                  borderBottom: '1px solid var(--border-color)',
-                  color: 'var(--text-primary)',
-                  fontFamily: 'var(--font-display)',
-                  fontWeight: 700,
-                  fontSize: '1.1rem',
-                  outline: 'none',
-                  padding: '4px 28px 4px 8px',
-                  flex: 1,
-                  minWidth: 0,
-                  width: '100%'
+                  width: '8px',
+                  height: '8px',
+                  borderRadius: '50%',
+                  background: EDITIONS[edition]?.accentColor || '#7038f8',
+                  boxShadow: `0 0 8px ${EDITIONS[edition]?.accentColor || '#7038f8'}`
                 }}
               />
-              <button
-                type="button"
-                onClick={() => setDesignTitle(getDynamicCardTitle(frontConfig.name, edition))}
-                title="Sync title with name & edition"
-                style={{
-                  position: 'absolute',
-                  right: '4px',
-                  background: 'transparent',
-                  border: 'none',
-                  color: 'var(--text-muted)',
-                  cursor: 'pointer',
-                  padding: '4px',
-                  display: 'flex',
-                  alignItems: 'center',
-                  borderRadius: '4px',
-                  transition: 'color 0.2s'
-                }}
-                onMouseEnter={(e) => e.currentTarget.style.color = 'var(--accent-purple)'}
-                onMouseLeave={(e) => e.currentTarget.style.color = 'var(--text-muted)'}
-              >
-                <RefreshCw size={14} />
-              </button>
+              <span>{EDITIONS[edition]?.name || 'Purple Edition'}</span>
+            </div>
+
+            <div
+              style={{
+                display: 'inline-flex',
+                alignItems: 'center',
+                padding: '5px 12px',
+                borderRadius: '9999px',
+                background: 'rgba(112, 56, 248, 0.18)',
+                border: '1px solid rgba(112, 56, 248, 0.35)',
+                fontSize: '0.8rem',
+                fontWeight: 700,
+                color: '#cda5ff'
+              }}
+            >
+              {formatCurrencyINR(currentEditionProduct?.price) || '₹1,899'}
             </div>
           </div>
 
-          {/* Action buttons */}
-          <div className="designer-action-group" style={{ display: 'flex', alignItems: 'center', gap: '10px', flexWrap: 'wrap' }}>
-            {saveSuccess && (
-              <span className="designer-save-msg" style={{ fontSize: '0.85rem', color: 'var(--success)', display: 'flex', alignItems: 'center', gap: '4px' }}>
-                <Check size={16} /> {saveSuccess}
-              </span>
-            )}
+          {/* Center: Card Name + Draft badge */}
+          <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+            <Sparkles size={16} color="#cda5ff" />
+            <input
+              type="text"
+              value={designTitle}
+              onChange={(e) => setDesignTitle(e.target.value)}
+              title="Click to rename design"
+              style={{
+                background: 'transparent',
+                border: 'none',
+                color: '#ffffff',
+                fontFamily: "'Space Grotesk', sans-serif",
+                fontWeight: 700,
+                fontSize: '1rem',
+                letterSpacing: '0.04em',
+                outline: 'none',
+                minWidth: '200px',
+                textAlign: 'center'
+              }}
+            />
 
+            <div
+              style={{
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: '6px',
+                padding: '4px 10px',
+                borderRadius: '9999px',
+                background: hasUnsavedChanges ? 'rgba(245, 165, 36, 0.12)' : 'rgba(34, 197, 94, 0.12)',
+                border: `1px solid ${hasUnsavedChanges ? 'rgba(245, 165, 36, 0.3)' : 'rgba(34, 197, 94, 0.3)'}`,
+                fontSize: '0.74rem',
+                fontWeight: 600,
+                color: hasUnsavedChanges ? '#f5a524' : '#22c55e'
+              }}
+            >
+              <span
+                style={{
+                  width: '6px',
+                  height: '6px',
+                  borderRadius: '50%',
+                  background: hasUnsavedChanges ? '#f5a524' : '#22c55e'
+                }}
+              />
+              <span>{hasUnsavedChanges ? 'Draft • Unsaved changes' : 'All changes saved'}</span>
+            </div>
+          </div>
+
+          {/* Right: Share, Save, Done action */}
+          <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+            <button
+              type="button"
+              onClick={handleShare}
+              style={{
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: '6px',
+                padding: '6px 12px',
+                borderRadius: '8px',
+                background: 'rgba(255, 255, 255, 0.05)',
+                border: '1px solid rgba(255, 255, 255, 0.1)',
+                color: '#cbd5e1',
+                fontSize: '0.78rem',
+                fontWeight: 500,
+                cursor: 'pointer'
+              }}
+            >
+              <Share2 size={13} />
+              <span>Share</span>
+            </button>
 
             <button
               type="button"
               onClick={() => handleSaveDesign(false)}
-              className="btn btn-secondary btn-sm designer-btn"
+              style={{
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: '6px',
+                padding: '6px 14px',
+                borderRadius: '8px',
+                background: 'rgba(255, 255, 255, 0.08)',
+                border: '1px solid rgba(255, 255, 255, 0.14)',
+                color: '#f8fafc',
+                fontSize: '0.78rem',
+                fontWeight: 600,
+                cursor: 'pointer'
+              }}
             >
-              <Save size={15} />
-              <span>Save Draft</span>
+              <Save size={13} />
+              <span>Save</span>
             </button>
 
             <button
               type="button"
               onClick={() => handleSaveDesign(true)}
-              className="btn btn-primary btn-sm designer-btn"
+              style={{
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: '6px',
+                padding: '6px 14px',
+                borderRadius: '8px',
+                background: 'rgba(112, 56, 248, 0.25)',
+                border: '1px solid rgba(112, 56, 248, 0.45)',
+                color: '#cda5ff',
+                fontSize: '0.78rem',
+                fontWeight: 700,
+                cursor: 'pointer'
+              }}
             >
-              <FileCheck size={15} />
-              <span>Submit for Print</span>
+              <span>Done</span>
+              <ArrowRight size={13} />
             </button>
           </div>
         </div>
 
-        {/* 3-Column Layout: Left Controls | Center Canvas | Right Properties & Export */}
+        {/* ====================================================================
+            3. MAIN THREE-COLUMN WORKSPACE
+            Left: ~27% | Center: ~51% | Right: ~22%
+            ==================================================================== */}
         <div
-          className="designer-grid"
+          className="studio-workspace-grid"
           style={{
             display: 'grid',
-            gridTemplateColumns: '350px 1fr 310px',
-            gap: '24px',
+            gridTemplateColumns: 'minmax(310px, 1.15fr) minmax(480px, 2.15fr) minmax(280px, 0.95fr)',
+            gap: '20px',
             alignItems: 'start'
           }}
         >
+
           {/* ==================================================================
-              LEFT SIDEBAR: CUSTOMIZATION PANELS
+              LEFT SIDEBAR: STEP-BASED WORKFLOW (1, 2, 3, 4)
               ================================================================== */}
-          <div
-            className="designer-left-panel glass-panel"
+          <aside
             style={{
-              padding: '24px',
               display: 'flex',
               flexDirection: 'column',
-              gap: '20px'
+              gap: '16px'
             }}
           >
-            {/* Template Selector (Theme 1 vs Theme 2) */}
-            <div>
-              <label className="form-label" style={{ marginBottom: '8px', display: 'block' }}>
-                Design Template Layout
-              </label>
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px' }}>
-                {Object.values(TEMPLATES).map(tmpl => (
-                  <button
-                    key={tmpl.id}
-                    type="button"
-                    className="template-select-btn"
-                    onClick={() => handleTemplateChange(tmpl.id)}
-                    style={{
-                      background: templateType === tmpl.id ? 'rgba(107, 0, 255, 0.25)' : 'var(--elevated-surface)',
-                      border: templateType === tmpl.id ? '2px solid var(--accent-purple)' : '1px solid var(--border-color)',
-                      borderRadius: 'var(--radius-sm)',
-                      padding: '10px 8px',
-                      color: templateType === tmpl.id ? 'var(--text-primary)' : 'var(--text-secondary)',
-                      fontSize: '0.78rem',
-                      fontWeight: 600,
-                      cursor: 'pointer',
-                      textAlign: 'center',
-                      boxShadow: templateType === tmpl.id ? '0 4px 14px rgba(107, 0, 255, 0.25)' : 'none',
-                      transform: templateType === tmpl.id ? 'scale(1.02)' : 'scale(1)',
-                      transition: 'transform 0.2s cubic-bezier(0.16, 1, 0.3, 1), box-shadow 0.2s ease, background-color 0.2s ease, border-color 0.2s ease'
-                    }}
-                  >
-                    <div style={{ fontWeight: 700, marginBottom: '2px' }}>{tmpl.name}</div>
-                    <div style={{ fontSize: '0.68rem', color: templateType === tmpl.id ? 'var(--accent-purple)' : 'var(--text-muted)' }}>
-                      {tmpl.pdfPages}
-                    </div>
-                  </button>
-                ))}
-              </div>
-            </div>
-
-            {/* Edition Preset Selector (Purple, Gold, Platinum) */}
-            <div>
-              <label className="form-label" style={{ marginBottom: '8px', display: 'block' }}>
-                Color Edition Preset
-              </label>
-              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '8px' }}>
-                {Object.entries(EDITIONS).map(([key, item]) => (
-                  <button
-                    key={key}
-                    type="button"
-                    className="edition-select-btn"
-                    onClick={() => handleEditionChange(key)}
-                    style={{
-                      background: edition === key ? 'rgba(107, 0, 255, 0.25)' : 'var(--elevated-surface)',
-                      border: edition === key ? `2px solid ${item.accentColor}` : '1px solid var(--border-color)',
-                      borderRadius: 'var(--radius-sm)',
-                      padding: '8px 4px',
-                      color: edition === key ? 'var(--text-primary)' : 'var(--text-secondary)',
-                      fontSize: '0.78rem',
-                      fontWeight: 600,
-                      cursor: 'pointer',
-                      textAlign: 'center',
-                      boxShadow: edition === key ? `0 4px 14px ${item.accentColor}35` : 'none',
-                      transform: edition === key ? 'scale(1.03)' : 'scale(1)',
-                      transition: 'transform 0.2s cubic-bezier(0.16, 1, 0.3, 1), box-shadow 0.2s ease, background-color 0.2s ease, border-color 0.2s ease'
-                    }}
-                  >
-                    <div
-                      style={{
-                        width: '12px',
-                        height: '12px',
-                        borderRadius: '50%',
-                        background: item.accentColor,
-                        margin: '0 auto 4px',
-                        boxShadow: `0 0 8px ${item.accentColor}`,
-                        transition: 'transform 0.2s ease'
-                      }}
-                    />
-                    {item.name.replace(' Edition', '')}
-                  </button>
-                ))}
-              </div>
-            </div>
-
-            {/* Studio Navigation Tabs (Text, Logos, NFC, QR) */}
+            {/* STEP 1: Template Layout */}
             <div
               style={{
-                display: 'grid',
-                gridTemplateColumns: 'repeat(4, 1fr)',
-                background: 'var(--elevated-surface)',
-                borderRadius: '8px',
-                padding: '3px',
-                border: '1px solid var(--border-color)',
-                gap: '2px'
+                background: 'rgba(17, 12, 28, 0.75)',
+                border: '1px solid rgba(112, 56, 248, 0.16)',
+                borderRadius: '16px',
+                padding: '16px',
+                backdropFilter: 'blur(16px)'
               }}
             >
-              {[
-                { id: 'identity', label: 'Text', icon: FileText },
-                { id: 'logos', label: 'Logos', icon: ImageIcon },
-                { id: 'nfc', label: 'NFC', icon: Radio },
-                { id: 'qr', label: 'QR', icon: QrCode }
-              ].map(tab => {
-                const Icon = tab.icon;
-                const active = activeTab === tab.id;
-                return (
-                  <button
-                    key={tab.id}
-                    type="button"
-                    className="studio-tab-btn"
-                    onClick={() => {
-                      setActiveTab(tab.id);
-                      if (tab.id === 'qr') setSide('back');
-                      else if (tab.id === 'logos' && templateType === 'customer_logo') setSide('front');
-                      else if (tab.id === 'identity') setSide('front');
-                    }}
+              <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '14px' }}>
+                <span
+                  style={{
+                    width: '24px',
+                    height: '24px',
+                    borderRadius: '50%',
+                    background: 'rgba(112, 56, 248, 0.3)',
+                    border: '1px solid #7038f8',
+                    color: '#ffffff',
+                    fontSize: '0.75rem',
+                    fontWeight: 700,
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center'
+                  }}
+                >
+                  1
+                </span>
+                <div>
+                  <div style={{ fontSize: '0.88rem', fontWeight: 700, color: '#f8fafc' }}>Template Layout</div>
+                  <div style={{ fontSize: '0.72rem', color: '#94a3b8' }}>Choose a design style</div>
+                </div>
+              </div>
+
+              {/* Two Template Options */}
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px' }}>
+                {/* Standard Design */}
+                <button
+                  type="button"
+                  onClick={() => handleTemplateChange('standard')}
+                  style={{
+                    background: templateType === 'standard' ? 'rgba(112, 56, 248, 0.2)' : 'rgba(255, 255, 255, 0.03)',
+                    border: templateType === 'standard' ? '1.5px solid #7038f8' : '1px solid rgba(255, 255, 255, 0.08)',
+                    borderRadius: '12px',
+                    padding: '12px 8px',
+                    cursor: 'pointer',
+                    display: 'flex',
+                    flexDirection: 'column',
+                    alignItems: 'center',
+                    textAlign: 'center',
+                    boxShadow: templateType === 'standard' ? '0 0 16px rgba(112, 56, 248, 0.25)' : 'none',
+                    transition: 'all 0.2s ease'
+                  }}
+                >
+                  <div
                     style={{
+                      width: '64px',
+                      height: '40px',
+                      borderRadius: '4px',
+                      background: 'linear-gradient(135deg, #1b0e33, #0a0614)',
+                      border: '1px solid rgba(112, 56, 248, 0.3)',
+                      marginBottom: '8px',
                       display: 'flex',
                       flexDirection: 'column',
-                      alignItems: 'center',
-                      gap: '4px',
-                      padding: '6px 2px',
-                      border: 'none',
-                      borderRadius: '6px',
-                      fontSize: '0.68rem',
-                      fontWeight: 600,
-                      cursor: 'pointer',
-                      background: active ? 'var(--primary-purple)' : 'transparent',
-                      color: active ? '#ffffff' : 'var(--text-secondary)',
-                      boxShadow: active ? '0 2px 8px rgba(107, 0, 255, 0.4)' : 'none',
-                      transform: active ? 'scale(1.02)' : 'scale(1)',
-                      transition: 'transform 0.2s cubic-bezier(0.16, 1, 0.3, 1), background-color 0.2s ease, color 0.2s ease'
+                      justifyContent: 'space-between',
+                      padding: '4px'
                     }}
                   >
-                    <Icon size={14} />
-                    <span>{tab.label}</span>
-                  </button>
-                );
-              })}
+                    <div style={{ fontSize: '0.45rem', fontWeight: 800, color: '#fff', textAlign: 'left' }}>FLOCARD</div>
+                    <div style={{ height: '2px', width: '24px', background: '#7038f8', borderRadius: '1px' }} />
+                  </div>
+                  <span style={{ fontSize: '0.8rem', fontWeight: 600, color: '#ffffff' }}>Standard Design</span>
+                  <span style={{ fontSize: '0.66rem', color: '#94a3b8' }}>Pages 1–3</span>
+                </button>
+
+                {/* Custom Logo Design */}
+                <button
+                  type="button"
+                  onClick={() => handleTemplateChange('customer_logo')}
+                  style={{
+                    background: templateType === 'customer_logo' ? 'rgba(112, 56, 248, 0.2)' : 'rgba(255, 255, 255, 0.03)',
+                    border: templateType === 'customer_logo' ? '1.5px solid #7038f8' : '1px solid rgba(255, 255, 255, 0.08)',
+                    borderRadius: '12px',
+                    padding: '12px 8px',
+                    cursor: 'pointer',
+                    display: 'flex',
+                    flexDirection: 'column',
+                    alignItems: 'center',
+                    textAlign: 'center',
+                    boxShadow: templateType === 'customer_logo' ? '0 0 16px rgba(112, 56, 248, 0.25)' : 'none',
+                    transition: 'all 0.2s ease'
+                  }}
+                >
+                  <div
+                    style={{
+                      width: '64px',
+                      height: '40px',
+                      borderRadius: '4px',
+                      background: 'linear-gradient(135deg, #1a162b, #090614)',
+                      border: '1px solid rgba(205, 165, 255, 0.3)',
+                      marginBottom: '8px',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center'
+                    }}
+                  >
+                    <div style={{ width: '16px', height: '16px', borderRadius: '50%', background: 'rgba(205, 165, 255, 0.4)', border: '1px solid #cda5ff' }} />
+                  </div>
+                  <span style={{ fontSize: '0.8rem', fontWeight: 600, color: '#ffffff' }}>Custom Logo Design</span>
+                  <span style={{ fontSize: '0.66rem', color: '#94a3b8' }}>Pages 4–6</span>
+                </button>
+              </div>
             </div>
 
-            <AnimatePresence mode="wait" initial={false}>
-              <motion.div
-                key={activeTab}
-                initial={{ opacity: 0, y: 8 }}
-                animate={{ opacity: 1, y: 0 }}
-                exit={{ opacity: 0, y: -6 }}
-                transition={{ duration: 0.16, ease: [0.16, 1, 0.3, 1] }}
-              >
-                {/* TAB 2: TWO INDEPENDENT LOGOS & SCALING */}
-                {activeTab === 'logos' && (
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
-                {/* 1. Customer Logo Section */}
-                <div style={{ background: 'var(--elevated-surface)', padding: '14px', borderRadius: '10px', border: '1px solid var(--border-color)' }}>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '10px' }}>
-                    <div style={{ fontSize: '0.82rem', fontWeight: 700, color: '#ffffff' }}>Customer Logo (Front)</div>
-                    <span style={{ fontSize: '0.68rem', color: templateType === 'customer_logo' ? 'var(--accent-purple)' : 'var(--text-muted)' }}>
-                      {templateType === 'customer_logo' ? 'Theme 2 Center Badge' : 'Theme 1 Header Logo'}
-                    </span>
+            {/* STEP 2: Signature Finishes */}
+            <div
+              style={{
+                background: 'rgba(17, 12, 28, 0.75)',
+                border: '1px solid rgba(112, 56, 248, 0.16)',
+                borderRadius: '16px',
+                padding: '16px',
+                backdropFilter: 'blur(16px)'
+              }}
+            >
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '14px' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                  <span
+                    style={{
+                      width: '24px',
+                      height: '24px',
+                      borderRadius: '50%',
+                      background: 'rgba(112, 56, 248, 0.3)',
+                      border: '1px solid #7038f8',
+                      color: '#ffffff',
+                      fontSize: '0.75rem',
+                      fontWeight: 700,
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center'
+                    }}
+                  >
+                    2
+                  </span>
+                  <div>
+                    <div style={{ fontSize: '0.88rem', fontWeight: 700, color: '#f8fafc' }}>Signature Finishes</div>
+                    <div style={{ fontSize: '0.72rem', color: '#94a3b8' }}>Premium colors & materials</div>
                   </div>
+                </div>
 
-                  {/* Logo thumbnail preview if uploaded */}
-                  {customerLogo.url && (
-                    <div
+                <span style={{ fontSize: '0.72rem', color: '#cda5ff', fontWeight: 600, cursor: 'pointer' }}>
+                  View All &rarr;
+                </span>
+              </div>
+
+              {/* 4 Finishes: Platinum, Purple, Gold, Metal */}
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '10px' }}>
+                {[
+                  { id: 'platinum', name: 'Platinum', bg: 'linear-gradient(135deg, #e2e8f0 0%, #94a3b8 100%)', rim: '#cbd5e1' },
+                  { id: 'purple', name: 'Purple', bg: 'linear-gradient(135deg, #a855f7 0%, #6b21a8 100%)', rim: '#a855f7' },
+                  { id: 'gold', name: 'Gold', bg: 'linear-gradient(135deg, #facc15 0%, #a16207 100%)', rim: '#eab308' },
+                  { id: 'metal', name: 'Metal', bg: 'linear-gradient(135deg, #64748b 0%, #1e293b 100%)', rim: '#94a3b8' }
+                ].map(swatch => {
+                  const isSelected = edition === swatch.id;
+                  return (
+                    <button
+                      key={swatch.id}
+                      type="button"
+                      onClick={() => handleEditionChange(swatch.id)}
                       style={{
+                        background: 'transparent',
+                        border: 'none',
+                        cursor: 'pointer',
                         display: 'flex',
+                        flexDirection: 'column',
                         alignItems: 'center',
-                        gap: '12px',
-                        padding: '10px',
-                        background: 'rgba(0, 0, 0, 0.35)',
-                        border: '1px solid rgba(255, 255, 255, 0.1)',
-                        borderRadius: '8px',
-                        marginBottom: '12px'
+                        gap: '6px',
+                        padding: '6px 2px'
                       }}
                     >
                       <div
                         style={{
-                          width: '44px',
-                          height: '44px',
-                          borderRadius: customerLogo.showCircleBadge ? '50%' : '6px',
-                          border: '1px solid rgba(255, 255, 255, 0.2)',
-                          background: 'rgba(0, 0, 0, 0.6)',
-                          display: 'flex',
-                          alignItems: 'center',
-                          justifyContent: 'center',
-                          overflow: 'hidden'
+                          width: '42px',
+                          height: '42px',
+                          borderRadius: '50%',
+                          background: swatch.bg,
+                          border: isSelected ? '2.5px solid #7038f8' : `1.5px solid rgba(255, 255, 255, 0.2)`,
+                          boxShadow: isSelected ? '0 0 14px rgba(112, 56, 248, 0.6), inset 0 2px 4px rgba(255,255,255,0.4)' : 'inset 0 2px 4px rgba(255,255,255,0.2)',
+                          transform: isSelected ? 'scale(1.08)' : 'scale(1)',
+                          transition: 'all 0.2s cubic-bezier(0.16, 1, 0.3, 1)'
+                        }}
+                      />
+                      <span
+                        style={{
+                          fontSize: '0.74rem',
+                          fontWeight: isSelected ? 700 : 500,
+                          color: isSelected ? '#ffffff' : '#94a3b8'
                         }}
                       >
-                        <img
-                          src={customerLogo.url}
-                          alt="Customer logo preview"
-                          style={{ maxWidth: '80%', maxHeight: '80%', objectFit: 'contain' }}
-                        />
-                      </div>
-                      <div style={{ flex: 1 }}>
-                        <div style={{ fontSize: '0.78rem', color: '#ffffff', fontWeight: 600 }}>Active Logo</div>
-                        <div style={{ fontSize: '0.68rem', color: 'var(--text-muted)' }}>Displayed on card front</div>
-                      </div>
+                        {swatch.name}
+                      </span>
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+
+            {/* STEP 3: Add Elements */}
+            <div
+              style={{
+                background: 'rgba(17, 12, 28, 0.75)',
+                border: '1px solid rgba(112, 56, 248, 0.16)',
+                borderRadius: '16px',
+                padding: '16px',
+                backdropFilter: 'blur(16px)'
+              }}
+            >
+              <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '14px' }}>
+                <span
+                  style={{
+                    width: '24px',
+                    height: '24px',
+                    borderRadius: '50%',
+                    background: 'rgba(112, 56, 248, 0.3)',
+                    border: '1px solid #7038f8',
+                    color: '#ffffff',
+                    fontSize: '0.75rem',
+                    fontWeight: 700,
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center'
+                  }}
+                >
+                  3
+                </span>
+                <div>
+                  <div style={{ fontSize: '0.88rem', fontWeight: 700, color: '#f8fafc' }}>Add Elements</div>
+                  <div style={{ fontSize: '0.72rem', color: '#94a3b8' }}>Customize your card</div>
+                </div>
+              </div>
+
+              {/* 4 Icon Buttons: Text, Logo, NFC, QR Code */}
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '8px' }}>
+                {[
+                  { id: 'text', label: 'Text', icon: <Type size={18} /> },
+                  { id: 'logo', label: 'Logo', icon: <ImageIcon size={18} /> },
+                  { id: 'nfc', label: 'NFC', icon: <Radio size={18} /> },
+                  { id: 'qr', label: 'QR Code', icon: <QrCode size={18} /> }
+                ].map(el => {
+                  const isActive = activeElementTab === el.id;
+                  return (
+                    <button
+                      key={el.id}
+                      type="button"
+                      onClick={() => {
+                        setActiveElementTab(el.id);
+                        if (el.id === 'qr') setSide('back');
+                        if (el.id === 'text' || el.id === 'logo') setSide('front');
+                      }}
+                      style={{
+                        display: 'flex',
+                        flexDirection: 'column',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        gap: '6px',
+                        padding: '12px 6px',
+                        borderRadius: '10px',
+                        background: isActive ? 'rgba(112, 56, 248, 0.25)' : 'rgba(255, 255, 255, 0.03)',
+                        border: isActive ? '1.5px solid #7038f8' : '1px solid rgba(255, 255, 255, 0.08)',
+                        color: isActive ? '#ffffff' : '#94a3b8',
+                        cursor: 'pointer',
+                        transition: 'all 0.18s ease'
+                      }}
+                    >
+                      {el.icon}
+                      <span style={{ fontSize: '0.72rem', fontWeight: 600 }}>{el.label}</span>
+                    </button>
+                  );
+                })}
+              </div>
+
+              {/* Sub-drawer for Logo or QR when active */}
+              {activeElementTab === 'logo' && (
+                <div style={{ marginTop: '12px', padding: '12px', background: 'rgba(255,255,255,0.03)', borderRadius: '10px' }}>
+                  <label
+                    style={{
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      gap: '8px',
+                      padding: '10px',
+                      background: 'rgba(112, 56, 248, 0.2)',
+                      border: '1px dashed #7038f8',
+                      borderRadius: '8px',
+                      color: '#ffffff',
+                      fontSize: '0.78rem',
+                      fontWeight: 600,
+                      cursor: 'pointer'
+                    }}
+                  >
+                    <Upload size={14} />
+                    <span>Upload Transparent PNG Logo</span>
+                    <input type="file" accept="image/*" onChange={handleCustomerLogoUpload} style={{ display: 'none' }} />
+                  </label>
+                  {customerLogo.url && (
+                    <div style={{ marginTop: '8px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                      <span style={{ fontSize: '0.7rem', color: '#22c55e' }}>✓ Logo placed</span>
                       <button
                         type="button"
                         onClick={() => {
                           setCustomerLogo(prev => ({ ...prev, url: null }));
                           setFrontConfig(prev => ({ ...prev, customLogo: null }));
                         }}
-                        className="btn btn-outline btn-sm"
-                        style={{ fontSize: '0.7rem', padding: '4px 8px' }}
+                        style={{ background: 'none', border: 'none', color: '#ef4444', fontSize: '0.7rem', cursor: 'pointer' }}
                       >
                         Remove
                       </button>
                     </div>
                   )}
-
-                  <div style={{ display: 'flex', gap: '8px', marginBottom: '12px' }}>
-                    <label className="btn btn-secondary btn-sm" style={{ flex: 1, fontSize: '0.75rem', cursor: 'pointer', justifyContent: 'center' }}>
-                      <Upload size={13} />
-                      <span>{customerLogo.url ? 'Replace Logo' : 'Upload Customer Logo'}</span>
-                      <input type="file" accept="image/*" onChange={handleCustomerLogoUpload} style={{ display: 'none' }} />
-                    </label>
-                  </div>
-
-                  {/* Template Style Switcher */}
-                  <div style={{ marginBottom: '14px', background: 'rgba(0,0,0,0.25)', padding: '8px 10px', borderRadius: '6px' }}>
-                    <div style={{ fontSize: '0.7rem', color: 'var(--text-muted)', marginBottom: '6px' }}>Display Layout:</div>
-                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '6px' }}>
-                      <button
-                        type="button"
-                        onClick={() => {
-                          setTemplateType('customer_logo');
-                          setSide('front');
-                        }}
-                        style={{
-                          padding: '6px 8px',
-                          borderRadius: '4px',
-                          border: templateType === 'customer_logo' ? '1px solid var(--accent-purple)' : '1px solid var(--border-color)',
-                          background: templateType === 'customer_logo' ? 'rgba(168, 85, 247, 0.2)' : 'transparent',
-                          color: templateType === 'customer_logo' ? '#ffffff' : 'var(--text-muted)',
-                          fontSize: '0.72rem',
-                          fontWeight: 600,
-                          cursor: 'pointer'
-                        }}
-                      >
-                        Center Badge (Theme 2)
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => {
-                          setTemplateType('standard');
-                          setSide('front');
-                        }}
-                        style={{
-                          padding: '6px 8px',
-                          borderRadius: '4px',
-                          border: templateType === 'standard' ? '1px solid var(--accent-purple)' : '1px solid var(--border-color)',
-                          background: templateType === 'standard' ? 'rgba(168, 85, 247, 0.2)' : 'transparent',
-                          color: templateType === 'standard' ? '#ffffff' : 'var(--text-muted)',
-                          fontSize: '0.72rem',
-                          fontWeight: 600,
-                          cursor: 'pointer'
-                        }}
-                      >
-                        Top-Left (Theme 1)
-                      </button>
-                    </div>
-                  </div>
-
-                  {/* Size slider & buttons */}
-                  <div style={{ marginBottom: '12px' }}>
-                    <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.75rem', color: 'var(--text-secondary)', marginBottom: '4px' }}>
-                      <span>Logo Scale:</span>
-                      <strong>{customerLogo.size}%</strong>
-                    </div>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                      <button
-                        type="button"
-                        onClick={() => setCustomerLogo(p => ({ ...p, size: Math.max(40, p.size - 5) }))}
-                        style={{ background: 'rgba(255,255,255,0.1)', border: 'none', color: '#fff', width: '26px', height: '26px', borderRadius: '4px', cursor: 'pointer' }}
-                      >
-                        <Minus size={13} />
-                      </button>
-                      <input
-                        type="range"
-                        min="40"
-                        max="180"
-                        value={customerLogo.size}
-                        onChange={(e) => setCustomerLogo(p => ({ ...p, size: Number(e.target.value) }))}
-                        style={{ flex: 1 }}
-                      />
-                      <button
-                        type="button"
-                        onClick={() => setCustomerLogo(p => ({ ...p, size: Math.min(180, p.size + 5) }))}
-                        style={{ background: 'rgba(255,255,255,0.1)', border: 'none', color: '#fff', width: '26px', height: '26px', borderRadius: '4px', cursor: 'pointer' }}
-                      >
-                        <Plus size={13} />
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => setCustomerLogo(p => ({ ...p, size: 100, posX: 0, posY: 0 }))}
-                        title="Reset size to 100%"
-                        style={{ background: 'transparent', border: '1px solid var(--border-color)', color: 'var(--light-lavender)', fontSize: '0.7rem', padding: '4px 6px', borderRadius: '4px', cursor: 'pointer' }}
-                      >
-                        100%
-                      </button>
-                    </div>
-                  </div>
-
-                  {/* Position offset controls */}
-                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px', marginBottom: '10px' }}>
-                    <div>
-                      <div style={{ fontSize: '0.7rem', color: 'var(--text-muted)' }}>Offset X ({customerLogo.posX}px)</div>
-                      <input
-                        type="range"
-                        min="-60"
-                        max="60"
-                        value={customerLogo.posX}
-                        onChange={(e) => setCustomerLogo(p => ({ ...p, posX: Number(e.target.value) }))}
-                        style={{ width: '100%' }}
-                      />
-                    </div>
-                    <div>
-                      <div style={{ fontSize: '0.7rem', color: 'var(--text-muted)' }}>Offset Y ({customerLogo.posY}px)</div>
-                      <input
-                        type="range"
-                        min="-40"
-                        max="40"
-                        value={customerLogo.posY}
-                        onChange={(e) => setCustomerLogo(p => ({ ...p, posY: Number(e.target.value) }))}
-                        style={{ width: '100%' }}
-                      />
-                    </div>
-                  </div>
-
-                  {/* Circular badge toggle */}
-                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                    <span style={{ fontSize: '0.75rem', color: 'var(--text-secondary)' }}>Circular Badge Outline</span>
-                    <input
-                      type="checkbox"
-                      checked={customerLogo.showCircleBadge}
-                      onChange={(e) => setCustomerLogo(p => ({ ...p, showCircleBadge: e.target.checked }))}
-                    />
-                  </div>
                 </div>
+              )}
 
-                {/* 2. Official FLOCARD Logo Section - NON-EDITABLE */}
-                <div style={{ background: 'var(--elevated-surface)', padding: '14px', borderRadius: '10px', border: '1px solid var(--border-color)' }}>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
-                    <div style={{ fontSize: '0.82rem', fontWeight: 700, color: '#ffffff', display: 'flex', alignItems: 'center', gap: '6px' }}>
-                      <Lock size={12} style={{ color: 'var(--accent-purple)' }} />
-                      <span>Official FLOCARD Logo</span>
-                    </div>
-                    <span style={{ fontSize: '0.68rem', color: 'var(--text-muted)', background: 'rgba(255, 255, 255, 0.08)', padding: '2px 8px', borderRadius: '4px' }}>
-                      Non-Editable
-                    </span>
-                  </div>
-                  <p style={{ fontSize: '0.72rem', color: 'var(--text-muted)', margin: 0, lineHeight: 1.45 }}>
-                    The FLOCARD brand emblem is a protected trademark. Canonical dimensions and positioning are locked on the card back according to brand design specifications.
-                  </p>
+              {activeElementTab === 'qr' && (
+                <div style={{ marginTop: '12px', padding: '12px', background: 'rgba(255,255,255,0.03)', borderRadius: '10px' }}>
+                  <div style={{ fontSize: '0.72rem', color: '#94a3b8', marginBottom: '4px' }}>Destination Link</div>
+                  <input
+                    type="text"
+                    value={backConfig.qrUrl}
+                    onChange={(e) => setBackConfig({ ...backConfig, qrUrl: e.target.value })}
+                    placeholder="https://flocard.in/p/username"
+                    style={{
+                      width: '100%',
+                      padding: '8px 10px',
+                      background: 'rgba(0,0,0,0.3)',
+                      border: '1px solid rgba(255,255,255,0.1)',
+                      borderRadius: '6px',
+                      color: '#fff',
+                      fontSize: '0.76rem'
+                    }}
+                  />
+                </div>
+              )}
+            </div>
+
+            {/* STEP 4: Personal Details */}
+            <div
+              style={{
+                background: 'rgba(17, 12, 28, 0.75)',
+                border: '1px solid rgba(112, 56, 248, 0.16)',
+                borderRadius: '16px',
+                padding: '16px',
+                backdropFilter: 'blur(16px)'
+              }}
+            >
+              <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '14px' }}>
+                <span
+                  style={{
+                    width: '24px',
+                    height: '24px',
+                    borderRadius: '50%',
+                    background: 'rgba(112, 56, 248, 0.3)',
+                    border: '1px solid #7038f8',
+                    color: '#ffffff',
+                    fontSize: '0.75rem',
+                    fontWeight: 700,
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center'
+                  }}
+                >
+                  4
+                </span>
+                <div>
+                  <div style={{ fontSize: '0.88rem', fontWeight: 700, color: '#f8fafc' }}>Personal Details</div>
+                  <div style={{ fontSize: '0.72rem', color: '#94a3b8' }}>Your information on the card</div>
                 </div>
               </div>
-            )}
 
-            {/* TAB: IDENTITY & TYPOGRAPHY WITH LIVE HOVER FONT PREVIEW */}
-            {activeTab === 'identity' && (
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
-                {/* 1. Full Name */}
-                <div className="form-group" style={{ marginBottom: 0 }}>
-                  <label className="form-label" style={{ marginBottom: '6px' }}>Full Name</label>
-                  <input
-                    type="text"
-                    className="form-input"
-                    value={frontConfig.name}
-                    onChange={(e) => {
-                      const newName = e.target.value;
-                      setFrontConfig({ ...frontConfig, name: newName });
-                      setDesignTitle(getDynamicCardTitle(newName, edition));
+              {/* Full Name */}
+              <div style={{ marginBottom: '12px' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.72rem', color: '#94a3b8', marginBottom: '4px' }}>
+                  <span>Full Name</span>
+                  <span>{frontConfig.name?.length || 0}/50</span>
+                </div>
+                <input
+                  type="text"
+                  maxLength={50}
+                  value={frontConfig.name}
+                  onChange={(e) => setFrontConfig({ ...frontConfig, name: e.target.value })}
+                  placeholder="AKHIL ANVAR"
+                  style={{
+                    width: '100%',
+                    padding: '9px 12px',
+                    background: 'rgba(255, 255, 255, 0.04)',
+                    border: '1px solid rgba(255, 255, 255, 0.08)',
+                    borderRadius: '8px',
+                    color: '#ffffff',
+                    fontSize: '0.84rem',
+                    fontWeight: 600,
+                    outline: 'none',
+                    letterSpacing: '0.04em'
+                  }}
+                />
+              </div>
+
+              {/* Title / Role */}
+              <div style={{ marginBottom: '14px' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.72rem', color: '#94a3b8', marginBottom: '4px' }}>
+                  <span>Title / Role</span>
+                  <span>{frontConfig.role?.length || 0}/50</span>
+                </div>
+                <input
+                  type="text"
+                  maxLength={50}
+                  value={frontConfig.role}
+                  onChange={(e) => setFrontConfig({ ...frontConfig, role: e.target.value })}
+                  placeholder="CEO & FOUNDER"
+                  style={{
+                    width: '100%',
+                    padding: '9px 12px',
+                    background: 'rgba(255, 255, 255, 0.04)',
+                    border: '1px solid rgba(255, 255, 255, 0.08)',
+                    borderRadius: '8px',
+                    color: '#ffffff',
+                    fontSize: '0.84rem',
+                    fontWeight: 600,
+                    outline: 'none',
+                    letterSpacing: '0.06em'
+                  }}
+                />
+              </div>
+
+              {/* Font Style & Size in a Row */}
+              <div style={{ display: 'grid', gridTemplateColumns: '1.4fr 1fr', gap: '10px', alignItems: 'end' }}>
+                <InteractiveFontPicker
+                  label="Font Style"
+                  value={frontConfig.fontFamily}
+                  onChange={(fontId) => setFrontConfig({ ...frontConfig, fontFamily: fontId })}
+                  fieldName="name"
+                  hoveredFont={hoveredFont}
+                  setHoveredFont={setHoveredFont}
+                />
+
+                <div>
+                  <span style={{ fontSize: '0.72rem', color: '#94a3b8', display: 'block', marginBottom: '6px', fontWeight: 500 }}>
+                    Font Size
+                  </span>
+                  <div
+                    style={{
+                      display: 'flex',
+                      background: 'rgba(255, 255, 255, 0.04)',
+                      border: '1px solid rgba(255, 255, 255, 0.08)',
+                      borderRadius: '8px',
+                      padding: '2px'
                     }}
-                    placeholder="e.g. AKHIL ANVAR"
-                    style={{ marginBottom: '8px' }}
-                  />
-                  <InteractiveFontPicker
-                    label="Name Font Style (Hover to preview)"
-                    value={frontConfig.fontFamily || 'Space Grotesk'}
-                    onChange={(fontId) => setFrontConfig({ ...frontConfig, fontFamily: fontId })}
-                    fieldName="name"
-                    hoveredFont={hoveredFont}
-                    setHoveredFont={setHoveredFont}
-                  />
-
-                  {/* Name Scale */}
-                  <div style={{ marginTop: '8px' }}>
-                    <div style={{ fontSize: '0.72rem', color: 'var(--text-muted)', marginBottom: '4px' }}>Name Font Size</div>
-                    <div style={{ display: 'flex', gap: '6px' }}>
-                      {['small', 'medium', 'large'].map(size => (
+                  >
+                    {[
+                      { key: 'small', label: 'S' },
+                      { key: 'medium', label: 'M' },
+                      { key: 'large', label: 'L' }
+                    ].map(sz => {
+                      const isSel = frontConfig.fontSize === sz.key;
+                      return (
                         <button
-                          key={size}
+                          key={sz.key}
                           type="button"
-                          onClick={() => setFrontConfig({ ...frontConfig, fontSize: size })}
+                          onClick={() => setFrontConfig({ ...frontConfig, fontSize: sz.key })}
                           style={{
                             flex: 1,
-                            padding: '6px',
+                            padding: '6px 0',
                             borderRadius: '6px',
-                            border: frontConfig.fontSize === size ? '1px solid var(--accent-purple)' : '1px solid var(--border-color)',
-                            background: frontConfig.fontSize === size ? 'rgba(107, 0, 255, 0.25)' : 'var(--elevated-surface)',
-                            color: '#ffffff',
-                            fontSize: '0.75rem',
-                            fontWeight: 600,
-                            textTransform: 'capitalize',
-                            cursor: 'pointer'
+                            background: isSel ? '#7038f8' : 'transparent',
+                            border: 'none',
+                            color: isSel ? '#ffffff' : '#94a3b8',
+                            fontSize: '0.76rem',
+                            fontWeight: 700,
+                            cursor: 'pointer',
+                            transition: 'all 0.15s ease'
                           }}
                         >
-                          {size}
+                          {sz.label}
                         </button>
-                      ))}
-                    </div>
+                      );
+                    })}
                   </div>
                 </div>
+              </div>
+            </div>
+          </aside>
 
-                {/* 2. Title / Role */}
-                <div className="form-group" style={{ marginBottom: 0 }}>
-                  <label className="form-label" style={{ marginBottom: '6px' }}>Title / Role</label>
+          {/* ==================================================================
+              CENTER STAGE: LIVE NFC CARD PREVIEW
+              ================================================================== */}
+          <main
+            style={{
+              display: 'flex',
+              flexDirection: 'column',
+              gap: '14px'
+            }}
+          >
+            {/* Top Preview Bar: Front/Back Toggle & Safe Area/Bleed Switches */}
+            <div
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'space-between',
+                flexWrap: 'wrap',
+                gap: '10px'
+              }}
+            >
+              {/* Front Side / Back Side Pill */}
+              <div
+                style={{
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  background: 'rgba(18, 14, 28, 0.8)',
+                  border: '1px solid rgba(112, 56, 248, 0.22)',
+                  borderRadius: '9999px',
+                  padding: '3px',
+                  gap: '2px'
+                }}
+              >
+                <button
+                  type="button"
+                  onClick={() => { setSide('front'); setPreviewMode('front'); }}
+                  style={{
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    gap: '6px',
+                    padding: '6px 16px',
+                    borderRadius: '9999px',
+                    background: side === 'front' ? '#7038f8' : 'transparent',
+                    border: 'none',
+                    color: side === 'front' ? '#ffffff' : '#94a3b8',
+                    fontSize: '0.78rem',
+                    fontWeight: 600,
+                    cursor: 'pointer',
+                    boxShadow: side === 'front' ? '0 2px 10px rgba(112, 56, 248, 0.4)' : 'none',
+                    transition: 'all 0.18s ease'
+                  }}
+                >
+                  <Eye size={13} />
+                  <span>Front Side</span>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => { setSide('back'); setPreviewMode('back'); }}
+                  style={{
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    gap: '6px',
+                    padding: '6px 16px',
+                    borderRadius: '9999px',
+                    background: side === 'back' ? '#7038f8' : 'transparent',
+                    border: 'none',
+                    color: side === 'back' ? '#ffffff' : '#94a3b8',
+                    fontSize: '0.78rem',
+                    fontWeight: 600,
+                    cursor: 'pointer',
+                    boxShadow: side === 'back' ? '0 2px 10px rgba(112, 56, 248, 0.4)' : 'none',
+                    transition: 'all 0.18s ease'
+                  }}
+                >
+                  <Layers size={13} />
+                  <span>Back Side</span>
+                </button>
+              </div>
+
+              {/* Safe Area & Bleed Inline Switch */}
+              <div
+                style={{
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  gap: '12px',
+                  background: 'rgba(18, 14, 28, 0.8)',
+                  border: '1px solid rgba(112, 56, 248, 0.15)',
+                  borderRadius: '9999px',
+                  padding: '4px 14px',
+                  fontSize: '0.76rem',
+                  color: '#94a3b8'
+                }}
+              >
+                <label style={{ display: 'flex', alignItems: 'center', gap: '6px', cursor: 'pointer' }}>
+                  <span>Safe Area</span>
                   <input
-                    type="text"
-                    className="form-input"
-                    value={frontConfig.role}
-                    onChange={(e) => setFrontConfig({ ...frontConfig, role: e.target.value })}
-                    placeholder="e.g. CEO & FOUNDER"
-                    style={{ marginBottom: '8px' }}
+                    type="checkbox"
+                    checked={showGuides}
+                    onChange={(e) => setShowGuides(e.target.checked)}
+                    style={{ accentColor: '#7038f8', cursor: 'pointer' }}
                   />
-                  <InteractiveFontPicker
-                    label="Role Font Style (Hover to preview)"
-                    value={frontConfig.roleFontFamily || 'Inter'}
-                    onChange={(fontId) => setFrontConfig({ ...frontConfig, roleFontFamily: fontId })}
-                    fieldName="role"
-                    hoveredFont={hoveredFont}
-                    setHoveredFont={setHoveredFont}
-                  />
-                </div>
+                </label>
 
-                {/* 3. Details (New Text at Bottom of Role & Name) */}
-                <div className="form-group" style={{ marginBottom: 0 }}>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '6px' }}>
-                    <label className="form-label" style={{ marginBottom: 0 }}>
-                      Details (Bottom of Role & Name)
-                    </label>
-                    <span style={{ fontSize: '0.68rem', color: 'var(--accent-purple)', fontWeight: 600 }}>
-                      New Text
-                    </span>
-                  </div>
+                <span style={{ color: 'rgba(255,255,255,0.1)' }}>|</span>
+
+                <label style={{ display: 'flex', alignItems: 'center', gap: '6px', cursor: 'pointer' }}>
+                  <span>Bleed (3mm)</span>
                   <input
-                    type="text"
-                    className="form-input"
-                    value={frontConfig.details || ''}
-                    onChange={(e) => setFrontConfig({ ...frontConfig, details: e.target.value })}
-                    placeholder="location • number • website • etc"
-                    style={{ marginBottom: '8px' }}
+                    type="checkbox"
+                    checked={showBleed}
+                    onChange={(e) => setShowBleed(e.target.checked)}
+                    style={{ accentColor: '#7038f8', cursor: 'pointer' }}
                   />
-                  <InteractiveFontPicker
-                    label="Details Font Style (Hover to preview)"
-                    value={frontConfig.detailsFontFamily || frontConfig.roleFontFamily || 'Inter'}
-                    onChange={(fontId) => setFrontConfig({ ...frontConfig, detailsFontFamily: fontId })}
-                    fieldName="details"
-                    hoveredFont={hoveredFont}
-                    setHoveredFont={setHoveredFont}
-                  />
-                </div>
+                </label>
+              </div>
+            </div>
 
-                {/* 4. Tagline */}
-                <div className="form-group" style={{ marginBottom: 0 }}>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '6px' }}>
-                    <label className="form-label" style={{ marginBottom: 0 }}>Tagline Statement</label>
-                    <input
-                      type="checkbox"
-                      checked={frontConfig.showTagline}
-                      onChange={(e) => setFrontConfig({ ...frontConfig, showTagline: e.target.checked })}
+            {/* Central Stage Box (Carries GradientASCII background) */}
+            <div
+              style={{
+                position: 'relative',
+                width: '100%',
+                minHeight: '440px',
+                borderRadius: '24px',
+                overflow: 'hidden',
+                background: '#090614',
+                border: '1px solid rgba(112, 56, 248, 0.2)',
+                display: 'flex',
+                flexDirection: 'column',
+                alignItems: 'center',
+                justifyContent: 'center',
+                padding: '30px 20px',
+                boxShadow: '0 20px 60px rgba(0, 0, 0, 0.6), inset 0 0 80px rgba(112, 56, 248, 0.08)'
+              }}
+            >
+              {/* React Bits GradientASCII as the dynamic backdrop */}
+              <GradientASCII
+                colors={["#731ed8", "#f6f8ff", "#cda5ff", "#7038f8"]}
+                shape="horizon"
+                characters=" .·•●"
+                cellSize={18}
+                density={0.8}
+                style={{ opacity: 0.7 }}
+              />
+
+              {/* The Live NFC Card with Perspective & Dynamic Lighting */}
+              <div
+                style={{
+                  position: 'relative',
+                  zIndex: 10,
+                  transform: getPreviewTransform(),
+                  transition: 'transform 0.4s cubic-bezier(0.16, 1, 0.3, 1)',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center'
+                }}
+              >
+                <div
+                  style={{
+                    width: `${Math.round(BASE_CARD_WIDTH * fitScale)}px`,
+                    height: `${Math.round(BASE_CARD_HEIGHT * fitScale)}px`,
+                    transform: `scale(${fitScale})`,
+                    transformOrigin: 'center center'
+                  }}
+                >
+                  {is3DPreview ? (
+                    <Card3DPreview
+                      side={side}
+                      onSideChange={setSide}
+                      templateType={templateType}
+                      edition={edition}
+                      config={combinedConfig}
+                      showGuides={showGuides}
+                      showBleed={showBleed}
+                      width={BASE_CARD_WIDTH}
+                      enableTilt={dynamicLighting}
+                      onLogoWarningChange={setLogoWarning}
                     />
-                  </div>
-                  {frontConfig.showTagline && (
-                    <>
-                      <input
-                        type="text"
-                        className="form-input"
-                        value={frontConfig.tagline}
-                        onChange={(e) => setFrontConfig({ ...frontConfig, tagline: e.target.value })}
-                        placeholder="One Tap Every Connection"
-                        style={{ marginBottom: '8px' }}
-                      />
-                      <InteractiveFontPicker
-                        label="Tagline Font Style (Hover to preview)"
-                        value={frontConfig.taglineFontFamily || 'Inter'}
-                        onChange={(fontId) => setFrontConfig({ ...frontConfig, taglineFontFamily: fontId })}
-                        fieldName="tagline"
-                        hoveredFont={hoveredFont}
-                        setHoveredFont={setHoveredFont}
-                      />
-                    </>
+                  ) : (
+                    <CardCanvas
+                      side={side}
+                      templateType={templateType}
+                      edition={edition}
+                      config={combinedConfig}
+                      showGuides={showGuides}
+                      showBleed={showBleed}
+                      width={BASE_CARD_WIDTH}
+                      onLogoWarningChange={setLogoWarning}
+                    />
                   )}
                 </div>
               </div>
-            )}
 
-            {/* TAB 4: NFC CONTROLS */}
-            {activeTab === 'nfc' && (
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
-                <div
-                  style={{
-                    padding: '14px',
-                    borderRadius: '10px',
-                    background: 'rgba(107, 0, 255, 0.1)',
-                    border: '1px solid rgba(107, 0, 255, 0.3)',
-                    display: 'flex',
-                    alignItems: 'center',
-                    gap: '12px'
-                  }}
-                >
-                  <div
-                    style={{
-                      width: '38px',
-                      height: '38px',
-                      borderRadius: '8px',
-                      background: 'rgba(107, 0, 255, 0.2)',
-                      display: 'flex',
-                      alignItems: 'center',
-                      justifyContent: 'center',
-                      color: 'var(--accent-purple)'
-                    }}
-                  >
-                    <Radio size={20} />
-                  </div>
-                  <div>
-                    <div style={{ fontWeight: 700, fontSize: '0.88rem', color: '#ffffff' }}>
-                      NFC Antenna Hardware
-                    </div>
-                    <div style={{ fontSize: '0.72rem', color: 'var(--text-secondary)' }}>
-                      High-Capacity NTAG216 Chip &bull; 13.56 MHz ISO 14443A
-                    </div>
-                  </div>
-                </div>
-
-                <div style={{ fontSize: '0.78rem', color: 'var(--text-secondary)', lineHeight: 1.6 }}>
-                  The authentic <strong style={{ color: '#fff' }}>FLOCARD NFC Wave symbol</strong> is permanently embedded at standard card tap coordinates for instant recognition and 100% reliable contactless scanning.
-                </div>
-
-                <div
-                  style={{
-                    background: 'var(--elevated-surface)',
-                    padding: '12px',
-                    borderRadius: '8px',
-                    border: '1px solid var(--border-color)',
-                    display: 'flex',
-                    flexDirection: 'column',
-                    gap: '8px',
-                    fontSize: '0.74rem'
-                  }}
-                >
-                  <div style={{ display: 'flex', justifyContent: 'space-between', color: 'var(--text-secondary)' }}>
-                    <span>Antenna Status</span>
-                    <span style={{ color: '#10B981', fontWeight: 600 }}>Active & Encoded</span>
-                  </div>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', color: 'var(--text-secondary)' }}>
-                    <span>Target URL</span>
-                    <span style={{ color: 'var(--accent-purple)', fontWeight: 500 }}>{backConfig.qrUrl}</span>
-                  </div>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', color: 'var(--text-secondary)' }}>
-                    <span>Compatibility</span>
-                    <span style={{ color: '#ffffff' }}>iOS 13+ & Android (No App Required)</span>
-                  </div>
-                </div>
-              </div>
-            )}
-
-            {/* TAB 5: BACK & QR CODE CONTROLS */}
-            {activeTab === 'qr' && (
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
-                <div className="form-group" style={{ marginBottom: 0 }}>
-                  <label className="form-label">Destination Profile URL</label>
-                  <input
-                    type="text"
-                    className="form-input"
-                    value={backConfig.qrUrl}
-                    onChange={(e) => setBackConfig({ ...backConfig, qrUrl: e.target.value })}
-                    placeholder="https://flocard.in/p/akhil"
-                  />
-                </div>
-
-                <div className="form-group" style={{ marginBottom: 0 }}>
-                  <label className="form-label">Display Brand URL</label>
-                  <input
-                    type="text"
-                    className="form-input"
-                    value={backConfig.brandUrl}
-                    onChange={(e) => setBackConfig({ ...backConfig, brandUrl: e.target.value })}
-                    placeholder="flocard.in/akhil"
-                  />
-                </div>
-              </div>
-            )}
-          </motion.div>
-        </AnimatePresence>
-      </div>
-
-          {/* ==================================================================
-              CENTER CANVAS: REAL-TIME INTERACTIVE VIEW
-              ================================================================== */}
-          <div
-            className="designer-canvas-center glass-panel"
-            style={{
-              padding: '36px 20px',
-              display: 'flex',
-              flexDirection: 'column',
-              alignItems: 'center',
-              justifyContent: 'center',
-              minHeight: '540px',
-              position: 'relative',
-              overflow: 'hidden',
-              backgroundImage: isLight
-                ? `radial-gradient(circle at 50% 50%, rgba(248, 247, 252, 0.65), #f1edfa), url(${studioBackground})`
-                : `radial-gradient(circle at 50% 50%, rgba(8, 6, 13, 0.45), #08060d), url(${studioBackground})`,
-              backgroundSize: 'cover',
-              backgroundPosition: 'center'
-            }}
-          >
-            {/* View Controls Toolbar */}
-            <div
-              className="canvas-view-toolbar"
-              style={{
-                position: 'absolute',
-                top: '16px',
-                display: 'flex',
-                alignItems: 'center',
-                gap: '10px',
-                background: 'var(--glass-panel-bg)',
-                border: '1px solid var(--border-color)',
-                borderRadius: 'var(--radius-full)',
-                padding: '4px 14px',
-                zIndex: 20
-              }}
-            >
-              {/* Flip Switch */}
+              {/* Pill beneath card: Flip to Back / Flip to Front */}
               <button
                 type="button"
                 onClick={() => setSide(side === 'front' ? 'back' : 'front')}
-                className="interactive-chip"
                 style={{
-                  background: 'transparent',
-                  border: 'none',
-                  color: 'var(--light-lavender)',
-                  display: 'flex',
+                  position: 'relative',
+                  zIndex: 15,
+                  marginTop: '22px',
+                  display: 'inline-flex',
                   alignItems: 'center',
-                  gap: '6px',
-                  fontSize: '0.8rem',
+                  gap: '8px',
+                  padding: '7px 18px',
+                  borderRadius: '9999px',
+                  background: 'rgba(18, 14, 28, 0.85)',
+                  border: '1px solid rgba(112, 56, 248, 0.3)',
+                  color: '#ffffff',
+                  fontSize: '0.78rem',
                   fontWeight: 600,
                   cursor: 'pointer',
-                  padding: '4px 8px',
-                  borderRadius: '6px',
-                  transition: 'transform 0.2s cubic-bezier(0.16, 1, 0.3, 1), background-color 0.2s ease, color 0.2s ease'
-                }}
-                onMouseEnter={(e) => {
-                  e.currentTarget.style.background = 'rgba(107, 0, 255, 0.15)';
-                  e.currentTarget.style.transform = 'scale(1.05)';
-                }}
-                onMouseLeave={(e) => {
-                  e.currentTarget.style.background = 'transparent';
-                  e.currentTarget.style.transform = 'scale(1)';
+                  backdropFilter: 'blur(12px)',
+                  boxShadow: '0 4px 16px rgba(0, 0, 0, 0.4)'
                 }}
               >
-                <RotateCw
-                  size={14}
-                  style={{
-                    transition: 'transform 0.4s cubic-bezier(0.16, 1, 0.3, 1)',
-                    transform: side === 'back' ? 'rotate(180deg)' : 'rotate(0deg)'
-                  }}
-                />
-                <span>Showing: {side.toUpperCase()}</span>
-              </button>
-
-              <div className="toolbar-divider" style={{ width: '1px', height: '16px', background: 'var(--border-color)' }} />
-
-              {/* Safe Area Guides Toggle */}
-              <button
-                type="button"
-                onClick={() => setShowGuides(!showGuides)}
-                style={{
-                  background: showGuides ? 'rgba(107, 0, 255, 0.3)' : 'transparent',
-                  border: 'none',
-                  color: showGuides ? '#ffffff' : 'var(--text-muted)',
-                  borderRadius: '4px',
-                  padding: '4px 8px',
-                  fontSize: '0.75rem',
-                  cursor: 'pointer'
-                }}
-              >
-                Safe Area Guides
-              </button>
-
-              {/* Trim Bleed Toggle */}
-              <button
-                type="button"
-                onClick={() => setShowBleed(!showBleed)}
-                style={{
-                  background: showBleed ? 'rgba(239, 68, 68, 0.25)' : 'transparent',
-                  border: 'none',
-                  color: showBleed ? '#ffffff' : 'var(--text-muted)',
-                  borderRadius: '4px',
-                  padding: '4px 8px',
-                  fontSize: '0.75rem',
-                  cursor: 'pointer'
-                }}
-              >
-                Bleed Trim (3mm)
+                <RotateCw size={13} style={{ transform: side === 'back' ? 'rotate(180deg)' : 'none', transition: 'transform 0.3s ease' }} />
+                <span>{side === 'front' ? 'Flip to Back' : 'Flip to Front'}</span>
               </button>
             </div>
 
-            {/* Logo Exceeding Safe Area Warning Banner */}
-            {logoWarning && (
-              <div
-                style={{
-                  position: 'absolute',
-                  top: '64px',
-                  background: 'rgba(239, 68, 68, 0.9)',
-                  color: '#ffffff',
-                  padding: '6px 14px',
-                  borderRadius: 'var(--radius-full)',
-                  fontSize: '0.75rem',
-                  fontWeight: 600,
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: '6px',
-                  zIndex: 20,
-                  boxShadow: '0 4px 14px rgba(239, 68, 68, 0.4)'
-                }}
-              >
-                <AlertTriangle size={14} />
-                <span>Logo extends beyond the 3mm safe printable area. Adjust size or offset.</span>
-              </div>
-            )}
-
-            {/* The Live Interactive Card Canvas - Responsively Scaled */}
+            {/* Bottom 5 Thumbnails: Front, Back, Angled, Floating, Close Up */}
             <div
-              className="designer-canvas-viewport-box"
               style={{
-                width: `${Math.round(BASE_CARD_WIDTH * fitScale)}px`,
-                height: `${Math.round(BASE_CARD_HEIGHT * fitScale)}px`,
-                position: 'relative',
-                margin: viewportWidth < 640 ? '24px auto 28px' : '40px auto 20px',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                maxWidth: '100%'
+                display: 'grid',
+                gridTemplateColumns: 'repeat(5, 1fr)',
+                gap: '10px'
               }}
             >
-              <div
-                style={{
-                  width: `${BASE_CARD_WIDTH}px`,
-                  height: `${BASE_CARD_HEIGHT}px`,
-                  transform: `scale(${fitScale * zoom})`,
-                  transformOrigin: 'center center',
-                  transition: 'transform 0.2s ease',
-                  flexShrink: 0
-                }}
-              >
-                <Card3DPreview
-                  side={side}
-                  onSideChange={setSide}
-                  templateType={templateType}
-                  edition={edition}
-                  config={combinedConfig}
-                  showGuides={showGuides}
-                  showBleed={showBleed}
-                  width={BASE_CARD_WIDTH}
-                  onLogoWarningChange={setLogoWarning}
-                />
-              </div>
+              {[
+                { id: 'front', label: 'Front', side: 'front' },
+                { id: 'back', label: 'Back', side: 'back' },
+                { id: 'angled', label: 'Angled', side: 'front' },
+                { id: 'floating', label: 'Floating', side: 'front' },
+                { id: 'close-up', label: 'Close Up', side: 'front' }
+              ].map(thumb => {
+                const isSelected = previewMode === thumb.id;
+                return (
+                  <button
+                    key={thumb.id}
+                    type="button"
+                    onClick={() => handlePreviewModeSelect(thumb.id)}
+                    style={{
+                      background: isSelected ? 'rgba(112, 56, 248, 0.22)' : 'rgba(18, 14, 28, 0.7)',
+                      border: isSelected ? '1.5px solid #7038f8' : '1px solid rgba(112, 56, 248, 0.14)',
+                      borderRadius: '12px',
+                      padding: '8px 4px',
+                      cursor: 'pointer',
+                      display: 'flex',
+                      flexDirection: 'column',
+                      alignItems: 'center',
+                      gap: '6px',
+                      boxShadow: isSelected ? '0 0 16px rgba(112, 56, 248, 0.3)' : 'none',
+                      transition: 'all 0.18s ease'
+                    }}
+                  >
+                    <div
+                      style={{
+                        width: '46px',
+                        height: '28px',
+                        borderRadius: '4px',
+                        background: 'linear-gradient(135deg, #2b154a 0%, #0d0718 100%)',
+                        border: '1px solid rgba(205, 165, 255, 0.25)',
+                        transform: thumb.id === 'angled' ? 'rotate(-6deg) skewX(-4deg)' : thumb.id === 'floating' ? 'translateY(-3px)' : 'none',
+                        transition: 'transform 0.2s ease'
+                      }}
+                    />
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
+                      {isSelected && (
+                        <span style={{ width: '5px', height: '5px', borderRadius: '50%', background: '#cda5ff' }} />
+                      )}
+                      <span
+                        style={{
+                          fontSize: '0.72rem',
+                          fontWeight: isSelected ? 700 : 500,
+                          color: isSelected ? '#ffffff' : '#94a3b8'
+                        }}
+                      >
+                        {thumb.label}
+                      </span>
+                    </div>
+                  </button>
+                );
+              })}
             </div>
-
-            {/* Bottom Dimensions & Aspect Ratio Spec Indicator */}
-            <div
-              className="canvas-spec-bar"
-              style={{
-                display: 'flex',
-                alignItems: 'center',
-                gap: '12px',
-                fontSize: '0.75rem',
-                color: 'var(--text-muted)',
-                marginTop: '10px'
-              }}
-            >
-              <span>{TEMPLATES[templateType]?.name}</span>
-              <span className="spec-dot">&bull;</span>
-              <span>CR80 ISO/IEC 7810 ID-1 (85.60 &times; 53.98 mm)</span>
-              <span className="spec-dot">&bull;</span>
-              <span>Corner Radius: 3.18mm</span>
-            </div>
-          </div>
+          </main>
 
           {/* ==================================================================
-              RIGHT SIDEBAR: EXPORTS, STATUS & ADMIN STUDIO BG
+              RIGHT SIDEBAR: PREVIEW CONTROLS, SPECS & STATUS (5, 6, 7)
               ================================================================== */}
-          <div
-            className="designer-right-panel glass-panel"
+          <aside
             style={{
-              padding: '24px',
               display: 'flex',
               flexDirection: 'column',
-              gap: '24px'
+              gap: '16px'
             }}
           >
-            {/* Status Card */}
-            <div>
-              <div style={{ fontSize: '0.75rem', textTransform: 'uppercase', color: 'var(--text-muted)', fontWeight: 700, marginBottom: '8px' }}>
-                Design Status
+            {/* STEP 5: Live Preview Controls */}
+            <div
+              style={{
+                background: 'rgba(17, 12, 28, 0.75)',
+                border: '1px solid rgba(112, 56, 248, 0.16)',
+                borderRadius: '16px',
+                padding: '16px',
+                backdropFilter: 'blur(16px)'
+              }}
+            >
+              <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '14px' }}>
+                <span
+                  style={{
+                    width: '24px',
+                    height: '24px',
+                    borderRadius: '50%',
+                    background: 'rgba(112, 56, 248, 0.3)',
+                    border: '1px solid #7038f8',
+                    color: '#ffffff',
+                    fontSize: '0.75rem',
+                    fontWeight: 700,
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center'
+                  }}
+                >
+                  5
+                </span>
+                <div>
+                  <div style={{ fontSize: '0.88rem', fontWeight: 700, color: '#f8fafc' }}>Live Preview Controls</div>
+                  <div style={{ fontSize: '0.72rem', color: '#94a3b8' }}>Adjust card appearance</div>
+                </div>
               </div>
+
+              {/* Toggles */}
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+                {[
+                  { label: 'Show Safe Area', checked: showGuides, setChecked: setShowGuides },
+                  { label: 'Show Bleed (3mm)', checked: showBleed, setChecked: setShowBleed },
+                  { label: 'Dynamic Lighting', checked: dynamicLighting, setChecked: setDynamicLighting },
+                  { label: '3D Preview', checked: is3DPreview, setChecked: setIs3DPreview }
+                ].map((ctrl, idx) => (
+                  <div
+                    key={idx}
+                    style={{
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'space-between',
+                      padding: '6px 0'
+                    }}
+                  >
+                    <span style={{ fontSize: '0.78rem', color: '#cbd5e1' }}>{ctrl.label}</span>
+                    <button
+                      type="button"
+                      onClick={() => ctrl.setChecked(!ctrl.checked)}
+                      style={{
+                        width: '36px',
+                        height: '20px',
+                        borderRadius: '9999px',
+                        background: ctrl.checked ? '#7038f8' : 'rgba(255, 255, 255, 0.15)',
+                        border: 'none',
+                        position: 'relative',
+                        cursor: 'pointer',
+                        transition: 'background 0.2s ease'
+                      }}
+                    >
+                      <div
+                        style={{
+                          width: '14px',
+                          height: '14px',
+                          borderRadius: '50%',
+                          background: '#ffffff',
+                          position: 'absolute',
+                          top: '3px',
+                          left: ctrl.checked ? '19px' : '3px',
+                          transition: 'left 0.2s cubic-bezier(0.16, 1, 0.3, 1)'
+                        }}
+                      />
+                    </button>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            {/* STEP 6: Card Specifications */}
+            <div
+              style={{
+                background: 'rgba(17, 12, 28, 0.75)',
+                border: '1px solid rgba(112, 56, 248, 0.16)',
+                borderRadius: '16px',
+                padding: '16px',
+                backdropFilter: 'blur(16px)'
+              }}
+            >
+              <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '14px' }}>
+                <span
+                  style={{
+                    width: '24px',
+                    height: '24px',
+                    borderRadius: '50%',
+                    background: 'rgba(112, 56, 248, 0.3)',
+                    border: '1px solid #7038f8',
+                    color: '#ffffff',
+                    fontSize: '0.75rem',
+                    fontWeight: 700,
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center'
+                  }}
+                >
+                  6
+                </span>
+                <div>
+                  <div style={{ fontSize: '0.88rem', fontWeight: 700, color: '#f8fafc' }}>Card Specifications</div>
+                  <div style={{ fontSize: '0.72rem', color: '#94a3b8' }}>Standard FLOCARD Design</div>
+                </div>
+              </div>
+
+              {/* Spec Items */}
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', fontSize: '0.74rem' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', color: '#94a3b8' }}>
+                  <span>Size</span>
+                  <span style={{ color: '#ffffff', fontWeight: 600 }}>CR80 (85.60 × 53.98 mm)</span>
+                </div>
+                <div style={{ display: 'flex', justifyContent: 'space-between', color: '#94a3b8' }}>
+                  <span>Thickness</span>
+                  <span style={{ color: '#ffffff', fontWeight: 600 }}>0.76 mm (Standard)</span>
+                </div>
+                <div style={{ display: 'flex', justifyContent: 'space-between', color: '#94a3b8' }}>
+                  <span>Corner Radius</span>
+                  <span style={{ color: '#ffffff', fontWeight: 600 }}>3.18 mm</span>
+                </div>
+                <div style={{ display: 'flex', justifyContent: 'space-between', color: '#94a3b8' }}>
+                  <span>Print</span>
+                  <span style={{ color: '#ffffff', fontWeight: 600 }}>Full Color, Matte/Gloss</span>
+                </div>
+              </div>
+            </div>
+
+            {/* STEP 7: Design Status & Send for Print */}
+            <div
+              style={{
+                background: 'rgba(17, 12, 28, 0.75)',
+                border: '1px solid rgba(112, 56, 248, 0.16)',
+                borderRadius: '16px',
+                padding: '16px',
+                backdropFilter: 'blur(16px)'
+              }}
+            >
+              <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '14px' }}>
+                <span
+                  style={{
+                    width: '24px',
+                    height: '24px',
+                    borderRadius: '50%',
+                    background: 'rgba(112, 56, 248, 0.3)',
+                    border: '1px solid #7038f8',
+                    color: '#ffffff',
+                    fontSize: '0.75rem',
+                    fontWeight: 700,
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center'
+                  }}
+                >
+                  7
+                </span>
+                <div>
+                  <div style={{ fontSize: '0.88rem', fontWeight: 700, color: '#f8fafc' }}>Design Status</div>
+                  <div style={{ fontSize: '0.72rem', color: '#94a3b8' }}>Track your progress</div>
+                </div>
+              </div>
+
+              {/* Status Badge */}
               <div
                 style={{
                   display: 'flex',
                   alignItems: 'center',
                   gap: '8px',
-                  padding: '10px 14px',
-                  borderRadius: 'var(--radius-sm)',
-                  background: designStatus === 'approved'
-                    ? 'rgba(16, 185, 129, 0.15)'
-                    : designStatus === 'submitted' || designStatus === 'in_review'
-                      ? 'rgba(245, 158, 11, 0.15)'
-                      : 'var(--elevated-surface)',
-                  border: '1px solid var(--border-color)',
-                  color: designStatus === 'approved' ? '#10b981' : designStatus === 'submitted' ? '#d97706' : 'var(--text-primary)'
+                  padding: '8px 12px',
+                  background: 'rgba(255, 255, 255, 0.04)',
+                  borderRadius: '10px',
+                  marginBottom: '16px'
                 }}
               >
-                <div
+                <span
                   style={{
                     width: '8px',
                     height: '8px',
                     borderRadius: '50%',
-                    background: designStatus === 'approved' ? '#10b981' : designStatus === 'submitted' ? '#f59e0b' : '#94a3b8'
+                    background: '#22c55e',
+                    boxShadow: '0 0 8px #22c55e'
                   }}
                 />
-                <span style={{ fontSize: '0.88rem', fontWeight: 700, textTransform: 'uppercase' }}>
-                  {designStatus.replace('_', ' ')}
-                </span>
-              </div>
-            </div>
-
-            {/* High-Resolution Artwork Exports - ADMIN ONLY */}
-            {isAdmin && (
-              <div style={{ borderTop: '1px solid var(--border-color)', paddingTop: '20px' }}>
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '12px' }}>
-                  <div style={{ fontSize: '0.75rem', textTransform: 'uppercase', color: 'var(--text-muted)', fontWeight: 700 }}>
-                    Industrial Artwork Export
-                  </div>
-                  <span style={{ fontSize: '0.68rem', color: 'var(--accent-purple)', fontWeight: 700 }}>Admin Only</span>
-                </div>
-
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
-                  <button
-                    type="button"
-                    onClick={handleDownloadBothSides}
-                    className="btn btn-secondary btn-sm"
-                    style={{
-                      width: '100%',
-                      justifyContent: 'flex-start',
-                      background: 'rgba(168, 85, 247, 0.12)',
-                      borderColor: 'rgba(168, 85, 247, 0.35)',
-                      color: 'var(--text-primary)'
-                    }}
-                  >
-                    <Download size={14} color="var(--accent-purple)" />
-                    <span style={{ fontWeight: 600 }}>Download Both Sides (Combined PNG)</span>
-                  </button>
-
-                  <button
-                    type="button"
-                    onClick={() => handleCopyArtwork('both')}
-                    className="btn btn-secondary btn-sm"
-                    style={{ width: '100%', justifyContent: 'flex-start' }}
-                  >
-                    {copiedClipboard ? <Check size={14} color="#10b981" /> : <Copy size={14} />}
-                    <span>{copiedClipboard ? 'Artwork Copied to Clipboard!' : 'Copy Artwork to Clipboard'}</span>
-                  </button>
-
-                  <button
-                    type="button"
-                    onClick={() => handleExportPNG('front')}
-                    className="btn btn-secondary btn-sm"
-                    style={{ width: '100%', justifyContent: 'flex-start' }}
-                  >
-                    <Download size={14} />
-                    <span>Download Front (300 DPI PNG)</span>
-                  </button>
-
-                  <button
-                    type="button"
-                    onClick={() => handleExportPNG('back')}
-                    className="btn btn-secondary btn-sm"
-                    style={{ width: '100%', justifyContent: 'flex-start' }}
-                  >
-                    <Download size={14} />
-                    <span>Download Back (300 DPI PNG)</span>
-                  </button>
-
-                  <button
-                    type="button"
-                    onClick={handleExportPDF}
-                    disabled={isExporting}
-                    className="btn btn-primary btn-sm"
-                    style={{ width: '100%', justifyContent: 'flex-start' }}
-                  >
-                    <FileCheck size={14} />
-                    <span>{isExporting ? 'Generating PDF...' : 'Export Print-Ready PDF'}</span>
-                  </button>
-                </div>
-
-                <p style={{ fontSize: '0.72rem', color: 'var(--text-muted)', marginTop: '8px', lineHeight: 1.4 }}>
-                  Generates vector double-sided PDF with standard 3mm bleed margin and trim crop marks suitable for industrial printers.
-                </p>
-              </div>
-            )}
-
-            {/* Admin-Only Studio Background Control */}
-            <div style={{ borderTop: '1px solid var(--border-color)', paddingTop: '20px' }}>
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
-                <div style={{ fontSize: '0.75rem', textTransform: 'uppercase', color: 'var(--text-muted)', fontWeight: 700 }}>
-                  Studio Environment
-                </div>
-                {isAdmin ? (
-                  <span style={{ fontSize: '0.68rem', color: 'var(--accent-purple)', fontWeight: 700 }}>Admin Access</span>
-                ) : (
-                  <span style={{ fontSize: '0.68rem', color: 'var(--text-muted)', display: 'flex', alignItems: 'center', gap: '3px' }}>
-                    <Lock size={10} /> Locked
-                  </span>
-                )}
-              </div>
-
-              {isAdmin ? (
                 <div>
-                  <label className="btn btn-secondary btn-sm" style={{ width: '100%', cursor: 'pointer', fontSize: '0.75rem', justifyContent: 'center' }}>
-                    <Upload size={13} />
-                    <span>Upload Global Studio BG</span>
-                    <input type="file" accept="image/*" onChange={handleStudioBgUpload} style={{ display: 'none' }} />
-                  </label>
-
-                  <button
-                    type="button"
-                    onClick={() => resetStudioBg(user?.role)}
-                    className="btn btn-outline btn-sm"
-                    style={{ width: '100%', marginTop: '6px', fontSize: '0.72rem' }}
-                  >
-                    Reset Studio Background
-                  </button>
-
-                  {adminBgMessage && (
-                    <div style={{ fontSize: '0.72rem', color: 'var(--success)', marginTop: '6px' }}>
-                      {adminBgMessage}
-                    </div>
-                  )}
+                  <div style={{ fontSize: '0.78rem', fontWeight: 700, color: '#22c55e', letterSpacing: '0.04em' }}>
+                    {designStatus.toUpperCase()}
+                  </div>
+                  <div style={{ fontSize: '0.68rem', color: '#94a3b8' }}>
+                    Last edited just now
+                  </div>
                 </div>
-              ) : (
-                <p style={{ fontSize: '0.72rem', color: 'var(--text-muted)', lineHeight: 1.4 }}>
-                  Permanent studio ambiance is configured globally by platform administrators.
-                </p>
-              )}
-            </div>
-          </div>
-        </div>
+              </div>
 
-        {/* Hidden Master Renderers for Front & Back 300 DPI Generation */}
-        <div style={{ display: 'none' }}>
-          <CardCanvas
-            side="front"
-            templateType={templateType}
-            edition={edition}
-            config={combinedConfig}
-            canvasRef={frontExportCanvasRef}
-          />
-          <CardCanvas
-            side="back"
-            templateType={templateType}
-            edition={edition}
-            config={combinedConfig}
-            canvasRef={backExportCanvasRef}
-          />
+              {/* React Bits SlideCommit for Print Submission */}
+              <div style={{ marginBottom: '12px' }}>
+                <SlideCommit
+                  label="Slide to send for print"
+                  doneLabel="Sent for Print"
+                  errorLabel="Submission failed"
+                  onConfirm={() => handleSaveDesign(true)}
+                  trackColor="#191226"
+                  handleColor="#ffffff"
+                  successColor="#7038f8"
+                  width={245}
+                  height={48}
+                  radius={24}
+                />
+              </div>
+
+              {/* Continue to Details CTA */}
+              <button
+                type="button"
+                onClick={() => handleSaveDesign(false)}
+                style={{
+                  width: '100%',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  gap: '8px',
+                  padding: '12px',
+                  borderRadius: '12px',
+                  background: 'linear-gradient(135deg, #7038f8, #8b5cf6)',
+                  border: 'none',
+                  color: '#ffffff',
+                  fontSize: '0.84rem',
+                  fontWeight: 700,
+                  cursor: 'pointer',
+                  boxShadow: '0 4px 18px rgba(112, 56, 248, 0.35)'
+                }}
+              >
+                <span>Continue to Details</span>
+                <ArrowRight size={15} />
+              </button>
+            </div>
+          </aside>
         </div>
       </div>
 
+      {/* Hidden Master Renderers for 300 DPI Generation */}
+      <div style={{ display: 'none' }}>
+        <CardCanvas
+          side="front"
+          templateType={templateType}
+          edition={edition}
+          config={combinedConfig}
+          canvasRef={frontExportCanvasRef}
+        />
+        <CardCanvas
+          side="back"
+          templateType={templateType}
+          edition={edition}
+          config={combinedConfig}
+          canvasRef={backExportCanvasRef}
+        />
+      </div>
 
       {/* Customer Login Required Modal */}
       {showAuthModal && (
         <div
           style={{
             position: 'fixed',
-            top: 0,
-            left: 0,
-            right: 0,
-            bottom: 0,
+            inset: 0,
             background: 'rgba(5, 3, 10, 0.85)',
-            backdropFilter: 'blur(10px)',
-            WebkitBackdropFilter: 'blur(10px)',
-            zIndex: 9999,
+            backdropFilter: 'blur(12px)',
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'center',
+            zIndex: 9999,
             padding: '20px'
           }}
         >
           <div
-            className="glass-panel"
             style={{
-              maxWidth: '440px',
-              width: '100%',
-              padding: '32px 28px',
+              background: '#130d22',
+              border: '1px solid rgba(112, 56, 248, 0.3)',
               borderRadius: '20px',
-              background: 'linear-gradient(145deg, rgba(23, 16, 32, 0.98), rgba(13, 9, 21, 0.98))',
-              border: '1px solid rgba(168, 85, 247, 0.4)',
-              boxShadow: '0 20px 50px rgba(0, 0, 0, 0.8), 0 0 40px rgba(107, 0, 255, 0.25)',
-              textAlign: 'center'
+              padding: '28px',
+              maxWidth: '420px',
+              width: '100%',
+              boxShadow: '0 20px 60px rgba(0, 0, 0, 0.8)'
             }}
           >
-            <div
-              style={{
-                width: '56px',
-                height: '56px',
-                borderRadius: '50%',
-                background: 'rgba(107, 0, 255, 0.2)',
-                border: '1px solid var(--accent-purple)',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                margin: '0 auto 16px',
-                color: 'var(--accent-purple)'
-              }}
-            >
-              <Lock size={26} />
-            </div>
-
-            <h3 style={{ fontSize: '1.25rem', fontWeight: 800, color: 'var(--text-primary)', marginBottom: '8px', fontFamily: 'var(--font-display)' }}>
-              Sign In to Submit Design
+            <h3 style={{ fontSize: '1.15rem', fontWeight: 700, color: '#ffffff', marginBottom: '8px' }}>
+              Sign In to Submit for Print
             </h3>
-            <p style={{ fontSize: '0.86rem', color: 'var(--text-secondary)', lineHeight: 1.55, marginBottom: '24px' }}>
-              Your design draft has been safely saved! To submit your card for high-resolution print review and production, please log in or create a customer account.
+            <p style={{ fontSize: '0.82rem', color: '#94a3b8', lineHeight: 1.5, marginBottom: '20px' }}>
+              Please sign in to your FLOCARD account to link this card design to your production order.
             </p>
-
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
-              <button
-                type="button"
-                onClick={() => {
-                  window.history.pushState({}, '', '/login?redirect=/designer&submit=true');
-                  window.dispatchEvent(new PopStateEvent('popstate'));
+            <div style={{ display: 'flex', gap: '10px' }}>
+              <a
+                href="/login?redirect=/designer?submit=true"
+                style={{
+                  flex: 1,
+                  padding: '10px',
+                  borderRadius: '10px',
+                  background: '#7038f8',
+                  color: '#ffffff',
+                  textAlign: 'center',
+                  textDecoration: 'none',
+                  fontSize: '0.82rem',
+                  fontWeight: 600
                 }}
-                className="btn btn-primary"
-                style={{ width: '100%', justifyContent: 'center', padding: '12px' }}
               >
-                <span>Log In to Existing Account</span>
-                <ArrowRight size={16} />
-              </button>
-
-              <button
-                type="button"
-                onClick={() => {
-                  window.history.pushState({}, '', '/login?tab=signup&redirect=/designer&submit=true');
-                  window.dispatchEvent(new PopStateEvent('popstate'));
-                }}
-                className="btn btn-secondary"
-                style={{ width: '100%', justifyContent: 'center', padding: '12px' }}
-              >
-                <span>Create New Account</span>
-              </button>
-
+                Sign In
+              </a>
               <button
                 type="button"
                 onClick={() => setShowAuthModal(false)}
-                className="btn btn-outline"
-                style={{ width: '100%', justifyContent: 'center', marginTop: '6px', fontSize: '0.8rem' }}
+                style={{
+                  padding: '10px 16px',
+                  borderRadius: '10px',
+                  background: 'rgba(255,255,255,0.06)',
+                  border: '1px solid rgba(255,255,255,0.1)',
+                  color: '#94a3b8',
+                  cursor: 'pointer'
+                }}
               >
-                Keep Editing Card
+                Cancel
               </button>
             </div>
           </div>
         </div>
       )}
 
-      {/* Direct Admin Panel Order Submission Modal */}
+      {/* Order Submitted Confirmation Modal */}
       {showOrderSubmittedModal && (
         <div
           style={{
             position: 'fixed',
-            top: 0,
-            left: 0,
-            right: 0,
-            bottom: 0,
-            background: 'rgba(5, 3, 10, 0.88)',
-            backdropFilter: 'blur(14px)',
-            WebkitBackdropFilter: 'blur(14px)',
-            zIndex: 9999,
+            inset: 0,
+            background: 'rgba(5, 3, 10, 0.85)',
+            backdropFilter: 'blur(12px)',
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'center',
+            zIndex: 9999,
             padding: '20px'
           }}
         >
           <div
-            className="glass-panel"
             style={{
-              maxWidth: '520px',
+              background: '#130d22',
+              border: '1px solid rgba(112, 56, 248, 0.3)',
+              borderRadius: '20px',
+              padding: '28px',
+              maxWidth: '460px',
               width: '100%',
-              padding: '32px 28px',
-              borderRadius: '24px',
-              background: 'linear-gradient(145deg, rgba(23, 16, 35, 0.98), rgba(12, 8, 20, 0.98))',
-              border: '1px solid rgba(168, 85, 247, 0.5)',
-              boxShadow: '0 24px 60px rgba(0, 0, 0, 0.85), 0 0 50px rgba(107, 0, 255, 0.3)',
-              position: 'relative'
+              textAlign: 'center',
+              boxShadow: '0 20px 60px rgba(0, 0, 0, 0.8)'
             }}
           >
-            {/* Close Button */}
-            <button
-              type="button"
-              onClick={() => setShowOrderSubmittedModal(false)}
-              aria-label="Close"
+            <div
               style={{
-                position: 'absolute',
-                top: '16px',
-                right: '16px',
-                background: 'rgba(255, 255, 255, 0.08)',
-                border: '1px solid rgba(255, 255, 255, 0.1)',
-                color: 'var(--text-muted)',
+                width: '52px',
+                height: '52px',
                 borderRadius: '50%',
-                width: '32px',
-                height: '32px',
+                background: 'rgba(34, 197, 94, 0.15)',
+                border: '1px solid #22c55e',
+                color: '#22c55e',
                 display: 'flex',
                 alignItems: 'center',
                 justifyContent: 'center',
-                cursor: 'pointer',
-                transition: 'background 0.2s'
+                margin: '0 auto 16px'
               }}
-              onMouseEnter={(e) => e.currentTarget.style.background = 'rgba(255, 255, 255, 0.15)'}
-              onMouseLeave={(e) => e.currentTarget.style.background = 'rgba(255, 255, 255, 0.08)'}
             >
-              <X size={16} />
+              <CheckCircle2 size={28} />
+            </div>
+            <h3 style={{ fontSize: '1.2rem', fontWeight: 700, color: '#ffffff', marginBottom: '8px' }}>
+              Order Placed in Print Production!
+            </h3>
+            <p style={{ fontSize: '0.82rem', color: '#94a3b8', lineHeight: 1.5, marginBottom: '20px' }}>
+              Your card design <strong style={{ color: '#fff' }}>{designTitle}</strong> has been transmitted to our industrial manufacturing queue. High-resolution print assets have been queued.
+            </p>
+            <button
+              type="button"
+              onClick={() => setShowOrderSubmittedModal(false)}
+              style={{
+                width: '100%',
+                padding: '12px',
+                borderRadius: '10px',
+                background: '#7038f8',
+                border: 'none',
+                color: '#ffffff',
+                fontWeight: 700,
+                cursor: 'pointer'
+              }}
+            >
+              Back to Studio
             </button>
-
-            {/* Header Icon & Title */}
-            <div style={{ textAlign: 'center', marginBottom: '20px' }}>
-              <div
-                style={{
-                  width: '64px',
-                  height: '64px',
-                  borderRadius: '50%',
-                  background: 'linear-gradient(135deg, rgba(168, 85, 247, 0.25), rgba(34, 197, 94, 0.2))',
-                  border: '1.5px solid rgba(168, 85, 247, 0.6)',
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  margin: '0 auto 14px',
-                  boxShadow: '0 0 30px rgba(168, 85, 247, 0.4)'
-                }}
-              >
-                <PackageCheck size={32} color="#A855F7" />
-              </div>
-              <h3 style={{ fontSize: '1.35rem', fontWeight: 800, color: '#ffffff', marginBottom: '6px', fontFamily: 'var(--font-display)' }}>
-                Order Sent Directly to Admin Panel!
-              </h3>
-              <p style={{ fontSize: '0.86rem', color: 'var(--text-secondary)', lineHeight: 1.5, margin: 0 }}>
-                Your custom smart card design has been received and queued in the production & manufacturing pipeline.
-              </p>
-            </div>
-
-            {/* Order Reference & Specs Card */}
-            <div
-              style={{
-                background: 'rgba(255, 255, 255, 0.04)',
-                border: '1px solid rgba(255, 255, 255, 0.09)',
-                borderRadius: '16px',
-                padding: '16px',
-                marginBottom: '16px',
-                display: 'flex',
-                flexDirection: 'column',
-                gap: '8px'
-              }}
-            >
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.05em', fontWeight: 700 }}>Order Reference</span>
-                <span style={{ fontSize: '0.92rem', fontWeight: 800, color: '#D8B4FE', fontFamily: 'monospace' }}>
-                  {submittedOrder?.orderReference || submittedOrder?.id || 'FLC-ORD-PENDING'}
-                </span>
-              </div>
-              <div style={{ height: '1px', background: 'rgba(255, 255, 255, 0.06)' }} />
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                <span style={{ fontSize: '0.78rem', color: 'var(--text-muted)' }}>Customer</span>
-                <span style={{ fontSize: '0.84rem', color: '#ffffff', fontWeight: 600 }}>{user?.name || frontConfig.name || 'Valued Client'}</span>
-              </div>
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                <span style={{ fontSize: '0.78rem', color: 'var(--text-muted)' }}>Card Title</span>
-                <span style={{ fontSize: '0.84rem', color: '#ffffff', fontWeight: 600, maxWidth: '240px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                  {submittedOrder?.designTitle || designTitle}
-                </span>
-              </div>
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                <span style={{ fontSize: '0.78rem', color: 'var(--text-muted)' }}>Finish Edition</span>
-                <span style={{ fontSize: '0.84rem', color: EDITIONS[edition]?.accentColor || '#A855F7', fontWeight: 700 }}>
-                  {EDITIONS[edition]?.name}
-                </span>
-              </div>
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                <span style={{ fontSize: '0.78rem', color: 'var(--text-muted)' }}>Authoritative Price</span>
-                <span style={{ fontSize: '0.92rem', color: '#FFFFFF', fontWeight: 800 }}>
-                  {formatCurrencyINR(currentEditionProduct?.price) || 'Price coming soon'}
-                </span>
-              </div>
-            </div>
-
-            {/* 6-Stage Progress Indicator Preview */}
-            <div
-              style={{
-                background: 'rgba(168, 85, 247, 0.08)',
-                border: '1px solid rgba(168, 85, 247, 0.25)',
-                borderRadius: '16px',
-                padding: '14px 16px',
-                marginBottom: '20px'
-              }}
-            >
-              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '8px' }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                  <ShieldCheck size={16} color="#4ade80" />
-                  <span style={{ fontSize: '0.82rem', fontWeight: 700, color: '#4ade80' }}>
-                    Stage 1 of 6: Design Submitted
-                  </span>
-                </div>
-                <span style={{ fontSize: '0.74rem', color: 'var(--text-muted)' }}>In Admin Queue</span>
-              </div>
-              <p style={{ fontSize: '0.78rem', color: 'var(--text-secondary)', margin: 0, lineHeight: 1.45 }}>
-                The operations team will verify your safe-zone bleed, prep laser vector engraving, and embed the NXP NTAG216 chip. Once delivered, your digital profile & NFC routing will activate instantly.
-              </p>
-            </div>
-
-            {/* Action Buttons */}
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
-              <button
-                type="button"
-                onClick={() => {
-                  setShowOrderSubmittedModal(false);
-                  const targetUrl = submittedOrder?.id
-                    ? `/customer?tab=orders&orderId=${submittedOrder.id}`
-                    : '/customer?tab=orders';
-                  window.history.pushState({}, '', targetUrl);
-                  window.dispatchEvent(new PopStateEvent('popstate'));
-                }}
-                className="btn btn-primary"
-                style={{
-                  width: '100%',
-                  justifyContent: 'center',
-                  padding: '12px 18px',
-                  fontWeight: 700,
-                  fontSize: '0.9rem',
-                  gap: '8px'
-                }}
-              >
-                <span>Track Order in Customer Dashboard</span>
-                <ArrowRight size={16} />
-              </button>
-
-              <button
-                type="button"
-                onClick={handleDownloadBothSides}
-                className="btn btn-secondary"
-                style={{
-                  width: '100%',
-                  justifyContent: 'center',
-                  padding: '10px 16px',
-                  fontSize: '0.84rem',
-                  gap: '8px'
-                }}
-                title="Download high-resolution dual-sided 300 DPI production files"
-              >
-                <Download size={15} color="var(--accent-purple)" />
-                <span>Download Print Artwork (300 DPI)</span>
-              </button>
-
-              <button
-                type="button"
-                onClick={() => setShowOrderSubmittedModal(false)}
-                className="btn btn-outline"
-                style={{ width: '100%', justifyContent: 'center', fontSize: '0.8rem', padding: '9px' }}
-              >
-                Return to Card Studio
-              </button>
-            </div>
           </div>
         </div>
       )}
 
-      {/* Responsive layout styles for mobile/tablet */}
-      <style>{`
-        @media (max-width: 1080px) {
-          .designer-grid {
-            grid-template-columns: 1fr !important;
-            gap: 16px !important;
-            align-items: start !important;
-          }
-          .designer-canvas-center {
-            order: -1;
-            position: sticky !important;
-            top: calc(var(--header-height, 70px) + 8px) !important;
-            z-index: 40 !important;
-            background: rgba(12, 9, 18, 0.96) !important;
-            backdrop-filter: blur(20px) !important;
-            -webkit-backdrop-filter: blur(20px) !important;
-            border: 1px solid rgba(168, 85, 247, 0.3) !important;
-            border-radius: 16px !important;
-            box-shadow: 0 12px 36px rgba(0, 0, 0, 0.85) !important;
-            padding: 12px 10px 14px !important;
-            min-height: auto !important;
-          }
-          .designer-canvas-viewport-box {
-            margin: 6px auto !important;
-          }
-          .canvas-view-toolbar {
-            position: relative !important;
-            top: auto !important;
-            margin: 0 auto 8px auto !important;
-            padding: 4px 8px !important;
-            transform: scale(0.92);
-          }
-          .canvas-spec-bar {
-            display: none !important;
-          }
-        }
-        @media (max-width: 640px) {
-          .designer-studio-page {
-            padding-top: calc(var(--header-height) + 8px) !important;
-            padding-bottom: 40px !important;
-          }
-          .designer-studio-page .container {
-            padding-left: 12px !important;
-            padding-right: 12px !important;
-          }
-          .designer-top-bar {
-            padding: 12px 14px !important;
-            gap: 12px !important;
-          }
-          .designer-title-row {
-            width: 100% !important;
-            gap: 8px !important;
-          }
-          .badge-tag {
-            font-size: 0.65rem !important;
-            padding: 2px 8px !important;
-          }
-          .designer-title-input {
-            font-size: 0.95rem !important;
-            min-width: 0 !important;
-          }
-          .designer-action-group {
-            width: 100% !important;
-            display: grid !important;
-            grid-template-columns: 1fr 1fr !important;
-            gap: 8px !important;
-          }
-          .designer-save-msg {
-            grid-column: span 2;
-            text-align: center;
-            justify-content: center;
-          }
-          .designer-btn {
-            width: 100% !important;
-            min-height: 40px !important;
-            padding: 8px 10px !important;
-            font-size: 0.78rem !important;
-            justify-content: center !important;
-          }
-          .canvas-view-toolbar {
-            position: relative !important;
-            top: auto !important;
-            margin: 0 auto 10px auto !important;
-            padding: 4px 8px !important;
-            gap: 6px !important;
-            max-width: 100% !important;
-            width: auto !important;
-            justify-content: center !important;
-          }
-          .canvas-view-toolbar button {
-            font-size: 0.7rem !important;
-            padding: 4px 6px !important;
-          }
-          .designer-canvas-center {
-            padding: 10px 6px 12px !important;
-            min-height: auto !important;
-          }
-          .canvas-spec-bar {
-            display: none !important;
-          }
-          .designer-left-panel,
-          .designer-right-panel {
-            padding: 16px 12px !important;
-            border-radius: 16px !important;
-          }
-        }
-      `}</style>
+      {/* SwipeToast Component */}
+      <SwipeToast
+        open={toastOpen}
+        onClose={() => setToastOpen(false)}
+        title={toastMessage.title || 'Notification'}
+        description={toastMessage.desc}
+        actionLabel={toastMessage.actionLabel}
+        onAction={toastMessage.onAction}
+        background="#181126"
+        color="#f8fafc"
+        fuseColor="#7038f8"
+        duration={4000}
+      />
     </div>
   );
 }

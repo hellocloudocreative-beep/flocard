@@ -11,6 +11,7 @@
    ========================================================================== */
 
 import React, { useState, useMemo } from 'react';
+import SlideCommit from '../../components/SlideCommit';
 import {
   LayoutDashboard,
   Users,
@@ -3977,7 +3978,7 @@ export default function AdminDashboard({ initialTab = 'overview', initialOrderId
                 <span>Export Print-Ready PDF</span>
               </button>
 
-              <div style={{ display: 'flex', gap: '10px' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
                 <button
                   type="button"
                   onClick={() => handleRejectDesign(reviewModalDesign.id)}
@@ -3995,27 +3996,18 @@ export default function AdminDashboard({ initialTab = 'overview', initialOrderId
                   Request Revision
                 </button>
 
-                <button
-                  type="button"
-                  onClick={() => handleApproveDesign(reviewModalDesign.id)}
-                  style={{
-                    display: 'flex',
-                    alignItems: 'center',
-                    gap: '6px',
-                    padding: '10px 24px',
-                    borderRadius: '10px',
-                    border: 'none',
-                    backgroundColor: '#16A36A',
-                    color: '#FFFFFF',
-                    fontWeight: 700,
-                    fontSize: '0.84rem',
-                    cursor: 'pointer',
-                    boxShadow: '0 4px 14px rgba(22, 163, 106, 0.3)'
-                  }}
-                >
-                  <Package size={16} />
-                  <span>Assign to Order</span>
-                </button>
+                <SlideCommit
+                  label="Slide to Approve Print"
+                  doneLabel="Approved"
+                  errorLabel="Failed"
+                  onConfirm={() => handleApproveDesign(reviewModalDesign.id)}
+                  trackColor="#13231a"
+                  handleColor="#ffffff"
+                  successColor="#16A36A"
+                  width={240}
+                  height={44}
+                  radius={22}
+                />
               </div>
             </div>
           </div>
