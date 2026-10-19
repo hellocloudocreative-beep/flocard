@@ -7,9 +7,9 @@ export const BRAND = {
   tagline: 'One Tap. Every Connection.',
   domain: 'flocard.in',
   supportEmail: 'contact@flocard.in',
-  whatsapp: '916238578552',
-  whatsappFormatted: '+91 6238 578 552',
-  phone: '+91 6238 578 552',
+  whatsapp: '919778278522',
+  whatsappFormatted: '+91 97782 78522',
+  phone: '+91 97782 78522',
   heroEyebrow: 'PREMIUM NFC BUSINESS CARDS',
   heroTitle: 'YOUR IDENTITY. ONE TAP AWAY.',
   heroSubtitle: 'Premium NFC business cards that connect your professional identity, portfolio, and contact details in one tap.',
@@ -33,6 +33,40 @@ export const TEMPLATES = {
 };
 
 export const EDITIONS = {
+  platinum: {
+    id: 'platinum',
+    name: 'Platinum Edition',
+    badge: 'Modern',
+    popular: false,
+    tagline: 'A sleek and modern look for forward-thinking professionals.',
+    description: 'Engineered brushed platinum and chrome precision lines against pure carbon black.',
+    accentColor: '#E2E8F0',
+    secondaryColor: '#94A3B8',
+    textColor: '#FFFFFF',
+    gradient: 'linear-gradient(135deg, #0F1117 0%, #1E2330 60%, #0A0D14 100%)',
+    bgImage: '/assets/cardbg-platinum.png',
+    logoAsset: '/assets/flocard-logo-platinum.png',
+    border: '1px solid rgba(226, 232, 240, 0.4)',
+    glow: 'rgba(226, 232, 240, 0.25)',
+    cardBg: '#0F1117',
+    highlightText: 'Sleek Obsidian & Platinum Alloy Accent',
+    defaults: {
+      primaryAccent: '#E2E8F0',
+      secondaryAccent: '#94A3B8',
+      nameColor: '#E2E8F0',
+      roleColor: '#CBD5E1',
+      taglineColor: '#94A3B8',
+      nfcColor: '#E2E8F0',
+      qrColor: '#E2E8F0'
+    },
+    specs: {
+      material: 'Satin Stainless Steel & Polymer Hybrid',
+      finish: 'Precision Laser Etched with Frosted Luster',
+      chip: 'NXP NTAG216 High Frequency 13.56 MHz',
+      capacity: '888 Bytes usable EEPROM memory',
+      durability: 'Bend-proof reinforced structure'
+    }
+  },
   purple: {
     id: 'purple',
     name: 'Purple Edition',
@@ -99,40 +133,6 @@ export const EDITIONS = {
       chip: 'NXP NTAG216 High Frequency 13.56 MHz',
       capacity: '888 Bytes usable EEPROM memory',
       durability: 'Scratch-resistant ceramic coating'
-    }
-  },
-  platinum: {
-    id: 'platinum',
-    name: 'Platinum Edition',
-    badge: 'Modern',
-    popular: false,
-    tagline: 'A sleek and modern look for forward-thinking professionals.',
-    description: 'Engineered brushed platinum and chrome precision lines against pure carbon black.',
-    accentColor: '#E2E8F0',
-    secondaryColor: '#94A3B8',
-    textColor: '#FFFFFF',
-    gradient: 'linear-gradient(135deg, #0F1117 0%, #1E2330 60%, #0A0D14 100%)',
-    bgImage: '/assets/cardbg-platinum.png',
-    logoAsset: '/assets/flocard-logo-platinum.png',
-    border: '1px solid rgba(226, 232, 240, 0.4)',
-    glow: 'rgba(226, 232, 240, 0.25)',
-    cardBg: '#0F1117',
-    highlightText: 'Sleek Obsidian & Platinum Alloy Accent',
-    defaults: {
-      primaryAccent: '#E2E8F0',
-      secondaryAccent: '#94A3B8',
-      nameColor: '#E2E8F0',
-      roleColor: '#CBD5E1',
-      taglineColor: '#94A3B8',
-      nfcColor: '#E2E8F0',
-      qrColor: '#E2E8F0'
-    },
-    specs: {
-      material: 'Satin Stainless Steel & Polymer Hybrid',
-      finish: 'Precision Laser Etched with Frosted Luster',
-      chip: 'NXP NTAG216 High Frequency 13.56 MHz',
-      capacity: '888 Bytes usable EEPROM memory',
-      durability: 'Bend-proof reinforced structure'
     }
   },
   metal: {

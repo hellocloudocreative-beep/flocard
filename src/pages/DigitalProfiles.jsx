@@ -21,7 +21,7 @@ export default function DigitalProfiles() {
     company: demoConfig?.company || 'Your Company',
     avatar: demoConfig?.avatar || '',
     logo: demoConfig?.logo || '',
-    phone: demoConfig?.phone || '+91 98765 43210',
+    phone: demoConfig?.phone || '+91 97782 78522',
     email: demoConfig?.email || 'contact@flocard.in',
     website: demoConfig?.website || 'https://flocard.in',
     cardFinish: demoConfig?.cardFinish || 'purple'

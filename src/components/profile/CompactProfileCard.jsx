@@ -132,9 +132,9 @@ export default function CompactProfileCard({
           }}
         />
 
-        {/* React Bits ReflectiveCard with Custom In-Card Centered Content */}
+        {/* React Bits ReflectiveCard with Custom In-Card Centered Content — Always Dark Executive Luxury Finish */}
         <ReflectiveCard
-          theme={isLight ? 'light' : 'dark'}
+          theme="dark"
           tint={metalTint}
           webcam={false}
           metalness={1}
@@ -182,9 +182,9 @@ export default function CompactProfileCard({
                   gap: '6px',
                   fontSize: '0.74rem',
                   fontWeight: 600,
-                  color: isLight ? '#18181b' : '#f4f4f5',
-                  background: isLight ? 'rgba(0, 0, 0, 0.05)' : 'rgba(255, 255, 255, 0.08)',
-                  border: isLight ? '1px solid rgba(0, 0, 0, 0.08)' : '1px solid rgba(255, 255, 255, 0.12)',
+                  color: '#f4f4f5',
+                  background: 'rgba(255, 255, 255, 0.08)',
+                  border: '1px solid rgba(255, 255, 255, 0.14)',
                   padding: '4px 10px',
                   borderRadius: '9999px',
                   backdropFilter: 'blur(8px)'
@@ -201,8 +201,9 @@ export default function CompactProfileCard({
                   gap: '6px',
                   fontSize: '0.74rem',
                   fontWeight: 600,
-                  color: isLight ? '#52525b' : 'rgba(244, 244, 245, 0.7)',
-                  background: isLight ? 'rgba(0, 0, 0, 0.04)' : 'rgba(255, 255, 255, 0.06)',
+                  color: 'rgba(244, 244, 245, 0.8)',
+                  background: 'rgba(255, 255, 255, 0.06)',
+                  border: '1px solid rgba(255, 255, 255, 0.08)',
                   padding: '4px 10px',
                   borderRadius: '9999px'
                 }}
@@ -268,7 +269,7 @@ export default function CompactProfileCard({
                       width: '100%',
                       height: '100%',
                       borderRadius: isCircle ? '50%' : '21px',
-                      background: isLight ? 'rgba(0, 0, 0, 0.05)' : 'rgba(255, 255, 255, 0.07)',
+                      background: 'rgba(255, 255, 255, 0.08)',
                       display: 'flex',
                       flexDirection: 'column',
                       alignItems: 'center',
@@ -283,7 +284,7 @@ export default function CompactProfileCard({
                         fontWeight: 800,
                         letterSpacing: '0.08em',
                         textTransform: 'uppercase',
-                        color: isLight ? '#18181b' : '#ffffff'
+                        color: '#ffffff'
                       }}
                     >
                       YOUR LOGO
@@ -298,7 +299,7 @@ export default function CompactProfileCard({
                   fontFamily: "var(--font-heading, 'Sora', sans-serif)",
                   fontSize: '1.45rem',
                   fontWeight: 700,
-                  color: isLight ? '#18181b' : '#f4f4f5',
+                  color: '#f4f4f5',
                   margin: '0 0 4px',
                   letterSpacing: '-0.02em',
                   lineHeight: 1.2
@@ -324,7 +325,7 @@ export default function CompactProfileCard({
                 <p
                   style={{
                     fontSize: '0.78rem',
-                    color: isLight ? '#52525b' : 'rgba(244, 244, 245, 0.72)',
+                    color: 'rgba(244, 244, 245, 0.76)',
                     lineHeight: 1.4,
                     maxWidth: '300px',
                     margin: '0 0 14px',
@@ -356,9 +357,9 @@ export default function CompactProfileCard({
                       flex: 1,
                       height: '38px',
                       borderRadius: '8px',
-                      background: isLight ? 'rgba(0, 0, 0, 0.06)' : 'rgba(255, 255, 255, 0.09)',
-                      border: isLight ? '1px solid rgba(0, 0, 0, 0.1)' : '1px solid rgba(255, 255, 255, 0.16)',
-                      color: isLight ? '#18181b' : '#FFFFFF',
+                      background: 'rgba(255, 255, 255, 0.09)',
+                      border: '1px solid rgba(255, 255, 255, 0.18)',
+                      color: '#FFFFFF',
                       display: 'flex',
                       alignItems: 'center',
                       justifyContent: 'center',
@@ -382,9 +383,9 @@ export default function CompactProfileCard({
                       flex: 1,
                       height: '38px',
                       borderRadius: '8px',
-                      background: isLight ? 'rgba(0, 0, 0, 0.06)' : 'rgba(255, 255, 255, 0.09)',
-                      border: isLight ? '1px solid rgba(0, 0, 0, 0.1)' : '1px solid rgba(255, 255, 255, 0.16)',
-                      color: isLight ? '#18181b' : '#FFFFFF',
+                      background: 'rgba(255, 255, 255, 0.09)',
+                      border: '1px solid rgba(255, 255, 255, 0.18)',
+                      color: '#FFFFFF',
                       display: 'flex',
                       alignItems: 'center',
                       justifyContent: 'center',
@@ -408,9 +409,9 @@ export default function CompactProfileCard({
                     flex: 1.25,
                     height: '38px',
                     borderRadius: '8px',
-                    background: isLight ? 'rgba(0, 0, 0, 0.06)' : 'rgba(255, 255, 255, 0.09)',
-                    border: isLight ? '1px solid rgba(0, 0, 0, 0.1)' : '1px solid rgba(255, 255, 255, 0.16)',
-                    color: isLight ? '#18181b' : '#FFFFFF',
+                    background: 'rgba(255, 255, 255, 0.09)',
+                    border: '1px solid rgba(255, 255, 255, 0.18)',
+                    color: '#FFFFFF',
                     display: 'flex',
                     alignItems: 'center',
                     justifyContent: 'center',
@@ -471,14 +472,14 @@ export default function CompactProfileCard({
                 alignItems: 'center',
                 justifyContent: 'space-between',
                 paddingTop: '10px',
-                borderTop: isLight ? '1px solid rgba(0, 0, 0, 0.08)' : '1px solid rgba(255, 255, 255, 0.08)'
+                borderTop: '1px solid rgba(255, 255, 255, 0.1)'
               }}
             >
               <div style={{ display: 'flex', flexDirection: 'column', gap: '2px', textAlign: 'left' }}>
                 <span
                   style={{
                     fontSize: '0.66rem',
-                    color: isLight ? '#71717a' : 'rgba(244, 244, 245, 0.55)',
+                    color: 'rgba(244, 244, 245, 0.6)',
                     textTransform: 'uppercase',
                     letterSpacing: '0.06em',
                     fontWeight: 600
@@ -490,7 +491,7 @@ export default function CompactProfileCard({
                   style={{
                     fontSize: '0.78rem',
                     fontFamily: 'ui-monospace, SFMono-Regular, Menlo, monospace',
-                    color: isLight ? '#18181b' : '#f4f4f5',
+                    color: '#f4f4f5',
                     fontWeight: 600
                   }}
                 >

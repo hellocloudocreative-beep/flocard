@@ -11,14 +11,14 @@ const AuthContext = createContext();
 
 const ROOT_OWNER = {
   id: 'cust_flocard',
-  email: 'hello.flocard@gmail.com',
-  name: 'Flocard Admin',
+  email: 'flocard@flocard.in',
+  name: 'FLOCARD Owner',
   role: 'owner',
   avatar: '/assets/akhil.jpg',
   profileSlug: 'flocard'
 };
 
-const OWNER_EMAILS = ['hello.flocard@gmail.com', 'akhil@flocard.in'];
+const OWNER_EMAILS = ['flocard', 'flocard@flocard.in', 'hello.flocard@gmail.com', 'akhil@flocard.in'];
 
 export function AuthProvider({ children }) {
   const [user, setUser] = useState(() => {
@@ -272,23 +272,25 @@ export function AuthProvider({ children }) {
         }
 
         // Validate administrator password
-        const validAdminPasswords = ['admin123', 'flocard123', 'akhil123', 'owner123'];
+        const validAdminPasswords = ['flocardakhil@anwar', 'admin123', 'flocard123', 'akhil123', 'owner123'];
         if (!validAdminPasswords.includes(password.trim())) {
           return { success: false, error: 'Incorrect administrator password. Please check your credentials.' };
         }
 
         if (isSupabaseConfigured && supabase) {
           try {
-            await supabase.auth.signInWithPassword({ email: cleanEmail, password });
+            await supabase.auth.signInWithPassword({ email: cleanEmail === 'flocard' ? 'flocard@flocard.in' : cleanEmail, password });
           } catch (sbErr) {
             console.warn('Supabase password auth check:', sbErr?.message);
           }
         }
 
         const accounts = StorageEngine.getAdminAccounts();
-        const match = accounts.find(a => a.email.toLowerCase() === cleanEmail) || ROOT_OWNER;
+        const match = (cleanEmail === 'flocard' || cleanEmail === 'flocard@flocard.in')
+          ? ROOT_OWNER
+          : (accounts.find(a => a.email.toLowerCase() === cleanEmail) || ROOT_OWNER);
         setUser(match);
-        StorageEngine.addAuditLog('Admin Sign In', `Signed in with email ${cleanEmail}`, match.name);
+        StorageEngine.addAuditLog('Admin Sign In', `Signed in with identifier ${cleanEmail}`, match.name);
         return { success: true, role: match.role };
       }
 

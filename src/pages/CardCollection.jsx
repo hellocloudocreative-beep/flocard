@@ -18,8 +18,8 @@ export default function CardCollection() {
   const { isLight } = useTheme();
   const { products, getProductByEdition } = useData();
 
-  // Master-crafted editions: Metal, Gold, Platinum, Purple
-  const editionKeys = filter === 'all' ? ['metal', 'gold', 'platinum', 'purple'] : [filter];
+  // Master-crafted editions: Platinum, Purple, Gold, Metal
+  const editionKeys = filter === 'all' ? ['platinum', 'purple', 'gold', 'metal'] : [filter];
 
   return (
     <div style={{ paddingTop: 'calc(var(--header-height) + 40px)', paddingBottom: '100px' }}>
@@ -409,19 +409,19 @@ export default function CardCollection() {
               <thead>
                 <tr style={{ borderBottom: '1px solid var(--border-color)', color: 'var(--primary-purple)', fontSize: '0.82rem', textTransform: 'uppercase', letterSpacing: '0.08em' }}>
                   <th style={{ padding: '14px 16px' }}>Feature</th>
-                  <th style={{ padding: '14px 16px' }}>Metal Edition</th>
+                  <th style={{ padding: '14px 16px' }}>Platinum Edition</th>
                   <th style={{ padding: '14px 16px' }}>Purple Edition</th>
                   <th style={{ padding: '14px 16px' }}>Gold Edition</th>
-                  <th style={{ padding: '14px 16px' }}>Platinum Edition</th>
+                  <th style={{ padding: '14px 16px' }}>Metal Edition</th>
                 </tr>
               </thead>
               <tbody style={{ fontSize: '0.88rem', color: 'var(--text-secondary)' }}>
                 <tr style={{ borderBottom: '1px solid var(--border-color)' }}>
                   <td style={{ padding: '14px 16px', color: 'var(--text-primary)', fontWeight: 600 }}>Surface Material</td>
-                  <td style={{ padding: '14px 16px', color: '#CBD5E1', fontWeight: 600 }}>Brushed Gunmetal Steel</td>
+                  <td style={{ padding: '14px 16px' }}>Satin Alloy Stainless Steel</td>
                   <td style={{ padding: '14px 16px', color: 'var(--primary-purple)', fontWeight: 600 }}>Matte Obsidian + UV Gloss</td>
                   <td style={{ padding: '14px 16px' }}>Obsidian + 24K Gold Foil</td>
-                  <td style={{ padding: '14px 16px' }}>Satin Alloy Stainless Steel</td>
+                  <td style={{ padding: '14px 16px', color: '#CBD5E1', fontWeight: 600 }}>Brushed Gunmetal Steel</td>
                 </tr>
                 <tr style={{ borderBottom: '1px solid var(--border-color)' }}>
                   <td style={{ padding: '14px 16px', color: 'var(--text-primary)', fontWeight: 600 }}>NFC Microchip</td>
@@ -446,10 +446,10 @@ export default function CardCollection() {
                 </tr>
                 <tr style={{ borderBottom: '1px solid var(--border-color)' }}>
                   <td style={{ padding: '14px 16px', color: 'var(--text-primary)', fontWeight: 600 }}>Dynamic QR Code</td>
-                  <td style={{ padding: '14px 16px' }}>Scannable Vector (White)</td>
+                  <td style={{ padding: '14px 16px' }}>Scannable Vector (Chrome)</td>
                   <td style={{ padding: '14px 16px' }}>Scannable Vector (Violet)</td>
                   <td style={{ padding: '14px 16px' }}>Scannable Vector (Gold)</td>
-                  <td style={{ padding: '14px 16px' }}>Scannable Vector (Chrome)</td>
+                  <td style={{ padding: '14px 16px' }}>Scannable Vector (White)</td>
                 </tr>
                 <tr style={{ borderBottom: '1px solid var(--border-color)' }}>
                   <td style={{ padding: '14px 16px', color: 'var(--text-primary)', fontWeight: 600 }}>Water Resistance</td>

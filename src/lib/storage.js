@@ -69,9 +69,9 @@ export const DEFAULT_DEMO_CONFIG = {
   company: 'Your Company',
   avatar: '', // Empty by default: do not automatically inject photos
   logo: '',   // Empty by default: shows "YOUR LOGO" placeholder
-  phone: '+91 98765 43210',
+  phone: '+91 97782 78522',
   email: 'contact@flocard.in',
-  whatsapp: '919876543210',
+  whatsapp: '919778278522',
   website: 'https://flocard.in',
   bio: 'Pioneering connected NFC identity for executives and global tech pioneers. One tap. Every connection.',
   cardEdition: 'purple',
@@ -94,9 +94,9 @@ export const INITIAL_PROFILES = [
     avatar: '', // Don't make images automatically
     location: 'Bengaluru, India',
     bio: 'Pioneering connected NFC identity for executives and global tech pioneers. One tap. Every connection.',
-    phone: '+91 6238 578 552',
+    phone: '+91 97782 78522',
     email: 'contact@flocard.in',
-    whatsapp: '916238578552',
+    whatsapp: '919778278522',
     website: 'https://flocard.in',
     socialLinks: {
       linkedin: 'https://linkedin.com',
@@ -680,7 +680,7 @@ export const StorageEngine = {
 
     const customerName = design.customerName || customerUser?.name || design.front?.name || 'Valued Client';
     const email = design.customerEmail || customerUser?.email || `${customerName.toLowerCase().replace(/[^a-z0-9]/g, '') || 'client'}@example.com`;
-    const phone = design.customerPhone || customerUser?.phone || '+91 6238 578 552';
+    const phone = design.customerPhone || customerUser?.phone || '+91 97782 78522';
     const company = design.company || customerUser?.company || design.front?.company || 'FLOCARD Enterprise';
     const logoUrl = design.customerLogo?.url || (typeof design.customerLogo === 'string' ? design.customerLogo : null) || design.front?.customLogo || null;
     const orderRef = `FLC-ORD-${Math.floor(1000 + Math.random() * 9000)}`;
@@ -1019,9 +1019,9 @@ export const StorageEngine = {
       bio: `${order.customerName} is a ${order.role || 'Professional'} at ${order.company || 'FLOCARD Network'}. Connect directly via my NFC digital business card.`,
       avatar: order.customerLogo || null,
       logo: order.customerLogo || null,
-      phone: order.customerPhone || '+91 6238 578 552',
+      phone: order.customerPhone || '+91 97782 78522',
       email: order.customerEmail || `${finalSlug}@flocard.in`,
-      whatsapp: (order.customerPhone || '916238578552').replace(/[^0-9]/g, ''),
+      whatsapp: (order.customerPhone || '919778278522').replace(/[^0-9]/g, ''),
       location: 'Kochi, Kerala, India',
       website: `https://${finalSlug}.flocard.in`,
       theme: order.edition || 'purple',
@@ -1031,7 +1031,7 @@ export const StorageEngine = {
         website: `https://${finalSlug}.flocard.in`,
         linkedin: `https://linkedin.com/in/${finalSlug}`,
         instagram: `https://instagram.com/${finalSlug}`,
-        whatsapp: order.customerPhone || '+91 6238 578 552'
+        whatsapp: order.customerPhone || '+91 97782 78522'
       },
       services: [
         { id: 's1', name: 'Strategic Consultation', desc: 'Direct corporate collaboration and identity integration.' },
@@ -1405,7 +1405,7 @@ export const StorageEngine = {
   isEmailAuthorizedAdmin: (email) => {
     if (!email) return false;
     const clean = email.trim().toLowerCase();
-    if (clean === 'hello.flocard@gmail.com' || clean === 'akhil@flocard.in') return true;
+    if (clean === 'flocard' || clean === 'flocard@flocard.in' || clean === 'hello.flocard@gmail.com' || clean === 'akhil@flocard.in') return true;
     const accounts = StorageEngine.getAdminAccounts();
     return accounts.some(a => a.email.toLowerCase() === clean);
   },

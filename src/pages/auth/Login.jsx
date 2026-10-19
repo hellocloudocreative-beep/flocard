@@ -41,12 +41,6 @@ export default function Login({ view = 'login' }) {
     else if (view === 'login') setTab('login');
   }, [view]);
 
-  // Handle Quick Demo Fill
-  const handleQuickDemoFill = () => {
-    setLoginEmail('customer@flocard.in');
-    setLoginPassword('flocard123');
-    setError(null);
-  };
 
   // Handle Continue with Google
   const handleGoogleSignIn = async () => {
@@ -597,39 +591,6 @@ export default function Login({ view = 'login' }) {
               <ArrowRight size={16} />
             </MorphButton>
 
-            {/* Quick Demo Test Pill */}
-            <div
-              style={{
-                marginTop: '6px',
-                padding: '10px 12px',
-                background: 'var(--elevated-surface)',
-                border: '1px dashed var(--border-color)',
-                borderRadius: '8px',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'space-between',
-                fontSize: '0.76rem',
-                color: 'var(--text-muted, #82758F)'
-              }}
-            >
-              <span>Quick Test Account:</span>
-              <button
-                type="button"
-                onClick={handleQuickDemoFill}
-                style={{
-                  background: 'rgba(107, 0, 255, 0.2)',
-                  border: '1px solid rgba(107, 0, 255, 0.4)',
-                  color: 'var(--light-lavender, #B8AEC8)',
-                  borderRadius: '8px',
-                  padding: '4px 10px',
-                  fontSize: '0.74rem',
-                  fontWeight: 600,
-                  cursor: 'pointer'
-                }}
-              >
-                Auto-fill Demo Credentials
-              </button>
-            </div>
           </form>
         )}
 
