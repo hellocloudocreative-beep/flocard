@@ -8,6 +8,7 @@ import { ArrowRight, Sparkles, Radio, Layers, Users, ShieldCheck, CheckCircle2, 
 import Card3DPreview from '../components/Card3DPreview';
 import PhoneProfileMockup from '../components/PhoneProfileMockup';
 import CompactProfileCard from '../components/profile/CompactProfileCard';
+import GradientASCII from '../components/GradientASCII';
 import { BRAND, EDITIONS, HOW_IT_WORKS_STEPS } from '../lib/constants';
 import { useData } from '../context/DataContext';
 import { useTheme } from '../context/ThemeContext';
@@ -59,6 +60,28 @@ export default function Home() {
             : 'radial-gradient(ellipse 80% 50% at 50% -10%, rgba(121, 40, 202, 0.22) 0%, rgba(7, 4, 13, 0) 70%), radial-gradient(circle 600px at 50% 25%, rgba(67, 56, 202, 0.12) 0%, rgba(7, 4, 13, 0) 70%), #07040d'
         }}
       >
+        {/* Animated Horizon GradientASCII Background */}
+        <div
+          aria-hidden="true"
+          style={{
+            position: 'absolute',
+            inset: 0,
+            width: '100%',
+            height: '100%',
+            zIndex: 0,
+            pointerEvents: 'none',
+            opacity: isLight ? 0.35 : 0.75
+          }}
+        >
+          <GradientASCII
+            colors={["#731ed8", "#f6f8ff", "#cda5ff", "#7038f8"]}
+            shape="horizon"
+            characters=" .·•●"
+            cellSize={18}
+            density={0.8}
+          />
+        </div>
+
         {/* Subtle Ambient Violet Glow Accent */}
         <div
           aria-hidden="true"

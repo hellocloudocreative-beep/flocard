@@ -739,28 +739,6 @@ export default function Designer() {
             <Save size={14} />
             <span>Save Draft</span>
           </button>
-
-          <button
-            type="button"
-            onClick={() => handleSaveDesign(true)}
-            style={{
-              display: 'inline-flex',
-              alignItems: 'center',
-              gap: '6px',
-              padding: '8px 18px',
-              borderRadius: '9999px',
-              background: 'linear-gradient(135deg, #7038f8, #8b5cf6)',
-              border: 'none',
-              color: '#ffffff',
-              fontSize: '0.82rem',
-              fontWeight: 700,
-              cursor: 'pointer',
-              boxShadow: '0 4px 18px rgba(112, 56, 248, 0.45)'
-            }}
-          >
-            <span>Submit for Print</span>
-            <ArrowRight size={14} />
-          </button>
         </div>
       </header>
 
@@ -941,27 +919,6 @@ export default function Designer() {
             >
               <Save size={13} />
               <span>Save</span>
-            </button>
-
-            <button
-              type="button"
-              onClick={() => handleSaveDesign(true)}
-              style={{
-                display: 'inline-flex',
-                alignItems: 'center',
-                gap: '6px',
-                padding: '6px 14px',
-                borderRadius: '8px',
-                background: 'rgba(112, 56, 248, 0.25)',
-                border: '1px solid rgba(112, 56, 248, 0.45)',
-                color: '#cda5ff',
-                fontSize: '0.78rem',
-                fontWeight: 700,
-                cursor: 'pointer'
-              }}
-            >
-              <span>Done</span>
-              <ArrowRight size={13} />
             </button>
           </div>
         </div>
@@ -1980,8 +1937,8 @@ export default function Designer() {
                 </div>
               </div>
 
-              {/* React Bits SlideCommit for Print Submission */}
-              <div style={{ marginBottom: '12px' }}>
+              {/* Sole Primary Action: SlideCommit for Print Submission */}
+              <div style={{ display: 'flex', justifyContent: 'center', marginTop: '6px' }}>
                 <SlideCommit
                   label="Slide to send for print"
                   doneLabel="Sent for Print"
@@ -1990,36 +1947,11 @@ export default function Designer() {
                   trackColor="#191226"
                   handleColor="#ffffff"
                   successColor="#7038f8"
-                  width={245}
-                  height={48}
-                  radius={24}
+                  width={260}
+                  height={50}
+                  radius={25}
                 />
               </div>
-
-              {/* Continue to Details CTA */}
-              <button
-                type="button"
-                onClick={() => handleSaveDesign(false)}
-                style={{
-                  width: '100%',
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  gap: '8px',
-                  padding: '12px',
-                  borderRadius: '12px',
-                  background: 'linear-gradient(135deg, #7038f8, #8b5cf6)',
-                  border: 'none',
-                  color: '#ffffff',
-                  fontSize: '0.84rem',
-                  fontWeight: 700,
-                  cursor: 'pointer',
-                  boxShadow: '0 4px 18px rgba(112, 56, 248, 0.35)'
-                }}
-              >
-                <span>Continue to Details</span>
-                <ArrowRight size={15} />
-              </button>
             </div>
           </aside>
         </div>

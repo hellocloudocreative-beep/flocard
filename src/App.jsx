@@ -32,6 +32,7 @@ import { DataProvider } from './context/DataContext';
 import { ThemeProvider } from './context/ThemeContext';
 import { AnimatePresence, motion } from 'motion/react';
 import CookieConsent from './components/CookieConsent';
+import GradientASCII from './components/GradientASCII';
 
 class AdminErrorBoundary extends React.Component {
   constructor(props) {
@@ -341,6 +342,33 @@ export default function App() {
       <AuthProvider>
         <DataProvider>
           <div className="flocard-app-root">
+            {/* Global Animated Horizon GradientASCII Background across web */}
+            {path !== '/designer' && (
+              <div
+                className="global-gradient-ascii-bg"
+                aria-hidden="true"
+                style={{
+                  position: 'fixed',
+                  top: 0,
+                  left: 0,
+                  right: 0,
+                  width: '100vw',
+                  height: '100vh',
+                  pointerEvents: 'none',
+                  zIndex: 0,
+                  opacity: 0.38
+                }}
+              >
+                <GradientASCII
+                  colors={["#731ed8", "#f6f8ff", "#cda5ff", "#7038f8"]}
+                  shape="horizon"
+                  characters=" .·•●"
+                  cellSize={18}
+                  density={0.8}
+                />
+              </div>
+            )}
+
             {showHeaderFooter && <Navbar currentPath={path} />}
             <AnimatePresence mode="wait" initial={false}>
               <motion.main
