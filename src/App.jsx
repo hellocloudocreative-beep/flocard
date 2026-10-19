@@ -31,6 +31,7 @@ import { AuthProvider, useAuth } from './context/AuthContext';
 import { DataProvider } from './context/DataContext';
 import { ThemeProvider } from './context/ThemeContext';
 import { AnimatePresence, motion } from 'motion/react';
+import CookieConsent from './components/CookieConsent';
 
 class AdminErrorBoundary extends React.Component {
   constructor(props) {
@@ -357,6 +358,10 @@ export default function App() {
               </motion.main>
             </AnimatePresence>
             {showHeaderFooter && <Footer />}
+            <CookieConsent
+              storageKey="flocard-cookie-consent"
+              policy={{ label: "Cookie Policy", href: "/legal" }}
+            />
           </div>
         </DataProvider>
       </AuthProvider>
