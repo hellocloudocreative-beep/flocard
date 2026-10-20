@@ -176,6 +176,16 @@ export default function PublicProfile({ slug = 'akhil' }) {
           ? '#E2E8F0'
           : profile?.accentColor || '#A855F7';
 
+  const portraitBg =
+    profile?.cardPortraitBg ||
+    (finish === 'gold' || edition === 'gold')
+      ? '/assets/cardbg-gold-portrait.png'
+      : (finish === 'steel' || finish === 'platinum' || edition === 'platinum' || edition === 'steel')
+        ? '/assets/cardbg-platinum-portrait.png'
+        : (finish === 'metal' || edition === 'metal')
+          ? '/assets/cardbg-metal-portrait.png'
+          : '/assets/cardbg-purple-portrait.png';
+
   const navItems = useMemo(() => [
     {
       label: 'Profile',
@@ -219,7 +229,24 @@ export default function PublicProfile({ slug = 'akhil' }) {
         transition: 'padding 0.5s ease'
       }}
     >
-      {/* Subtle Oversized Background Watermark Logo (FLOCARD Brand Logo Mark, not plain text) */}
+      {/* Authentic Portrait Card Artwork Backdrop for Profile Background */}
+      <div
+        aria-hidden="true"
+        style={{
+          position: 'fixed',
+          inset: 0,
+          backgroundImage: `url(${portraitBg})`,
+          backgroundSize: 'cover',
+          backgroundPosition: 'center',
+          opacity: isLight ? 0.08 : 0.16,
+          filter: 'blur(50px)',
+          transform: 'scale(1.15)',
+          pointerEvents: 'none',
+          zIndex: 0
+        }}
+      />
+
+      {/* Subtle Oversized Background Watermark Logo (FLOCARD Brand Logo Mark) */}
       <div
         aria-hidden="true"
         style={{
@@ -250,7 +277,7 @@ export default function PublicProfile({ slug = 'akhil' }) {
         />
       </div>
 
-      {/* Cinematic Ambient Reflective Glow Lighting */}
+      {/* Cinematic Ambient Glow Lighting */}
       <div
         aria-hidden="true"
         style={{
@@ -269,7 +296,7 @@ export default function PublicProfile({ slug = 'akhil' }) {
         }}
       />
 
-      {/* Atmospheric Reflective Light Sheen Sweep when Expanded */}
+      {/* Atmospheric Sheen Sweep when Expanded */}
       {isExpanded && (
         <div
           aria-hidden="true"

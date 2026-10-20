@@ -1,8 +1,8 @@
 /* ==========================================================================
-   FLOCARD UNIFIED IMAGE UPLOAD UTILITY
-   Uploads images to Supabase Storage (avatars / logos / portfolio buckets).
-   Falls back to compressed base64 if Supabase Storage is unavailable.
-   ========================================================================== */
+FLOCARD UNIFIED IMAGE UPLOAD UTILITY
+Uploads images to Supabase Storage (avatars / logos / portfolio buckets).
+Falls back to compressed base64 if Supabase Storage is unavailable.
+========================================================================== */
 
 import { supabase, supabaseAdmin, isSupabaseConfigured } from './supabase';
 import { compressImage } from './imageCompression';
@@ -12,10 +12,10 @@ import { compressImage } from './imageCompression';
  * Create these in: Supabase Dashboard → Storage → New Bucket (make Public)
  */
 const BUCKETS = {
-  avatar:    'avatars',
-  logo:      'logos',
+  avatar: 'avatars',
+  logo: 'logos',
   portfolio: 'portfolio',
-  general:   'uploads',
+  general: 'uploads',
 };
 
 /**
@@ -32,10 +32,10 @@ export async function uploadImage(file, type = 'general', ownerId = 'anon') {
 
   // Compress first (reduces size from MBs to ~50-150 KB)
   const maxDims = {
-    avatar:    { maxWidth: 400,  maxHeight: 400,  quality: 0.85 },
-    logo:      { maxWidth: 600,  maxHeight: 600,  quality: 0.88, outputFormat: file.type === 'image/png' ? 'image/png' : 'image/jpeg' },
-    portfolio: { maxWidth: 900,  maxHeight: 900,  quality: 0.82 },
-    general:   { maxWidth: 1200, maxHeight: 1200, quality: 0.80 },
+    avatar: { maxWidth: 400, maxHeight: 400, quality: 0.85 },
+    logo: { maxWidth: 600, maxHeight: 600, quality: 0.88, outputFormat: file.type === 'image/png' ? 'image/png' : 'image/jpeg' },
+    portfolio: { maxWidth: 900, maxHeight: 900, quality: 0.82 },
+    general: { maxWidth: 1200, maxHeight: 1200, quality: 0.80 },
   };
 
   let compressedDataUrl = '';
@@ -50,8 +50,8 @@ export async function uploadImage(file, type = 'general', ownerId = 'anon') {
   if (storageClient) {
     try {
       const bucket = BUCKETS[type] || BUCKETS.general;
-      const ext    = file.name.split('.').pop().toLowerCase() || 'jpg';
-      const path   = `${ownerId}/${Date.now()}_${Math.random().toString(36).slice(2, 8)}.${ext}`;
+      const ext = file.name.split('.').pop().toLowerCase() || 'jpg';
+      const path = `${ownerId}/${Date.now()}_${Math.random().toString(36).slice(2, 8)}.${ext}`;
 
       // Convert compressed data-URL back to Blob for uploading
       const uploadBlob = compressedDataUrl

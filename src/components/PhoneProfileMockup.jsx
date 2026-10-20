@@ -4,8 +4,8 @@
    ========================================================================== */
 
 import React, { useState } from 'react';
-import { Phone, Mail, MessageSquare, Bookmark, Share2, Check, ExternalLink, Sparkles, MapPin, Building2, Briefcase } from 'lucide-react';
-import { LinkedinIcon, InstagramIcon } from './SocialIcons';
+import { Phone, Mail, Bookmark, Share2, Check, ExternalLink, Sparkles, MapPin, Building2, Briefcase } from 'lucide-react';
+import { LinkedinIcon, InstagramIcon, WhatsappIcon } from './SocialIcons';
 import { downloadVCard } from '../lib/vcard';
 
 export default function PhoneProfileMockup({ profile, scale = 1, className = '' }) {
@@ -19,9 +19,9 @@ export default function PhoneProfileMockup({ profile, scale = 1, className = '' 
     avatar: '/assets/akhil.jpg',
     location: 'Bengaluru, India',
     bio: 'Pioneering connected NFC identity for executives and global tech pioneers.',
-    phone: '+91 97782 78522',
+    phone: '+91 97782 78552',
     email: 'akhil@flocard.in',
-    whatsapp: '919778278522',
+    whatsapp: '919778278552',
     website: 'https://flocard.in',
     linkedin: 'https://linkedin.com/in/akhilanvar',
     instagram: 'https://instagram.com/akhilanvar',
@@ -234,7 +234,7 @@ export default function PhoneProfileMockup({ profile, scale = 1, className = '' 
                   boxShadow: '0 4px 12px rgba(34, 197, 94, 0.3)'
                 }}
               >
-                <MessageSquare size={15} />
+                <WhatsappIcon size={16} color="#ffffff" />
               </a>
             )}
             {sampleProfile.linkedin && (

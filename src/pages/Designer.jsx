@@ -38,6 +38,7 @@ import {
   Sun,
   Moon,
   ChevronLeft,
+  ChevronUp,
   Sliders,
   Box,
   Maximize2,
@@ -274,10 +275,36 @@ export default function Designer() {
     return () => window.removeEventListener('resize', handleResize);
   }, []);
 
+  // Mobile scroll tracking and preview pop-up
+  const [scrollY, setScrollY] = useState(0);
+  const [isScrolled, setIsScrolled] = useState(false);
+  const [mobilePreviewCollapsed, setMobilePreviewCollapsed] = useState(false);
+
+  useEffect(() => {
+    const handleScroll = () => {
+      const currentScrollY = window.scrollY || window.pageYOffset || 0;
+      setScrollY(currentScrollY);
+      setIsScrolled(currentScrollY > 120);
+    };
+    window.addEventListener('scroll', handleScroll, { passive: true });
+    return () => window.removeEventListener('scroll', handleScroll);
+  }, []);
+
   const BASE_CARD_WIDTH = 520;
   const BASE_CARD_HEIGHT = Math.round(520 / 1.585); // 328px
   const maxAvailableCardWidth = Math.max(260, Math.min(BASE_CARD_WIDTH, viewportWidth - (viewportWidth < 640 ? 40 : 80)));
   const fitScale = Math.min(1, maxAvailableCardWidth / BASE_CARD_WIDTH);
+  const [mobileTab, setMobileTab] = useState('preview'); // 'preview' | 'customise' | 'specs'
+
+  // Theme-aware styles for panels, inputs, and text
+  const panelBg = isLight ? 'rgba(255, 255, 255, 0.9)' : 'rgba(17, 12, 28, 0.75)';
+  const panelBorder = isLight ? '1px solid rgba(112, 56, 248, 0.2)' : '1px solid rgba(112, 56, 248, 0.16)';
+  const panelShadow = isLight ? '0 4px 24px rgba(112, 56, 248, 0.08)' : 'none';
+  const headingColor = isLight ? '#1e1040' : '#f8fafc';
+  const subtextColor = isLight ? '#64748b' : '#94a3b8';
+  const inputBg = isLight ? '#ffffff' : 'rgba(255, 255, 255, 0.04)';
+  const inputBorder = isLight ? '1px solid rgba(112, 56, 248, 0.24)' : '1px solid rgba(255, 255, 255, 0.08)';
+  const inputColor = isLight ? '#1e1040' : '#ffffff';
 
   // Default color palette for current edition
   const currentEditionDefaults = EDITIONS[edition]?.defaults || {};
@@ -440,7 +467,7 @@ export default function Designer() {
       customerId: user?.id || (user?.email ? `cust_${user.email}` : `cust_${Date.now()}`),
       customerName: clientName,
       customerEmail: user?.email || `${clientSlug}@example.com`,
-      customerPhone: user?.phone || '+91 97782 78522',
+      customerPhone: user?.phone || '+91 97782 78552',
       company: user?.company || frontConfig.company || 'FLOCARD Enterprise',
       title: designTitle,
       templateType,
@@ -464,12 +491,40 @@ export default function Designer() {
         user
       );
       setSubmittedOrder(createdOrder);
-      notify('Submitted for Print!', 'Order placed in production queue', 'View Details', () => setShowOrderSubmittedModal(true));
+      notify('Submitted for Print!', 'Order details routed to WhatsApp production queue', 'View Details', () => setShowOrderSubmittedModal(true));
 
+      // Customer submitting -> Go to FLOCARD official WhatsApp (+91 97782 78552) with details only (no image download)
+      const clientPhone = createdOrder.customerPhone || user?.phone || '';
+      const orderRef = createdOrder.orderReference || createdOrder.id;
+      const editionName = EDITIONS[edition]?.name || edition;
+      const tmplName = templateType === 'customer_logo' ? 'Custom Logo Design (Pages 4–6)' : 'Standard FLOCARD Design (Pages 1–3)';
+      const priceText = formatCurrencyINR(currentEditionProduct?.price) || '₹1,899';
+
+      const waMessage = 
+`*NEW FLOCARD PRINT ORDER*
+━━━━━━━━━━━━━━━━━━━━
+*Order Ref:* ${orderRef}
+*Customer:* ${clientName}
+*Phone:* ${clientPhone || 'Not provided'}
+*Email:* ${createdOrder.customerEmail}
+*Company:* ${createdOrder.company || 'N/A'}
+*Role / Title:* ${frontConfig.role || 'N/A'}
+*Tagline:* ${frontConfig.tagline || 'One Tap Every Connection'}
+
+*Card Edition:* ${editionName}
+*Template:* ${tmplName}
+*Price:* ${priceText}
+*Status:* New Order Submitted
+
+*Digital Profile:* https://flocard.in/p/${clientSlug}
+━━━━━━━━━━━━━━━━━━━━
+_Submitted from FLOCARD Design Studio_`;
+
+      const waUrl = `https://wa.me/919778278552?text=${encodeURIComponent(waMessage)}`;
       try {
-        handleDownloadBothSides();
-      } catch (e) {
-        console.warn('Artwork download issue:', e);
+        window.open(waUrl, '_blank');
+      } catch (err) {
+        console.error('Failed to open WhatsApp window:', err);
       }
       setShowOrderSubmittedModal(true);
     } else {
@@ -548,12 +603,12 @@ export default function Designer() {
       className="flocard-studio-root"
       style={{
         minHeight: '100vh',
-        background: '#07050d',
-        color: '#f8fafc',
+        background: isLight ? '#f3f0ff' : '#07050d',
+        color: isLight ? '#1e1040' : '#f8fafc',
         fontFamily: "'Space Grotesk', -apple-system, BlinkMacSystemFont, sans-serif",
         position: 'relative',
-        overflowX: 'hidden',
-        paddingBottom: '60px'
+        overflowX: 'clip',
+        paddingBottom: viewportWidth < 1024 ? '100px' : '60px'
       }}
     >
       {/* ======================================================================
@@ -566,13 +621,13 @@ export default function Designer() {
           zIndex: 100,
           backdropFilter: 'blur(16px)',
           WebkitBackdropFilter: 'blur(16px)',
-          background: 'rgba(9, 6, 17, 0.75)',
-          borderBottom: '1px solid rgba(112, 56, 248, 0.12)',
-          padding: '12px 24px',
+          background: isLight ? 'rgba(243, 240, 255, 0.88)' : 'rgba(9, 6, 17, 0.75)',
+          borderBottom: isLight ? '1px solid rgba(112, 56, 248, 0.18)' : '1px solid rgba(112, 56, 248, 0.12)',
+          padding: viewportWidth < 640 ? '10px 16px' : '12px 24px',
           display: 'flex',
           alignItems: 'center',
           justifyContent: 'space-between',
-          gap: '16px'
+          gap: '10px'
         }}
       >
         {/* Left: FLOCARD Logo */}
@@ -600,105 +655,107 @@ export default function Designer() {
           </a>
         </div>
 
-        {/* Center: Stage Nav Tabs (Design, Preview, Details, Checkout) */}
-        <div
-          style={{
-            display: 'inline-flex',
-            alignItems: 'center',
-            background: 'rgba(18, 14, 28, 0.85)',
-            border: '1px solid rgba(112, 56, 248, 0.2)',
-            borderRadius: '9999px',
-            padding: '3px 4px',
-            gap: '2px',
-            boxShadow: '0 4px 20px rgba(0, 0, 0, 0.3)'
-          }}
-        >
-          <button
-            type="button"
+        {/* Center: Stage Nav Tabs — hidden on mobile (replaced by mobile tab bar below) */}
+        {viewportWidth >= 768 && (
+          <div
             style={{
               display: 'inline-flex',
               alignItems: 'center',
-              gap: '6px',
-              padding: '6px 14px',
+              background: isLight ? 'rgba(112, 56, 248, 0.07)' : 'rgba(18, 14, 28, 0.85)',
+              border: isLight ? '1px solid rgba(112, 56, 248, 0.22)' : '1px solid rgba(112, 56, 248, 0.2)',
               borderRadius: '9999px',
-              background: 'rgba(112, 56, 248, 0.24)',
-              border: '1px solid rgba(139, 92, 246, 0.5)',
-              color: '#ffffff',
-              fontSize: '0.8rem',
-              fontWeight: 600,
-              cursor: 'pointer'
+              padding: '3px 4px',
+              gap: '2px',
+              boxShadow: '0 4px 20px rgba(0, 0, 0, 0.3)'
             }}
           >
-            <Sparkles size={13} color="#cda5ff" />
-            <span>Design</span>
-          </button>
+            <button
+              type="button"
+              style={{
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: '6px',
+                padding: '6px 14px',
+                borderRadius: '9999px',
+                background: 'rgba(112, 56, 248, 0.24)',
+                border: '1px solid rgba(139, 92, 246, 0.5)',
+                color: '#ffffff',
+                fontSize: '0.8rem',
+                fontWeight: 600,
+                cursor: 'pointer'
+              }}
+            >
+              <Sparkles size={13} color="#cda5ff" />
+              <span>Design</span>
+            </button>
 
-          <button
-            type="button"
-            onClick={() => handlePreviewModeSelect(side === 'front' ? 'angled' : 'front')}
-            style={{
-              display: 'inline-flex',
-              alignItems: 'center',
-              gap: '6px',
-              padding: '6px 14px',
-              borderRadius: '9999px',
-              background: 'transparent',
-              border: 'none',
-              color: '#94a3b8',
-              fontSize: '0.8rem',
-              fontWeight: 500,
-              cursor: 'pointer'
-            }}
-          >
-            <Eye size={13} />
-            <span>Preview</span>
-          </button>
+            <button
+              type="button"
+              onClick={() => handlePreviewModeSelect(side === 'front' ? 'angled' : 'front')}
+              style={{
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: '6px',
+                padding: '6px 14px',
+                borderRadius: '9999px',
+                background: 'transparent',
+                border: 'none',
+                color: isLight ? '#6b21d8' : '#94a3b8',
+                fontSize: '0.8rem',
+                fontWeight: 500,
+                cursor: 'pointer'
+              }}
+            >
+              <Eye size={13} />
+              <span>Preview</span>
+            </button>
 
-          <button
-            type="button"
-            onClick={() => setActiveElementTab('text')}
-            style={{
-              display: 'inline-flex',
-              alignItems: 'center',
-              gap: '6px',
-              padding: '6px 14px',
-              borderRadius: '9999px',
-              background: 'transparent',
-              border: 'none',
-              color: '#94a3b8',
-              fontSize: '0.8rem',
-              fontWeight: 500,
-              cursor: 'pointer'
-            }}
-          >
-            <FileText size={13} />
-            <span>Details</span>
-          </button>
+            <button
+              type="button"
+              onClick={() => setActiveElementTab('text')}
+              style={{
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: '6px',
+                padding: '6px 14px',
+                borderRadius: '9999px',
+                background: 'transparent',
+                border: 'none',
+                color: isLight ? '#6b21d8' : '#94a3b8',
+                fontSize: '0.8rem',
+                fontWeight: 500,
+                cursor: 'pointer'
+              }}
+            >
+              <FileText size={13} />
+              <span>Details</span>
+            </button>
 
-          <a
-            href="/checkout"
-            style={{
-              textDecoration: 'none',
-              display: 'inline-flex',
-              alignItems: 'center',
-              gap: '6px',
-              padding: '6px 14px',
-              borderRadius: '9999px',
-              background: 'transparent',
-              border: 'none',
-              color: '#94a3b8',
-              fontSize: '0.8rem',
-              fontWeight: 500,
-              cursor: 'pointer'
-            }}
-          >
-            <ShieldCheck size={13} />
-            <span>Checkout</span>
-          </a>
-        </div>
+            <a
+              href="/checkout"
+              style={{
+                textDecoration: 'none',
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: '6px',
+                padding: '6px 14px',
+                borderRadius: '9999px',
+                background: 'transparent',
+                border: 'none',
+                color: isLight ? '#6b21d8' : '#94a3b8',
+                fontSize: '0.8rem',
+                fontWeight: 500,
+                cursor: 'pointer'
+              }}
+            >
+              <ShieldCheck size={13} />
+              <span>Checkout</span>
+            </a>
+          </div>
+        )}
 
-        {/* Right: Theme Toggle, Save Draft, Submit for Print */}
-        <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+        {/* Right: Theme Toggle, Save Draft */}
+        <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexShrink: 0 }}>
           <button
             type="button"
             onClick={toggleTheme}
@@ -707,13 +764,14 @@ export default function Designer() {
               width: '36px',
               height: '36px',
               borderRadius: '50%',
-              background: 'rgba(255, 255, 255, 0.05)',
-              border: '1px solid rgba(255, 255, 255, 0.1)',
-              color: '#e2e8f0',
+              background: isLight ? 'rgba(112, 56, 248, 0.1)' : 'rgba(255, 255, 255, 0.05)',
+              border: isLight ? '1px solid rgba(112, 56, 248, 0.3)' : '1px solid rgba(255, 255, 255, 0.1)',
+              color: isLight ? '#6b21d8' : '#e2e8f0',
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'center',
-              cursor: 'pointer'
+              cursor: 'pointer',
+              flexShrink: 0
             }}
           >
             {isLight ? <Moon size={15} /> : <Sun size={15} />}
@@ -726,130 +784,196 @@ export default function Designer() {
               display: 'inline-flex',
               alignItems: 'center',
               gap: '6px',
-              padding: '8px 16px',
+              padding: viewportWidth < 640 ? '8px 10px' : '8px 16px',
               borderRadius: '9999px',
-              background: 'rgba(255, 255, 255, 0.05)',
-              border: '1px solid rgba(255, 255, 255, 0.12)',
-              color: '#f1f5f9',
+              background: isLight ? 'rgba(112, 56, 248, 0.1)' : 'rgba(255, 255, 255, 0.05)',
+              border: isLight ? '1px solid rgba(112, 56, 248, 0.3)' : '1px solid rgba(255, 255, 255, 0.12)',
+              color: isLight ? '#4a1a99' : '#f1f5f9',
               fontSize: '0.82rem',
               fontWeight: 600,
               cursor: 'pointer'
             }}
           >
             <Save size={14} />
-            <span>Save Draft</span>
+            {viewportWidth >= 640 && <span>Save Draft</span>}
           </button>
         </div>
       </header>
 
       {/* Main Studio Container */}
-      <div style={{ maxWidth: '1440px', margin: '0 auto', padding: '16px 20px' }}>
+      <div style={{ maxWidth: '1440px', margin: '0 auto', padding: viewportWidth < 640 ? '12px 12px' : '16px 20px' }}>
 
         {/* ====================================================================
             2. PROJECT INFORMATION BAR
             ==================================================================== */}
+        {/* ====================================================================
+            2. PROJECT INFORMATION BAR (Mobile Responsive)
+            ==================================================================== */}
         <div
+          className="studio-project-bar"
           style={{
             display: 'flex',
-            alignItems: 'center',
+            flexDirection: viewportWidth < 768 ? 'column' : 'row',
+            alignItems: viewportWidth < 768 ? 'stretch' : 'center',
             justifyContent: 'space-between',
-            flexWrap: 'wrap',
-            gap: '12px',
-            background: 'rgba(16, 12, 26, 0.7)',
-            border: '1px solid rgba(112, 56, 248, 0.18)',
+            gap: viewportWidth < 768 ? '10px' : '12px',
+            background: isLight ? 'rgba(255, 255, 255, 0.9)' : 'rgba(16, 12, 26, 0.7)',
+            border: isLight ? '1px solid rgba(112, 56, 248, 0.22)' : '1px solid rgba(112, 56, 248, 0.18)',
             borderRadius: '16px',
-            padding: '10px 16px',
-            marginBottom: '20px',
+            padding: viewportWidth < 768 ? '10px 14px' : '10px 16px',
+            marginBottom: '16px',
             backdropFilter: 'blur(16px)',
-            boxShadow: '0 6px 24px rgba(0, 0, 0, 0.25)'
+            boxShadow: isLight ? '0 4px 20px rgba(112, 56, 248, 0.08)' : '0 6px 24px rgba(0, 0, 0, 0.25)'
           }}
         >
-          {/* Left: Back button, Edition name pill, Product price pill */}
-          <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-            <button
-              type="button"
-              onClick={() => window.history.back()}
-              title="Go back"
-              style={{
-                width: '32px',
-                height: '32px',
-                borderRadius: '8px',
-                background: 'rgba(255, 255, 255, 0.05)',
-                border: '1px solid rgba(255, 255, 255, 0.1)',
-                color: '#cbd5e1',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                cursor: 'pointer'
-              }}
-            >
-              <ChevronLeft size={16} />
-            </button>
-
-            <div
-              style={{
-                display: 'inline-flex',
-                alignItems: 'center',
-                gap: '6px',
-                padding: '5px 12px',
-                borderRadius: '9999px',
-                background: 'rgba(255, 255, 255, 0.05)',
-                border: '1px solid rgba(255, 255, 255, 0.12)',
-                fontSize: '0.8rem',
-                fontWeight: 600,
-                color: '#e2e8f0'
-              }}
-            >
-              <span
+          {/* Row 1 on mobile / Left group on desktop */}
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', width: viewportWidth < 768 ? '100%' : 'auto', gap: '8px' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
+              <button
+                type="button"
+                onClick={() => window.history.back()}
+                title="Go back"
                 style={{
-                  width: '8px',
-                  height: '8px',
-                  borderRadius: '50%',
-                  background: EDITIONS[edition]?.accentColor || '#7038f8',
-                  boxShadow: `0 0 8px ${EDITIONS[edition]?.accentColor || '#7038f8'}`
+                  width: '32px',
+                  height: '32px',
+                  borderRadius: '8px',
+                  background: isLight ? 'rgba(112, 56, 248, 0.08)' : 'rgba(255, 255, 255, 0.05)',
+                  border: isLight ? '1px solid rgba(112, 56, 248, 0.2)' : '1px solid rgba(255, 255, 255, 0.1)',
+                  color: isLight ? '#1e1040' : '#cbd5e1',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  cursor: 'pointer'
                 }}
-              />
-              <span>{EDITIONS[edition]?.name || 'Purple Edition'}</span>
+              >
+                <ChevronLeft size={16} />
+              </button>
+
+              <div
+                style={{
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  gap: '6px',
+                  padding: '5px 12px',
+                  borderRadius: '9999px',
+                  background: isLight ? 'rgba(112, 56, 248, 0.08)' : 'rgba(255, 255, 255, 0.05)',
+                  border: isLight ? '1px solid rgba(112, 56, 248, 0.2)' : '1px solid rgba(255, 255, 255, 0.12)',
+                  fontSize: '0.8rem',
+                  fontWeight: 600,
+                  color: isLight ? '#1e1040' : '#e2e8f0'
+                }}
+              >
+                <span
+                  style={{
+                    width: '8px',
+                    height: '8px',
+                    borderRadius: '50%',
+                    background: EDITIONS[edition]?.accentColor || '#7038f8',
+                    boxShadow: `0 0 8px ${EDITIONS[edition]?.accentColor || '#7038f8'}`
+                  }}
+                />
+                <span>{EDITIONS[edition]?.name || 'Purple Edition'}</span>
+              </div>
+
+              <div
+                style={{
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  padding: '5px 12px',
+                  borderRadius: '9999px',
+                  background: 'rgba(112, 56, 248, 0.18)',
+                  border: '1px solid rgba(112, 56, 248, 0.35)',
+                  fontSize: '0.8rem',
+                  fontWeight: 700,
+                  color: '#cda5ff'
+                }}
+              >
+                {formatCurrencyINR(currentEditionProduct?.price) || '₹1,899'}
+              </div>
             </div>
 
-            <div
-              style={{
-                display: 'inline-flex',
-                alignItems: 'center',
-                padding: '5px 12px',
-                borderRadius: '9999px',
-                background: 'rgba(112, 56, 248, 0.18)',
-                border: '1px solid rgba(112, 56, 248, 0.35)',
-                fontSize: '0.8rem',
-                fontWeight: 700,
-                color: '#cda5ff'
-              }}
-            >
-              {formatCurrencyINR(currentEditionProduct?.price) || '₹1,899'}
-            </div>
+            {/* On mobile: share and save buttons reside on Row 1 right side */}
+            {viewportWidth < 768 && (
+              <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                <button
+                  type="button"
+                  onClick={handleShare}
+                  style={{
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    gap: '4px',
+                    padding: '6px 10px',
+                    borderRadius: '8px',
+                    background: 'rgba(255, 255, 255, 0.05)',
+                    border: '1px solid rgba(255, 255, 255, 0.1)',
+                    color: '#cbd5e1',
+                    fontSize: '0.74rem',
+                    fontWeight: 500,
+                    cursor: 'pointer'
+                  }}
+                >
+                  <Share2 size={12} />
+                  <span>Share</span>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => handleSaveDesign(false)}
+                  style={{
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    gap: '4px',
+                    padding: '6px 12px',
+                    borderRadius: '8px',
+                    background: 'rgba(255, 255, 255, 0.08)',
+                    border: '1px solid rgba(255, 255, 255, 0.14)',
+                    color: '#f8fafc',
+                    fontSize: '0.74rem',
+                    fontWeight: 600,
+                    cursor: 'pointer'
+                  }}
+                >
+                  <Save size={12} />
+                  <span>Save</span>
+                </button>
+              </div>
+            )}
           </div>
 
-          {/* Center: Card Name + Draft badge */}
-          <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-            <Sparkles size={16} color="#cda5ff" />
-            <input
-              type="text"
-              value={designTitle}
-              onChange={(e) => setDesignTitle(e.target.value)}
-              title="Click to rename design"
-              style={{
-                background: 'transparent',
-                border: 'none',
-                color: '#ffffff',
-                fontFamily: "'Space Grotesk', sans-serif",
-                fontWeight: 700,
-                fontSize: '1rem',
-                letterSpacing: '0.04em',
-                outline: 'none',
-                minWidth: '200px',
-                textAlign: 'center'
-              }}
-            />
+          {/* Row 2 on mobile / Center on desktop: Card Name + Draft badge */}
+          <div
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: viewportWidth < 768 ? 'space-between' : 'center',
+              gap: '10px',
+              width: viewportWidth < 768 ? '100%' : 'auto',
+              borderTop: viewportWidth < 768 ? '1px solid rgba(255, 255, 255, 0.06)' : 'none',
+              paddingTop: viewportWidth < 768 ? '8px' : '0'
+            }}
+          >
+            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flex: 1, minWidth: 0 }}>
+              <Sparkles size={15} color="#cda5ff" style={{ flexShrink: 0 }} />
+              <input
+                type="text"
+                value={designTitle}
+                onChange={(e) => setDesignTitle(e.target.value)}
+                title="Click to rename design"
+                style={{
+                  background: 'transparent',
+                  border: 'none',
+                  color: isLight ? '#1e1040' : '#ffffff',
+                  fontFamily: "'Space Grotesk', sans-serif",
+                  fontWeight: 700,
+                  fontSize: viewportWidth < 768 ? '0.92rem' : '1rem',
+                  letterSpacing: '0.04em',
+                  outline: 'none',
+                  width: '100%',
+                  minWidth: 0,
+                  textAlign: viewportWidth < 768 ? 'left' : 'center'
+                }}
+              />
+            </div>
 
             <div
               style={{
@@ -860,9 +984,11 @@ export default function Designer() {
                 borderRadius: '9999px',
                 background: hasUnsavedChanges ? 'rgba(245, 165, 36, 0.12)' : 'rgba(34, 197, 94, 0.12)',
                 border: `1px solid ${hasUnsavedChanges ? 'rgba(245, 165, 36, 0.3)' : 'rgba(34, 197, 94, 0.3)'}`,
-                fontSize: '0.74rem',
+                fontSize: '0.72rem',
                 fontWeight: 600,
-                color: hasUnsavedChanges ? '#f5a524' : '#22c55e'
+                color: hasUnsavedChanges ? '#f5a524' : '#22c55e',
+                flexShrink: 0,
+                whiteSpace: 'nowrap'
               }}
             >
               <span
@@ -873,67 +999,169 @@ export default function Designer() {
                   background: hasUnsavedChanges ? '#f5a524' : '#22c55e'
                 }}
               />
-              <span>{hasUnsavedChanges ? 'Draft • Unsaved changes' : 'All changes saved'}</span>
+              <span>{hasUnsavedChanges ? (viewportWidth < 480 ? 'Draft' : 'Draft • Unsaved') : 'Saved'}</span>
             </div>
           </div>
 
-          {/* Right: Share, Save, Done action */}
-          <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-            <button
-              type="button"
-              onClick={handleShare}
-              style={{
-                display: 'inline-flex',
-                alignItems: 'center',
-                gap: '6px',
-                padding: '6px 12px',
-                borderRadius: '8px',
-                background: 'rgba(255, 255, 255, 0.05)',
-                border: '1px solid rgba(255, 255, 255, 0.1)',
-                color: '#cbd5e1',
-                fontSize: '0.78rem',
-                fontWeight: 500,
-                cursor: 'pointer'
-              }}
-            >
-              <Share2 size={13} />
-              <span>Share</span>
-            </button>
+          {/* Desktop Right: Share, Save action */}
+          {viewportWidth >= 768 && (
+            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+              <button
+                type="button"
+                onClick={handleShare}
+                style={{
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  gap: '6px',
+                  padding: '6px 12px',
+                  borderRadius: '8px',
+                  background: 'rgba(255, 255, 255, 0.05)',
+                  border: '1px solid rgba(255, 255, 255, 0.1)',
+                  color: '#cbd5e1',
+                  fontSize: '0.78rem',
+                  fontWeight: 500,
+                  cursor: 'pointer'
+                }}
+              >
+                <Share2 size={13} />
+                <span>Share</span>
+              </button>
 
-            <button
-              type="button"
-              onClick={() => handleSaveDesign(false)}
-              style={{
-                display: 'inline-flex',
-                alignItems: 'center',
-                gap: '6px',
-                padding: '6px 14px',
-                borderRadius: '8px',
-                background: 'rgba(255, 255, 255, 0.08)',
-                border: '1px solid rgba(255, 255, 255, 0.14)',
-                color: '#f8fafc',
-                fontSize: '0.78rem',
-                fontWeight: 600,
-                cursor: 'pointer'
-              }}
-            >
-              <Save size={13} />
-              <span>Save</span>
-            </button>
-          </div>
+              <button
+                type="button"
+                onClick={() => handleSaveDesign(false)}
+                style={{
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  gap: '6px',
+                  padding: '6px 14px',
+                  borderRadius: '8px',
+                  background: 'rgba(255, 255, 255, 0.08)',
+                  border: '1px solid rgba(255, 255, 255, 0.14)',
+                  color: '#f8fafc',
+                  fontSize: '0.78rem',
+                  fontWeight: 600,
+                  cursor: 'pointer'
+                }}
+              >
+                <Save size={13} />
+                <span>Save</span>
+              </button>
+            </div>
+          )}
         </div>
 
         {/* ====================================================================
-            3. MAIN THREE-COLUMN WORKSPACE
-            Left: ~27% | Center: ~51% | Right: ~22%
+            MOBILE SEGMENTED TAB BAR (< 1024px)
+            ==================================================================== */}
+        {viewportWidth < 1024 && (
+          <div
+            className="studio-mobile-nav"
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              background: isLight ? 'rgba(243, 240, 255, 0.94)' : 'rgba(16, 12, 26, 0.92)',
+              border: isLight ? '1px solid rgba(112, 56, 248, 0.22)' : '1px solid rgba(112, 56, 248, 0.28)',
+              borderRadius: '14px',
+              padding: '4px',
+              marginBottom: '18px',
+              gap: '4px',
+              backdropFilter: 'blur(20px)',
+              position: 'sticky',
+              top: '60px',
+              zIndex: 40,
+              boxShadow: isLight ? '0 4px 20px rgba(112, 56, 248, 0.15)' : '0 8px 24px rgba(0, 0, 0, 0.45)'
+            }}
+          >
+            <button
+              type="button"
+              onClick={() => setMobileTab('preview')}
+              style={{
+                flex: 1,
+                padding: '9px 4px',
+                borderRadius: '10px',
+                border: 'none',
+                background: mobileTab === 'preview' ? 'linear-gradient(135deg, #7038f8 0%, #905cfc 100%)' : 'transparent',
+                color: mobileTab === 'preview' ? '#ffffff' : (isLight ? '#6b21d8' : '#94a3b8'),
+                fontSize: '0.78rem',
+                fontWeight: 700,
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                gap: '6px',
+                cursor: 'pointer',
+                boxShadow: mobileTab === 'preview' ? '0 2px 10px rgba(112, 56, 248, 0.4)' : 'none',
+                transition: 'all 0.18s ease'
+              }}
+            >
+              <Eye size={14} />
+              <span>3D Card</span>
+            </button>
+
+            <button
+              type="button"
+              onClick={() => setMobileTab('customise')}
+              style={{
+                flex: 1,
+                padding: '9px 4px',
+                borderRadius: '10px',
+                border: 'none',
+                background: mobileTab === 'customise' ? 'linear-gradient(135deg, #7038f8 0%, #905cfc 100%)' : 'transparent',
+                color: mobileTab === 'customise' ? '#ffffff' : (isLight ? '#6b21d8' : '#94a3b8'),
+                fontSize: '0.78rem',
+                fontWeight: 700,
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                gap: '6px',
+                cursor: 'pointer',
+                boxShadow: mobileTab === 'customise' ? '0 2px 10px rgba(112, 56, 248, 0.4)' : 'none',
+                transition: 'all 0.18s ease'
+              }}
+            >
+              <Sparkles size={14} />
+              <span>Design (1-4)</span>
+            </button>
+
+            <button
+              type="button"
+              onClick={() => setMobileTab('specs')}
+              style={{
+                flex: 1,
+                padding: '9px 4px',
+                borderRadius: '10px',
+                border: 'none',
+                background: mobileTab === 'specs' ? 'linear-gradient(135deg, #7038f8 0%, #905cfc 100%)' : 'transparent',
+                color: mobileTab === 'specs' ? '#ffffff' : (isLight ? '#6b21d8' : '#94a3b8'),
+                fontSize: '0.78rem',
+                fontWeight: 700,
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                gap: '6px',
+                cursor: 'pointer',
+                boxShadow: mobileTab === 'specs' ? '0 2px 10px rgba(112, 56, 248, 0.4)' : 'none',
+                transition: 'all 0.18s ease'
+              }}
+            >
+              <Layers size={14} />
+              <span>Specs & Order</span>
+            </button>
+          </div>
+        )}
+
+        {/* ====================================================================
+            3. MAIN THREE-COLUMN WORKSPACE (Responsive Stack on Mobile)
             ==================================================================== */}
         <div
           className="studio-workspace-grid"
           style={{
-            display: 'grid',
-            gridTemplateColumns: 'minmax(310px, 1.15fr) minmax(480px, 2.15fr) minmax(280px, 0.95fr)',
-            gap: '20px',
-            alignItems: 'start'
+            display: viewportWidth < 1024 ? 'flex' : 'grid',
+            flexDirection: viewportWidth < 1024 ? 'column' : undefined,
+            gridTemplateColumns: viewportWidth < 1024 ? '1fr' : 'minmax(310px, 1.15fr) minmax(480px, 2.15fr) minmax(280px, 0.95fr)',
+            gap: viewportWidth < 1024 ? '16px' : '20px',
+            alignItems: 'start',
+            width: '100%'
           }}
         >
 
@@ -942,7 +1170,7 @@ export default function Designer() {
               ================================================================== */}
           <aside
             style={{
-              display: 'flex',
+              display: viewportWidth >= 1024 || mobileTab === 'customise' ? 'flex' : 'none',
               flexDirection: 'column',
               gap: '16px'
             }}
@@ -950,11 +1178,12 @@ export default function Designer() {
             {/* STEP 1: Template Layout */}
             <div
               style={{
-                background: 'rgba(17, 12, 28, 0.75)',
-                border: '1px solid rgba(112, 56, 248, 0.16)',
+                background: panelBg,
+                border: panelBorder,
                 borderRadius: '16px',
                 padding: '16px',
-                backdropFilter: 'blur(16px)'
+                backdropFilter: 'blur(16px)',
+                boxShadow: panelShadow
               }}
             >
               <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '14px' }}>
@@ -976,8 +1205,8 @@ export default function Designer() {
                   1
                 </span>
                 <div>
-                  <div style={{ fontSize: '0.88rem', fontWeight: 700, color: '#f8fafc' }}>Template Layout</div>
-                  <div style={{ fontSize: '0.72rem', color: '#94a3b8' }}>Choose a design style</div>
+                  <div style={{ fontSize: '0.88rem', fontWeight: 700, color: headingColor }}>Template Layout</div>
+                  <div style={{ fontSize: '0.72rem', color: subtextColor }}>Choose a design style</div>
                 </div>
               </div>
 
@@ -1064,11 +1293,12 @@ export default function Designer() {
             {/* STEP 2: Signature Finishes */}
             <div
               style={{
-                background: 'rgba(17, 12, 28, 0.75)',
-                border: '1px solid rgba(112, 56, 248, 0.16)',
+                background: panelBg,
+                border: panelBorder,
                 borderRadius: '16px',
                 padding: '16px',
-                backdropFilter: 'blur(16px)'
+                backdropFilter: 'blur(16px)',
+                boxShadow: panelShadow
               }}
             >
               <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '14px' }}>
@@ -1091,8 +1321,8 @@ export default function Designer() {
                     2
                   </span>
                   <div>
-                    <div style={{ fontSize: '0.88rem', fontWeight: 700, color: '#f8fafc' }}>Signature Finishes</div>
-                    <div style={{ fontSize: '0.72rem', color: '#94a3b8' }}>Premium colors & materials</div>
+                    <div style={{ fontSize: '0.88rem', fontWeight: 700, color: headingColor }}>Signature Finishes</div>
+                    <div style={{ fontSize: '0.72rem', color: subtextColor }}>Premium colors & materials</div>
                   </div>
                 </div>
 
@@ -1156,11 +1386,12 @@ export default function Designer() {
             {/* STEP 3: Add Elements */}
             <div
               style={{
-                background: 'rgba(17, 12, 28, 0.75)',
-                border: '1px solid rgba(112, 56, 248, 0.16)',
+                background: panelBg,
+                border: panelBorder,
                 borderRadius: '16px',
                 padding: '16px',
-                backdropFilter: 'blur(16px)'
+                backdropFilter: 'blur(16px)',
+                boxShadow: panelShadow
               }}
             >
               <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '14px' }}>
@@ -1182,17 +1413,16 @@ export default function Designer() {
                   3
                 </span>
                 <div>
-                  <div style={{ fontSize: '0.88rem', fontWeight: 700, color: '#f8fafc' }}>Add Elements</div>
-                  <div style={{ fontSize: '0.72rem', color: '#94a3b8' }}>Customize your card</div>
+                  <div style={{ fontSize: '0.88rem', fontWeight: 700, color: headingColor }}>Add Elements</div>
+                  <div style={{ fontSize: '0.72rem', color: subtextColor }}>Customize your card</div>
                 </div>
               </div>
 
-              {/* 4 Icon Buttons: Text, Logo, NFC, QR Code */}
-              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '8px' }}>
+              {/* 3 Icon Buttons: Text, Logo, QR Code */}
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '8px' }}>
                 {[
                   { id: 'text', label: 'Text', icon: <Type size={18} /> },
                   { id: 'logo', label: 'Logo', icon: <ImageIcon size={18} /> },
-                  { id: 'nfc', label: 'NFC', icon: <Radio size={18} /> },
                   { id: 'qr', label: 'QR Code', icon: <QrCode size={18} /> }
                 ].map(el => {
                   const isActive = activeElementTab === el.id;
@@ -1293,11 +1523,12 @@ export default function Designer() {
             {/* STEP 4: Personal Details */}
             <div
               style={{
-                background: 'rgba(17, 12, 28, 0.75)',
-                border: '1px solid rgba(112, 56, 248, 0.16)',
+                background: panelBg,
+                border: panelBorder,
                 borderRadius: '16px',
                 padding: '16px',
-                backdropFilter: 'blur(16px)'
+                backdropFilter: 'blur(16px)',
+                boxShadow: panelShadow
               }}
             >
               <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '14px' }}>
@@ -1319,8 +1550,8 @@ export default function Designer() {
                   4
                 </span>
                 <div>
-                  <div style={{ fontSize: '0.88rem', fontWeight: 700, color: '#f8fafc' }}>Personal Details</div>
-                  <div style={{ fontSize: '0.72rem', color: '#94a3b8' }}>Your information on the card</div>
+                  <div style={{ fontSize: '0.88rem', fontWeight: 700, color: headingColor }}>Personal Details</div>
+                  <div style={{ fontSize: '0.72rem', color: subtextColor }}>Your information on the card</div>
                 </div>
               </div>
 
@@ -1339,10 +1570,10 @@ export default function Designer() {
                   style={{
                     width: '100%',
                     padding: '9px 12px',
-                    background: 'rgba(255, 255, 255, 0.04)',
-                    border: '1px solid rgba(255, 255, 255, 0.08)',
+                    background: inputBg,
+                    border: inputBorder,
                     borderRadius: '8px',
-                    color: '#ffffff',
+                    color: inputColor,
                     fontSize: '0.84rem',
                     fontWeight: 600,
                     outline: 'none',
@@ -1353,7 +1584,7 @@ export default function Designer() {
 
               {/* Title / Role */}
               <div style={{ marginBottom: '14px' }}>
-                <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.72rem', color: '#94a3b8', marginBottom: '4px' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.72rem', color: subtextColor, marginBottom: '4px' }}>
                   <span>Title / Role</span>
                   <span>{frontConfig.role?.length || 0}/50</span>
                 </div>
@@ -1366,10 +1597,10 @@ export default function Designer() {
                   style={{
                     width: '100%',
                     padding: '9px 12px',
-                    background: 'rgba(255, 255, 255, 0.04)',
-                    border: '1px solid rgba(255, 255, 255, 0.08)',
+                    background: inputBg,
+                    border: inputBorder,
                     borderRadius: '8px',
-                    color: '#ffffff',
+                    color: inputColor,
                     fontSize: '0.84rem',
                     fontWeight: 600,
                     outline: 'none',
@@ -1434,16 +1665,98 @@ export default function Designer() {
                 </div>
               </div>
             </div>
+
+            {/* Mobile Bottom Navigation Action Bar */}
+            {viewportWidth < 1024 && (
+              <div
+                style={{
+                  display: 'flex',
+                  gap: '10px',
+                  marginTop: '8px',
+                  position: 'sticky',
+                  bottom: '16px',
+                  zIndex: 35,
+                  background: isLight ? 'rgba(255, 255, 255, 0.94)' : 'rgba(13, 9, 22, 0.92)',
+                  backdropFilter: 'blur(20px)',
+                  WebkitBackdropFilter: 'blur(20px)',
+                  padding: '10px 14px',
+                  borderRadius: '16px',
+                  border: isLight ? '1px solid rgba(112, 56, 248, 0.28)' : '1px solid rgba(112, 56, 248, 0.35)',
+                  boxShadow: isLight ? '0 10px 30px rgba(112, 56, 248, 0.16)' : '0 10px 30px rgba(0, 0, 0, 0.75)'
+                }}
+              >
+                <button
+                  type="button"
+                  onClick={() => setMobileTab('preview')}
+                  style={{
+                    flex: 1,
+                    padding: '11px',
+                    borderRadius: '10px',
+                    background: isLight ? 'rgba(112, 56, 248, 0.08)' : 'rgba(255, 255, 255, 0.08)',
+                    border: isLight ? '1px solid rgba(112, 56, 248, 0.25)' : '1px solid rgba(255, 255, 255, 0.16)',
+                    color: isLight ? '#6b21d8' : '#ffffff',
+                    fontWeight: 600,
+                    fontSize: '0.82rem',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    gap: '6px',
+                    cursor: 'pointer'
+                  }}
+                >
+                  <Eye size={15} />
+                  <span>View 3D Card</span>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => setMobileTab('specs')}
+                  style={{
+                    flex: 1,
+                    padding: '11px',
+                    borderRadius: '10px',
+                    background: 'linear-gradient(135deg, #7038f8 0%, #905cfc 100%)',
+                    border: 'none',
+                    color: '#ffffff',
+                    fontWeight: 700,
+                    fontSize: '0.82rem',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    gap: '6px',
+                    cursor: 'pointer',
+                    boxShadow: '0 4px 14px rgba(112, 56, 248, 0.45)'
+                  }}
+                >
+                  <span>Specs & Print →</span>
+                </button>
+              </div>
+            )}
           </aside>
 
           {/* ==================================================================
-              CENTER STAGE: LIVE NFC CARD PREVIEW
+              CENTER STAGE: LIVE NFC CARD PREVIEW (Mobile & Desktop Sticky)
               ================================================================== */}
           <main
             style={{
               display: 'flex',
               flexDirection: 'column',
-              gap: '14px'
+              gap: viewportWidth < 1024 && mobileTab !== 'preview' ? '8px' : '14px',
+              width: '100%',
+              maxWidth: '100%',
+              order: viewportWidth < 1024 ? -1 : undefined,
+              position: 'sticky',
+              top: viewportWidth < 1024 ? (mobileTab !== 'preview' ? '112px' : '76px') : '80px',
+              alignSelf: 'start',
+              zIndex: 35,
+              background: viewportWidth < 1024 && mobileTab !== 'preview'
+                ? (isLight ? '#f3f0fa' : '#0c0817')
+                : 'transparent',
+              padding: viewportWidth < 1024 && mobileTab !== 'preview' ? '8px 0 10px' : 0,
+              borderRadius: viewportWidth < 1024 && mobileTab !== 'preview' ? '18px' : 0,
+              boxShadow: viewportWidth < 1024 && mobileTab !== 'preview'
+                ? (isLight ? '0 10px 25px rgba(112, 56, 248, 0.12)' : '0 12px 30px rgba(0, 0, 0, 0.5)')
+                : 'none'
             }}
           >
             {/* Top Preview Bar: Front/Back Toggle & Safe Area/Bleed Switches */}
@@ -1453,7 +1766,7 @@ export default function Designer() {
                 alignItems: 'center',
                 justifyContent: 'space-between',
                 flexWrap: 'wrap',
-                gap: '10px'
+                gap: '8px'
               }}
             >
               {/* Front Side / Back Side Pill */}
@@ -1461,11 +1774,12 @@ export default function Designer() {
                 style={{
                   display: 'inline-flex',
                   alignItems: 'center',
-                  background: 'rgba(18, 14, 28, 0.8)',
-                  border: '1px solid rgba(112, 56, 248, 0.22)',
+                  background: isLight ? 'rgba(255, 255, 255, 0.9)' : 'rgba(18, 14, 28, 0.8)',
+                  border: isLight ? '1px solid rgba(112, 56, 248, 0.25)' : '1px solid rgba(112, 56, 248, 0.22)',
                   borderRadius: '9999px',
                   padding: '3px',
-                  gap: '2px'
+                  gap: '2px',
+                  boxShadow: isLight ? '0 2px 10px rgba(112, 56, 248, 0.08)' : 'none'
                 }}
               >
                 <button
@@ -1475,11 +1789,11 @@ export default function Designer() {
                     display: 'inline-flex',
                     alignItems: 'center',
                     gap: '6px',
-                    padding: '6px 16px',
+                    padding: viewportWidth < 640 ? '5px 12px' : '6px 16px',
                     borderRadius: '9999px',
                     background: side === 'front' ? '#7038f8' : 'transparent',
                     border: 'none',
-                    color: side === 'front' ? '#ffffff' : '#94a3b8',
+                    color: side === 'front' ? '#ffffff' : (isLight ? '#6b21d8' : '#94a3b8'),
                     fontSize: '0.78rem',
                     fontWeight: 600,
                     cursor: 'pointer',
@@ -1498,11 +1812,11 @@ export default function Designer() {
                     display: 'inline-flex',
                     alignItems: 'center',
                     gap: '6px',
-                    padding: '6px 16px',
+                    padding: viewportWidth < 640 ? '5px 12px' : '6px 16px',
                     borderRadius: '9999px',
                     background: side === 'back' ? '#7038f8' : 'transparent',
                     border: 'none',
-                    color: side === 'back' ? '#ffffff' : '#94a3b8',
+                    color: side === 'back' ? '#ffffff' : (isLight ? '#6b21d8' : '#94a3b8'),
                     fontSize: '0.78rem',
                     fontWeight: 600,
                     cursor: 'pointer',
@@ -1515,212 +1829,319 @@ export default function Designer() {
                 </button>
               </div>
 
-              {/* Safe Area & Bleed Inline Switch */}
-              <div
-                style={{
-                  display: 'inline-flex',
-                  alignItems: 'center',
-                  gap: '12px',
-                  background: 'rgba(18, 14, 28, 0.8)',
-                  border: '1px solid rgba(112, 56, 248, 0.15)',
-                  borderRadius: '9999px',
-                  padding: '4px 14px',
-                  fontSize: '0.76rem',
-                  color: '#94a3b8'
-                }}
-              >
-                <label style={{ display: 'flex', alignItems: 'center', gap: '6px', cursor: 'pointer' }}>
-                  <span>Safe Area</span>
-                  <input
-                    type="checkbox"
-                    checked={showGuides}
-                    onChange={(e) => setShowGuides(e.target.checked)}
-                    style={{ accentColor: '#7038f8', cursor: 'pointer' }}
-                  />
-                </label>
+              {/* On mobile when in customise or specs: show quick Flip and Collapse/Expand */}
+              {viewportWidth < 1024 && mobileTab !== 'preview' ? (
+                <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                  <button
+                    type="button"
+                    onClick={() => setSide(s => (s === 'front' ? 'back' : 'front'))}
+                    style={{
+                      display: 'inline-flex',
+                      alignItems: 'center',
+                      gap: '5px',
+                      padding: '5px 10px',
+                      borderRadius: '8px',
+                      background: 'rgba(112, 56, 248, 0.16)',
+                      border: '1px solid rgba(112, 56, 248, 0.3)',
+                      color: isLight ? '#6b21d8' : '#cda5ff',
+                      fontSize: '0.72rem',
+                      fontWeight: 700,
+                      cursor: 'pointer'
+                    }}
+                  >
+                    <RotateCw size={12} />
+                    <span>Flip</span>
+                  </button>
 
-                <span style={{ color: 'rgba(255,255,255,0.1)' }}>|</span>
-
-                <label style={{ display: 'flex', alignItems: 'center', gap: '6px', cursor: 'pointer' }}>
-                  <span>Bleed (3mm)</span>
-                  <input
-                    type="checkbox"
-                    checked={showBleed}
-                    onChange={(e) => setShowBleed(e.target.checked)}
-                    style={{ accentColor: '#7038f8', cursor: 'pointer' }}
-                  />
-                </label>
-              </div>
-            </div>
-
-            {/* Central Stage Box (Carries GradientASCII background) */}
-            <div
-              style={{
-                position: 'relative',
-                width: '100%',
-                minHeight: '440px',
-                borderRadius: '24px',
-                overflow: 'hidden',
-                background: '#090614',
-                border: '1px solid rgba(112, 56, 248, 0.2)',
-                display: 'flex',
-                flexDirection: 'column',
-                alignItems: 'center',
-                justifyContent: 'center',
-                padding: '30px 20px',
-                boxShadow: '0 20px 60px rgba(0, 0, 0, 0.6), inset 0 0 80px rgba(112, 56, 248, 0.08)'
-              }}
-            >
-              {/* React Bits GradientASCII as the dynamic backdrop */}
-              <GradientASCII
-                colors={["#731ed8", "#f6f8ff", "#cda5ff", "#7038f8"]}
-                shape="horizon"
-                characters=" .·•●"
-                cellSize={18}
-                density={0.8}
-                style={{ opacity: 0.7 }}
-              />
-
-              {/* The Live NFC Card with Perspective & Dynamic Lighting */}
-              <div
-                style={{
-                  position: 'relative',
-                  zIndex: 10,
-                  transform: getPreviewTransform(),
-                  transition: 'transform 0.4s cubic-bezier(0.16, 1, 0.3, 1)',
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center'
-                }}
-              >
+                  <button
+                    type="button"
+                    onClick={() => setMobilePreviewCollapsed(c => !c)}
+                    style={{
+                      display: 'inline-flex',
+                      alignItems: 'center',
+                      gap: '4px',
+                      padding: '5px 8px',
+                      borderRadius: '8px',
+                      background: isLight ? 'rgba(0, 0, 0, 0.05)' : 'rgba(255, 255, 255, 0.06)',
+                      border: isLight ? '1px solid rgba(0, 0, 0, 0.1)' : '1px solid rgba(255, 255, 255, 0.12)',
+                      color: isLight ? '#475569' : '#94a3b8',
+                      fontSize: '0.72rem',
+                      fontWeight: 600,
+                      cursor: 'pointer'
+                    }}
+                  >
+                    {mobilePreviewCollapsed ? (
+                      <>
+                        <Eye size={12} />
+                        <span>Show Preview</span>
+                      </>
+                    ) : (
+                      <>
+                        <ChevronUp size={12} />
+                        <span>Collapse</span>
+                      </>
+                    )}
+                  </button>
+                </div>
+              ) : (
+                /* Safe Area & Bleed Inline Switch */
                 <div
                   style={{
-                    width: `${Math.round(BASE_CARD_WIDTH * fitScale)}px`,
-                    height: `${Math.round(BASE_CARD_HEIGHT * fitScale)}px`,
-                    transform: `scale(${fitScale})`,
-                    transformOrigin: 'center center'
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    gap: '12px',
+                    background: isLight ? 'rgba(255, 255, 255, 0.9)' : 'rgba(18, 14, 28, 0.8)',
+                    border: isLight ? '1px solid rgba(112, 56, 248, 0.22)' : '1px solid rgba(112, 56, 248, 0.15)',
+                    borderRadius: '9999px',
+                    padding: '4px 14px',
+                    fontSize: '0.76rem',
+                    color: isLight ? '#475569' : '#94a3b8',
+                    boxShadow: isLight ? '0 2px 10px rgba(112, 56, 248, 0.08)' : 'none'
                   }}
                 >
-                  {is3DPreview ? (
-                    <Card3DPreview
-                      side={side}
-                      onSideChange={setSide}
-                      templateType={templateType}
-                      edition={edition}
-                      config={combinedConfig}
-                      showGuides={showGuides}
-                      showBleed={showBleed}
-                      width={BASE_CARD_WIDTH}
-                      enableTilt={dynamicLighting}
-                      onLogoWarningChange={setLogoWarning}
+                  <label style={{ display: 'flex', alignItems: 'center', gap: '6px', cursor: 'pointer' }}>
+                    <span>Safe Area</span>
+                    <input
+                      type="checkbox"
+                      checked={showGuides}
+                      onChange={(e) => setShowGuides(e.target.checked)}
+                      style={{ accentColor: '#7038f8', cursor: 'pointer' }}
                     />
-                  ) : (
-                    <CardCanvas
-                      side={side}
-                      templateType={templateType}
-                      edition={edition}
-                      config={combinedConfig}
-                      showGuides={showGuides}
-                      showBleed={showBleed}
-                      width={BASE_CARD_WIDTH}
-                      onLogoWarningChange={setLogoWarning}
-                    />
-                  )}
-                </div>
-              </div>
+                  </label>
 
-              {/* Pill beneath card: Flip to Back / Flip to Front */}
-              <button
-                type="button"
-                onClick={() => setSide(side === 'front' ? 'back' : 'front')}
-                style={{
-                  position: 'relative',
-                  zIndex: 15,
-                  marginTop: '22px',
-                  display: 'inline-flex',
-                  alignItems: 'center',
-                  gap: '8px',
-                  padding: '7px 18px',
-                  borderRadius: '9999px',
-                  background: 'rgba(18, 14, 28, 0.85)',
-                  border: '1px solid rgba(112, 56, 248, 0.3)',
-                  color: '#ffffff',
-                  fontSize: '0.78rem',
-                  fontWeight: 600,
-                  cursor: 'pointer',
-                  backdropFilter: 'blur(12px)',
-                  boxShadow: '0 4px 16px rgba(0, 0, 0, 0.4)'
-                }}
-              >
-                <RotateCw size={13} style={{ transform: side === 'back' ? 'rotate(180deg)' : 'none', transition: 'transform 0.3s ease' }} />
-                <span>{side === 'front' ? 'Flip to Back' : 'Flip to Front'}</span>
-              </button>
+                  <span style={{ color: isLight ? 'rgba(0,0,0,0.15)' : 'rgba(255,255,255,0.1)' }}>|</span>
+
+                  <label style={{ display: 'flex', alignItems: 'center', gap: '6px', cursor: 'pointer' }}>
+                    <span>Bleed (3mm)</span>
+                    <input
+                      type="checkbox"
+                      checked={showBleed}
+                      onChange={(e) => setShowBleed(e.target.checked)}
+                      style={{ accentColor: '#7038f8', cursor: 'pointer' }}
+                    />
+                  </label>
+                </div>
+              )}
             </div>
 
-            {/* Bottom 5 Thumbnails: Front, Back, Angled, Floating, Close Up */}
-            <div
-              style={{
-                display: 'grid',
-                gridTemplateColumns: 'repeat(5, 1fr)',
-                gap: '10px'
-              }}
-            >
-              {[
-                { id: 'front', label: 'Front', side: 'front' },
-                { id: 'back', label: 'Back', side: 'back' },
-                { id: 'angled', label: 'Angled', side: 'front' },
-                { id: 'floating', label: 'Floating', side: 'front' },
-                { id: 'close-up', label: 'Close Up', side: 'front' }
-              ].map(thumb => {
-                const isSelected = previewMode === thumb.id;
-                return (
-                  <button
-                    key={thumb.id}
-                    type="button"
-                    onClick={() => handlePreviewModeSelect(thumb.id)}
+            {/* Central Stage Box (Solid Luxury Background - No animated ASCII) */}
+            {(!mobilePreviewCollapsed || mobileTab === 'preview' || viewportWidth >= 1024) && (
+              <div
+                style={{
+                  position: 'relative',
+                  width: '100%',
+                  minHeight: viewportWidth < 1024 && mobileTab !== 'preview'
+                    ? `${Math.round(BASE_CARD_HEIGHT * fitScale) + 24}px`
+                    : (viewportWidth < 640 ? '340px' : '440px'),
+                  borderRadius: '20px',
+                  overflow: 'hidden',
+                  background: isLight ? '#f4f2fb' : '#0B0814',
+                  border: isLight ? '1px solid rgba(112, 56, 248, 0.2)' : '1px solid rgba(112, 56, 248, 0.22)',
+                  display: 'flex',
+                  flexDirection: 'column',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  padding: viewportWidth < 1024 && mobileTab !== 'preview' ? '12px 8px' : '30px 20px',
+                  boxShadow: isLight
+                    ? '0 10px 30px rgba(112, 56, 248, 0.1), inset 0 0 40px rgba(112, 56, 248, 0.03)'
+                    : '0 20px 60px rgba(0, 0, 0, 0.65), inset 0 0 60px rgba(112, 56, 248, 0.05)'
+                }}
+              >
+                {/* The Live NFC Card with Perspective & Dynamic Lighting */}
+                <div
+                  style={{
+                    position: 'relative',
+                    zIndex: 10,
+                    transform: getPreviewTransform(),
+                    transition: 'transform 0.4s cubic-bezier(0.16, 1, 0.3, 1)',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    width: '100%',
+                    overflow: 'visible'
+                  }}
+                >
+                  <div
                     style={{
-                      background: isSelected ? 'rgba(112, 56, 248, 0.22)' : 'rgba(18, 14, 28, 0.7)',
-                      border: isSelected ? '1.5px solid #7038f8' : '1px solid rgba(112, 56, 248, 0.14)',
-                      borderRadius: '12px',
-                      padding: '8px 4px',
-                      cursor: 'pointer',
+                      width: `${Math.round(BASE_CARD_WIDTH * fitScale)}px`,
+                      height: `${Math.round(BASE_CARD_HEIGHT * fitScale)}px`,
                       display: 'flex',
-                      flexDirection: 'column',
                       alignItems: 'center',
-                      gap: '6px',
-                      boxShadow: isSelected ? '0 0 16px rgba(112, 56, 248, 0.3)' : 'none',
-                      transition: 'all 0.18s ease'
+                      justifyContent: 'center',
+                      position: 'relative'
                     }}
                   >
                     <div
                       style={{
-                        width: '46px',
-                        height: '28px',
-                        borderRadius: '4px',
-                        background: 'linear-gradient(135deg, #2b154a 0%, #0d0718 100%)',
-                        border: '1px solid rgba(205, 165, 255, 0.25)',
-                        transform: thumb.id === 'angled' ? 'rotate(-6deg) skewX(-4deg)' : thumb.id === 'floating' ? 'translateY(-3px)' : 'none',
-                        transition: 'transform 0.2s ease'
+                        width: `${BASE_CARD_WIDTH}px`,
+                        height: `${BASE_CARD_HEIGHT}px`,
+                        transform: `scale(${fitScale})`,
+                        transformOrigin: 'center center',
+                        flexShrink: 0
                       }}
-                    />
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
-                      {isSelected && (
-                        <span style={{ width: '5px', height: '5px', borderRadius: '50%', background: '#cda5ff' }} />
+                    >
+                      {is3DPreview ? (
+                        <Card3DPreview
+                          side={side}
+                          onSideChange={setSide}
+                          templateType={templateType}
+                          edition={edition}
+                          config={combinedConfig}
+                          showGuides={showGuides}
+                          showBleed={showBleed}
+                          width={BASE_CARD_WIDTH}
+                          enableTilt={dynamicLighting}
+                          onLogoWarningChange={setLogoWarning}
+                          allowFlip={false}
+                        />
+                      ) : (
+                        <CardCanvas
+                          side={side}
+                          templateType={templateType}
+                          edition={edition}
+                          config={combinedConfig}
+                          showGuides={showGuides}
+                          showBleed={showBleed}
+                          width={BASE_CARD_WIDTH}
+                          onLogoWarningChange={setLogoWarning}
+                        />
                       )}
-                      <span
-                        style={{
-                          fontSize: '0.72rem',
-                          fontWeight: isSelected ? 700 : 500,
-                          color: isSelected ? '#ffffff' : '#94a3b8'
-                        }}
-                      >
-                        {thumb.label}
-                      </span>
                     </div>
-                  </button>
-                );
-              })}
-            </div>
+                  </div>
+                </div>
+
+                {/* Single Flip Trigger Pill in the Bottom (Outside the Card) */}
+                <button
+                  type="button"
+                  onClick={() => setSide(side === 'front' ? 'back' : 'front')}
+                  style={{
+                    position: 'relative',
+                    zIndex: 15,
+                    marginTop: viewportWidth < 1024 && mobileTab !== 'preview' ? '12px' : '22px',
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    gap: '8px',
+                    padding: viewportWidth < 1024 && mobileTab !== 'preview' ? '6px 16px' : '8px 20px',
+                    borderRadius: '9999px',
+                    background: 'rgba(18, 14, 28, 0.92)',
+                    border: '1px solid rgba(112, 56, 248, 0.35)',
+                    color: '#ffffff',
+                    fontSize: '0.78rem',
+                    fontWeight: 600,
+                    cursor: 'pointer',
+                    backdropFilter: 'blur(12px)',
+                    boxShadow: '0 4px 16px rgba(0, 0, 0, 0.45)',
+                    transition: 'all 0.2s ease'
+                  }}
+                  onMouseEnter={e => {
+                    e.currentTarget.style.transform = 'translateY(-2px)';
+                    e.currentTarget.style.borderColor = '#7038f8';
+                  }}
+                  onMouseLeave={e => {
+                    e.currentTarget.style.transform = 'translateY(0)';
+                    e.currentTarget.style.borderColor = 'rgba(112, 56, 248, 0.35)';
+                  }}
+                >
+                  <RotateCw size={13} style={{ transform: side === 'back' ? 'rotate(180deg)' : 'none', transition: 'transform 0.3s ease' }} />
+                  <span>{side === 'front' ? 'Flip to Back' : 'Flip to Front'}</span>
+                </button>
+              </div>
+            )}
+
+            {/* Bottom 5 Thumbnails: Front, Back, Angled, Floating, Close Up */}
+            {(viewportWidth >= 1024 || mobileTab === 'preview') && (
+              <div
+                style={{
+                  display: 'grid',
+                  gridTemplateColumns: 'repeat(5, 1fr)',
+                  gap: '10px'
+                }}
+              >
+                {[
+                  { id: 'front', label: 'Front', side: 'front' },
+                  { id: 'back', label: 'Back', side: 'back' },
+                  { id: 'angled', label: 'Angled', side: 'front' },
+                  { id: 'floating', label: 'Floating', side: 'front' },
+                  { id: 'close-up', label: 'Close Up', side: 'front' }
+                ].map(thumb => {
+                  const isSelected = previewMode === thumb.id;
+                  return (
+                    <button
+                      key={thumb.id}
+                      type="button"
+                      onClick={() => handlePreviewModeSelect(thumb.id)}
+                      style={{
+                        background: isSelected ? 'rgba(112, 56, 248, 0.22)' : 'rgba(18, 14, 28, 0.7)',
+                        border: isSelected ? '1.5px solid #7038f8' : '1px solid rgba(112, 56, 248, 0.14)',
+                        borderRadius: '12px',
+                        padding: '8px 4px',
+                        cursor: 'pointer',
+                        display: 'flex',
+                        flexDirection: 'column',
+                        alignItems: 'center',
+                        gap: '6px',
+                        boxShadow: isSelected ? '0 0 16px rgba(112, 56, 248, 0.3)' : 'none',
+                        transition: 'all 0.18s ease'
+                      }}
+                    >
+                      <div
+                        style={{
+                          width: '46px',
+                          height: '28px',
+                          borderRadius: '4px',
+                          background: 'linear-gradient(135deg, #2b154a 0%, #0d0718 100%)',
+                          border: '1px solid rgba(205, 165, 255, 0.25)',
+                          transform: thumb.id === 'angled' ? 'rotate(-6deg) skewX(-4deg)' : thumb.id === 'floating' ? 'translateY(-3px)' : 'none',
+                          transition: 'transform 0.2s ease'
+                        }}
+                      />
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
+                        {isSelected && (
+                          <span style={{ width: '5px', height: '5px', borderRadius: '50%', background: '#cda5ff' }} />
+                        )}
+                        <span
+                          style={{
+                            fontSize: '0.72rem',
+                            fontWeight: isSelected ? 700 : 500,
+                            color: isSelected ? '#ffffff' : '#94a3b8'
+                          }}
+                        >
+                          {thumb.label}
+                        </span>
+                      </div>
+                    </button>
+                  );
+                })}
+              </div>
+            )}
+
+            {/* Mobile Action to continue customizing (preview tab only) */}
+            {viewportWidth < 1024 && mobileTab === 'preview' && (
+              <button
+                type="button"
+                onClick={() => setMobileTab('customise')}
+                style={{
+                  width: '100%',
+                  padding: '13px 20px',
+                  borderRadius: '14px',
+                  background: 'linear-gradient(135deg, #7038f8 0%, #905cfc 100%)',
+                  border: 'none',
+                  color: '#ffffff',
+                  fontWeight: 700,
+                  fontSize: '0.88rem',
+                  cursor: 'pointer',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  gap: '8px',
+                  boxShadow: '0 6px 20px rgba(112, 56, 248, 0.45)',
+                  marginTop: '10px'
+                }}
+              >
+                <Sparkles size={16} />
+                <span>Customise Card Details (Steps 1–4) →</span>
+              </button>
+            )}
           </main>
 
           {/* ==================================================================
@@ -1728,19 +2149,22 @@ export default function Designer() {
               ================================================================== */}
           <aside
             style={{
-              display: 'flex',
+              display: viewportWidth >= 1024 || mobileTab === 'specs' ? 'flex' : 'none',
               flexDirection: 'column',
-              gap: '16px'
+              gap: '16px',
+              width: '100%',
+              maxWidth: '100%'
             }}
           >
             {/* STEP 5: Live Preview Controls */}
             <div
               style={{
-                background: 'rgba(17, 12, 28, 0.75)',
-                border: '1px solid rgba(112, 56, 248, 0.16)',
+                background: panelBg,
+                border: panelBorder,
                 borderRadius: '16px',
                 padding: '16px',
-                backdropFilter: 'blur(16px)'
+                backdropFilter: 'blur(16px)',
+                boxShadow: panelShadow
               }}
             >
               <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '14px' }}>
@@ -1762,8 +2186,8 @@ export default function Designer() {
                   5
                 </span>
                 <div>
-                  <div style={{ fontSize: '0.88rem', fontWeight: 700, color: '#f8fafc' }}>Live Preview Controls</div>
-                  <div style={{ fontSize: '0.72rem', color: '#94a3b8' }}>Adjust card appearance</div>
+                  <div style={{ fontSize: '0.88rem', fontWeight: 700, color: headingColor }}>Live Preview Controls</div>
+                  <div style={{ fontSize: '0.72rem', color: subtextColor }}>Adjust card appearance</div>
                 </div>
               </div>
 
@@ -1820,11 +2244,12 @@ export default function Designer() {
             {/* STEP 6: Card Specifications */}
             <div
               style={{
-                background: 'rgba(17, 12, 28, 0.75)',
-                border: '1px solid rgba(112, 56, 248, 0.16)',
+                background: panelBg,
+                border: panelBorder,
                 borderRadius: '16px',
                 padding: '16px',
-                backdropFilter: 'blur(16px)'
+                backdropFilter: 'blur(16px)',
+                boxShadow: panelShadow
               }}
             >
               <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '14px' }}>
@@ -1846,8 +2271,8 @@ export default function Designer() {
                   6
                 </span>
                 <div>
-                  <div style={{ fontSize: '0.88rem', fontWeight: 700, color: '#f8fafc' }}>Card Specifications</div>
-                  <div style={{ fontSize: '0.72rem', color: '#94a3b8' }}>Standard FLOCARD Design</div>
+                  <div style={{ fontSize: '0.88rem', fontWeight: 700, color: headingColor }}>Card Specifications</div>
+                  <div style={{ fontSize: '0.72rem', color: subtextColor }}>Standard FLOCARD Design</div>
                 </div>
               </div>
 
@@ -1875,11 +2300,12 @@ export default function Designer() {
             {/* STEP 7: Design Status & Send for Print */}
             <div
               style={{
-                background: 'rgba(17, 12, 28, 0.75)',
-                border: '1px solid rgba(112, 56, 248, 0.16)',
+                background: panelBg,
+                border: panelBorder,
                 borderRadius: '16px',
                 padding: '16px',
-                backdropFilter: 'blur(16px)'
+                backdropFilter: 'blur(16px)',
+                boxShadow: panelShadow
               }}
             >
               <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '14px' }}>
@@ -2087,27 +2513,60 @@ export default function Designer() {
               <CheckCircle2 size={28} />
             </div>
             <h3 style={{ fontSize: '1.2rem', fontWeight: 700, color: '#ffffff', marginBottom: '8px' }}>
-              Order Placed in Print Production!
+              Order Placed & Routed to WhatsApp!
             </h3>
-            <p style={{ fontSize: '0.82rem', color: '#94a3b8', lineHeight: 1.5, marginBottom: '20px' }}>
-              Your card design <strong style={{ color: '#fff' }}>{designTitle}</strong> has been transmitted to our industrial manufacturing queue. High-resolution print assets have been queued.
+            <p style={{ fontSize: '0.82rem', color: '#94a3b8', lineHeight: 1.5, marginBottom: '14px' }}>
+              Order Reference: <strong style={{ color: '#cda5ff', fontFamily: 'monospace' }}>{submittedOrder?.orderReference || submittedOrder?.id || 'FLC-ORD'}</strong>
             </p>
-            <button
-              type="button"
-              onClick={() => setShowOrderSubmittedModal(false)}
-              style={{
-                width: '100%',
-                padding: '12px',
-                borderRadius: '10px',
-                background: '#7038f8',
-                border: 'none',
-                color: '#ffffff',
-                fontWeight: 700,
-                cursor: 'pointer'
-              }}
-            >
-              Back to Studio
-            </button>
+            <p style={{ fontSize: '0.82rem', color: '#94a3b8', lineHeight: 1.5, marginBottom: '20px' }}>
+              Your card design <strong style={{ color: '#fff' }}>{designTitle}</strong> details have been queued for print production and transmitted to FLOCARD's official WhatsApp (+91 97782 78552).
+            </p>
+
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+              <a
+                href={`https://wa.me/919778278552?text=${encodeURIComponent(
+                  `Hello FLOCARD Team, I have submitted my card design order ${submittedOrder?.orderReference || ''} for ${frontConfig.name || ''} (${EDITIONS[edition]?.name || edition}). Please confirm production.`
+                )}`}
+                target="_blank"
+                rel="noopener noreferrer"
+                style={{
+                  width: '100%',
+                  padding: '12px',
+                  borderRadius: '10px',
+                  background: '#22c55e',
+                  border: 'none',
+                  color: '#ffffff',
+                  fontWeight: 700,
+                  fontSize: '0.84rem',
+                  textDecoration: 'none',
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  gap: '8px',
+                  boxShadow: '0 4px 15px rgba(34, 197, 94, 0.4)'
+                }}
+              >
+                <span>💬 Open Order in WhatsApp</span>
+              </a>
+
+              <button
+                type="button"
+                onClick={() => setShowOrderSubmittedModal(false)}
+                style={{
+                  width: '100%',
+                  padding: '12px',
+                  borderRadius: '10px',
+                  background: 'rgba(255, 255, 255, 0.08)',
+                  border: '1px solid rgba(255, 255, 255, 0.14)',
+                  color: '#ffffff',
+                  fontWeight: 600,
+                  fontSize: '0.84rem',
+                  cursor: 'pointer'
+                }}
+              >
+                Back to Studio
+              </button>
+            </div>
           </div>
         </div>
       )}

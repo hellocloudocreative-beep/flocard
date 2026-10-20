@@ -29,10 +29,48 @@ import AdminDashboard from './pages/admin/AdminDashboard';
 import CustomerDashboard from './pages/customer/CustomerDashboard';
 import { AuthProvider, useAuth } from './context/AuthContext';
 import { DataProvider } from './context/DataContext';
-import { ThemeProvider } from './context/ThemeContext';
+import { ThemeProvider, useTheme } from './context/ThemeContext';
 import { AnimatePresence, motion } from 'motion/react';
 import CookieConsent from './components/CookieConsent';
 import GradientASCII from './components/GradientASCII';
+
+function GlobalGradientBackground({ path }) {
+  const { isDark } = useTheme();
+  if (path === '/designer') return null;
+
+  // Dark theme palette: deep obsidian, rich violet, midnight purple, luminous neon accents
+  const darkColors = ["#2e1065", "#090514", "#7c3aed", "#13082a"];
+  // Light theme palette: soft luminous purple, clean sky white, lilac, vivid violet
+  const lightColors = ["#731ed8", "#f6f8ff", "#cda5ff", "#7038f8"];
+
+  return (
+    <SafeBoundary>
+      <div
+        className="global-gradient-ascii-bg"
+        aria-hidden="true"
+        style={{
+          position: 'fixed',
+          top: 0,
+          left: 0,
+          right: 0,
+          width: '100vw',
+          height: '100vh',
+          pointerEvents: 'none',
+          zIndex: 0,
+          opacity: isDark ? 0.32 : 0.38
+        }}
+      >
+        <GradientASCII
+          colors={isDark ? darkColors : lightColors}
+          shape="horizon"
+          characters=" .·•●"
+          cellSize={18}
+          density={0.8}
+        />
+      </div>
+    </SafeBoundary>
+  );
+}
 
 class AdminErrorBoundary extends React.Component {
   constructor(props) {
@@ -360,33 +398,7 @@ export default function App() {
         <DataProvider>
           <div className="flocard-app-root">
             {/* Global Animated Horizon GradientASCII Background across web */}
-            {path !== '/designer' && (
-              <SafeBoundary>
-                <div
-                  className="global-gradient-ascii-bg"
-                  aria-hidden="true"
-                  style={{
-                    position: 'fixed',
-                    top: 0,
-                    left: 0,
-                    right: 0,
-                    width: '100vw',
-                    height: '100vh',
-                    pointerEvents: 'none',
-                    zIndex: 0,
-                    opacity: 0.38
-                  }}
-                >
-                  <GradientASCII
-                    colors={["#731ed8", "#f6f8ff", "#cda5ff", "#7038f8"]}
-                    shape="horizon"
-                    characters=" .·•●"
-                    cellSize={18}
-                    density={0.8}
-                  />
-                </div>
-              </SafeBoundary>
-            )}
+            <GlobalGradientBackground path={path} />
 
             {showHeaderFooter && <Navbar currentPath={path} />}
             <AnimatePresence mode="wait" initial={false}>

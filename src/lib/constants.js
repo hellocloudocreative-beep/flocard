@@ -7,9 +7,9 @@ export const BRAND = {
   tagline: 'One Tap. Every Connection.',
   domain: 'flocard.in',
   supportEmail: 'contact@flocard.in',
-  whatsapp: '919778278522',
-  whatsappFormatted: '+91 97782 78522',
-  phone: '+91 97782 78522',
+  whatsapp: '919778278552',
+  whatsappFormatted: '+91 97782 78552',
+  phone: '+91 97782 78552',
   heroEyebrow: 'PREMIUM NFC BUSINESS CARDS',
   heroTitle: 'YOUR IDENTITY. ONE TAP AWAY.',
   heroSubtitle: 'Premium NFC business cards that connect your professional identity, portfolio, and contact details in one tap.',
@@ -45,6 +45,7 @@ export const EDITIONS = {
     textColor: '#FFFFFF',
     gradient: 'linear-gradient(135deg, #0F1117 0%, #1E2330 60%, #0A0D14 100%)',
     bgImage: '/assets/cardbg-platinum.png',
+    bgPortraitImage: '/assets/cardbg-platinum-portrait.png',
     logoAsset: '/assets/flocard-logo-platinum.png',
     border: '1px solid rgba(226, 232, 240, 0.4)',
     glow: 'rgba(226, 232, 240, 0.25)',
@@ -79,6 +80,7 @@ export const EDITIONS = {
     textColor: '#FFFFFF',
     gradient: 'linear-gradient(135deg, #100B19 0%, #200B3B 55%, #0B0714 100%)',
     bgImage: '/assets/cardbg-purple.png',
+    bgPortraitImage: '/assets/cardbg-purple-portrait.png',
     logoAsset: '/assets/flocard-logo-white.png',
     border: '1px solid rgba(168, 85, 247, 0.4)',
     glow: 'rgba(107, 0, 255, 0.35)',
@@ -113,6 +115,7 @@ export const EDITIONS = {
     textColor: '#FFF0A6',
     gradient: 'linear-gradient(145deg, #0C0B0A 0%, #151310 50%, #0A0908 100%)',
     bgImage: '/assets/cardbg-gold.png',
+    bgPortraitImage: '/assets/cardbg-gold-portrait.png',
     logoAsset: '/assets/flocard-logo-gold.png',
     border: '1px solid rgba(233, 199, 102, 0.35)',
     glow: 'rgba(201, 151, 44, 0.18)',
@@ -147,6 +150,7 @@ export const EDITIONS = {
     textColor: '#FFFFFF',
     gradient: 'linear-gradient(135deg, #18191C 0%, #2B2D31 55%, #121316 100%)',
     bgImage: '/assets/cardbg-metal.png',
+    bgPortraitImage: '/assets/cardbg-metal-portrait.png',
     logoAsset: '/assets/flocard-logo-white.png',
     border: '1px solid rgba(148, 163, 184, 0.35)',
     glow: 'rgba(148, 163, 184, 0.25)',
@@ -168,6 +172,39 @@ export const EDITIONS = {
       capacity: '888 Bytes usable EEPROM memory',
       durability: 'Scratch-resistant PVD coating, Waterproof IP68'
     }
+  }
+};
+
+export const CARD_BACKGROUNDS = {
+  purple: {
+    landscape: '/assets/cardbg-purple.png',
+    portrait: '/assets/cardbg-purple-portrait.png',
+    accent: '#A855F7',
+    glow: '#6B00FF'
+  },
+  gold: {
+    landscape: '/assets/cardbg-gold.png',
+    portrait: '/assets/cardbg-gold-portrait.png',
+    accent: '#E9C766',
+    glow: '#C9972C'
+  },
+  steel: {
+    landscape: '/assets/cardbg-platinum.png',
+    portrait: '/assets/cardbg-platinum-portrait.png',
+    accent: '#94A3B8',
+    glow: '#64748B'
+  },
+  platinum: {
+    landscape: '/assets/cardbg-platinum.png',
+    portrait: '/assets/cardbg-platinum-portrait.png',
+    accent: '#E2E8F0',
+    glow: '#64748B'
+  },
+  metal: {
+    landscape: '/assets/cardbg-metal.png',
+    portrait: '/assets/cardbg-metal-portrait.png',
+    accent: '#CBD5E1',
+    glow: '#64748B'
   }
 };
 

@@ -1,22 +1,31 @@
 /* ==========================================================================
    FLOCARD COMPACT PROFILE CARD
-   Interactive luxury digital identity card powered by React Bits <ReflectiveCard />
-   with WebGL brushed metal reflection, 3D tilt tracking, dynamic specular glare,
-   centered user portrait, and in-card contact & portfolio action buttons.
+   Interactive luxury digital identity card powered by official FLOCARD
+   portrait card background (cardbg[purple].png portrait edition) with 3D tilt tracking,
+   dynamic specular glare, centered user portrait, prominent Direct Connect icons,
+   and in-card action buttons.
    ========================================================================== */
 
 import React, { useState, useEffect } from 'react';
 import { motion } from 'motion/react';
 import {
-  Phone,
-  Mail,
   ArrowUpRight,
   Sparkles,
   ShieldCheck,
   Building2,
-  ExternalLink
+  ExternalLink,
+  Zap
 } from 'lucide-react';
-import ReflectiveCard from '../ReflectiveCard/ReflectiveCard';
+import {
+  PhoneIcon,
+  MailIcon,
+  WhatsappIcon,
+  GlobeIcon,
+  LinkedinIcon,
+  InstagramIcon,
+  TwitterIcon,
+  GithubIcon
+} from '../SocialIcons';
 import { downloadVCard } from '../../lib/vcard';
 
 export default function CompactProfileCard({
@@ -33,7 +42,9 @@ export default function CompactProfileCard({
         ? 'gold'
         : profile?.edition === 'platinum' || profile?.edition === 'steel'
           ? 'steel'
-          : 'purple')
+          : profile?.edition === 'metal'
+            ? 'metal'
+            : 'purple')
   );
 
   useEffect(() => {
@@ -43,6 +54,8 @@ export default function CompactProfileCard({
       setActiveFinish('gold');
     } else if (profile?.edition === 'platinum' || profile?.edition === 'steel') {
       setActiveFinish('steel');
+    } else if (profile?.edition === 'metal') {
+      setActiveFinish('metal');
     } else {
       setActiveFinish('purple');
     }
@@ -51,25 +64,36 @@ export default function CompactProfileCard({
   const finishTints = {
     steel: '#E2E8F0',
     gold: '#E9C766',
-    purple: '#A855F7'
+    purple: '#A855F7',
+    metal: '#CBD5E1'
   };
 
   const finishGlows = {
     steel: '#64748B',
     gold: '#C9972C',
-    purple: profile?.glowColor || '#6B00FF'
+    purple: profile?.glowColor || '#6B00FF',
+    metal: '#64748B'
   };
 
   const finishAccents = {
     steel: '#94A3B8',
     gold: '#E9C766',
-    purple: profile?.accentColor || '#A855F7'
+    purple: profile?.accentColor || '#A855F7',
+    metal: '#CBD5E1'
   };
 
-  const metalTint =
-    profile?.cardColor && profile?.cardFinish === 'custom'
-      ? profile.cardColor
-      : finishTints[activeFinish] || profile?.cardColor || '#A855F7';
+  const finishPortraitBgs = {
+    purple: '/assets/cardbg-purple-portrait.png',
+    gold: '/assets/cardbg-gold-portrait.png',
+    steel: '/assets/cardbg-platinum-portrait.png',
+    platinum: '/assets/cardbg-platinum-portrait.png',
+    metal: '/assets/cardbg-metal-portrait.png'
+  };
+
+  const portraitBg =
+    profile?.cardPortraitBg ||
+    finishPortraitBgs[activeFinish] ||
+    finishPortraitBgs.purple;
 
   const accentColor = finishAccents[activeFinish] || profile?.accentColor || '#A855F7';
   const glowColor = finishGlows[activeFinish] || profile?.glowColor || '#6B00FF';
@@ -88,6 +112,31 @@ export default function CompactProfileCard({
 
   const idCode = profile?.phone || profile?.email || `NFC-${profile?.slug?.toUpperCase() || '216'}`;
 
+  // Interactive 3D tilt tracking with specular light reflection
+  const [tilt, setTilt] = useState({ x: 0, y: 0, glareX: 50, glareY: 50, glareOpacity: 0 });
+
+  const handleMouseMove = (e) => {
+    if (reducedMotion) return;
+    const rect = e.currentTarget.getBoundingClientRect();
+    const x = e.clientX - rect.left;
+    const y = e.clientY - rect.top;
+    const centerX = rect.width / 2;
+    const centerY = rect.height / 2;
+    const rotateY = ((x - centerX) / centerX) * 8.5;
+    const rotateX = -((y - centerY) / centerY) * 8.5;
+    setTilt({
+      x: rotateX,
+      y: rotateY,
+      glareX: x,
+      glareY: y,
+      glareOpacity: 0.55
+    });
+  };
+
+  const handleMouseLeave = () => {
+    setTilt({ x: 0, y: 0, glareX: 50, glareY: 50, glareOpacity: 0 });
+  };
+
   return (
     <motion.div
       layoutId="profile-card-container"
@@ -97,12 +146,12 @@ export default function CompactProfileCard({
         flexDirection: 'column',
         alignItems: 'center',
         width: '100%',
-        maxWidth: '460px',
+        maxWidth: '520px',
         position: 'relative',
         zIndex: 10
       }}
     >
-      {/* Main Reflective Card Element */}
+      {/* Main Luxury Profile Card Element */}
       <div
         style={{
           position: 'relative',
@@ -114,7 +163,7 @@ export default function CompactProfileCard({
         }}
         onClick={onExpand}
       >
-        {/* Ambient Glow behind the reflective card */}
+        {/* Ambient Glow behind the card */}
         <div
           aria-hidden="true"
           style={{
@@ -122,414 +171,526 @@ export default function CompactProfileCard({
             top: '50%',
             left: '50%',
             transform: 'translate(-50%, -50%)',
-            width: '340px',
-            height: '480px',
-            borderRadius: '24px',
-            background: `radial-gradient(ellipse at center, ${glowColor}45 0%, ${accentColor}25 50%, transparent 75%)`,
-            filter: 'blur(35px)',
+            width: '410px',
+            height: '620px',
+            borderRadius: '30px',
+            background: `radial-gradient(ellipse at center, ${glowColor}50 0%, ${accentColor}25 50%, transparent 75%)`,
+            filter: 'blur(40px)',
             pointerEvents: 'none',
             zIndex: 0
           }}
         />
 
-        {/* React Bits ReflectiveCard with Custom In-Card Centered Content — Always Dark Executive Luxury Finish */}
-        <ReflectiveCard
-          theme="dark"
-          tint={metalTint}
-          webcam={false}
-          metalness={1}
-          roughness={0.28}
-          blurStrength={6}
-          shine={1.2}
-          glare={0.55}
-          enableTilt={!reducedMotion}
-          tiltStrength={12}
-          width={360}
-          height={550}
-          radius={20}
-          bodyStyle={{
-            boxShadow: glowShadow
-          }}
+        {/* FLOCARD Portrait Artwork Card Container (Substantial, Executive Scale) */}
+        <div
+          onMouseMove={handleMouseMove}
+          onMouseLeave={handleMouseLeave}
           style={{
-            borderRadius: '20px',
+            width: '414px',
+            maxWidth: 'calc(100vw - 24px)',
+            height: '640px',
+            borderRadius: '28px',
+            backgroundImage: `url(${portraitBg})`,
+            backgroundColor: '#0C0816',
+            backgroundSize: 'cover',
+            backgroundPosition: 'center',
+            backgroundRepeat: 'no-repeat',
+            position: 'relative',
+            overflow: 'hidden',
+            border: `1.5px solid ${accentColor}55`,
+            boxShadow: glowShadow,
+            transform: reducedMotion
+              ? 'none'
+              : `perspective(1000px) rotateX(${tilt.x}deg) rotateY(${tilt.y}deg)`,
+            transition: 'transform 0.15s ease-out, box-shadow 0.3s ease',
+            transformStyle: 'preserve-3d',
+            padding: '26px 24px',
+            boxSizing: 'border-box',
+            display: 'flex',
+            flexDirection: 'column',
+            justifyContent: 'space-between',
             zIndex: 1
           }}
         >
+          {/* Subtle Dynamic Glare Sheen Overlay */}
+          <div
+            aria-hidden="true"
+            style={{
+              position: 'absolute',
+              inset: 0,
+              background: `radial-gradient(circle 280px at ${tilt.glareX}px ${tilt.glareY}px, rgba(255, 255, 255, ${tilt.glareOpacity * 0.22}), transparent 70%)`,
+              pointerEvents: 'none',
+              opacity: tilt.glareOpacity,
+              transition: 'opacity 0.25s ease',
+              zIndex: 1
+            }}
+          />
+
+          {/* Luxury Obsidian Gradient Overlay for Text Readability */}
+          <div
+            aria-hidden="true"
+            style={{
+              position: 'absolute',
+              inset: 0,
+              background: 'linear-gradient(180deg, rgba(8, 4, 14, 0.45) 0%, rgba(8, 4, 14, 0.2) 40%, rgba(8, 4, 14, 0.72) 100%)',
+              pointerEvents: 'none',
+              zIndex: 1
+            }}
+          />
+
+          {/* Top Row: Verified Badge & Live Status */}
           <div
             style={{
-              height: '100%',
               display: 'flex',
-              flexDirection: 'column',
+              alignItems: 'center',
               justifyContent: 'space-between',
+              width: '100%',
               position: 'relative',
-              zIndex: 2
+              zIndex: 3
             }}
           >
-            {/* Top Row: Verified Badge & Live Status */}
             <div
               style={{
-                display: 'flex',
+                display: 'inline-flex',
                 alignItems: 'center',
-                justifyContent: 'space-between',
-                width: '100%',
-                paddingBottom: '8px'
+                gap: '6px',
+                fontSize: '0.74rem',
+                fontWeight: 600,
+                color: '#f4f4f5',
+                background: 'rgba(255, 255, 255, 0.1)',
+                border: '1px solid rgba(255, 255, 255, 0.18)',
+                padding: '4px 10px',
+                borderRadius: '9999px',
+                backdropFilter: 'blur(8px)',
+                boxShadow: '0 2px 8px rgba(0, 0, 0, 0.3)'
               }}
             >
-              <div
-                style={{
-                  display: 'inline-flex',
-                  alignItems: 'center',
-                  gap: '6px',
-                  fontSize: '0.74rem',
-                  fontWeight: 600,
-                  color: '#f4f4f5',
-                  background: 'rgba(255, 255, 255, 0.08)',
-                  border: '1px solid rgba(255, 255, 255, 0.14)',
-                  padding: '4px 10px',
-                  borderRadius: '9999px',
-                  backdropFilter: 'blur(8px)'
-                }}
-              >
-                <ShieldCheck size={14} color="#10B981" />
-                <span>{profile?.isVerified !== false ? 'FLOCARD Verified' : 'FLOCARD'}</span>
-              </div>
-
-              <div
-                style={{
-                  display: 'inline-flex',
-                  alignItems: 'center',
-                  gap: '6px',
-                  fontSize: '0.74rem',
-                  fontWeight: 600,
-                  color: 'rgba(244, 244, 245, 0.8)',
-                  background: 'rgba(255, 255, 255, 0.06)',
-                  border: '1px solid rgba(255, 255, 255, 0.08)',
-                  padding: '4px 10px',
-                  borderRadius: '9999px'
-                }}
-              >
-                <span
-                  style={{
-                    width: '6px',
-                    height: '6px',
-                    borderRadius: '50%',
-                    backgroundColor: '#10B981',
-                    boxShadow: '0 0 8px #10B981'
-                  }}
-                />
-                <span>{profile?.company || 'NFC Active'}</span>
-              </div>
+              <ShieldCheck size={14} color="#10B981" />
+              <span>{profile?.isVerified !== false ? 'FLOCARD Verified' : 'FLOCARD'}</span>
             </div>
 
-            {/* Center Area: Centered User Image & Profile Information */}
             <div
               style={{
-                display: 'flex',
-                flexDirection: 'column',
+                display: 'inline-flex',
                 alignItems: 'center',
-                textAlign: 'center',
-                margin: 'auto 0',
-                padding: '6px 0'
+                gap: '6px',
+                fontSize: '0.74rem',
+                fontWeight: 600,
+                color: 'rgba(244, 244, 245, 0.9)',
+                background: 'rgba(255, 255, 255, 0.08)',
+                border: '1px solid rgba(255, 255, 255, 0.14)',
+                padding: '4px 10px',
+                borderRadius: '9999px',
+                backdropFilter: 'blur(8px)'
               }}
             >
-              {/* Centered User Image */}
-              <motion.div
-                layoutId="profile-card-avatar"
-                transition={transitionConfig}
+              <span
                 style={{
-                  width: '96px',
-                  height: '96px',
-                  borderRadius: isCircle ? '50%' : '24px',
-                  padding: '3px',
-                  background: `linear-gradient(135deg, ${glowColor} 0%, ${accentColor} 100%)`,
-                  boxShadow: `0 8px 26px ${glowColor}65, 0 0 0 1px ${accentColor}40`,
-                  overflow: 'hidden',
-                  marginBottom: '14px',
-                  position: 'relative',
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center'
+                  width: '6px',
+                  height: '6px',
+                  borderRadius: '50%',
+                  backgroundColor: '#10B981',
+                  boxShadow: '0 0 8px #10B981'
                 }}
-              >
-                {(profile?.avatar || profile?.logo) ? (
-                  <img
-                    src={profile.avatar || profile.logo}
-                    alt={profile?.name || 'User Avatar'}
-                    style={{
-                      width: '100%',
-                      height: '100%',
-                      borderRadius: isCircle ? '50%' : '21px',
-                      objectFit: 'cover',
-                      display: 'block'
-                    }}
-                  />
-                ) : (
-                  <div
-                    style={{
-                      width: '100%',
-                      height: '100%',
-                      borderRadius: isCircle ? '50%' : '21px',
-                      background: 'rgba(255, 255, 255, 0.08)',
-                      display: 'flex',
-                      flexDirection: 'column',
-                      alignItems: 'center',
-                      justifyContent: 'center',
-                      gap: '4px'
-                    }}
-                  >
-                    <Sparkles size={20} color={accentColor} />
-                    <span
-                      style={{
-                        fontSize: '0.66rem',
-                        fontWeight: 800,
-                        letterSpacing: '0.08em',
-                        textTransform: 'uppercase',
-                        color: '#ffffff'
-                      }}
-                    >
-                      YOUR LOGO
-                    </span>
-                  </div>
-                )}
-              </motion.div>
+              />
+              <span>{profile?.company || 'NFC Active'}</span>
+            </div>
+          </div>
 
-              {/* User Name */}
-              <h2
-                style={{
-                  fontFamily: "var(--font-heading, 'Sora', sans-serif)",
-                  fontSize: '1.45rem',
-                  fontWeight: 700,
-                  color: '#f4f4f5',
-                  margin: '0 0 4px',
-                  letterSpacing: '-0.02em',
-                  lineHeight: 1.2
-                }}
-              >
-                {profile?.name || 'YOUR NAME'}
-              </h2>
-
-              {/* Role & Company */}
-              <div
-                style={{
-                  fontSize: '0.86rem',
-                  fontWeight: 600,
-                  color: accentColor,
-                  marginBottom: '6px'
-                }}
-              >
-                {profile?.role || profile?.tagline || 'YOUR ROLE / TAGLINE'}{profile?.company ? ` • ${profile.company}` : ''}
-              </div>
-
-              {/* Short Biography / Tagline */}
-              {profile?.bio && (
-                <p
+          {/* Center Area: Centered User Image & Profile Information */}
+          <div
+            style={{
+              display: 'flex',
+              flexDirection: 'column',
+              alignItems: 'center',
+              textAlign: 'center',
+              margin: 'auto 0',
+              padding: '4px 0',
+              position: 'relative',
+              zIndex: 3
+            }}
+          >
+            {/* Centered User Image */}
+            <motion.div
+              layoutId="profile-card-avatar"
+              transition={transitionConfig}
+              style={{
+                width: '108px',
+                height: '108px',
+                borderRadius: isCircle ? '50%' : '26px',
+                padding: '3px',
+                background: `linear-gradient(135deg, ${glowColor} 0%, ${accentColor} 100%)`,
+                boxShadow: `0 8px 28px ${glowColor}65, 0 0 0 1px ${accentColor}40`,
+                overflow: 'hidden',
+                marginBottom: '14px',
+                position: 'relative',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center'
+              }}
+            >
+              {(profile?.avatar || profile?.logo) ? (
+                <img
+                  src={profile.avatar || profile.logo}
+                  alt={profile?.name || 'User Avatar'}
                   style={{
-                    fontSize: '0.78rem',
-                    color: 'rgba(244, 244, 245, 0.76)',
-                    lineHeight: 1.4,
-                    maxWidth: '300px',
-                    margin: '0 0 14px',
-                    display: '-webkit-box',
-                    WebkitLineClamp: 2,
-                    WebkitBoxOrient: 'vertical',
-                    overflow: 'hidden'
+                    width: '100%',
+                    height: '100%',
+                    borderRadius: isCircle ? '50%' : '23px',
+                    objectFit: 'cover',
+                    display: 'block'
+                  }}
+                />
+              ) : (
+                <div
+                  style={{
+                    width: '100%',
+                    height: '100%',
+                    borderRadius: isCircle ? '50%' : '23px',
+                    background: 'rgba(255, 255, 255, 0.12)',
+                    display: 'flex',
+                    flexDirection: 'column',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    gap: '4px'
                   }}
                 >
-                  {profile.bio}
-                </p>
+                  <Sparkles size={22} color={accentColor} />
+                  <span
+                    style={{
+                      fontSize: '0.7rem',
+                      fontWeight: 800,
+                      letterSpacing: '0.08em',
+                      textTransform: 'uppercase',
+                      color: '#ffffff'
+                    }}
+                  >
+                    FLOCARD
+                  </span>
+                </div>
               )}
+            </motion.div>
 
-              {/* Action Buttons Row INSIDE the Card */}
-              <div
+            {/* User Name */}
+            <h2
+              style={{
+                fontFamily: "var(--font-heading, 'Sora', sans-serif)",
+                fontSize: '1.68rem',
+                fontWeight: 700,
+                color: '#ffffff',
+                margin: '0 0 4px',
+                letterSpacing: '-0.02em',
+                lineHeight: 1.2,
+                textShadow: '0 2px 10px rgba(0, 0, 0, 0.6)'
+              }}
+            >
+              {profile?.name || 'YOUR NAME'}
+            </h2>
+
+            {/* Role & Company */}
+            <div
+              style={{
+                fontSize: '0.94rem',
+                fontWeight: 600,
+                color: accentColor,
+                marginBottom: '8px',
+                textShadow: `0 0 14px ${accentColor}50`
+              }}
+            >
+              {profile?.role || profile?.tagline || 'YOUR ROLE / TAGLINE'}{profile?.company ? ` • ${profile.company}` : ''}
+            </div>
+
+            {/* Short Biography / Tagline */}
+            {profile?.bio && (
+              <p
                 style={{
-                  display: 'flex',
-                  gap: '8px',
-                  width: '100%',
-                  maxWidth: '310px',
-                  marginTop: '4px'
+                  fontSize: '0.84rem',
+                  color: 'rgba(244, 244, 245, 0.82)',
+                  lineHeight: 1.4,
+                  maxWidth: '340px',
+                  margin: '0 0 12px',
+                  display: '-webkit-box',
+                  WebkitLineClamp: 2,
+                  WebkitBoxOrient: 'vertical',
+                  overflow: 'hidden'
                 }}
-                onClick={e => e.stopPropagation()}
               >
-                {profile?.phone && (
-                  <a
-                    href={`tel:${profile.phone}`}
-                    style={{
-                      flex: 1,
-                      height: '38px',
-                      borderRadius: '8px',
-                      background: 'rgba(255, 255, 255, 0.09)',
-                      border: '1px solid rgba(255, 255, 255, 0.18)',
-                      color: '#FFFFFF',
-                      display: 'flex',
-                      alignItems: 'center',
-                      justifyContent: 'center',
-                      gap: '5px',
-                      textDecoration: 'none',
-                      fontSize: '0.78rem',
-                      fontWeight: 600,
-                      backdropFilter: 'blur(10px)',
-                      transition: 'all 0.2s ease'
-                    }}
-                  >
-                    <Phone size={13} color={accentColor} />
-                    <span>Call</span>
-                  </a>
-                )}
+                {profile.bio}
+              </p>
+            )}
 
-                {profile?.email && (
-                  <a
-                    href={`mailto:${profile.email}`}
-                    style={{
-                      flex: 1,
-                      height: '38px',
-                      borderRadius: '8px',
-                      background: 'rgba(255, 255, 255, 0.09)',
-                      border: '1px solid rgba(255, 255, 255, 0.18)',
-                      color: '#FFFFFF',
-                      display: 'flex',
-                      alignItems: 'center',
-                      justifyContent: 'center',
-                      gap: '5px',
-                      textDecoration: 'none',
-                      fontSize: '0.78rem',
-                      fontWeight: 600,
-                      backdropFilter: 'blur(10px)',
-                      transition: 'all 0.2s ease'
-                    }}
-                  >
-                    <Mail size={13} color={accentColor} />
-                    <span>Email</span>
-                  </a>
-                )}
+            {/* In-Card Direct Connect Action Icons (Premium, Minimal, Solid BG, Single Unified Color, Exact Browser Logos) */}
+            {(() => {
+              const whatsappNum = (profile?.whatsapp || profile?.phone || '').replace(/[^0-9]/g, '');
+              const iconColor = '#0C0816'; // Unified luxury obsidian color
+              const solidBg = '#FFFFFF';   // 100% Solid white background (no transparency)
 
-                <button
-                  type="button"
-                  onClick={() => downloadVCard(profile)}
+              const quickActions = [
+                profile?.phone && {
+                  key: 'call',
+                  href: `tel:${profile.phone}`,
+                  title: `Call ${profile.phone}`,
+                  label: 'Call',
+                  icon: <PhoneIcon size={23} color={iconColor} />,
+                  external: false
+                },
+                profile?.email && {
+                  key: 'email',
+                  href: `mailto:${profile.email}`,
+                  title: `Email ${profile.email}`,
+                  label: 'Email',
+                  icon: <MailIcon size={22} color={iconColor} />,
+                  external: false
+                },
+                whatsappNum && {
+                  key: 'whatsapp',
+                  href: `https://wa.me/${whatsappNum}`,
+                  title: 'WhatsApp Message',
+                  label: 'WhatsApp',
+                  icon: <WhatsappIcon size={24} color={iconColor} />,
+                  external: true
+                },
+                profile?.website && {
+                  key: 'website',
+                  href: profile.website,
+                  title: `Visit ${profile.website}`,
+                  label: 'Website',
+                  icon: <GlobeIcon size={22} color={iconColor} />,
+                  external: true
+                },
+                profile?.socialLinks?.linkedin && {
+                  key: 'linkedin',
+                  href: profile.socialLinks.linkedin,
+                  title: 'LinkedIn',
+                  label: 'LinkedIn',
+                  icon: <LinkedinIcon size={22} color={iconColor} />,
+                  external: true
+                },
+                profile?.socialLinks?.instagram && {
+                  key: 'instagram',
+                  href: profile.socialLinks.instagram,
+                  title: 'Instagram',
+                  label: 'Instagram',
+                  icon: <InstagramIcon size={22} color={iconColor} />,
+                  external: true
+                }
+              ].filter(Boolean);
+
+              return (
+                <div
                   style={{
-                    flex: 1.25,
-                    height: '38px',
-                    borderRadius: '8px',
-                    background: 'rgba(255, 255, 255, 0.09)',
-                    border: '1px solid rgba(255, 255, 255, 0.18)',
-                    color: '#FFFFFF',
                     display: 'flex',
                     alignItems: 'center',
                     justifyContent: 'center',
-                    gap: '5px',
-                    fontSize: '0.78rem',
-                    fontWeight: 600,
-                    cursor: 'pointer',
-                    backdropFilter: 'blur(10px)',
-                    transition: 'all 0.2s ease'
+                    gap: '14px',
+                    margin: '8px 0 16px',
+                    flexWrap: 'wrap'
                   }}
+                  onClick={e => e.stopPropagation()}
                 >
-                  <Sparkles size={13} color={accentColor} />
-                  <span>Save vCard</span>
-                </button>
-              </div>
+                  {quickActions.map(action => (
+                    <div
+                      key={action.key}
+                      style={{
+                        display: 'flex',
+                        flexDirection: 'column',
+                        alignItems: 'center',
+                        gap: '6px'
+                      }}
+                    >
+                      <a
+                        href={action.href}
+                        target={action.external ? '_blank' : undefined}
+                        rel={action.external ? 'noreferrer' : undefined}
+                        title={action.title}
+                        style={{
+                          width: '50px',
+                          height: '50px',
+                          borderRadius: '50%',
+                          backgroundColor: solidBg,
+                          border: 'none',
+                          boxShadow: '0 8px 18px rgba(0, 0, 0, 0.42), 0 2px 4px rgba(0, 0, 0, 0.2)',
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                          color: iconColor,
+                          textDecoration: 'none',
+                          cursor: 'pointer',
+                          transition: 'transform 0.18s cubic-bezier(0.16, 1, 0.3, 1), box-shadow 0.18s cubic-bezier(0.16, 1, 0.3, 1)'
+                        }}
+                        onMouseEnter={e => {
+                          e.currentTarget.style.transform = 'translateY(-3px) scale(1.08)';
+                          e.currentTarget.style.boxShadow = '0 12px 26px rgba(0, 0, 0, 0.55), 0 0 0 1px rgba(255, 255, 255, 0.8)';
+                        }}
+                        onMouseLeave={e => {
+                          e.currentTarget.style.transform = 'translateY(0) scale(1)';
+                          e.currentTarget.style.boxShadow = '0 8px 18px rgba(0, 0, 0, 0.42), 0 2px 4px rgba(0, 0, 0, 0.2)';
+                        }}
+                      >
+                        {action.icon}
+                      </a>
+                      <span
+                        style={{
+                          fontSize: '0.72rem',
+                          fontWeight: 600,
+                          color: 'rgba(255, 255, 255, 0.88)',
+                          letterSpacing: '0.02em',
+                          textShadow: '0 1px 4px rgba(0, 0, 0, 0.8)'
+                        }}
+                      >
+                        {action.label}
+                      </span>
+                    </div>
+                  ))}
+                </div>
+              );
+            })()}
 
-              {/* Primary In-Card Expand Portfolio Button */}
+            {/* In-Card Primary Actions: Save Contact & View Full Portfolio */}
+            <div
+              style={{
+                display: 'flex',
+                gap: '10px',
+                width: '100%',
+                maxWidth: '350px',
+                marginTop: '4px'
+              }}
+              onClick={e => e.stopPropagation()}
+            >
+              <button
+                type="button"
+                onClick={() => downloadVCard(profile)}
+                style={{
+                  flex: 1,
+                  height: '46px',
+                  borderRadius: '13px',
+                  backgroundColor: '#FFFFFF',
+                  border: 'none',
+                  color: '#0C0816',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  gap: '6px',
+                  fontSize: '0.86rem',
+                  fontWeight: 700,
+                  cursor: 'pointer',
+                  boxShadow: '0 4px 16px rgba(0, 0, 0, 0.3)',
+                  transition: 'transform 0.18s ease, box-shadow 0.18s ease'
+                }}
+                onMouseEnter={e => {
+                  e.currentTarget.style.transform = 'translateY(-1px)';
+                  e.currentTarget.style.boxShadow = '0 6px 20px rgba(0, 0, 0, 0.45)';
+                }}
+                onMouseLeave={e => {
+                  e.currentTarget.style.transform = 'translateY(0)';
+                  e.currentTarget.style.boxShadow = '0 4px 16px rgba(0, 0, 0, 0.3)';
+                }}
+              >
+                <Sparkles size={15} color="#0C0816" />
+                <span>Save Contact</span>
+              </button>
+
               <button
                 type="button"
                 onClick={onExpand}
                 style={{
-                  width: '100%',
-                  maxWidth: '310px',
-                  marginTop: '10px',
-                  height: '42px',
-                  borderRadius: '10px',
+                  flex: 1.25,
+                  height: '46px',
+                  borderRadius: '13px',
                   background: `linear-gradient(135deg, ${glowColor} 0%, ${accentColor} 100%)`,
                   border: 'none',
                   color: '#FFFFFF',
                   display: 'flex',
                   alignItems: 'center',
                   justifyContent: 'center',
-                  gap: '8px',
-                  fontSize: '0.82rem',
+                  gap: '6px',
+                  fontSize: '0.86rem',
                   fontWeight: 700,
                   cursor: 'pointer',
-                  boxShadow: `0 4px 18px ${glowColor}50`,
-                  transition: 'transform 0.2s ease, box-shadow 0.2s ease'
+                  boxShadow: `0 4px 20px ${glowColor}60`,
+                  transition: 'transform 0.18s ease, box-shadow 0.18s ease'
                 }}
                 onMouseEnter={e => {
                   e.currentTarget.style.transform = 'translateY(-1px)';
-                  e.currentTarget.style.boxShadow = `0 6px 22px ${glowColor}70`;
+                  e.currentTarget.style.boxShadow = `0 6px 26px ${glowColor}80`;
                 }}
                 onMouseLeave={e => {
                   e.currentTarget.style.transform = 'translateY(0)';
-                  e.currentTarget.style.boxShadow = `0 4px 18px ${glowColor}50`;
+                  e.currentTarget.style.boxShadow = `0 4px 20px ${glowColor}60`;
                 }}
               >
-                <span>View Full Portfolio</span>
-                <ArrowUpRight size={15} />
+                <span>View Portfolio</span>
+                <ArrowUpRight size={16} />
               </button>
             </div>
+          </div>
 
-            {/* Footer Row: Clean NFC Serial Identity — NO Fingerprint Icon */}
-            <div
-              style={{
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'space-between',
-                paddingTop: '10px',
-                borderTop: '1px solid rgba(255, 255, 255, 0.1)'
-              }}
-            >
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '2px', textAlign: 'left' }}>
-                <span
-                  style={{
-                    fontSize: '0.66rem',
-                    color: 'rgba(244, 244, 245, 0.6)',
-                    textTransform: 'uppercase',
-                    letterSpacing: '0.06em',
-                    fontWeight: 600
-                  }}
-                >
-                  NFC Smart Identity
-                </span>
-                <span
-                  style={{
-                    fontSize: '0.78rem',
-                    fontFamily: 'ui-monospace, SFMono-Regular, Menlo, monospace',
-                    color: '#f4f4f5',
-                    fontWeight: 600
-                  }}
-                >
-                  {idCode}
-                </span>
-              </div>
-
-              <div
+          {/* Footer Row: Clean NFC Serial Identity */}
+          <div
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'space-between',
+              paddingTop: '10px',
+              borderTop: '1px solid rgba(255, 255, 255, 0.12)',
+              position: 'relative',
+              zIndex: 3
+            }}
+          >
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '2px', textAlign: 'left' }}>
+              <span
                 style={{
-                  fontSize: '0.74rem',
-                  color: accentColor,
-                  fontWeight: 600,
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: '4px'
+                  fontSize: '0.66rem',
+                  color: 'rgba(244, 244, 245, 0.65)',
+                  textTransform: 'uppercase',
+                  letterSpacing: '0.06em',
+                  fontWeight: 600
                 }}
               >
-                <span>Tap to Expand</span>
-                <ArrowUpRight size={12} />
-              </div>
+                NFC Smart Identity
+              </span>
+              <span
+                style={{
+                  fontSize: '0.78rem',
+                  fontFamily: 'ui-monospace, SFMono-Regular, Menlo, monospace',
+                  color: '#f4f4f5',
+                  fontWeight: 600
+                }}
+              >
+                {idCode}
+              </span>
+            </div>
+
+            <div
+              style={{
+                fontSize: '0.76rem',
+                color: accentColor,
+                fontWeight: 700,
+                display: 'flex',
+                alignItems: 'center',
+                gap: '4px'
+              }}
+            >
+              <span>Tap to Expand</span>
+              <ArrowUpRight size={13} />
             </div>
           </div>
-        </ReflectiveCard>
+        </div>
       </div>
 
       {/* Subtle Hint Underneath */}
       <div
         style={{
           textAlign: 'center',
-          marginTop: '12px',
-          fontSize: '0.74rem',
+          marginTop: '14px',
+          fontSize: '0.76rem',
           color: isLight ? '#71717a' : '#D5C9E5',
-          opacity: 0.7,
+          opacity: 0.8,
           letterSpacing: '0.3px',
           userSelect: 'none'
         }}
       >
-        Move cursor over card for 3D metallic reflection • Tap to open portfolio
+        Interactive 3D card tilt • Tap to open full portfolio
       </div>
     </motion.div>
   );

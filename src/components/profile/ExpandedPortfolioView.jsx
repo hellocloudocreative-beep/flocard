@@ -7,17 +7,12 @@
 import React, { useState, useMemo, useEffect } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import MagicBento from '../MagicBento/MagicBento';
-import ReflectiveCard from '../ReflectiveCard/ReflectiveCard';
 import {
   ArrowLeft,
   X,
   Check,
   Share2,
   Download,
-  Phone,
-  Mail,
-  Globe,
-  MessageSquare,
   QrCode,
   Sparkles,
   ExternalLink,
@@ -28,9 +23,19 @@ import {
   Building2,
   Copy,
   ChevronRight,
-  Maximize2
+  Maximize2,
+  Zap
 } from 'lucide-react';
-import { LinkedinIcon, InstagramIcon, TwitterIcon, GithubIcon } from '../SocialIcons';
+import {
+  PhoneIcon,
+  MailIcon,
+  WhatsappIcon,
+  GlobeIcon,
+  LinkedinIcon,
+  InstagramIcon,
+  TwitterIcon,
+  GithubIcon
+} from '../SocialIcons';
 import { downloadVCard } from '../../lib/vcard';
 
 export default function ExpandedPortfolioView({
@@ -149,6 +154,20 @@ export default function ExpandedPortfolioView({
     visibleSections.contact && { id: 'contact', label: 'Contact' }
   ].filter(Boolean);
 
+  const finishPortraitBgs = {
+    purple: '/assets/cardbg-purple-portrait.png',
+    gold: '/assets/cardbg-gold-portrait.png',
+    steel: '/assets/cardbg-platinum-portrait.png',
+    platinum: '/assets/cardbg-platinum-portrait.png',
+    metal: '/assets/cardbg-metal-portrait.png'
+  };
+
+  const portraitBg =
+    profile?.cardPortraitBg ||
+    finishPortraitBgs[profile?.cardFinish] ||
+    finishPortraitBgs[profile?.edition] ||
+    finishPortraitBgs.purple;
+
   return (
     <motion.div
       layoutId="profile-card-container"
@@ -163,40 +182,28 @@ export default function ExpandedPortfolioView({
         alignItems: 'center'
       }}
     >
-      <ReflectiveCard
-        theme={isLight ? 'light' : 'dark'}
-        tint={metalTint}
-        webcam={false}
-        metalness={0.92}
-        roughness={0.28}
-        blurStrength={6}
-        shine={1.25}
-        glare={0.45}
-        bevel={2}
-        enableTilt={!reducedMotion}
-        tiltStrength={2}
-        width="100%"
-        height="auto"
-        radius={20}
-        className="flocard-reflective-expanded"
+      <div
+        className="flocard-expanded-portfolio-card"
         style={{
           width: '100%',
           maxWidth: '900px',
-          borderRadius: '20px',
-          zIndex: 1
-        }}
-        bodyStyle={{
-          borderRadius: '20px',
-          border: `1px solid ${accentColor}45`,
+          borderRadius: '24px',
+          border: `1.5px solid ${accentColor}45`,
           boxShadow: glowShadow,
-          background: `linear-gradient(155deg, ${gradientMid} 0%, ${gradientStart} 45%, ${gradientEnd} 100%)`
+          backgroundColor: '#0C0816',
+          backgroundImage: `linear-gradient(155deg, rgba(16, 9, 28, 0.94) 0%, rgba(9, 6, 16, 0.98) 100%), url(${portraitBg})`,
+          backgroundSize: 'cover',
+          backgroundPosition: 'center',
+          position: 'relative',
+          overflow: 'hidden',
+          zIndex: 1
         }}
       >
         <div
           style={{
             position: 'relative',
             zIndex: 3,
-            padding: '24px 20px 36px',
+            padding: '28px 24px 38px',
             width: '100%',
             boxSizing: 'border-box',
             display: 'flex',
@@ -542,157 +549,167 @@ export default function ExpandedPortfolioView({
         transition={{ duration: 0.35, delay: 0.12 }}
         style={{ position: 'relative', zIndex: 2 }}
       >
-        {/* Contact Icons Bar */}
+        {/* Contact Icons Bar — Direct Connect (More visible & bigger) */}
         <div
           style={{
             display: 'flex',
             alignItems: 'center',
-            gap: '12px',
-            padding: '14px 20px',
-            backgroundColor: 'rgba(255, 255, 255, 0.04)',
-            border: '1px solid rgba(255, 255, 255, 0.08)',
-            borderRadius: '20px',
-            marginBottom: '28px',
-            flexWrap: 'wrap'
+            gap: '16px',
+            padding: '18px 24px',
+            backgroundColor: isLight ? 'rgba(255, 255, 255, 0.94)' : 'rgba(18, 12, 28, 0.88)',
+            border: isLight ? '1px solid rgba(0, 0, 0, 0.12)' : `1.5px solid ${accentColor}45`,
+            borderRadius: '22px',
+            marginBottom: '32px',
+            flexWrap: 'wrap',
+            boxShadow: `0 8px 32px rgba(0, 0, 0, 0.4), 0 0 24px ${glowColor}22`,
+            backdropFilter: 'blur(20px)'
           }}
         >
-          <span style={{ fontSize: '0.78rem', color: '#D5C9E5', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.5px' }}>
-            Direct Connect:
-          </span>
-
-          <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
-            {profile.phone && (
-              <a
-                href={`tel:${profile.phone}`}
-                title={`Call ${profile.phone}`}
-                style={{
-                  width: '38px',
-                  height: '38px',
-                  borderRadius: '50%',
-                  backgroundColor: 'rgba(255, 255, 255, 0.08)',
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  color: '#FFFFFF',
-                  textDecoration: 'none',
-                  transition: 'all 0.2s'
-                }}
-              >
-                <Phone size={16} color={accentColor} />
-              </a>
-            )}
-
-            {profile.email && (
-              <a
-                href={`mailto:${profile.email}`}
-                title={`Email ${profile.email}`}
-                style={{
-                  width: '38px',
-                  height: '38px',
-                  borderRadius: '50%',
-                  backgroundColor: 'rgba(255, 255, 255, 0.08)',
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  color: '#FFFFFF',
-                  textDecoration: 'none',
-                  transition: 'all 0.2s'
-                }}
-              >
-                <Mail size={16} color={accentColor} />
-              </a>
-            )}
-
-            {profile.whatsapp && (
-              <a
-                href={`https://wa.me/${profile.whatsapp}`}
-                target="_blank"
-                rel="noreferrer"
-                title="WhatsApp Message"
-                style={{
-                  width: '38px',
-                  height: '38px',
-                  borderRadius: '50%',
-                  backgroundColor: 'rgba(37, 211, 102, 0.15)',
-                  border: '1px solid rgba(37, 211, 102, 0.3)',
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  color: '#25D366',
-                  textDecoration: 'none'
-                }}
-              >
-                <MessageSquare size={16} />
-              </a>
-            )}
-
-            {profile.website && (
-              <a
-                href={profile.website}
-                target="_blank"
-                rel="noreferrer"
-                title={`Visit ${profile.website}`}
-                style={{
-                  width: '38px',
-                  height: '38px',
-                  borderRadius: '50%',
-                  backgroundColor: 'rgba(255, 255, 255, 0.08)',
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  color: '#FFFFFF',
-                  textDecoration: 'none'
-                }}
-              >
-                <Globe size={16} color={accentColor} />
-              </a>
-            )}
-
-            {/* Social Links */}
-            {profile.socialLinks?.linkedin && (
-              <a
-                href={profile.socialLinks.linkedin}
-                target="_blank"
-                rel="noreferrer"
-                title="LinkedIn"
-                style={{
-                  width: '38px',
-                  height: '38px',
-                  borderRadius: '50%',
-                  backgroundColor: 'rgba(10, 102, 194, 0.15)',
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  color: '#0A66C2',
-                  textDecoration: 'none'
-                }}
-              >
-                <LinkedinIcon size={16} />
-              </a>
-            )}
-
-            {profile.socialLinks?.instagram && (
-              <a
-                href={profile.socialLinks.instagram}
-                target="_blank"
-                rel="noreferrer"
-                title="Instagram"
-                style={{
-                  width: '38px',
-                  height: '38px',
-                  borderRadius: '50%',
-                  backgroundColor: 'rgba(225, 48, 108, 0.15)',
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  color: '#E1306C',
-                  textDecoration: 'none'
-                }}
-              >
-                <InstagramIcon size={16} />
-              </a>
-            )}
+          <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+            <Zap size={18} color={accentColor} fill={accentColor} />
+            <span
+              style={{
+                fontSize: '0.86rem',
+                color: isLight ? '#18181b' : '#FFFFFF',
+                fontWeight: 700,
+                textTransform: 'uppercase',
+                letterSpacing: '0.8px'
+              }}
+            >
+              Direct Connect:
+            </span>
           </div>
+
+          {(() => {
+            const whatsappNum = (profile?.whatsapp || profile?.phone || '').replace(/[^0-9]/g, '');
+            const iconColor = '#0C0816'; // Unified minimal obsidian
+            const solidBg = '#FFFFFF';   // 100% Solid white background (no transparency)
+
+            const connectActions = [
+              profile.phone && {
+                key: 'call',
+                href: `tel:${profile.phone}`,
+                title: `Call ${profile.phone}`,
+                label: 'Call',
+                icon: <PhoneIcon size={22} color={iconColor} />,
+                external: false
+              },
+              profile.email && {
+                key: 'email',
+                href: `mailto:${profile.email}`,
+                title: `Email ${profile.email}`,
+                label: 'Email',
+                icon: <MailIcon size={21} color={iconColor} />,
+                external: false
+              },
+              whatsappNum && {
+                key: 'whatsapp',
+                href: `https://wa.me/${whatsappNum}`,
+                title: 'WhatsApp Message',
+                label: 'WhatsApp',
+                icon: <WhatsappIcon size={23} color={iconColor} />,
+                external: true
+              },
+              profile.website && {
+                key: 'website',
+                href: profile.website,
+                title: `Visit ${profile.website}`,
+                label: 'Website',
+                icon: <GlobeIcon size={21} color={iconColor} />,
+                external: true
+              },
+              profile.socialLinks?.linkedin && {
+                key: 'linkedin',
+                href: profile.socialLinks.linkedin,
+                title: 'LinkedIn Profile',
+                label: 'LinkedIn',
+                icon: <LinkedinIcon size={21} color={iconColor} />,
+                external: true
+              },
+              profile.socialLinks?.instagram && {
+                key: 'instagram',
+                href: profile.socialLinks.instagram,
+                title: 'Instagram Profile',
+                label: 'Instagram',
+                icon: <InstagramIcon size={21} color={iconColor} />,
+                external: true
+              },
+              profile.socialLinks?.twitter && {
+                key: 'twitter',
+                href: profile.socialLinks.twitter,
+                title: 'Twitter / X Profile',
+                label: 'Twitter',
+                icon: <TwitterIcon size={21} color={iconColor} />,
+                external: true
+              },
+              profile.socialLinks?.github && {
+                key: 'github',
+                href: profile.socialLinks.github,
+                title: 'GitHub Profile',
+                label: 'GitHub',
+                icon: <GithubIcon size={21} color={iconColor} />,
+                external: true
+              }
+            ].filter(Boolean);
+
+            return (
+              <div style={{ display: 'flex', alignItems: 'center', gap: '14px', flexWrap: 'wrap' }}>
+                {connectActions.map(action => (
+                  <div
+                    key={action.key}
+                    style={{
+                      display: 'flex',
+                      flexDirection: 'column',
+                      alignItems: 'center',
+                      gap: '6px'
+                    }}
+                  >
+                    <a
+                      href={action.href}
+                      target={action.external ? '_blank' : undefined}
+                      rel={action.external ? 'noreferrer' : undefined}
+                      title={action.title}
+                      style={{
+                        width: '48px',
+                        height: '48px',
+                        borderRadius: '50%',
+                        backgroundColor: solidBg,
+                        border: 'none',
+                        boxShadow: '0 6px 18px rgba(0, 0, 0, 0.4), 0 2px 4px rgba(0, 0, 0, 0.2)',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        color: iconColor,
+                        textDecoration: 'none',
+                        cursor: 'pointer',
+                        transition: 'transform 0.18s cubic-bezier(0.16, 1, 0.3, 1), box-shadow 0.18s cubic-bezier(0.16, 1, 0.3, 1)'
+                      }}
+                      onMouseEnter={e => {
+                        e.currentTarget.style.transform = 'translateY(-3px) scale(1.08)';
+                        e.currentTarget.style.boxShadow = '0 10px 24px rgba(0, 0, 0, 0.55), 0 0 0 1px rgba(255, 255, 255, 0.8)';
+                      }}
+                      onMouseLeave={e => {
+                        e.currentTarget.style.transform = 'translateY(0) scale(1)';
+                        e.currentTarget.style.boxShadow = '0 6px 18px rgba(0, 0, 0, 0.4), 0 2px 4px rgba(0, 0, 0, 0.2)';
+                      }}
+                    >
+                      {action.icon}
+                    </a>
+                    <span
+                      style={{
+                        fontSize: '0.7rem',
+                        fontWeight: 600,
+                        color: isLight ? '#3f3f46' : 'rgba(255, 255, 255, 0.85)',
+                        letterSpacing: '0.02em'
+                      }}
+                    >
+                      {action.label}
+                    </span>
+                  </div>
+                ))}
+              </div>
+            );
+          })()}
         </div>
 
         {/* Section Tabs */}
@@ -968,7 +985,7 @@ export default function ExpandedPortfolioView({
         </div>
       </motion.div>
     </div>
-  </ReflectiveCard>
+  </div>
 
   {/* Project Lightbox Modal */}
       {selectedProject && (

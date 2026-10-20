@@ -176,7 +176,7 @@ export default function AdminDashboard({ initialTab = 'overview', initialOrderId
     company: demoConfig?.company || 'Your Company',
     avatar: demoConfig?.avatar || '',
     logo: demoConfig?.logo || '',
-    phone: demoConfig?.phone || '+91 97782 78522',
+    phone: demoConfig?.phone || '+91 97782 78552',
     email: demoConfig?.email || 'contact@flocard.in',
     website: demoConfig?.website || 'https://flocard.in',
     bio: demoConfig?.bio || 'Pioneering connected NFC identity for executives and global tech pioneers. One tap. Every connection.',
@@ -196,7 +196,7 @@ export default function AdminDashboard({ initialTab = 'overview', initialOrderId
         company: demoConfig.company || 'Your Company',
         avatar: demoConfig.avatar || '',
         logo: demoConfig.logo || '',
-        phone: demoConfig.phone || '+91 97782 78522',
+        phone: demoConfig.phone || '+91 97782 78552',
         email: demoConfig.email || 'contact@flocard.in',
         website: demoConfig.website || 'https://flocard.in',
         bio: demoConfig.bio || 'Pioneering connected NFC identity for executives and global tech pioneers. One tap. Every connection.',
@@ -619,9 +619,73 @@ export default function AdminDashboard({ initialTab = 'overview', initialOrderId
         fontFamily: 'var(--font-body, Inter, sans-serif)',
         position: 'relative',
         overflowX: 'clip',
-        maxWidth: '100vw'
+        maxWidth: '100vw',
+        /* CSS custom properties that cascade to all child panels */
+        '--adm-card-bg': isDark ? '#130C1E' : '#FFFFFF',
+        '--adm-card-border': isDark ? '1px solid #2B1E3E' : '1px solid #E8E3EF',
+        '--adm-card-shadow': isDark ? '0 2px 8px rgba(0,0,0,0.35)' : '0 2px 8px rgba(0,0,0,0.02)',
+        '--adm-text-primary': isDark ? '#FFFFFF' : '#191522',
+        '--adm-text-secondary': isDark ? '#9B90AD' : '#777184',
+        '--adm-row-hover': isDark ? '#1C132A' : '#F7F6FA',
+        '--adm-input-bg': isDark ? '#0E0A16' : '#FFFFFF',
+        '--adm-input-border': isDark ? '1px solid #2B1E3E' : '1px solid #E8E3EF',
+        '--adm-divider': isDark ? '#261A3B' : '#F2ECFF',
+        '--adm-search-bg': isDark ? '#161022' : '#F7F6FA',
+        '--adm-label-color': isDark ? '#E2E8F0' : '#334155',
       }}
     >
+      {/* Scoped dark-mode and light-mode overrides for bulk content panels */}
+      <style>{`
+        .admin-dashboard-root input:not([type="checkbox"]):not([type="radio"]):not([type="color"]):not([type="file"]):not([type="button"]):not([type="submit"]),
+        .admin-dashboard-root select,
+        .admin-dashboard-root textarea,
+        .admin-dashboard-root .adm-input,
+        .admin-dashboard-root .adm-select {
+          background-color: var(--adm-input-bg) !important;
+          border: var(--adm-input-border) !important;
+          color: var(--adm-text-primary) !important;
+          box-sizing: border-box;
+        }
+        .admin-dashboard-root input::placeholder,
+        .admin-dashboard-root textarea::placeholder,
+        .admin-dashboard-root .adm-input::placeholder {
+          color: var(--adm-text-secondary) !important;
+          opacity: 0.75;
+        }
+        .admin-dashboard-root input:focus,
+        .admin-dashboard-root select:focus,
+        .admin-dashboard-root textarea:focus {
+          outline: none !important;
+          border-color: #6B00FF !important;
+          box-shadow: 0 0 0 3px rgba(107, 0, 255, 0.18) !important;
+        }
+        .admin-dashboard-root label {
+          color: var(--adm-label-color) !important;
+        }
+        .admin-dashboard-root .adm-card {
+          background-color: var(--adm-card-bg) !important;
+          border: var(--adm-card-border) !important;
+          box-shadow: var(--adm-card-shadow) !important;
+          color: var(--adm-text-primary) !important;
+        }
+        .admin-dashboard-root .adm-card-title {
+          color: var(--adm-text-primary) !important;
+        }
+        .admin-dashboard-root .adm-card-subtitle {
+          color: var(--adm-text-secondary) !important;
+        }
+        .admin-dashboard-root .adm-table-row:hover {
+          background-color: var(--adm-row-hover) !important;
+        }
+        .admin-dashboard-root .adm-modal-panel {
+          background-color: var(--adm-card-bg) !important;
+          border: var(--adm-card-border) !important;
+        }
+        .admin-dashboard-root .adm-search-overlay {
+          background-color: var(--adm-card-bg) !important;
+          border-bottom: var(--adm-card-border) !important;
+        }
+      `}</style>
       {/* Mobile Sidebar Backdrop */}
       {sidebarOpen && (
         <div
@@ -1233,9 +1297,9 @@ export default function AdminDashboard({ initialTab = 'overview', initialOrderId
 
         {/* Global Search Results Overlay if search active */}
         {filteredData && (
-          <div style={{ padding: '24px 32px', backgroundColor: '#FFFFFF', borderBottom: '1px solid #E8E3EF' }}>
+          <div style={{ padding: '24px 32px', backgroundColor: 'var(--adm-card-bg)', borderBottom: 'var(--adm-card-border)' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
-              <h3 style={{ margin: 0, fontSize: '1.05rem', fontWeight: 700, color: '#191522' }}>
+              <h3 style={{ margin: 0, fontSize: '1.05rem', fontWeight: 700, color: 'var(--adm-text-primary)' }}>
                 Search Results for "{searchQuery}"
               </h3>
               <button
@@ -1249,7 +1313,7 @@ export default function AdminDashboard({ initialTab = 'overview', initialOrderId
 
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 240px), 1fr))', gap: '16px' }}>
               {/* Customer matches */}
-              <div style={{ padding: '14px', borderRadius: '12px', border: '1px solid #E8E3EF', background: '#F7F6FA' }}>
+              <div style={{ padding: '14px', borderRadius: '12px', border: 'var(--adm-card-border)', background: 'var(--adm-search-bg)' }}>
                 <span style={{ fontSize: '0.75rem', fontWeight: 700, color: '#6B00FF', textTransform: 'uppercase' }}>
                   Customers ({filteredData.customers.length})
                 </span>
@@ -1259,7 +1323,7 @@ export default function AdminDashboard({ initialTab = 'overview', initialOrderId
               </div>
 
               {/* Profile matches */}
-              <div style={{ padding: '14px', borderRadius: '12px', border: '1px solid #E8E3EF', background: '#F7F6FA' }}>
+              <div style={{ padding: '14px', borderRadius: '12px', border: 'var(--adm-card-border)', background: 'var(--adm-search-bg)' }}>
                 <span style={{ fontSize: '0.75rem', fontWeight: 700, color: '#2563EB', textTransform: 'uppercase' }}>
                   Profiles ({filteredData.profiles.length})
                 </span>
@@ -1273,7 +1337,7 @@ export default function AdminDashboard({ initialTab = 'overview', initialOrderId
               </div>
 
               {/* NFC Card matches */}
-              <div style={{ padding: '14px', borderRadius: '12px', border: '1px solid #E8E3EF', background: '#F7F6FA' }}>
+              <div style={{ padding: '14px', borderRadius: '12px', border: 'var(--adm-card-border)', background: 'var(--adm-search-bg)' }}>
                 <span style={{ fontSize: '0.75rem', fontWeight: 700, color: '#16A36A', textTransform: 'uppercase' }}>
                   NFC Cards ({filteredData.cards.length})
                 </span>
@@ -1305,25 +1369,25 @@ export default function AdminDashboard({ initialTab = 'overview', initialOrderId
                 {/* 1. Total Customers */}
                 <div
                   style={{
-                    backgroundColor: '#FFFFFF',
+                    backgroundColor: 'var(--adm-card-bg)',
                     borderRadius: '16px',
-                    border: '1px solid #E8E3EF',
+                    border: 'var(--adm-card-border)',
                     padding: '18px 20px',
-                    boxShadow: '0 2px 8px rgba(0, 0, 0, 0.02)',
+                    boxShadow: 'var(--adm-card-shadow)',
                     display: 'flex',
                     flexDirection: 'column',
                     justifyContent: 'space-between'
                   }}
                 >
                   <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-                    <div style={{ width: '38px', height: '38px', borderRadius: '10px', backgroundColor: '#F3EEFF', color: '#6B00FF', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                    <div style={{ width: '38px', height: '38px', borderRadius: '10px', backgroundColor: isDark ? 'rgba(107, 0, 255, 0.2)' : '#F3EEFF', color: isDark ? '#C084FC' : '#6B00FF', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                       <Users size={18} />
                     </div>
                   </div>
                   <div style={{ marginTop: '12px' }}>
-                    <div style={{ fontSize: '0.78rem', color: '#777184', fontWeight: 500 }}>Total Customers</div>
+                    <div style={{ fontSize: '0.78rem', color: 'var(--adm-text-secondary)', fontWeight: 500 }}>Total Customers</div>
                     <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', marginTop: '4px' }}>
-                      <span style={{ fontSize: '1.75rem', fontWeight: 800, color: '#191522', fontFamily: 'var(--font-heading, Sora)' }}>
+                      <span style={{ fontSize: '1.75rem', fontWeight: 800, color: 'var(--adm-text-primary)', fontFamily: 'var(--font-heading, Sora)' }}>
                         {stats.customers}
                       </span>
                       <span style={{ fontSize: '0.72rem', fontWeight: 700, color: '#16A36A', display: 'flex', alignItems: 'center', gap: '2px' }}>
@@ -1340,25 +1404,25 @@ export default function AdminDashboard({ initialTab = 'overview', initialOrderId
                 {/* 2. Published Profiles */}
                 <div
                   style={{
-                    backgroundColor: '#FFFFFF',
+                    backgroundColor: 'var(--adm-card-bg)',
                     borderRadius: '16px',
-                    border: '1px solid #E8E3EF',
+                    border: 'var(--adm-card-border)',
                     padding: '18px 20px',
-                    boxShadow: '0 2px 8px rgba(0, 0, 0, 0.02)',
+                    boxShadow: 'var(--adm-card-shadow)',
                     display: 'flex',
                     flexDirection: 'column',
                     justifyContent: 'space-between'
                   }}
                 >
                   <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-                    <div style={{ width: '38px', height: '38px', borderRadius: '10px', backgroundColor: '#EEF6FF', color: '#2563EB', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                    <div style={{ width: '38px', height: '38px', borderRadius: '10px', backgroundColor: isDark ? 'rgba(37, 99, 235, 0.2)' : '#EEF6FF', color: isDark ? '#60A5FA' : '#2563EB', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                       <FileText size={18} />
                     </div>
                   </div>
                   <div style={{ marginTop: '12px' }}>
-                    <div style={{ fontSize: '0.78rem', color: '#777184', fontWeight: 500 }}>Published Profiles</div>
+                    <div style={{ fontSize: '0.78rem', color: 'var(--adm-text-secondary)', fontWeight: 500 }}>Published Profiles</div>
                     <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', marginTop: '4px' }}>
-                      <span style={{ fontSize: '1.75rem', fontWeight: 800, color: '#191522', fontFamily: 'var(--font-heading, Sora)' }}>
+                      <span style={{ fontSize: '1.75rem', fontWeight: 800, color: 'var(--adm-text-primary)', fontFamily: 'var(--font-heading, Sora)' }}>
                         {stats.publishedProfiles}
                       </span>
                       <span style={{ fontSize: '0.72rem', fontWeight: 700, color: '#16A36A', display: 'flex', alignItems: 'center', gap: '2px' }}>
@@ -1375,25 +1439,25 @@ export default function AdminDashboard({ initialTab = 'overview', initialOrderId
                 {/* 3. Active NFC Cards */}
                 <div
                   style={{
-                    backgroundColor: '#FFFFFF',
+                    backgroundColor: 'var(--adm-card-bg)',
                     borderRadius: '16px',
-                    border: '1px solid #E8E3EF',
+                    border: 'var(--adm-card-border)',
                     padding: '18px 20px',
-                    boxShadow: '0 2px 8px rgba(0, 0, 0, 0.02)',
+                    boxShadow: 'var(--adm-card-shadow)',
                     display: 'flex',
                     flexDirection: 'column',
                     justifyContent: 'space-between'
                   }}
                 >
                   <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-                    <div style={{ width: '38px', height: '38px', borderRadius: '10px', backgroundColor: '#EEFAF5', color: '#16A36A', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                    <div style={{ width: '38px', height: '38px', borderRadius: '10px', backgroundColor: isDark ? 'rgba(22, 163, 106, 0.2)' : '#EEFAF5', color: isDark ? '#4ADE80' : '#16A36A', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                       <CreditCard size={18} />
                     </div>
                   </div>
                   <div style={{ marginTop: '12px' }}>
-                    <div style={{ fontSize: '0.78rem', color: '#777184', fontWeight: 500 }}>Active NFC Cards</div>
+                    <div style={{ fontSize: '0.78rem', color: 'var(--adm-text-secondary)', fontWeight: 500 }}>Active NFC Cards</div>
                     <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', marginTop: '4px' }}>
-                      <span style={{ fontSize: '1.75rem', fontWeight: 800, color: '#191522', fontFamily: 'var(--font-heading, Sora)' }}>
+                      <span style={{ fontSize: '1.75rem', fontWeight: 800, color: 'var(--adm-text-primary)', fontFamily: 'var(--font-heading, Sora)' }}>
                         {stats.activeCards}
                       </span>
                       <span style={{ fontSize: '0.72rem', fontWeight: 700, color: '#16A36A', display: 'flex', alignItems: 'center', gap: '2px' }}>
@@ -1410,25 +1474,25 @@ export default function AdminDashboard({ initialTab = 'overview', initialOrderId
                 {/* 4. Pending Approvals */}
                 <div
                   style={{
-                    backgroundColor: '#FFFFFF',
+                    backgroundColor: 'var(--adm-card-bg)',
                     borderRadius: '16px',
-                    border: '1px solid #E8E3EF',
+                    border: 'var(--adm-card-border)',
                     padding: '18px 20px',
-                    boxShadow: '0 2px 8px rgba(0, 0, 0, 0.02)',
+                    boxShadow: 'var(--adm-card-shadow)',
                     display: 'flex',
                     flexDirection: 'column',
                     justifyContent: 'space-between'
                   }}
                 >
                   <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-                    <div style={{ width: '38px', height: '38px', borderRadius: '10px', backgroundColor: '#FFF7ED', color: '#EA580C', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                    <div style={{ width: '38px', height: '38px', borderRadius: '10px', backgroundColor: isDark ? 'rgba(234, 88, 12, 0.2)' : '#FFF7ED', color: isDark ? '#FB923C' : '#EA580C', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                       <Clock size={18} />
                     </div>
                   </div>
                   <div style={{ marginTop: '12px' }}>
-                    <div style={{ fontSize: '0.78rem', color: '#777184', fontWeight: 500 }}>Pending Approvals</div>
+                    <div style={{ fontSize: '0.78rem', color: 'var(--adm-text-secondary)', fontWeight: 500 }}>Pending Approvals</div>
                     <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', marginTop: '4px' }}>
-                      <span style={{ fontSize: '1.75rem', fontWeight: 800, color: '#191522', fontFamily: 'var(--font-heading, Sora)' }}>
+                      <span style={{ fontSize: '1.75rem', fontWeight: 800, color: 'var(--adm-text-primary)', fontFamily: 'var(--font-heading, Sora)' }}>
                         {stats.pendingApprovals}
                       </span>
                       <span style={{ fontSize: '0.72rem', fontWeight: 700, color: '#DC4545', display: 'flex', alignItems: 'center', gap: '2px' }}>
@@ -1445,25 +1509,25 @@ export default function AdminDashboard({ initialTab = 'overview', initialOrderId
                 {/* 5. Unassigned Cards */}
                 <div
                   style={{
-                    backgroundColor: '#FFFFFF',
+                    backgroundColor: 'var(--adm-card-bg)',
                     borderRadius: '16px',
-                    border: '1px solid #E8E3EF',
+                    border: 'var(--adm-card-border)',
                     padding: '18px 20px',
-                    boxShadow: '0 2px 8px rgba(0, 0, 0, 0.02)',
+                    boxShadow: 'var(--adm-card-shadow)',
                     display: 'flex',
                     flexDirection: 'column',
                     justifyContent: 'space-between'
                   }}
                 >
                   <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-                    <div style={{ width: '38px', height: '38px', borderRadius: '10px', backgroundColor: '#F1F5F9', color: '#64748B', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                    <div style={{ width: '38px', height: '38px', borderRadius: '10px', backgroundColor: isDark ? 'rgba(100, 116, 139, 0.2)' : '#F1F5F9', color: isDark ? '#94A3B8' : '#64748B', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                       <Layers size={18} />
                     </div>
                   </div>
                   <div style={{ marginTop: '12px' }}>
-                    <div style={{ fontSize: '0.78rem', color: '#777184', fontWeight: 500 }}>Unassigned Cards</div>
+                    <div style={{ fontSize: '0.78rem', color: 'var(--adm-text-secondary)', fontWeight: 500 }}>Unassigned Cards</div>
                     <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', marginTop: '4px' }}>
-                      <span style={{ fontSize: '1.75rem', fontWeight: 800, color: '#191522', fontFamily: 'var(--font-heading, Sora)' }}>
+                      <span style={{ fontSize: '1.75rem', fontWeight: 800, color: 'var(--adm-text-primary)', fontFamily: 'var(--font-heading, Sora)' }}>
                         {stats.unassignedCards}
                       </span>
                       <span style={{ fontSize: '0.72rem', fontWeight: 700, color: '#16A36A', display: 'flex', alignItems: 'center', gap: '2px' }}>
@@ -1480,25 +1544,25 @@ export default function AdminDashboard({ initialTab = 'overview', initialOrderId
                 {/* 6. Suspended Cards */}
                 <div
                   style={{
-                    backgroundColor: '#FFFFFF',
+                    backgroundColor: 'var(--adm-card-bg)',
                     borderRadius: '16px',
-                    border: '1px solid #E8E3EF',
+                    border: 'var(--adm-card-border)',
                     padding: '18px 20px',
-                    boxShadow: '0 2px 8px rgba(0, 0, 0, 0.02)',
+                    boxShadow: 'var(--adm-card-shadow)',
                     display: 'flex',
                     flexDirection: 'column',
                     justifyContent: 'space-between'
                   }}
                 >
                   <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-                    <div style={{ width: '38px', height: '38px', borderRadius: '10px', backgroundColor: '#FEF2F2', color: '#DC4545', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                    <div style={{ width: '38px', height: '38px', borderRadius: '10px', backgroundColor: isDark ? 'rgba(220, 69, 69, 0.2)' : '#FEF2F2', color: isDark ? '#F87171' : '#DC4545', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                       <XCircle size={18} />
                     </div>
                   </div>
                   <div style={{ marginTop: '12px' }}>
-                    <div style={{ fontSize: '0.78rem', color: '#777184', fontWeight: 500 }}>Suspended Cards</div>
+                    <div style={{ fontSize: '0.78rem', color: 'var(--adm-text-secondary)', fontWeight: 500 }}>Suspended Cards</div>
                     <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', marginTop: '4px' }}>
-                      <span style={{ fontSize: '1.75rem', fontWeight: 800, color: '#191522', fontFamily: 'var(--font-heading, Sora)' }}>
+                      <span style={{ fontSize: '1.75rem', fontWeight: 800, color: 'var(--adm-text-primary)', fontFamily: 'var(--font-heading, Sora)' }}>
                         {stats.suspendedCards}
                       </span>
                       <span style={{ fontSize: '0.72rem', fontWeight: 700, color: '#DC4545', display: 'flex', alignItems: 'center', gap: '2px' }}>
@@ -1526,21 +1590,21 @@ export default function AdminDashboard({ initialTab = 'overview', initialOrderId
                 {/* Left: Recent Activity */}
                 <div
                   style={{
-                    backgroundColor: '#FFFFFF',
+                    backgroundColor: 'var(--adm-card-bg)',
                     borderRadius: '16px',
-                    border: '1px solid #E8E3EF',
+                    border: 'var(--adm-card-border)',
                     padding: '24px',
-                    boxShadow: '0 2px 8px rgba(0, 0, 0, 0.02)'
+                    boxShadow: 'var(--adm-card-shadow)'
                   }}
                 >
                   <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '18px' }}>
                     <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-                      <div style={{ width: '32px', height: '32px', borderRadius: '8px', backgroundColor: '#F3EEFF', color: '#6B00FF', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                      <div style={{ width: '32px', height: '32px', borderRadius: '8px', backgroundColor: isDark ? 'rgba(107, 0, 255, 0.2)' : '#F3EEFF', color: isDark ? '#C084FC' : '#6B00FF', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                         <Zap size={16} />
                       </div>
                       <div>
-                        <h3 style={{ margin: 0, fontSize: '1rem', fontWeight: 700, color: '#191522' }}>Recent Activity</h3>
-                        <p style={{ margin: '2px 0 0', fontSize: '0.76rem', color: '#777184' }}>Latest actions across the platform</p>
+                        <h3 style={{ margin: 0, fontSize: '1rem', fontWeight: 700, color: 'var(--adm-text-primary)' }}>Recent Activity</h3>
+                        <p style={{ margin: '2px 0 0', fontSize: '0.76rem', color: 'var(--adm-text-secondary)' }}>Latest actions across the platform</p>
                       </div>
                     </div>
                     <button
@@ -1549,8 +1613,8 @@ export default function AdminDashboard({ initialTab = 'overview', initialOrderId
                       style={{
                         padding: '6px 14px',
                         borderRadius: '9999px',
-                        border: '1px solid #E8E3EF',
-                        backgroundColor: '#FFFFFF',
+                        border: 'var(--adm-card-border)',
+                        backgroundColor: 'var(--adm-card-bg)',
                         color: '#6B00FF',
                         fontSize: '0.78rem',
                         fontWeight: 600,
@@ -1565,7 +1629,7 @@ export default function AdminDashboard({ initialTab = 'overview', initialOrderId
                   <div style={{ overflowX: 'auto' }}>
                     <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left', fontSize: '0.82rem' }}>
                       <thead>
-                        <tr style={{ borderBottom: '1px solid #F2ECFF', color: '#777184', fontSize: '0.74rem', textTransform: 'uppercase' }}>
+                        <tr style={{ borderBottom: 'var(--adm-divider)', color: 'var(--adm-text-secondary)', fontSize: '0.74rem', textTransform: 'uppercase' }}>
                           <th style={{ padding: '8px 12px 10px', fontWeight: 600 }}>Type</th>
                           <th style={{ padding: '8px 12px 10px', fontWeight: 600 }}>Details</th>
                           <th style={{ padding: '8px 12px 10px', fontWeight: 600 }}>User</th>
@@ -1576,13 +1640,13 @@ export default function AdminDashboard({ initialTab = 'overview', initialOrderId
                       <tbody>
                         {auditLogs.length === 0 ? (
                           <tr>
-                            <td colSpan={5} style={{ padding: '36px 12px', textAlign: 'center', color: '#777184' }}>
+                            <td colSpan={5} style={{ padding: '36px 12px', textAlign: 'center', color: 'var(--adm-text-secondary)' }}>
                               No recent activity recorded yet.
                             </td>
                           </tr>
                         ) : (
                           auditLogs.slice(0, 5).map((log) => (
-                            <tr key={log.id} style={{ borderBottom: '1px solid #F7F6FA' }}>
+                            <tr key={log.id} style={{ borderBottom: 'var(--adm-divider)' }}>
                               <td style={{ padding: '12px' }}>
                                 <span
                                   style={{
@@ -1593,14 +1657,14 @@ export default function AdminDashboard({ initialTab = 'overview', initialOrderId
                                     fontWeight: 600,
                                     padding: '3px 8px',
                                     borderRadius: '6px',
-                                    backgroundColor: log.type === 'Card Design' ? '#F3EEFF' : log.type === 'Profile' ? '#EEF6FF' : log.type === 'NFC Card' ? '#EEFAF5' : '#FFF7ED',
-                                    color: log.type === 'Card Design' ? '#6B00FF' : log.type === 'Profile' ? '#2563EB' : log.type === 'NFC Card' ? '#16A36A' : '#EA580C'
+                                    backgroundColor: log.type === 'Card Design' ? (isDark ? 'rgba(107, 0, 255, 0.2)' : '#F3EEFF') : log.type === 'Profile' ? (isDark ? 'rgba(37, 99, 235, 0.2)' : '#EEF6FF') : log.type === 'NFC Card' ? (isDark ? 'rgba(22, 163, 106, 0.2)' : '#EEFAF5') : (isDark ? 'rgba(234, 88, 12, 0.2)' : '#FFF7ED'),
+                                    color: log.type === 'Card Design' ? (isDark ? '#C084FC' : '#6B00FF') : log.type === 'Profile' ? (isDark ? '#60A5FA' : '#2563EB') : log.type === 'NFC Card' ? (isDark ? '#4ADE80' : '#16A36A') : (isDark ? '#FB923C' : '#EA580C')
                                   }}
                                 >
                                   {log.type}
                                 </span>
                               </td>
-                              <td style={{ padding: '12px', color: '#191522', fontWeight: 500 }}>
+                              <td style={{ padding: '12px', color: 'var(--adm-text-primary)', fontWeight: 500 }}>
                                 {log.details}
                               </td>
                               <td style={{ padding: '12px' }}>
@@ -1608,10 +1672,10 @@ export default function AdminDashboard({ initialTab = 'overview', initialOrderId
                                   <div style={{ width: '24px', height: '24px', borderRadius: '50%', backgroundColor: '#6B00FF', color: '#FFFFFF', overflow: 'hidden', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '0.68rem', fontWeight: 700 }}>
                                     {log.userAvatar ? <img src={log.userAvatar} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} /> : (log.userName?.charAt(0) || 'U')}
                                   </div>
-                                  <span style={{ color: '#191522', fontWeight: 600, fontSize: '0.8rem' }}>{log.userName}</span>
+                                  <span style={{ color: 'var(--adm-text-primary)', fontWeight: 600, fontSize: '0.8rem' }}>{log.userName}</span>
                                 </div>
                               </td>
-                              <td style={{ padding: '12px', color: '#777184', whiteSpace: 'nowrap', fontSize: '0.78rem' }}>
+                              <td style={{ padding: '12px', color: 'var(--adm-text-secondary)', whiteSpace: 'nowrap', fontSize: '0.78rem' }}>
                                 {log.timeAgo}
                               </td>
                               <td style={{ padding: '12px', textAlign: 'right' }}>
@@ -1628,21 +1692,21 @@ export default function AdminDashboard({ initialTab = 'overview', initialOrderId
                 {/* Right: Pending Design Approvals */}
                 <div
                   style={{
-                    backgroundColor: '#FFFFFF',
+                    backgroundColor: 'var(--adm-card-bg)',
                     borderRadius: '16px',
-                    border: '1px solid #E8E3EF',
+                    border: 'var(--adm-card-border)',
                     padding: '24px',
-                    boxShadow: '0 2px 8px rgba(0, 0, 0, 0.02)'
+                    boxShadow: 'var(--adm-card-shadow)'
                   }}
                 >
                   <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '18px' }}>
                     <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-                      <div style={{ width: '32px', height: '32px', borderRadius: '8px', backgroundColor: '#FFF7ED', color: '#EA580C', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                      <div style={{ width: '32px', height: '32px', borderRadius: '8px', backgroundColor: isDark ? 'rgba(234, 88, 12, 0.2)' : '#FFF7ED', color: isDark ? '#FB923C' : '#EA580C', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                         <Clock size={16} />
                       </div>
                       <div>
-                        <h3 style={{ margin: 0, fontSize: '1rem', fontWeight: 700, color: '#191522' }}>Pending Design Approvals</h3>
-                        <p style={{ margin: '2px 0 0', fontSize: '0.76rem', color: '#777184' }}>Designs waiting for review</p>
+                        <h3 style={{ margin: 0, fontSize: '1rem', fontWeight: 700, color: 'var(--adm-text-primary)' }}>Pending Design Approvals</h3>
+                        <p style={{ margin: '2px 0 0', fontSize: '0.76rem', color: 'var(--adm-text-secondary)' }}>Designs waiting for review</p>
                       </div>
                     </div>
                     <button
@@ -1651,8 +1715,8 @@ export default function AdminDashboard({ initialTab = 'overview', initialOrderId
                       style={{
                         padding: '6px 14px',
                         borderRadius: '9999px',
-                        border: '1px solid #E8E3EF',
-                        backgroundColor: '#FFFFFF',
+                        border: 'var(--adm-card-border)',
+                        backgroundColor: 'var(--adm-card-bg)',
                         color: '#6B00FF',
                         fontSize: '0.78rem',
                         fontWeight: 600,
@@ -1667,7 +1731,7 @@ export default function AdminDashboard({ initialTab = 'overview', initialOrderId
                   <div style={{ overflowX: 'auto' }}>
                     <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left', fontSize: '0.82rem' }}>
                       <thead>
-                        <tr style={{ borderBottom: '1px solid #F2ECFF', color: '#777184', fontSize: '0.74rem', textTransform: 'uppercase' }}>
+                        <tr style={{ borderBottom: 'var(--adm-divider)', color: 'var(--adm-text-secondary)', fontSize: '0.74rem', textTransform: 'uppercase' }}>
                           <th style={{ padding: '8px 12px 10px', fontWeight: 600 }}>ID</th>
                           <th style={{ padding: '8px 12px 10px', fontWeight: 600 }}>Customer</th>
                           <th style={{ padding: '8px 12px 10px', fontWeight: 600 }}>Template</th>
@@ -1678,16 +1742,16 @@ export default function AdminDashboard({ initialTab = 'overview', initialOrderId
                       <tbody>
                         {designs.length === 0 ? (
                           <tr>
-                            <td colSpan={5} style={{ padding: '36px 12px', textAlign: 'center', color: '#777184' }}>
+                            <td colSpan={5} style={{ padding: '36px 12px', textAlign: 'center', color: 'var(--adm-text-secondary)' }}>
                               <CheckCircle2 size={24} color="#16A36A" style={{ margin: '0 auto 8px', display: 'block' }} />
-                              <div style={{ fontWeight: 600, color: '#191522', fontSize: '0.84rem' }}>No pending design approvals</div>
+                              <div style={{ fontWeight: 600, color: 'var(--adm-text-primary)', fontSize: '0.84rem' }}>No pending design approvals</div>
                               <div style={{ fontSize: '0.74rem', marginTop: '2px' }}>All submitted card designs have been reviewed.</div>
                             </td>
                           </tr>
                         ) : (
                           designs.slice(0, 5).map((design) => (
-                            <tr key={design.id} style={{ borderBottom: '1px solid #F7F6FA' }}>
-                              <td style={{ padding: '12px', color: '#777184', fontWeight: 600, fontSize: '0.78rem' }}>
+                            <tr key={design.id} style={{ borderBottom: 'var(--adm-divider)' }}>
+                              <td style={{ padding: '12px', color: 'var(--adm-text-secondary)', fontWeight: 600, fontSize: '0.78rem' }}>
                                 {design.id}
                               </td>
                               <td style={{ padding: '12px' }}>
@@ -1696,8 +1760,8 @@ export default function AdminDashboard({ initialTab = 'overview', initialOrderId
                                     {design.customerAvatar ? <img src={design.customerAvatar} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} /> : (design.customerName?.charAt(0) || 'C')}
                                   </div>
                                   <div>
-                                    <div style={{ color: '#191522', fontWeight: 600, fontSize: '0.82rem' }}>{design.customerName}</div>
-                                    <div style={{ color: '#777184', fontSize: '0.7rem' }}>{design.customerEmail || 'customer@flocard.in'}</div>
+                                    <div style={{ color: 'var(--adm-text-primary)', fontWeight: 600, fontSize: '0.82rem' }}>{design.customerName}</div>
+                                    <div style={{ color: 'var(--adm-text-secondary)', fontSize: '0.7rem' }}>{design.customerEmail || 'customer@flocard.in'}</div>
                                   </div>
                                 </div>
                               </td>
@@ -1711,12 +1775,12 @@ export default function AdminDashboard({ initialTab = 'overview', initialOrderId
                                       backgroundColor: design.edition === 'gold' ? '#D4AF37' : design.edition === 'platinum' ? '#94A3B8' : design.template === 'Customer Logo' ? '#EC4899' : '#6B00FF'
                                     }}
                                   />
-                                  <span style={{ color: '#191522', fontWeight: 500, fontSize: '0.8rem' }}>
+                                  <span style={{ color: 'var(--adm-text-primary)', fontWeight: 500, fontSize: '0.8rem' }}>
                                     {design.template || 'Standard FLOCARD'}
                                   </span>
                                 </div>
                               </td>
-                              <td style={{ padding: '12px', color: '#777184', fontSize: '0.78rem', whiteSpace: 'nowrap' }}>
+                              <td style={{ padding: '12px', color: 'var(--adm-text-secondary)', fontSize: '0.78rem', whiteSpace: 'nowrap' }}>
                                 {design.submittedAt}
                               </td>
                               <td style={{ padding: '12px', textAlign: 'center' }}>
@@ -1762,21 +1826,21 @@ export default function AdminDashboard({ initialTab = 'overview', initialOrderId
                 {/* 1. Recently Created Profiles */}
                 <div
                   style={{
-                    backgroundColor: '#FFFFFF',
+                    backgroundColor: 'var(--adm-card-bg)',
                     borderRadius: '16px',
-                    border: '1px solid #E8E3EF',
+                    border: 'var(--adm-card-border)',
                     padding: '24px',
-                    boxShadow: '0 2px 8px rgba(0, 0, 0, 0.02)'
+                    boxShadow: 'var(--adm-card-shadow)'
                   }}
                 >
                   <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '18px' }}>
                     <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-                      <div style={{ width: '32px', height: '32px', borderRadius: '8px', backgroundColor: '#F3EEFF', color: '#6B00FF', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                      <div style={{ width: '32px', height: '32px', borderRadius: '8px', backgroundColor: isDark ? 'rgba(107, 0, 255, 0.2)' : '#F3EEFF', color: isDark ? '#C084FC' : '#6B00FF', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                         <Users size={16} />
                       </div>
                       <div>
-                        <h3 style={{ margin: 0, fontSize: '0.96rem', fontWeight: 700, color: '#191522' }}>Recently Created Profiles</h3>
-                        <p style={{ margin: '2px 0 0', fontSize: '0.74rem', color: '#777184' }}>Latest profiles created</p>
+                        <h3 style={{ margin: 0, fontSize: '0.96rem', fontWeight: 700, color: 'var(--adm-text-primary)' }}>Recently Created Profiles</h3>
+                        <p style={{ margin: '2px 0 0', fontSize: '0.74rem', color: 'var(--adm-text-secondary)' }}>Latest profiles created</p>
                       </div>
                     </div>
                     <button
@@ -1785,8 +1849,8 @@ export default function AdminDashboard({ initialTab = 'overview', initialOrderId
                       style={{
                         padding: '5px 12px',
                         borderRadius: '9999px',
-                        border: '1px solid #E8E3EF',
-                        backgroundColor: '#FFFFFF',
+                        border: 'var(--adm-card-border)',
+                        backgroundColor: 'var(--adm-card-bg)',
                         color: '#6B00FF',
                         fontSize: '0.76rem',
                         fontWeight: 600,
@@ -1800,7 +1864,7 @@ export default function AdminDashboard({ initialTab = 'overview', initialOrderId
                   <div style={{ overflowX: 'auto' }}>
                     <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left', fontSize: '0.8rem' }}>
                       <thead>
-                        <tr style={{ borderBottom: '1px solid #F2ECFF', color: '#777184', fontSize: '0.72rem', textTransform: 'uppercase' }}>
+                        <tr style={{ borderBottom: 'var(--adm-divider)', color: 'var(--adm-text-secondary)', fontSize: '0.72rem', textTransform: 'uppercase' }}>
                           <th style={{ padding: '6px 8px', fontWeight: 600 }}>Customer</th>
                           <th style={{ padding: '6px 8px', fontWeight: 600 }}>Profile Name</th>
                           <th style={{ padding: '6px 8px', fontWeight: 600 }}>Slug</th>
@@ -1811,25 +1875,25 @@ export default function AdminDashboard({ initialTab = 'overview', initialOrderId
                       <tbody>
                         {profiles.length === 0 ? (
                           <tr>
-                            <td colSpan={5} style={{ padding: '36px 12px', textAlign: 'center', color: '#777184' }}>
+                            <td colSpan={5} style={{ padding: '36px 12px', textAlign: 'center', color: 'var(--adm-text-secondary)' }}>
                               <Users size={24} color="#A855F7" style={{ margin: '0 auto 8px', display: 'block' }} />
-                              <div style={{ fontWeight: 600, color: '#191522', fontSize: '0.84rem' }}>No profiles created yet</div>
+                              <div style={{ fontWeight: 600, color: 'var(--adm-text-primary)', fontSize: '0.84rem' }}>No profiles created yet</div>
                               <div style={{ fontSize: '0.74rem', marginTop: '2px' }}>New customer profiles will appear here.</div>
                             </td>
                           </tr>
                         ) : (
                           profiles.slice(0, 5).map((p) => (
-                            <tr key={p.id} style={{ borderBottom: '1px solid #F7F6FA' }}>
+                            <tr key={p.id} style={{ borderBottom: 'var(--adm-divider)' }}>
                               <td style={{ padding: '10px 8px' }}>
                                 <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
                                   <div style={{ width: '24px', height: '24px', borderRadius: '50%', backgroundColor: '#6B00FF', color: '#FFFFFF', overflow: 'hidden', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '0.68rem', fontWeight: 700 }}>
                                     {p.avatar ? <img src={p.avatar} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} /> : p.name.charAt(0)}
                                   </div>
-                                  <span style={{ color: '#191522', fontWeight: 600, fontSize: '0.8rem' }}>{p.name}</span>
+                                  <span style={{ color: 'var(--adm-text-primary)', fontWeight: 600, fontSize: '0.8rem' }}>{p.name}</span>
                                 </div>
                               </td>
-                              <td style={{ padding: '10px 8px', color: '#777184' }}>{p.company || p.name}</td>
-                              <td style={{ padding: '10px 8px', color: '#777184', fontFamily: 'monospace', fontSize: '0.74rem' }}>{p.slug}</td>
+                              <td style={{ padding: '10px 8px', color: 'var(--adm-text-secondary)' }}>{p.company || p.name}</td>
+                              <td style={{ padding: '10px 8px', color: 'var(--adm-text-secondary)', fontFamily: 'monospace', fontSize: '0.74rem' }}>{p.slug}</td>
                               <td style={{ padding: '10px 8px' }}>
                                 <span
                                   style={{
@@ -1837,8 +1901,8 @@ export default function AdminDashboard({ initialTab = 'overview', initialOrderId
                                     fontWeight: 600,
                                     padding: '2px 8px',
                                     borderRadius: '9999px',
-                                    backgroundColor: p.status === 'published' ? '#EEFAF5' : p.status === 'pending' ? '#FFF7ED' : '#F1F5F9',
-                                    color: p.status === 'published' ? '#16A36A' : p.status === 'pending' ? '#EA580C' : '#64748B'
+                                    backgroundColor: p.status === 'published' ? (isDark ? 'rgba(22, 163, 106, 0.2)' : '#EEFAF5') : p.status === 'pending' ? (isDark ? 'rgba(234, 88, 12, 0.2)' : '#FFF7ED') : (isDark ? 'rgba(100, 116, 139, 0.2)' : '#F1F5F9'),
+                                    color: p.status === 'published' ? (isDark ? '#4ADE80' : '#16A36A') : p.status === 'pending' ? (isDark ? '#FB923C' : '#EA580C') : (isDark ? '#94A3B8' : '#64748B')
                                   }}
                                 >
                                   ● {p.status === 'published' ? 'Published' : p.status === 'pending' ? 'Pending' : 'Draft'}
@@ -1860,21 +1924,21 @@ export default function AdminDashboard({ initialTab = 'overview', initialOrderId
                 {/* 2. Recently Assigned NFC Cards */}
                 <div
                   style={{
-                    backgroundColor: '#FFFFFF',
+                    backgroundColor: 'var(--adm-card-bg)',
                     borderRadius: '16px',
-                    border: '1px solid #E8E3EF',
+                    border: 'var(--adm-card-border)',
                     padding: '24px',
-                    boxShadow: '0 2px 8px rgba(0, 0, 0, 0.02)'
+                    boxShadow: 'var(--adm-card-shadow)'
                   }}
                 >
                   <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '18px' }}>
                     <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-                      <div style={{ width: '32px', height: '32px', borderRadius: '8px', backgroundColor: '#EEFAF5', color: '#16A36A', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                      <div style={{ width: '32px', height: '32px', borderRadius: '8px', backgroundColor: isDark ? 'rgba(22, 163, 106, 0.2)' : '#EEFAF5', color: isDark ? '#4ADE80' : '#16A36A', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                         <CreditCard size={16} />
                       </div>
                       <div>
-                        <h3 style={{ margin: 0, fontSize: '0.96rem', fontWeight: 700, color: '#191522' }}>Recently Assigned NFC Cards</h3>
-                        <p style={{ margin: '2px 0 0', fontSize: '0.74rem', color: '#777184' }}>Latest card assignments</p>
+                        <h3 style={{ margin: 0, fontSize: '0.96rem', fontWeight: 700, color: 'var(--adm-text-primary)' }}>Recently Assigned NFC Cards</h3>
+                        <p style={{ margin: '2px 0 0', fontSize: '0.74rem', color: 'var(--adm-text-secondary)' }}>Latest card assignments</p>
                       </div>
                     </div>
                     <button
@@ -1883,8 +1947,8 @@ export default function AdminDashboard({ initialTab = 'overview', initialOrderId
                       style={{
                         padding: '5px 12px',
                         borderRadius: '9999px',
-                        border: '1px solid #E8E3EF',
-                        backgroundColor: '#FFFFFF',
+                        border: 'var(--adm-card-border)',
+                        backgroundColor: 'var(--adm-card-bg)',
                         color: '#6B00FF',
                         fontSize: '0.76rem',
                         fontWeight: 600,
@@ -1898,7 +1962,7 @@ export default function AdminDashboard({ initialTab = 'overview', initialOrderId
                   <div style={{ overflowX: 'auto' }}>
                     <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left', fontSize: '0.8rem' }}>
                       <thead>
-                        <tr style={{ borderBottom: '1px solid #F2ECFF', color: '#777184', fontSize: '0.72rem', textTransform: 'uppercase' }}>
+                        <tr style={{ borderBottom: 'var(--adm-divider)', color: 'var(--adm-text-secondary)', fontSize: '0.72rem', textTransform: 'uppercase' }}>
                           <th style={{ padding: '6px 8px', fontWeight: 600 }}>Card ID</th>
                           <th style={{ padding: '6px 8px', fontWeight: 600 }}>Customer</th>
                           <th style={{ padding: '6px 8px', fontWeight: 600 }}>Profile</th>
@@ -1909,22 +1973,22 @@ export default function AdminDashboard({ initialTab = 'overview', initialOrderId
                       <tbody>
                         {cards.length === 0 ? (
                           <tr>
-                            <td colSpan={5} style={{ padding: '36px 12px', textAlign: 'center', color: '#777184' }}>
+                            <td colSpan={5} style={{ padding: '36px 12px', textAlign: 'center', color: 'var(--adm-text-secondary)' }}>
                               <CreditCard size={24} color="#6B00FF" style={{ margin: '0 auto 8px', display: 'block' }} />
-                              <div style={{ fontWeight: 600, color: '#191522', fontSize: '0.84rem' }}>No NFC cards assigned yet</div>
+                              <div style={{ fontWeight: 600, color: 'var(--adm-text-primary)', fontSize: '0.84rem' }}>No NFC cards assigned yet</div>
                               <div style={{ fontSize: '0.74rem', marginTop: '2px' }}>Use &quot;Assign NFC Card&quot; to assign physical hardware.</div>
                             </td>
                           </tr>
                         ) : (
                           cards.slice(0, 5).map((card) => (
-                            <tr key={card.id} style={{ borderBottom: '1px solid #F7F6FA' }}>
-                              <td style={{ padding: '10px 8px', color: '#191522', fontWeight: 600, fontFamily: 'monospace', fontSize: '0.76rem' }}>
+                            <tr key={card.id} style={{ borderBottom: 'var(--adm-divider)' }}>
+                              <td style={{ padding: '10px 8px', color: 'var(--adm-text-primary)', fontWeight: 600, fontFamily: 'monospace', fontSize: '0.76rem' }}>
                                 {card.cardCode}
                               </td>
-                              <td style={{ padding: '10px 8px', color: '#191522', fontWeight: 500 }}>
+                              <td style={{ padding: '10px 8px', color: 'var(--adm-text-primary)', fontWeight: 500 }}>
                                 {card.customerName || 'Unassigned'}
                               </td>
-                              <td style={{ padding: '10px 8px', color: '#777184' }}>
+                              <td style={{ padding: '10px 8px', color: 'var(--adm-text-secondary)' }}>
                                 {card.profileName || card.profileSlug || '—'}
                               </td>
                               <td style={{ padding: '10px 8px' }}>
@@ -1934,8 +1998,8 @@ export default function AdminDashboard({ initialTab = 'overview', initialOrderId
                                     fontWeight: 600,
                                     padding: '2px 8px',
                                     borderRadius: '9999px',
-                                    backgroundColor: card.status === 'active' ? '#EEFAF5' : card.status === 'suspended' ? '#FEF2F2' : '#F1F5F9',
-                                    color: card.status === 'active' ? '#16A36A' : card.status === 'suspended' ? '#DC4545' : '#64748B'
+                                    backgroundColor: card.status === 'active' ? (isDark ? 'rgba(22, 163, 106, 0.2)' : '#EEFAF5') : card.status === 'suspended' ? (isDark ? 'rgba(220, 69, 69, 0.2)' : '#FEF2F2') : (isDark ? 'rgba(100, 116, 139, 0.2)' : '#F1F5F9'),
+                                    color: card.status === 'active' ? (isDark ? '#4ADE80' : '#16A36A') : card.status === 'suspended' ? (isDark ? '#F87171' : '#DC4545') : (isDark ? '#94A3B8' : '#64748B')
                                   }}
                                 >
                                   ● {card.status === 'active' ? 'Active' : card.status === 'suspended' ? 'Suspended' : 'Unassigned'}
@@ -1957,20 +2021,20 @@ export default function AdminDashboard({ initialTab = 'overview', initialOrderId
                 {/* 3. Quick Actions (2x3 Grid) */}
                 <div
                   style={{
-                    backgroundColor: '#FFFFFF',
+                    backgroundColor: 'var(--adm-card-bg)',
                     borderRadius: '16px',
-                    border: '1px solid #E8E3EF',
+                    border: 'var(--adm-card-border)',
                     padding: '24px',
-                    boxShadow: '0 2px 8px rgba(0, 0, 0, 0.02)'
+                    boxShadow: 'var(--adm-card-shadow)'
                   }}
                 >
                   <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '18px' }}>
-                    <div style={{ width: '32px', height: '32px', borderRadius: '8px', backgroundColor: '#F3EEFF', color: '#6B00FF', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                    <div style={{ width: '32px', height: '32px', borderRadius: '8px', backgroundColor: isDark ? 'rgba(107, 0, 255, 0.2)' : '#F3EEFF', color: isDark ? '#C084FC' : '#6B00FF', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                       <Rocket size={16} />
                     </div>
                     <div>
-                      <h3 style={{ margin: 0, fontSize: '0.96rem', fontWeight: 700, color: '#191522' }}>Quick Actions</h3>
-                      <p style={{ margin: '2px 0 0', fontSize: '0.74rem', color: '#777184' }}>Common tasks</p>
+                      <h3 style={{ margin: 0, fontSize: '0.96rem', fontWeight: 700, color: 'var(--adm-text-primary)' }}>Quick Actions</h3>
+                      <p style={{ margin: '2px 0 0', fontSize: '0.74rem', color: 'var(--adm-text-secondary)' }}>Common tasks</p>
                     </div>
                   </div>
 
@@ -1980,8 +2044,8 @@ export default function AdminDashboard({ initialTab = 'overview', initialOrderId
                       type="button"
                       onClick={() => setNewCustomerModal(true)}
                       style={{
-                        backgroundColor: '#F3EEFF',
-                        border: '1px solid #E4D8FF',
+                        backgroundColor: isDark ? 'rgba(107, 0, 255, 0.15)' : '#F3EEFF',
+                        border: isDark ? '1px solid rgba(168, 85, 247, 0.25)' : '1px solid #E4D8FF',
                         borderRadius: '12px',
                         padding: '16px 12px',
                         display: 'flex',
@@ -1995,8 +2059,8 @@ export default function AdminDashboard({ initialTab = 'overview', initialOrderId
                       onMouseEnter={(e) => { e.currentTarget.style.transform = 'translateY(-2px)'; }}
                       onMouseLeave={(e) => { e.currentTarget.style.transform = 'translateY(0)'; }}
                     >
-                      <UserPlus size={20} color="#6B00FF" />
-                      <span style={{ fontSize: '0.78rem', fontWeight: 600, color: '#6B00FF' }}>Add Customer</span>
+                      <UserPlus size={20} color={isDark ? '#C084FC' : '#6B00FF'} />
+                      <span style={{ fontSize: '0.78rem', fontWeight: 600, color: isDark ? '#C084FC' : '#6B00FF' }}>Add Customer</span>
                     </button>
 
                     {/* Create Profile */}
@@ -2004,8 +2068,8 @@ export default function AdminDashboard({ initialTab = 'overview', initialOrderId
                       type="button"
                       onClick={() => setNewProfileModal(true)}
                       style={{
-                        backgroundColor: '#EEF6FF',
-                        border: '1px solid #D6E7FF',
+                        backgroundColor: isDark ? 'rgba(37, 99, 235, 0.15)' : '#EEF6FF',
+                        border: isDark ? '1px solid rgba(59, 130, 246, 0.25)' : '1px solid #D6E7FF',
                         borderRadius: '12px',
                         padding: '16px 12px',
                         display: 'flex',
@@ -2019,8 +2083,8 @@ export default function AdminDashboard({ initialTab = 'overview', initialOrderId
                       onMouseEnter={(e) => { e.currentTarget.style.transform = 'translateY(-2px)'; }}
                       onMouseLeave={(e) => { e.currentTarget.style.transform = 'translateY(0)'; }}
                     >
-                      <FileText size={20} color="#2563EB" />
-                      <span style={{ fontSize: '0.78rem', fontWeight: 600, color: '#2563EB' }}>Create Profile</span>
+                      <FileText size={20} color={isDark ? '#60A5FA' : '#2563EB'} />
+                      <span style={{ fontSize: '0.78rem', fontWeight: 600, color: isDark ? '#60A5FA' : '#2563EB' }}>Create Profile</span>
                     </button>
 
                     {/* Review Designs */}
@@ -2028,8 +2092,8 @@ export default function AdminDashboard({ initialTab = 'overview', initialOrderId
                       type="button"
                       onClick={() => setActiveTab('designs')}
                       style={{
-                        backgroundColor: '#EEFAF5',
-                        border: '1px solid #D0F2E3',
+                        backgroundColor: isDark ? 'rgba(22, 163, 106, 0.15)' : '#EEFAF5',
+                        border: isDark ? '1px solid rgba(34, 197, 94, 0.25)' : '1px solid #D0F2E3',
                         borderRadius: '12px',
                         padding: '16px 12px',
                         display: 'flex',
@@ -2043,8 +2107,8 @@ export default function AdminDashboard({ initialTab = 'overview', initialOrderId
                       onMouseEnter={(e) => { e.currentTarget.style.transform = 'translateY(-2px)'; }}
                       onMouseLeave={(e) => { e.currentTarget.style.transform = 'translateY(0)'; }}
                     >
-                      <Palette size={20} color="#16A36A" />
-                      <span style={{ fontSize: '0.78rem', fontWeight: 600, color: '#16A36A' }}>Review Designs</span>
+                      <Palette size={20} color={isDark ? '#4ADE80' : '#16A36A'} />
+                      <span style={{ fontSize: '0.78rem', fontWeight: 600, color: isDark ? '#4ADE80' : '#16A36A' }}>Review Designs</span>
                     </button>
 
                     {/* Assign NFC Card */}
@@ -2052,8 +2116,8 @@ export default function AdminDashboard({ initialTab = 'overview', initialOrderId
                       type="button"
                       onClick={() => setAssignCardModal(true)}
                       style={{
-                        backgroundColor: '#FFF7ED',
-                        border: '1px solid #FFE4C8',
+                        backgroundColor: isDark ? 'rgba(234, 88, 12, 0.15)' : '#FFF7ED',
+                        border: isDark ? '1px solid rgba(249, 115, 22, 0.25)' : '1px solid #FFE4C8',
                         borderRadius: '12px',
                         padding: '16px 12px',
                         display: 'flex',
@@ -2067,8 +2131,8 @@ export default function AdminDashboard({ initialTab = 'overview', initialOrderId
                       onMouseEnter={(e) => { e.currentTarget.style.transform = 'translateY(-2px)'; }}
                       onMouseLeave={(e) => { e.currentTarget.style.transform = 'translateY(0)'; }}
                     >
-                      <CreditCard size={20} color="#EA580C" />
-                      <span style={{ fontSize: '0.78rem', fontWeight: 600, color: '#EA580C' }}>Assign NFC Card</span>
+                      <CreditCard size={20} color={isDark ? '#FB923C' : '#EA580C'} />
+                      <span style={{ fontSize: '0.78rem', fontWeight: 600, color: isDark ? '#FB923C' : '#EA580C' }}>Assign NFC Card</span>
                     </button>
 
                     {/* Manage Templates */}
@@ -2076,8 +2140,8 @@ export default function AdminDashboard({ initialTab = 'overview', initialOrderId
                       type="button"
                       onClick={() => setActiveTab('templates')}
                       style={{
-                        backgroundColor: '#FFF1F2',
-                        border: '1px solid #FEE2E2',
+                        backgroundColor: isDark ? 'rgba(225, 29, 72, 0.15)' : '#FFF1F2',
+                        border: isDark ? '1px solid rgba(244, 63, 94, 0.25)' : '1px solid #FEE2E2',
                         borderRadius: '12px',
                         padding: '16px 12px',
                         display: 'flex',
@@ -2091,8 +2155,8 @@ export default function AdminDashboard({ initialTab = 'overview', initialOrderId
                       onMouseEnter={(e) => { e.currentTarget.style.transform = 'translateY(-2px)'; }}
                       onMouseLeave={(e) => { e.currentTarget.style.transform = 'translateY(0)'; }}
                     >
-                      <Layers size={20} color="#E11D48" />
-                      <span style={{ fontSize: '0.78rem', fontWeight: 600, color: '#E11D48' }}>Manage Templates</span>
+                      <Layers size={20} color={isDark ? '#FB7185' : '#E11D48'} />
+                      <span style={{ fontSize: '0.78rem', fontWeight: 600, color: isDark ? '#FB7185' : '#E11D48' }}>Manage Templates</span>
                     </button>
 
                     {/* View Analytics */}
@@ -2131,11 +2195,11 @@ export default function AdminDashboard({ initialTab = 'overview', initialOrderId
               VIEW: CUSTOMERS
               ==================================================================== */}
           {activeTab === 'customers' && (
-            <div style={{ backgroundColor: '#FFFFFF', borderRadius: '16px', border: '1px solid #E8E3EF', padding: '24px' }}>
+            <div style={{ backgroundColor: 'var(--adm-card-bg)', borderRadius: '16px', border: 'var(--adm-card-border)', padding: '24px' }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px', flexWrap: 'wrap', gap: '12px' }}>
                 <div>
-                  <h3 style={{ margin: 0, fontSize: '1.1rem', fontWeight: 700, color: '#191522' }}>Customer Accounts</h3>
-                  <p style={{ margin: '2px 0 0', fontSize: '0.8rem', color: '#777184' }}>Total {customers.length} verified accounts with real-time editing & credential management</p>
+                  <h3 style={{ margin: 0, fontSize: '1.1rem', fontWeight: 700, color: 'var(--adm-text-primary)' }}>Customer Accounts</h3>
+                  <p style={{ margin: '2px 0 0', fontSize: '0.8rem', color: 'var(--adm-text-secondary)' }}>Total {customers.length} verified accounts with real-time editing & credential management</p>
                 </div>
                 <button
                   type="button"
@@ -2159,10 +2223,11 @@ export default function AdminDashboard({ initialTab = 'overview', initialOrderId
                 </button>
               </div>
 
-              <div style={{ overflowX: 'auto' }}>
+              {/* Desktop Table View */}
+              <div className="admin-desktop-table" style={{ overflowX: 'auto' }}>
                 <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left', fontSize: '0.84rem' }}>
                   <thead>
-                    <tr style={{ borderBottom: '1px solid #F2ECFF', color: '#777184', fontSize: '0.74rem', textTransform: 'uppercase' }}>
+                    <tr style={{ borderBottom: 'var(--adm-divider)', color: 'var(--adm-text-secondary)', fontSize: '0.74rem', textTransform: 'uppercase' }}>
                       <th style={{ padding: '10px 12px' }}>Customer</th>
                       <th style={{ padding: '10px 12px' }}>Company</th>
                       <th style={{ padding: '10px 12px' }}>Phone</th>
@@ -2175,28 +2240,28 @@ export default function AdminDashboard({ initialTab = 'overview', initialOrderId
                   <tbody>
                     {customers.length === 0 ? (
                       <tr>
-                        <td colSpan={7} style={{ padding: '48px 12px', textAlign: 'center', color: '#777184' }}>
+                        <td colSpan={7} style={{ padding: '48px 12px', textAlign: 'center', color: 'var(--adm-text-secondary)' }}>
                           <Users size={32} color="#C4B5FD" style={{ margin: '0 auto 8px', display: 'block' }} />
-                          <div style={{ fontWeight: 600, color: '#191522', marginBottom: '4px' }}>No customers registered yet</div>
+                          <div style={{ fontWeight: 600, color: 'var(--adm-text-primary)', marginBottom: '4px' }}>No customers registered yet</div>
                           <div style={{ fontSize: '0.78rem' }}>Click &quot;Add Customer&quot; above to add your first customer.</div>
                         </td>
                       </tr>
                     ) : (
                       customers.map((c) => (
-                      <tr key={c.id} style={{ borderBottom: '1px solid #F7F6FA' }}>
+                      <tr key={c.id} style={{ borderBottom: 'var(--adm-divider)' }}>
                         <td style={{ padding: '12px' }}>
                           <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
                             <div style={{ width: '32px', height: '32px', borderRadius: '50%', backgroundColor: '#6B00FF', color: '#FFFFFF', overflow: 'hidden', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 700 }}>
                               {c.avatar ? <img src={c.avatar} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} /> : c.name.charAt(0)}
                             </div>
                             <div>
-                              <div style={{ fontWeight: 600, color: '#191522' }}>{c.name}</div>
-                              <div style={{ fontSize: '0.72rem', color: '#777184' }}>{c.email}</div>
+                              <div style={{ fontWeight: 600, color: 'var(--adm-text-primary)' }}>{c.name}</div>
+                              <div style={{ fontSize: '0.72rem', color: 'var(--adm-text-secondary)' }}>{c.email}</div>
                             </div>
                           </div>
                         </td>
-                        <td style={{ padding: '12px', color: '#777184' }}>{c.company || '—'}</td>
-                        <td style={{ padding: '12px', color: '#777184' }}>{c.phone || '—'}</td>
+                        <td style={{ padding: '12px', color: 'var(--adm-text-secondary)' }}>{c.company || '—'}</td>
+                        <td style={{ padding: '12px', color: 'var(--adm-text-secondary)' }}>{c.phone || '—'}</td>
                         <td style={{ padding: '12px', fontWeight: 600, color: '#6B00FF' }}>{c.totalCards || 0}</td>
                         <td style={{ padding: '12px' }}>
                           <span
@@ -2213,7 +2278,7 @@ export default function AdminDashboard({ initialTab = 'overview', initialOrderId
                             ● {c.status || 'Active'}
                           </span>
                         </td>
-                        <td style={{ padding: '12px', color: '#777184' }}>{c.joinedDate || '2026-10-14'}</td>
+                        <td style={{ padding: '12px', color: 'var(--adm-text-secondary)' }}>{c.joinedDate || '2026-10-14'}</td>
                         <td style={{ padding: '12px', textAlign: 'center' }}>
                           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px' }}>
                             <button
@@ -2226,8 +2291,8 @@ export default function AdminDashboard({ initialTab = 'overview', initialOrderId
                                 gap: '4px',
                                 padding: '5px 10px',
                                 borderRadius: '8px',
-                                border: '1px solid #E8E3EF',
-                                backgroundColor: '#FFFFFF',
+                                border: 'var(--adm-card-border)',
+                                backgroundColor: 'var(--adm-card-bg)',
                                 color: '#6B00FF',
                                 fontSize: '0.76rem',
                                 fontWeight: 600,
@@ -2262,6 +2327,135 @@ export default function AdminDashboard({ initialTab = 'overview', initialOrderId
                   </tbody>
                 </table>
               </div>
+
+              {/* Mobile Card View (Zero Horizontal Scrolling, Full Details Fitted) */}
+              <div className="admin-mobile-cards" style={{ display: 'none' }}>
+                {customers.length === 0 ? (
+                  <div style={{ padding: '36px 12px', textAlign: 'center', color: 'var(--adm-text-secondary)' }}>
+                    <Users size={32} color="#C4B5FD" style={{ margin: '0 auto 8px', display: 'block' }} />
+                    <div style={{ fontWeight: 600, color: 'var(--adm-text-primary)', marginBottom: '4px' }}>No customers registered yet</div>
+                    <div style={{ fontSize: '0.78rem' }}>Click &quot;Add Customer&quot; above to add your first customer.</div>
+                  </div>
+                ) : (
+                  customers.map((c) => (
+                    <div
+                      key={c.id}
+                      style={{
+                        backgroundColor: 'var(--adm-card-bg)',
+                        border: 'var(--adm-card-border)',
+                        borderRadius: '14px',
+                        padding: '16px',
+                        boxShadow: 'var(--adm-card-shadow)',
+                        display: 'flex',
+                        flexDirection: 'column',
+                        gap: '12px'
+                      }}
+                    >
+                      {/* Top Header: Avatar, Name, Email, Status */}
+                      <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: '8px' }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '10px', minWidth: 0 }}>
+                          <div style={{ width: '38px', height: '38px', borderRadius: '50%', backgroundColor: '#6B00FF', color: '#FFFFFF', overflow: 'hidden', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 700, flexShrink: 0 }}>
+                            {c.avatar ? <img src={c.avatar} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} /> : c.name.charAt(0)}
+                          </div>
+                          <div style={{ minWidth: 0 }}>
+                            <div style={{ fontWeight: 700, color: 'var(--adm-text-primary)', fontSize: '0.92rem', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                              {c.name}
+                            </div>
+                            <div style={{ fontSize: '0.74rem', color: 'var(--adm-text-secondary)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                              {c.email}
+                            </div>
+                          </div>
+                        </div>
+                        <span
+                          style={{
+                            fontSize: '0.72rem',
+                            padding: '3px 8px',
+                            borderRadius: '9999px',
+                            backgroundColor: c.status === 'suspended' ? '#FEF2F2' : '#EEFAF5',
+                            color: c.status === 'suspended' ? '#DC4545' : '#16A36A',
+                            fontWeight: 700,
+                            textTransform: 'capitalize',
+                            flexShrink: 0
+                          }}
+                        >
+                          ● {c.status || 'Active'}
+                        </span>
+                      </div>
+
+                      {/* Detail Metrics Grid: Company, Phone, Cards, Joined */}
+                      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '8px', padding: '10px 12px', borderRadius: '10px', backgroundColor: 'var(--adm-search-bg)' }}>
+                        <div>
+                          <div style={{ fontSize: '0.68rem', color: 'var(--adm-text-secondary)', textTransform: 'uppercase', fontWeight: 600 }}>Company</div>
+                          <div style={{ fontSize: '0.78rem', color: 'var(--adm-text-primary)', fontWeight: 600, marginTop: '2px', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                            {c.company || '—'}
+                          </div>
+                        </div>
+                        <div>
+                          <div style={{ fontSize: '0.68rem', color: 'var(--adm-text-secondary)', textTransform: 'uppercase', fontWeight: 600 }}>Phone</div>
+                          <div style={{ fontSize: '0.78rem', color: 'var(--adm-text-primary)', fontWeight: 600, marginTop: '2px', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                            {c.phone ? (
+                              <a href={`tel:${c.phone}`} style={{ color: '#6B00FF', textDecoration: 'none' }}>{c.phone}</a>
+                            ) : '—'}
+                          </div>
+                        </div>
+                        <div>
+                          <div style={{ fontSize: '0.68rem', color: 'var(--adm-text-secondary)', textTransform: 'uppercase', fontWeight: 600 }}>NFC Cards</div>
+                          <div style={{ fontSize: '0.78rem', fontWeight: 700, color: '#6B00FF', marginTop: '2px' }}>
+                            {c.totalCards || 0} assigned
+                          </div>
+                        </div>
+                        <div>
+                          <div style={{ fontSize: '0.68rem', color: 'var(--adm-text-secondary)', textTransform: 'uppercase', fontWeight: 600 }}>Joined Date</div>
+                          <div style={{ fontSize: '0.78rem', color: 'var(--adm-text-secondary)', marginTop: '2px' }}>
+                            {c.joinedDate || '2026-10-14'}
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* Action Buttons */}
+                      <div style={{ display: 'flex', gap: '8px', marginTop: '2px' }}>
+                        <button
+                          type="button"
+                          onClick={() => setEditingCustomer(c)}
+                          style={{
+                            flex: 1,
+                            display: 'inline-flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            gap: '6px',
+                            padding: '9px 14px',
+                            borderRadius: '8px',
+                            border: 'var(--adm-card-border)',
+                            backgroundColor: 'var(--adm-card-bg)',
+                            color: '#6B00FF',
+                            fontSize: '0.8rem',
+                            fontWeight: 700,
+                            cursor: 'pointer'
+                          }}
+                        >
+                          <Edit2 size={14} />
+                          <span>Edit Account</span>
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => handleDeleteCustomer(c.id)}
+                          style={{
+                            padding: '9px 14px',
+                            borderRadius: '8px',
+                            border: '1px solid #FEE2E2',
+                            backgroundColor: '#FEF2F2',
+                            color: '#DC4545',
+                            cursor: 'pointer'
+                          }}
+                          title="Delete Customer"
+                        >
+                          <Trash2 size={14} />
+                        </button>
+                      </div>
+                    </div>
+                  ))
+                )}
+              </div>
             </div>
           )}
 
@@ -2269,11 +2463,11 @@ export default function AdminDashboard({ initialTab = 'overview', initialOrderId
               VIEW: DIGITAL PROFILES
               ==================================================================== */}
           {activeTab === 'profiles' && (
-            <div style={{ backgroundColor: '#FFFFFF', borderRadius: '16px', border: '1px solid #E8E3EF', padding: '24px' }}>
+            <div style={{ backgroundColor: 'var(--adm-card-bg)', borderRadius: '16px', border: 'var(--adm-card-border)', padding: '24px' }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px', flexWrap: 'wrap', gap: '12px' }}>
                 <div>
-                  <h3 style={{ margin: 0, fontSize: '1.1rem', fontWeight: 700, color: '#191522' }}>Digital Profiles</h3>
-                  <p style={{ margin: '2px 0 0', fontSize: '0.8rem', color: '#777184' }}>Total {profiles.length} identity profiles. Edit bio, designation, theme & contact links.</p>
+                  <h3 style={{ margin: 0, fontSize: '1.1rem', fontWeight: 700, color: 'var(--adm-text-primary)' }}>Digital Profiles</h3>
+                  <p style={{ margin: '2px 0 0', fontSize: '0.8rem', color: 'var(--adm-text-secondary)' }}>Total {profiles.length} identity profiles. Edit bio, designation, theme & contact links.</p>
                 </div>
                 <button
                   type="button"
@@ -2297,10 +2491,11 @@ export default function AdminDashboard({ initialTab = 'overview', initialOrderId
                 </button>
               </div>
 
-              <div style={{ overflowX: 'auto' }}>
+              {/* Desktop Table View */}
+              <div className="admin-desktop-table" style={{ overflowX: 'auto' }}>
                 <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left', fontSize: '0.84rem' }}>
                   <thead>
-                    <tr style={{ borderBottom: '1px solid #F2ECFF', color: '#777184', fontSize: '0.74rem', textTransform: 'uppercase' }}>
+                    <tr style={{ borderBottom: 'var(--adm-divider)', color: 'var(--adm-text-secondary)', fontSize: '0.74rem', textTransform: 'uppercase' }}>
                       <th style={{ padding: '10px 12px' }}>Profile Name</th>
                       <th style={{ padding: '10px 12px' }}>Designation / Company</th>
                       <th style={{ padding: '10px 12px' }}>Public URL</th>
@@ -2312,24 +2507,24 @@ export default function AdminDashboard({ initialTab = 'overview', initialOrderId
                   <tbody>
                     {profiles.length === 0 ? (
                       <tr>
-                        <td colSpan={6} style={{ padding: '48px 12px', textAlign: 'center', color: '#777184' }}>
+                        <td colSpan={6} style={{ padding: '48px 12px', textAlign: 'center', color: 'var(--adm-text-secondary)' }}>
                           <FileText size={32} color="#C4B5FD" style={{ margin: '0 auto 8px', display: 'block' }} />
-                          <div style={{ fontWeight: 600, color: '#191522', marginBottom: '4px' }}>No digital profiles found</div>
+                          <div style={{ fontWeight: 600, color: 'var(--adm-text-primary)', marginBottom: '4px' }}>No digital profiles found</div>
                           <div style={{ fontSize: '0.78rem' }}>Click &quot;Create Digital Profile&quot; to publish your first profile.</div>
                         </td>
                       </tr>
                     ) : (
                       profiles.map((p) => (
-                      <tr key={p.id} style={{ borderBottom: '1px solid #F7F6FA' }}>
+                      <tr key={p.id} style={{ borderBottom: 'var(--adm-divider)' }}>
                         <td style={{ padding: '12px' }}>
                           <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
                             <div style={{ width: '32px', height: '32px', borderRadius: '50%', backgroundColor: '#6B00FF', color: '#FFFFFF', overflow: 'hidden', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 700 }}>
                               {p.avatar ? <img src={p.avatar} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} /> : p.name.charAt(0)}
                             </div>
-                            <span style={{ fontWeight: 600, color: '#191522' }}>{p.name}</span>
+                            <span style={{ fontWeight: 600, color: 'var(--adm-text-primary)' }}>{p.name}</span>
                           </div>
                         </td>
-                        <td style={{ padding: '12px', color: '#777184' }}>{p.role} at {p.company}</td>
+                        <td style={{ padding: '12px', color: 'var(--adm-text-secondary)' }}>{p.role} at {p.company}</td>
                         <td style={{ padding: '12px' }}>
                           <a href={`/p/${p.slug}`} target="_blank" rel="noreferrer" style={{ color: '#6B00FF', textDecoration: 'none', fontWeight: 600 }}>
                             flocard.in/p/{p.slug}
@@ -2387,9 +2582,9 @@ export default function AdminDashboard({ initialTab = 'overview', initialOrderId
                                 gap: '4px',
                                 padding: '5px 10px',
                                 borderRadius: '8px',
-                                border: '1px solid #E8E3EF',
-                                backgroundColor: '#FFFFFF',
-                                color: '#191522',
+                                border: 'var(--adm-card-border)',
+                                backgroundColor: 'var(--adm-card-bg)',
+                                color: 'var(--adm-text-primary)',
                                 fontSize: '0.76rem',
                                 fontWeight: 600,
                                 cursor: 'pointer'
@@ -2423,6 +2618,134 @@ export default function AdminDashboard({ initialTab = 'overview', initialOrderId
                   </tbody>
                 </table>
               </div>
+
+              {/* Mobile Card View (Zero Horizontal Scrolling) */}
+              <div className="admin-mobile-cards" style={{ display: 'none' }}>
+                {profiles.length === 0 ? (
+                  <div style={{ padding: '36px 12px', textAlign: 'center', color: 'var(--adm-text-secondary)' }}>
+                    <FileText size={32} color="#C4B5FD" style={{ margin: '0 auto 8px', display: 'block' }} />
+                    <div style={{ fontWeight: 600, color: 'var(--adm-text-primary)', marginBottom: '4px' }}>No digital profiles found</div>
+                    <div style={{ fontSize: '0.78rem' }}>Click &quot;Create Digital Profile&quot; to publish your first profile.</div>
+                  </div>
+                ) : (
+                  profiles.map((p) => (
+                    <div
+                      key={p.id}
+                      style={{
+                        backgroundColor: 'var(--adm-card-bg)',
+                        border: 'var(--adm-card-border)',
+                        borderRadius: '14px',
+                        padding: '16px',
+                        boxShadow: 'var(--adm-card-shadow)',
+                        display: 'flex',
+                        flexDirection: 'column',
+                        gap: '12px'
+                      }}
+                    >
+                      <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: '8px' }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '10px', minWidth: 0 }}>
+                          <div style={{ width: '38px', height: '38px', borderRadius: '50%', backgroundColor: '#6B00FF', color: '#FFFFFF', overflow: 'hidden', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 700, flexShrink: 0 }}>
+                            {p.avatar ? <img src={p.avatar} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} /> : p.name.charAt(0)}
+                          </div>
+                          <div style={{ minWidth: 0 }}>
+                            <div style={{ fontWeight: 700, color: 'var(--adm-text-primary)', fontSize: '0.92rem', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                              {p.name}
+                            </div>
+                            <div style={{ fontSize: '0.74rem', color: 'var(--adm-text-secondary)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                              {p.role} at {p.company}
+                            </div>
+                          </div>
+                        </div>
+                        <span
+                          style={{
+                            fontSize: '0.72rem',
+                            padding: '3px 8px',
+                            borderRadius: '9999px',
+                            backgroundColor: p.status === 'published' ? '#EEFAF5' : '#F1F5F9',
+                            color: p.status === 'published' ? '#16A36A' : '#64748B',
+                            fontWeight: 700,
+                            textTransform: 'capitalize',
+                            flexShrink: 0
+                          }}
+                        >
+                          ● {p.status || 'draft'}
+                        </span>
+                      </div>
+
+                      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '8px 12px', borderRadius: '8px', backgroundColor: 'var(--adm-search-bg)' }}>
+                        <div style={{ fontSize: '0.74rem', color: '#6B00FF', fontWeight: 600, fontFamily: 'monospace' }}>
+                          flocard.in/p/{p.slug}
+                        </div>
+                        <span style={{ textTransform: 'capitalize', fontSize: '0.72rem', fontWeight: 700, color: p.theme === 'gold' ? '#D4AF37' : p.theme === 'platinum' ? '#94A3B8' : '#6B00FF' }}>
+                          {p.theme || 'purple'}
+                        </span>
+                      </div>
+
+                      <div style={{ display: 'flex', gap: '8px' }}>
+                        <a
+                          href={`/p/${p.slug}`}
+                          target="_blank"
+                          rel="noreferrer"
+                          style={{
+                            flex: 1,
+                            display: 'inline-flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            gap: '6px',
+                            padding: '9px 12px',
+                            borderRadius: '8px',
+                            backgroundColor: '#F3EEFF',
+                            color: '#6B00FF',
+                            textDecoration: 'none',
+                            fontSize: '0.8rem',
+                            fontWeight: 700
+                          }}
+                        >
+                          <Eye size={14} />
+                          <span>Preview</span>
+                        </a>
+                        <button
+                          type="button"
+                          onClick={() => setEditingProfile(p)}
+                          style={{
+                            flex: 1,
+                            display: 'inline-flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            gap: '6px',
+                            padding: '9px 12px',
+                            borderRadius: '8px',
+                            border: 'var(--adm-card-border)',
+                            backgroundColor: 'var(--adm-card-bg)',
+                            color: 'var(--adm-text-primary)',
+                            fontSize: '0.8rem',
+                            fontWeight: 700,
+                            cursor: 'pointer'
+                          }}
+                        >
+                          <Edit2 size={14} />
+                          <span>Edit</span>
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => handleDeleteProfile(p.id)}
+                          style={{
+                            padding: '9px 14px',
+                            borderRadius: '8px',
+                            border: '1px solid #FEE2E2',
+                            backgroundColor: '#FEF2F2',
+                            color: '#DC4545',
+                            cursor: 'pointer'
+                          }}
+                          title="Delete Profile"
+                        >
+                          <Trash2 size={14} />
+                        </button>
+                      </div>
+                    </div>
+                  ))
+                )}
+              </div>
             </div>
           )}
 
@@ -2430,11 +2753,11 @@ export default function AdminDashboard({ initialTab = 'overview', initialOrderId
               VIEW: CARD DESIGNS & APPROVAL QUEUE
               ==================================================================== */}
           {activeTab === 'designs' && (
-            <div style={{ backgroundColor: '#FFFFFF', borderRadius: '16px', border: '1px solid #E8E3EF', padding: '24px' }}>
+            <div style={{ backgroundColor: 'var(--adm-card-bg)', borderRadius: '16px', border: 'var(--adm-card-border)', padding: '24px' }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px', flexWrap: 'wrap', gap: '12px' }}>
                 <div>
-                  <h3 style={{ margin: 0, fontSize: '1.1rem', fontWeight: 700, color: '#191522' }}>Card Design Review Queue & Studio</h3>
-                  <p style={{ margin: '2px 0 0', fontSize: '0.8rem', color: '#777184' }}>Edit card designs directly in the 3D studio, inspect proofs, or modify artwork metadata.</p>
+                  <h3 style={{ margin: 0, fontSize: '1.1rem', fontWeight: 700, color: 'var(--adm-text-primary)' }}>Card Design Review Queue & Studio</h3>
+                  <p style={{ margin: '2px 0 0', fontSize: '0.8rem', color: 'var(--adm-text-secondary)' }}>Edit card designs directly in the 3D studio, inspect proofs, or modify artwork metadata.</p>
                 </div>
                 <a
                   href="/designer"
@@ -2457,10 +2780,11 @@ export default function AdminDashboard({ initialTab = 'overview', initialOrderId
                 </a>
               </div>
 
-              <div style={{ overflowX: 'auto' }}>
+              {/* Desktop Table View */}
+              <div className="admin-desktop-table" style={{ overflowX: 'auto' }}>
                 <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left', fontSize: '0.84rem' }}>
                   <thead>
-                    <tr style={{ borderBottom: '1px solid #F2ECFF', color: '#777184', fontSize: '0.74rem', textTransform: 'uppercase' }}>
+                    <tr style={{ borderBottom: 'var(--adm-divider)', color: 'var(--adm-text-secondary)', fontSize: '0.74rem', textTransform: 'uppercase' }}>
                       <th style={{ padding: '10px 12px' }}>ID</th>
                       <th style={{ padding: '10px 12px' }}>Customer</th>
                       <th style={{ padding: '10px 12px' }}>Template / Edition</th>
@@ -2473,9 +2797,9 @@ export default function AdminDashboard({ initialTab = 'overview', initialOrderId
                   <tbody>
                     {designs.length === 0 ? (
                       <tr>
-                        <td colSpan={7} style={{ padding: '48px 12px', textAlign: 'center', color: '#777184' }}>
+                        <td colSpan={7} style={{ padding: '48px 12px', textAlign: 'center', color: 'var(--adm-text-secondary)' }}>
                           <Palette size={32} color="#C4B5FD" style={{ margin: '0 auto 8px', display: 'block' }} />
-                          <div style={{ fontWeight: 600, color: '#191522', marginBottom: '4px' }}>No card designs submitted yet</div>
+                          <div style={{ fontWeight: 600, color: 'var(--adm-text-primary)', marginBottom: '4px' }}>No card designs submitted yet</div>
                           <div style={{ fontSize: '0.78rem' }}>Designs saved in the designer studio will appear here for print approval.</div>
                         </td>
                       </tr>
@@ -2483,11 +2807,11 @@ export default function AdminDashboard({ initialTab = 'overview', initialOrderId
                       designs.map((d) => {
                         const linkedOrder = orders.find(o => o.designId === d.id || o.id === d.orderId);
                         return (
-                          <tr key={d.id} style={{ borderBottom: '1px solid #F7F6FA' }}>
+                          <tr key={d.id} style={{ borderBottom: 'var(--adm-divider)' }}>
                             <td style={{ padding: '12px', fontFamily: 'monospace', fontWeight: 600 }}>{d.id}</td>
-                            <td style={{ padding: '12px', fontWeight: 600, color: '#191522' }}>{d.customerName}</td>
-                            <td style={{ padding: '12px', color: '#777184', textTransform: 'capitalize' }}>{d.template || d.edition || 'Purple'}</td>
-                            <td style={{ padding: '12px', color: '#191522' }}>{d.title}</td>
+                            <td style={{ padding: '12px', fontWeight: 600, color: 'var(--adm-text-primary)' }}>{d.customerName}</td>
+                            <td style={{ padding: '12px', color: 'var(--adm-text-secondary)', textTransform: 'capitalize' }}>{d.template || d.edition || 'Purple'}</td>
+                            <td style={{ padding: '12px', color: 'var(--adm-text-primary)' }}>{d.title}</td>
                             <td style={{ padding: '12px' }}>
                               <span
                                 style={{
@@ -2616,9 +2940,9 @@ export default function AdminDashboard({ initialTab = 'overview', initialOrderId
                                     gap: '4px',
                                     padding: '5px 10px',
                                     borderRadius: '8px',
-                                    border: '1px solid #E8E3EF',
-                                    backgroundColor: '#F7F6FA',
-                                    color: '#191522',
+                                    border: 'var(--adm-card-border)',
+                                    backgroundColor: 'var(--adm-search-bg)',
+                                    color: 'var(--adm-text-primary)',
                                     textDecoration: 'none',
                                     fontSize: '0.76rem',
                                     fontWeight: 600
@@ -2636,9 +2960,9 @@ export default function AdminDashboard({ initialTab = 'overview', initialOrderId
                                     alignItems: 'center',
                                     padding: '5px 8px',
                                     borderRadius: '8px',
-                                    border: '1px solid #E8E3EF',
-                                    backgroundColor: '#FFFFFF',
-                                    color: '#191522',
+                                    border: 'var(--adm-card-border)',
+                                    backgroundColor: 'var(--adm-card-bg)',
+                                    color: 'var(--adm-text-primary)',
                                     cursor: 'pointer'
                                   }}
                                 >
@@ -2670,6 +2994,210 @@ export default function AdminDashboard({ initialTab = 'overview', initialOrderId
                   </tbody>
                 </table>
               </div>
+
+              {/* Mobile Card View (Zero Horizontal Scrolling) */}
+              <div className="admin-mobile-cards" style={{ display: 'none' }}>
+                {designs.length === 0 ? (
+                  <div style={{ padding: '36px 12px', textAlign: 'center', color: 'var(--adm-text-secondary)' }}>
+                    <Palette size={32} color="#C4B5FD" style={{ margin: '0 auto 8px', display: 'block' }} />
+                    <div style={{ fontWeight: 600, color: 'var(--adm-text-primary)', marginBottom: '4px' }}>No card designs submitted yet</div>
+                    <div style={{ fontSize: '0.78rem' }}>Designs saved in the designer studio will appear here for print approval.</div>
+                  </div>
+                ) : (
+                  designs.map((d) => {
+                    const linkedOrder = orders.find(o => o.designId === d.id || o.id === d.orderId);
+                    return (
+                      <div
+                        key={d.id}
+                        style={{
+                          backgroundColor: 'var(--adm-card-bg)',
+                          border: 'var(--adm-card-border)',
+                          borderRadius: '14px',
+                          padding: '16px',
+                          boxShadow: 'var(--adm-card-shadow)',
+                          display: 'flex',
+                          flexDirection: 'column',
+                          gap: '12px'
+                        }}
+                      >
+                        <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: '8px' }}>
+                          <div>
+                            <div style={{ fontWeight: 700, color: 'var(--adm-text-primary)', fontSize: '0.92rem' }}>
+                              {d.title || 'Untitled Card Design'}
+                            </div>
+                            <div style={{ fontSize: '0.74rem', color: 'var(--adm-text-secondary)', marginTop: '2px' }}>
+                              {d.customerName} • ID: <span style={{ fontFamily: 'monospace' }}>{d.id}</span>
+                            </div>
+                          </div>
+                          <span
+                            style={{
+                              fontSize: '0.72rem',
+                              padding: '3px 8px',
+                              borderRadius: '9999px',
+                              backgroundColor: d.status === 'approved' ? '#EEFAF5' : d.status === 'rejected' ? '#FEF2F2' : '#FFF7ED',
+                              color: d.status === 'approved' ? '#16A36A' : d.status === 'rejected' ? '#DC4545' : '#EA580C',
+                              fontWeight: 700,
+                              textTransform: 'capitalize',
+                              flexShrink: 0
+                            }}
+                          >
+                            ● {d.status === 'approved' ? 'Approved' : d.status === 'rejected' ? 'Rejected' : d.status === 'in_review' ? 'In Review' : 'Submitted'}
+                          </span>
+                        </div>
+
+                        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '8px', padding: '10px 12px', borderRadius: '10px', backgroundColor: 'var(--adm-search-bg)' }}>
+                          <div>
+                            <div style={{ fontSize: '0.68rem', color: 'var(--adm-text-secondary)', textTransform: 'uppercase', fontWeight: 600 }}>Template / Edition</div>
+                            <div style={{ fontSize: '0.78rem', color: 'var(--adm-text-primary)', fontWeight: 700, marginTop: '2px', textTransform: 'capitalize' }}>
+                              {d.template || d.edition || 'Purple'}
+                            </div>
+                          </div>
+                          <div>
+                            <div style={{ fontSize: '0.68rem', color: 'var(--adm-text-secondary)', textTransform: 'uppercase', fontWeight: 600 }}>Production Order</div>
+                            <div style={{ marginTop: '2px' }}>
+                              {linkedOrder ? (
+                                <span style={{ fontSize: '0.76rem', color: '#6B00FF', fontWeight: 700 }}>
+                                  #{linkedOrder.id}
+                                </span>
+                              ) : (
+                                <span style={{ fontSize: '0.74rem', color: 'var(--adm-text-secondary)', fontStyle: 'italic' }}>
+                                  Unassigned
+                                </span>
+                              )}
+                            </div>
+                          </div>
+                        </div>
+
+                        {/* Mobile Actions Button Group */}
+                        <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px' }}>
+                          {!linkedOrder ? (
+                            <button
+                              type="button"
+                              onClick={() => handleAssignDesignToOrder(d)}
+                              style={{
+                                flex: 1,
+                                display: 'inline-flex',
+                                alignItems: 'center',
+                                justifyContent: 'center',
+                                gap: '5px',
+                                padding: '9px 12px',
+                                borderRadius: '8px',
+                                border: 'none',
+                                backgroundColor: '#16A36A',
+                                color: '#FFFFFF',
+                                fontSize: '0.78rem',
+                                fontWeight: 700,
+                                cursor: 'pointer'
+                              }}
+                            >
+                              <Package size={14} />
+                              <span>Assign Order</span>
+                            </button>
+                          ) : (
+                            <button
+                              type="button"
+                              onClick={() => {
+                                setActiveTab('orders');
+                                setSelectedOrder(linkedOrder);
+                              }}
+                              style={{
+                                flex: 1,
+                                display: 'inline-flex',
+                                alignItems: 'center',
+                                justifyContent: 'center',
+                                gap: '5px',
+                                padding: '9px 12px',
+                                borderRadius: '8px',
+                                border: '1px solid #DDD6FE',
+                                backgroundColor: '#F5F3FF',
+                                color: '#6B00FF',
+                                fontSize: '0.78rem',
+                                fontWeight: 700,
+                                cursor: 'pointer'
+                              }}
+                            >
+                              <Package size={14} />
+                              <span>View Order</span>
+                            </button>
+                          )}
+
+                          <button
+                            type="button"
+                            onClick={() => setReviewModalDesign(d)}
+                            style={{
+                              padding: '9px 14px',
+                              borderRadius: '8px',
+                              border: 'none',
+                              backgroundColor: '#6B00FF',
+                              color: '#FFFFFF',
+                              fontSize: '0.78rem',
+                              fontWeight: 700,
+                              cursor: 'pointer'
+                            }}
+                          >
+                            Proof
+                          </button>
+
+                          <a
+                            href={`/designer?id=${encodeURIComponent(d.id)}&template=${d.templateType || 'standard'}&edition=${d.edition || 'purple'}`}
+                            target="_blank"
+                            rel="noreferrer"
+                            style={{
+                              display: 'inline-flex',
+                              alignItems: 'center',
+                              justifyContent: 'center',
+                              gap: '4px',
+                              padding: '9px 12px',
+                              borderRadius: '8px',
+                              border: 'var(--adm-card-border)',
+                              backgroundColor: 'var(--adm-search-bg)',
+                              color: 'var(--adm-text-primary)',
+                              textDecoration: 'none',
+                              fontSize: '0.78rem',
+                              fontWeight: 700
+                            }}
+                          >
+                            <SlidersHorizontal size={13} />
+                            <span>Studio</span>
+                          </a>
+
+                          <button
+                            type="button"
+                            onClick={() => setEditingDesign(d)}
+                            style={{
+                              padding: '9px 12px',
+                              borderRadius: '8px',
+                              border: 'var(--adm-card-border)',
+                              backgroundColor: 'var(--adm-card-bg)',
+                              color: 'var(--adm-text-primary)',
+                              cursor: 'pointer'
+                            }}
+                            title="Edit Design"
+                          >
+                            <Edit2 size={14} />
+                          </button>
+
+                          <button
+                            type="button"
+                            onClick={() => handleDeleteDesign(d.id)}
+                            style={{
+                              padding: '9px 12px',
+                              borderRadius: '8px',
+                              border: '1px solid #FEE2E2',
+                              backgroundColor: '#FEF2F2',
+                              color: '#DC4545',
+                              cursor: 'pointer'
+                            }}
+                            title="Delete Design"
+                          >
+                            <Trash2 size={14} />
+                          </button>
+                        </div>
+                      </div>
+                    );
+                  })
+                )}
+              </div>
             </div>
           )}
 
@@ -2684,11 +3212,11 @@ export default function AdminDashboard({ initialTab = 'overview', initialOrderId
               VIEW: NFC CARDS INVENTORY
               ==================================================================== */}
           {activeTab === 'cards' && (
-            <div style={{ backgroundColor: '#FFFFFF', borderRadius: '16px', border: '1px solid #E8E3EF', padding: '24px' }}>
+            <div style={{ backgroundColor: 'var(--adm-card-bg)', borderRadius: '16px', border: 'var(--adm-card-border)', padding: '24px' }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px', flexWrap: 'wrap', gap: '12px' }}>
                 <div>
-                  <h3 style={{ margin: 0, fontSize: '1.1rem', fontWeight: 700, color: '#191522' }}>NFC Card Hardware Inventory</h3>
-                  <p style={{ margin: '2px 0 0', fontSize: '0.8rem', color: '#777184' }}>Encoded NTAG216 hardware chips with permanent redirect routes & assignments.</p>
+                  <h3 style={{ margin: 0, fontSize: '1.1rem', fontWeight: 700, color: 'var(--adm-text-primary)' }}>NFC Card Hardware Inventory</h3>
+                  <p style={{ margin: '2px 0 0', fontSize: '0.8rem', color: 'var(--adm-text-secondary)' }}>Encoded NTAG216 hardware chips with permanent redirect routes & assignments.</p>
                 </div>
                 <button
                   type="button"
@@ -2712,10 +3240,11 @@ export default function AdminDashboard({ initialTab = 'overview', initialOrderId
                 </button>
               </div>
 
-              <div style={{ overflowX: 'auto' }}>
+              {/* Desktop Table View */}
+              <div className="admin-desktop-table" style={{ overflowX: 'auto' }}>
                 <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left', fontSize: '0.84rem' }}>
                   <thead>
-                    <tr style={{ borderBottom: '1px solid #F2ECFF', color: '#777184', fontSize: '0.74rem', textTransform: 'uppercase' }}>
+                    <tr style={{ borderBottom: 'var(--adm-divider)', color: 'var(--adm-text-secondary)', fontSize: '0.74rem', textTransform: 'uppercase' }}>
                       <th style={{ padding: '10px 12px' }}>Card ID</th>
                       <th style={{ padding: '10px 12px' }}>Customer</th>
                       <th style={{ padding: '10px 12px' }}>Assigned Profile</th>
@@ -2729,18 +3258,18 @@ export default function AdminDashboard({ initialTab = 'overview', initialOrderId
                   <tbody>
                     {cards.length === 0 ? (
                       <tr>
-                        <td colSpan={8} style={{ padding: '48px 12px', textAlign: 'center', color: '#777184' }}>
+                        <td colSpan={8} style={{ padding: '48px 12px', textAlign: 'center', color: 'var(--adm-text-secondary)' }}>
                           <CreditCard size={32} color="#C4B5FD" style={{ margin: '0 auto 8px', display: 'block' }} />
-                          <div style={{ fontWeight: 600, color: '#191522', marginBottom: '4px' }}>No NFC cards registered</div>
+                          <div style={{ fontWeight: 600, color: 'var(--adm-text-primary)', marginBottom: '4px' }}>No NFC cards registered</div>
                           <div style={{ fontSize: '0.78rem' }}>Click &quot;Encode &amp; Assign Card&quot; to link your first physical NFC card.</div>
                         </td>
                       </tr>
                     ) : (
                       cards.map((c) => (
-                      <tr key={c.id} style={{ borderBottom: '1px solid #F7F6FA' }}>
-                        <td style={{ padding: '12px', fontFamily: 'monospace', fontWeight: 700, color: '#191522' }}>{c.cardCode}</td>
+                      <tr key={c.id} style={{ borderBottom: 'var(--adm-divider)' }}>
+                        <td style={{ padding: '12px', fontFamily: 'monospace', fontWeight: 700, color: 'var(--adm-text-primary)' }}>{c.cardCode}</td>
                         <td style={{ padding: '12px', fontWeight: 600 }}>{c.customerName || 'In Stock'}</td>
-                        <td style={{ padding: '12px', color: '#777184' }}>{c.profileSlug ? `@${c.profileSlug}` : '—'}</td>
+                        <td style={{ padding: '12px', color: 'var(--adm-text-secondary)' }}>{c.profileSlug ? `@${c.profileSlug}` : '—'}</td>
                         <td style={{ padding: '12px', textTransform: 'capitalize' }}>{c.edition}</td>
                         <td style={{ padding: '12px', fontWeight: 700, color: '#6B00FF' }}>{c.tapCount || 0}</td>
                         <td style={{ padding: '12px' }}>
@@ -2792,8 +3321,8 @@ export default function AdminDashboard({ initialTab = 'overview', initialOrderId
                                 gap: '4px',
                                 padding: '5px 10px',
                                 borderRadius: '8px',
-                                border: '1px solid #E8E3EF',
-                                backgroundColor: '#FFFFFF',
+                                border: 'var(--adm-card-border)',
+                                backgroundColor: 'var(--adm-card-bg)',
                                 color: '#6B00FF',
                                 fontSize: '0.76rem',
                                 fontWeight: 600,
@@ -2828,6 +3357,134 @@ export default function AdminDashboard({ initialTab = 'overview', initialOrderId
                   </tbody>
                 </table>
               </div>
+
+              {/* Mobile Card View (Zero Horizontal Scrolling) */}
+              <div className="admin-mobile-cards" style={{ display: 'none' }}>
+                {cards.length === 0 ? (
+                  <div style={{ padding: '36px 12px', textAlign: 'center', color: 'var(--adm-text-secondary)' }}>
+                    <CreditCard size={32} color="#C4B5FD" style={{ margin: '0 auto 8px', display: 'block' }} />
+                    <div style={{ fontWeight: 600, color: 'var(--adm-text-primary)', marginBottom: '4px' }}>No NFC cards registered</div>
+                    <div style={{ fontSize: '0.78rem' }}>Click &quot;Encode &amp; Assign Card&quot; to link your first physical NFC card.</div>
+                  </div>
+                ) : (
+                  cards.map((c) => (
+                    <div
+                      key={c.id}
+                      style={{
+                        backgroundColor: 'var(--adm-card-bg)',
+                        border: 'var(--adm-card-border)',
+                        borderRadius: '14px',
+                        padding: '16px',
+                        boxShadow: 'var(--adm-card-shadow)',
+                        display: 'flex',
+                        flexDirection: 'column',
+                        gap: '12px'
+                      }}
+                    >
+                      <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: '8px' }}>
+                        <div>
+                          <div style={{ fontFamily: 'monospace', fontWeight: 800, color: 'var(--adm-text-primary)', fontSize: '0.96rem' }}>
+                            {c.cardCode}
+                          </div>
+                          <div style={{ fontSize: '0.74rem', color: 'var(--adm-text-secondary)', marginTop: '2px' }}>
+                            {c.customerName || 'In Stock'} {c.profileSlug ? `(@${c.profileSlug})` : ''}
+                          </div>
+                        </div>
+                        <span
+                          style={{
+                            fontSize: '0.72rem',
+                            padding: '3px 8px',
+                            borderRadius: '9999px',
+                            backgroundColor: c.status === 'active' ? '#EEFAF5' : c.status === 'suspended' ? '#FEF2F2' : '#F1F5F9',
+                            color: c.status === 'active' ? '#16A36A' : c.status === 'suspended' ? '#DC4545' : '#64748B',
+                            fontWeight: 700,
+                            textTransform: 'capitalize',
+                            flexShrink: 0
+                          }}
+                        >
+                          ● {c.status}
+                        </span>
+                      </div>
+
+                      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '8px', padding: '10px 12px', borderRadius: '10px', backgroundColor: 'var(--adm-search-bg)' }}>
+                        <div>
+                          <div style={{ fontSize: '0.68rem', color: 'var(--adm-text-secondary)', textTransform: 'uppercase', fontWeight: 600 }}>Edition</div>
+                          <div style={{ fontSize: '0.78rem', color: 'var(--adm-text-primary)', fontWeight: 700, marginTop: '2px', textTransform: 'capitalize' }}>
+                            {c.edition || 'Purple'}
+                          </div>
+                        </div>
+                        <div>
+                          <div style={{ fontSize: '0.68rem', color: 'var(--adm-text-secondary)', textTransform: 'uppercase', fontWeight: 600 }}>Taps Recorded</div>
+                          <div style={{ fontSize: '0.78rem', color: '#6B00FF', fontWeight: 800, marginTop: '2px' }}>
+                            {c.tapCount || 0} taps
+                          </div>
+                        </div>
+                      </div>
+
+                      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '8px 12px', borderRadius: '8px', backgroundColor: 'var(--adm-search-bg)' }}>
+                        <span style={{ fontSize: '0.7rem', color: 'var(--adm-text-secondary)' }}>NFC Route:</span>
+                        <a
+                          href={`/t/${c.cardCode}`}
+                          target="_blank"
+                          rel="noreferrer"
+                          style={{
+                            display: 'inline-flex',
+                            alignItems: 'center',
+                            gap: '4px',
+                            color: '#6B00FF',
+                            textDecoration: 'none',
+                            fontSize: '0.76rem',
+                            fontWeight: 700
+                          }}
+                        >
+                          <span>/t/{c.cardCode}</span>
+                          <ExternalLink size={12} />
+                        </a>
+                      </div>
+
+                      <div style={{ display: 'flex', gap: '8px' }}>
+                        <button
+                          type="button"
+                          onClick={() => setEditingCard(c)}
+                          style={{
+                            flex: 1,
+                            display: 'inline-flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            gap: '6px',
+                            padding: '9px 12px',
+                            borderRadius: '8px',
+                            border: 'var(--adm-card-border)',
+                            backgroundColor: 'var(--adm-card-bg)',
+                            color: '#6B00FF',
+                            fontSize: '0.8rem',
+                            fontWeight: 700,
+                            cursor: 'pointer'
+                          }}
+                        >
+                          <Edit2 size={14} />
+                          <span>Edit Hardware</span>
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => handleDeleteCard(c.id)}
+                          style={{
+                            padding: '9px 14px',
+                            borderRadius: '8px',
+                            border: '1px solid #FEE2E2',
+                            backgroundColor: '#FEF2F2',
+                            color: '#DC4545',
+                            cursor: 'pointer'
+                          }}
+                          title="Delete NFC Card"
+                        >
+                          <Trash2 size={14} />
+                        </button>
+                      </div>
+                    </div>
+                  ))
+                )}
+              </div>
             </div>
           )}
 
@@ -2836,19 +3493,19 @@ export default function AdminDashboard({ initialTab = 'overview', initialOrderId
               Protected authoritative management for physical NFC cards
               ==================================================================== */}
           {activeTab === 'pricing' && (
-            <div style={{ backgroundColor: '#FFFFFF', borderRadius: '16px', border: '1px solid #E8E3EF', padding: '28px' }}>
+            <div style={{ backgroundColor: 'var(--adm-card-bg)', borderRadius: '16px', border: 'var(--adm-card-border)', padding: '28px' }}>
               {/* Header Row */}
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '24px', flexWrap: 'wrap', gap: '16px' }}>
                 <div>
                   <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-                    <h3 style={{ margin: 0, fontSize: '1.25rem', fontWeight: 800, color: '#191522' }}>
+                    <h3 style={{ margin: 0, fontSize: '1.25rem', fontWeight: 800, color: 'var(--adm-text-primary)' }}>
                       Card Products & Pricing Configuration
                     </h3>
                     <span style={{ fontSize: '0.72rem', fontWeight: 700, padding: '3px 10px', borderRadius: '10px', backgroundColor: '#EDE9FE', color: '#6B00FF' }}>
                       INR (₹) Standard
                     </span>
                   </div>
-                  <p style={{ margin: '4px 0 0', fontSize: '0.82rem', color: '#777184' }}>
+                  <p style={{ margin: '4px 0 0', fontSize: '0.82rem', color: 'var(--adm-text-secondary)' }}>
                     Manage authoritative pricing, optional comparison prices, included hardware features, and stock availability for Gold, Platinum, and Purple editions.
                   </p>
                 </div>
@@ -2863,15 +3520,15 @@ export default function AdminDashboard({ initialTab = 'overview', initialOrderId
 
               {/* Quick Pricing Summary Row */}
               <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 220px), 1fr))', gap: '16px', marginBottom: '28px' }}>
-                <div style={{ padding: '16px', borderRadius: '12px', backgroundColor: '#FAF9FC', border: '1px solid #E8E3EF' }}>
-                  <div style={{ fontSize: '0.74rem', textTransform: 'uppercase', letterSpacing: '0.05em', color: '#777184', fontWeight: 600 }}>Physical Editions</div>
-                  <div style={{ fontSize: '1.3rem', fontWeight: 800, color: '#191522', marginTop: '4px' }}>3 Editions</div>
+                <div style={{ padding: '16px', borderRadius: '12px', backgroundColor: '#FAF9FC', border: 'var(--adm-card-border)' }}>
+                  <div style={{ fontSize: '0.74rem', textTransform: 'uppercase', letterSpacing: '0.05em', color: 'var(--adm-text-secondary)', fontWeight: 600 }}>Physical Editions</div>
+                  <div style={{ fontSize: '1.3rem', fontWeight: 800, color: 'var(--adm-text-primary)', marginTop: '4px' }}>3 Editions</div>
                   <div style={{ fontSize: '0.75rem', color: '#6B00FF', marginTop: '2px' }}>Gold, Platinum, Purple</div>
                 </div>
 
-                <div style={{ padding: '16px', borderRadius: '12px', backgroundColor: '#FAF9FC', border: '1px solid #E8E3EF' }}>
-                  <div style={{ fontSize: '0.74rem', textTransform: 'uppercase', letterSpacing: '0.05em', color: '#777184', fontWeight: 600 }}>Active Price Range</div>
-                  <div style={{ fontSize: '1.3rem', fontWeight: 800, color: '#191522', marginTop: '4px' }}>
+                <div style={{ padding: '16px', borderRadius: '12px', backgroundColor: '#FAF9FC', border: 'var(--adm-card-border)' }}>
+                  <div style={{ fontSize: '0.74rem', textTransform: 'uppercase', letterSpacing: '0.05em', color: 'var(--adm-text-secondary)', fontWeight: 600 }}>Active Price Range</div>
+                  <div style={{ fontSize: '1.3rem', fontWeight: 800, color: 'var(--adm-text-primary)', marginTop: '4px' }}>
                     {(() => {
                       const validPrices = (products || []).map(p => Number(p.price)).filter(p => !isNaN(p) && p > 0);
                       if (validPrices.length === 0) return 'Prices pending';
@@ -2883,12 +3540,12 @@ export default function AdminDashboard({ initialTab = 'overview', initialOrderId
                   <div style={{ fontSize: '0.75rem', color: '#059669', marginTop: '2px' }}>Indian Rupees (₹)</div>
                 </div>
 
-                <div style={{ padding: '16px', borderRadius: '12px', backgroundColor: '#FAF9FC', border: '1px solid #E8E3EF' }}>
-                  <div style={{ fontSize: '0.74rem', textTransform: 'uppercase', letterSpacing: '0.05em', color: '#777184', fontWeight: 600 }}>Store Availability</div>
+                <div style={{ padding: '16px', borderRadius: '12px', backgroundColor: '#FAF9FC', border: 'var(--adm-card-border)' }}>
+                  <div style={{ fontSize: '0.74rem', textTransform: 'uppercase', letterSpacing: '0.05em', color: 'var(--adm-text-secondary)', fontWeight: 600 }}>Store Availability</div>
                   <div style={{ fontSize: '1.3rem', fontWeight: 800, color: '#059669', marginTop: '4px' }}>
                     {(products || []).filter(p => p.availability !== 'out_of_stock' && p.status === 'active').length} / {(products || []).length} In Stock
                   </div>
-                  <div style={{ fontSize: '0.75rem', color: '#777184', marginTop: '2px' }}>Live NFC production</div>
+                  <div style={{ fontSize: '0.75rem', color: 'var(--adm-text-secondary)', marginTop: '2px' }}>Live NFC production</div>
                 </div>
               </div>
 
@@ -2905,7 +3562,7 @@ export default function AdminDashboard({ initialTab = 'overview', initialOrderId
                       style={{
                         borderRadius: '16px',
                         border: `1px solid ${product.accentColor ? `${product.accentColor}44` : '#E8E3EF'}`,
-                        backgroundColor: '#FFFFFF',
+                        backgroundColor: 'var(--adm-card-bg)',
                         boxShadow: '0 4px 16px rgba(0, 0, 0, 0.03)',
                         display: 'flex',
                         flexDirection: 'column',
@@ -3004,14 +3661,14 @@ export default function AdminDashboard({ initialTab = 'overview', initialOrderId
                         </div>
 
                         {/* Product Title & Pricing */}
-                        <h4 style={{ margin: '0 0 6px', fontSize: '1.2rem', fontWeight: 800, color: '#191522' }}>
+                        <h4 style={{ margin: '0 0 6px', fontSize: '1.2rem', fontWeight: 800, color: 'var(--adm-text-primary)' }}>
                           {product.name}
                         </h4>
 
                         <div style={{ display: 'flex', alignItems: 'baseline', gap: '8px', marginBottom: '8px' }}>
                           {formattedPrice ? (
                             <>
-                              <span style={{ fontSize: '1.6rem', fontWeight: 900, color: '#191522' }}>
+                              <span style={{ fontSize: '1.6rem', fontWeight: 900, color: 'var(--adm-text-primary)' }}>
                                 {formattedPrice}
                               </span>
                               {formattedCompare && (
@@ -3048,8 +3705,8 @@ export default function AdminDashboard({ initialTab = 'overview', initialOrderId
                       </div>
 
                       {/* Card Footer Actions */}
-                      <div style={{ padding: '14px 20px', borderTop: '1px solid #E8E3EF', backgroundColor: '#FAF9FC', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                        <span style={{ fontSize: '0.75rem', color: '#777184' }}>
+                      <div style={{ padding: '14px 20px', borderTop: 'var(--adm-card-border)', backgroundColor: '#FAF9FC', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                        <span style={{ fontSize: '0.75rem', color: 'var(--adm-text-secondary)' }}>
                           Updated {new Date(product.updatedAt || Date.now()).toLocaleDateString('en-IN')}
                         </span>
 
@@ -3063,7 +3720,7 @@ export default function AdminDashboard({ initialTab = 'overview', initialOrderId
                             padding: '7px 14px',
                             borderRadius: '8px',
                             border: '1px solid #D1D5DB',
-                            backgroundColor: '#FFFFFF',
+                            backgroundColor: 'var(--adm-card-bg)',
                             color: '#1F2937',
                             fontSize: '0.8rem',
                             fontWeight: 600,
@@ -3086,11 +3743,11 @@ export default function AdminDashboard({ initialTab = 'overview', initialOrderId
               VIEW: CARD TEMPLATES
               ==================================================================== */}
           {activeTab === 'templates' && (
-            <div style={{ backgroundColor: '#FFFFFF', borderRadius: '16px', border: '1px solid #E8E3EF', padding: '24px' }}>
+            <div style={{ backgroundColor: 'var(--adm-card-bg)', borderRadius: '16px', border: 'var(--adm-card-border)', padding: '24px' }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '24px', flexWrap: 'wrap', gap: '12px' }}>
                 <div>
-                  <h3 style={{ margin: 0, fontSize: '1.1rem', fontWeight: 700, color: '#191522' }}>FLOCARD Template Families & Materials</h3>
-                  <p style={{ margin: '2px 0 0', fontSize: '0.8rem', color: '#777184' }}>Manage Standard FLOCARD (Without Customer Logo) and Customer Logo (With Customer Logo) presets.</p>
+                  <h3 style={{ margin: 0, fontSize: '1.1rem', fontWeight: 700, color: 'var(--adm-text-primary)' }}>FLOCARD Template Families & Materials</h3>
+                  <p style={{ margin: '2px 0 0', fontSize: '0.8rem', color: 'var(--adm-text-secondary)' }}>Manage Standard FLOCARD (Without Customer Logo) and Customer Logo (With Customer Logo) presets.</p>
                 </div>
                 <button
                   type="button"
@@ -3120,10 +3777,10 @@ export default function AdminDashboard({ initialTab = 'overview', initialOrderId
                     key={tmpl.id || tmpl.key}
                     style={{
                       borderRadius: '16px',
-                      border: '1px solid #E8E3EF',
+                      border: 'var(--adm-card-border)',
                       padding: '20px',
-                      backgroundColor: '#FFFFFF',
-                      boxShadow: '0 2px 8px rgba(0, 0, 0, 0.02)',
+                      backgroundColor: 'var(--adm-card-bg)',
+                      boxShadow: 'var(--adm-card-shadow)',
                       display: 'flex',
                       flexDirection: 'column',
                       justifyContent: 'space-between'
@@ -3225,8 +3882,8 @@ export default function AdminDashboard({ initialTab = 'overview', initialOrderId
                       {/* Header meta */}
                       <div style={{ marginTop: '16px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                         <div>
-                          <span style={{ fontWeight: 700, color: '#191522', fontSize: '0.96rem' }}>{tmpl.name}</span>
-                          <div style={{ fontSize: '0.74rem', color: '#777184' }}>{tmpl.category || 'Preset Edition'}</div>
+                          <span style={{ fontWeight: 700, color: 'var(--adm-text-primary)', fontSize: '0.96rem' }}>{tmpl.name}</span>
+                          <div style={{ fontSize: '0.74rem', color: 'var(--adm-text-secondary)' }}>{tmpl.category || 'Preset Edition'}</div>
                         </div>
                         <span
                           style={{
@@ -3243,15 +3900,15 @@ export default function AdminDashboard({ initialTab = 'overview', initialOrderId
                       </div>
 
                       {/* Specs */}
-                      <div style={{ marginTop: '12px', padding: '10px 12px', borderRadius: '10px', backgroundColor: '#F7F6FA', fontSize: '0.76rem', color: '#777184', display: 'flex', flexDirection: 'column', gap: '4px' }}>
-                        <div><strong style={{ color: '#191522' }}>Material:</strong> {tmpl.material || 'Polymer / Metal Core'}</div>
-                        <div><strong style={{ color: '#191522' }}>Finish:</strong> {tmpl.finish || 'Matte Obsidian UV'}</div>
-                        <div><strong style={{ color: '#191522' }}>Chip:</strong> {tmpl.chip || 'NXP NTAG216'}</div>
+                      <div style={{ marginTop: '12px', padding: '10px 12px', borderRadius: '10px', backgroundColor: 'var(--adm-search-bg)', fontSize: '0.76rem', color: 'var(--adm-text-secondary)', display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                        <div><strong style={{ color: 'var(--adm-text-primary)' }}>Material:</strong> {tmpl.material || 'Polymer / Metal Core'}</div>
+                        <div><strong style={{ color: 'var(--adm-text-primary)' }}>Finish:</strong> {tmpl.finish || 'Matte Obsidian UV'}</div>
+                        <div><strong style={{ color: 'var(--adm-text-primary)' }}>Chip:</strong> {tmpl.chip || 'NXP NTAG216'}</div>
                       </div>
                     </div>
 
                     {/* Actions */}
-                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginTop: '18px', paddingTop: '14px', borderTop: '1px solid #F2ECFF' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginTop: '18px', paddingTop: '14px', borderTop: 'var(--adm-divider)' }}>
                       <div style={{ display: 'flex', gap: '8px' }}>
                         <button
                           type="button"
@@ -3262,8 +3919,8 @@ export default function AdminDashboard({ initialTab = 'overview', initialOrderId
                             gap: '5px',
                             padding: '6px 14px',
                             borderRadius: '8px',
-                            border: '1px solid #E8E3EF',
-                            backgroundColor: '#FFFFFF',
+                            border: 'var(--adm-card-border)',
+                            backgroundColor: 'var(--adm-card-bg)',
                             color: '#6B00FF',
                             fontSize: '0.78rem',
                             fontWeight: 600,
@@ -3283,9 +3940,9 @@ export default function AdminDashboard({ initialTab = 'overview', initialOrderId
                             gap: '5px',
                             padding: '6px 14px',
                             borderRadius: '8px',
-                            border: '1px solid #E8E3EF',
-                            backgroundColor: '#F7F6FA',
-                            color: '#191522',
+                            border: 'var(--adm-card-border)',
+                            backgroundColor: 'var(--adm-search-bg)',
+                            color: 'var(--adm-text-primary)',
                             fontSize: '0.78rem',
                             fontWeight: 600,
                             textDecoration: 'none'
@@ -3330,9 +3987,9 @@ export default function AdminDashboard({ initialTab = 'overview', initialOrderId
               {/* Header Card */}
               <div
                 style={{
-                  backgroundColor: '#FFFFFF',
+                  backgroundColor: 'var(--adm-card-bg)',
                   borderRadius: '16px',
-                  border: '1px solid #E8E3EF',
+                  border: 'var(--adm-card-border)',
                   padding: '24px',
                   display: 'flex',
                   justifyContent: 'space-between',
@@ -3342,14 +3999,14 @@ export default function AdminDashboard({ initialTab = 'overview', initialOrderId
                 }}
               >
                 <div>
-                  <div style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', padding: '4px 10px', borderRadius: '9999px', background: '#F3EEFF', color: '#6B00FF', fontSize: '0.72rem', fontWeight: 700, textTransform: 'uppercase', marginBottom: '8px' }}>
+                  <div style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', padding: '4px 10px', borderRadius: '9999px', background: isDark ? 'rgba(107, 0, 255, 0.25)' : '#F3EEFF', color: isDark ? '#C084FC' : '#6B00FF', fontSize: '0.72rem', fontWeight: 700, textTransform: 'uppercase', marginBottom: '8px' }}>
                     <Sparkles size={12} />
                     <span>Global Demo Showcase Control</span>
                   </div>
-                  <h3 style={{ margin: 0, fontSize: '1.25rem', fontWeight: 800, color: '#191522' }}>
+                  <h3 style={{ margin: 0, fontSize: '1.25rem', fontWeight: 800, color: 'var(--adm-text-primary)' }}>
                     Demo Showcase Configuration
                   </h3>
-                  <p style={{ margin: '4px 0 0', fontSize: '0.84rem', color: '#777184', maxWidth: '650px' }}>
+                  <p style={{ margin: '4px 0 0', fontSize: '0.84rem', color: 'var(--adm-text-secondary)', maxWidth: '650px' }}>
                     Control the default placeholders and branding across the Homepage 3D card previews and luxury digital profile demo. If no photo is uploaded, cards cleanly display the &quot;YOUR LOGO&quot; placeholder.
                   </p>
                 </div>
@@ -3361,9 +4018,9 @@ export default function AdminDashboard({ initialTab = 'overview', initialOrderId
                     style={{
                       padding: '8px 16px',
                       borderRadius: '10px',
-                      border: '1px solid #E8E3EF',
-                      background: '#FFFFFF',
-                      color: '#64748B',
+                      border: 'var(--adm-card-border)',
+                      background: 'var(--adm-card-bg)',
+                      color: isDark ? '#9B90AD' : '#64748B',
                       fontSize: '0.82rem',
                       fontWeight: 600,
                       cursor: 'pointer'
@@ -3397,13 +4054,13 @@ export default function AdminDashboard({ initialTab = 'overview', initialOrderId
 
               {/* Status Alerts */}
               {demoSaveSuccess && (
-                <div style={{ padding: '12px 16px', borderRadius: '12px', background: '#F0FDF4', border: '1px solid #BBF7D0', color: '#166534', fontSize: '0.85rem', fontWeight: 600, display: 'flex', alignItems: 'center', gap: '8px' }}>
+                <div style={{ padding: '12px 16px', borderRadius: '12px', background: isDark ? 'rgba(22, 101, 52, 0.25)' : '#F0FDF4', border: isDark ? '1px solid rgba(34, 197, 94, 0.35)' : '1px solid #BBF7D0', color: isDark ? '#4ADE80' : '#166534', fontSize: '0.85rem', fontWeight: 600, display: 'flex', alignItems: 'center', gap: '8px' }}>
                   <Check size={16} />
                   <span>{demoSaveSuccess}</span>
                 </div>
               )}
               {demoSaveError && (
-                <div style={{ padding: '12px 16px', borderRadius: '12px', background: '#FEF2F2', border: '1px solid #FECACA', color: '#991B1B', fontSize: '0.85rem', fontWeight: 600 }}>
+                <div style={{ padding: '12px 16px', borderRadius: '12px', background: isDark ? 'rgba(239, 68, 68, 0.2)' : '#FEF2F2', border: isDark ? '1px solid rgba(239, 68, 68, 0.35)' : '1px solid #FECACA', color: isDark ? '#F87171' : '#991B1B', fontSize: '0.85rem', fontWeight: 600 }}>
                   {demoSaveError}
                 </div>
               )}
@@ -3411,15 +4068,15 @@ export default function AdminDashboard({ initialTab = 'overview', initialOrderId
               {/* Main Grid: Form Controls (Left) & Real-Time Card Previews (Right) */}
               <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 420px), 1fr))', gap: '24px', alignItems: 'start' }}>
                 {/* Form Controls */}
-                <div style={{ backgroundColor: '#FFFFFF', borderRadius: '16px', border: '1px solid #E8E3EF', padding: '24px' }}>
+                <div style={{ backgroundColor: 'var(--adm-card-bg)', borderRadius: '16px', border: 'var(--adm-card-border)', padding: '24px' }}>
                   <form onSubmit={handleSaveDemoSettings} style={{ display: 'flex', flexDirection: 'column', gap: '18px' }}>
-                    <div style={{ fontSize: '0.9rem', fontWeight: 800, textTransform: 'uppercase', letterSpacing: '0.05em', color: '#6B00FF', borderBottom: '1px solid #F3EEFF', paddingBottom: '8px' }}>
+                    <div style={{ fontSize: '0.9rem', fontWeight: 800, textTransform: 'uppercase', letterSpacing: '0.05em', color: '#6B00FF', borderBottom: isDark ? '1px solid #2B1E3E' : '1px solid #F3EEFF', paddingBottom: '8px' }}>
                       Primary Identity &amp; Typography
                     </div>
 
                     {/* Name */}
                     <div>
-                      <label style={{ display: 'block', fontSize: '0.78rem', fontWeight: 700, color: '#334155', marginBottom: '6px' }}>
+                      <label style={{ display: 'block', fontSize: '0.78rem', fontWeight: 700, color: isDark ? '#E2E8F0' : '#334155', marginBottom: '6px' }}>
                         Full Name (Replaces &quot;Akhil Anvar&quot;)
                       </label>
                       <input
@@ -3427,14 +4084,14 @@ export default function AdminDashboard({ initialTab = 'overview', initialOrderId
                         value={demoForm.name}
                         onChange={(e) => setDemoForm(prev => ({ ...prev, name: e.target.value }))}
                         placeholder="e.g. Your Name"
-                        style={{ width: '100%', padding: '10px 14px', borderRadius: '10px', border: '1px solid #CBD5E1', fontSize: '0.88rem' }}
+                        style={{ width: '100%', padding: '10px 14px', borderRadius: '10px', border: isDark ? '1px solid #2B1E3E' : '1px solid #CBD5E1', backgroundColor: isDark ? '#0E0A16' : '#FFFFFF', color: isDark ? '#FFFFFF' : '#191522', fontSize: '0.88rem' }}
                       />
                     </div>
 
                     {/* Role & Tagline Row */}
                     <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
                       <div>
-                        <label style={{ display: 'block', fontSize: '0.78rem', fontWeight: 700, color: '#334155', marginBottom: '6px' }}>
+                        <label style={{ display: 'block', fontSize: '0.78rem', fontWeight: 700, color: isDark ? '#E2E8F0' : '#334155', marginBottom: '6px' }}>
                           Role / Title (Replaces &quot;CEO &amp; Founder&quot;)
                         </label>
                         <input
@@ -3442,11 +4099,11 @@ export default function AdminDashboard({ initialTab = 'overview', initialOrderId
                           value={demoForm.role}
                           onChange={(e) => setDemoForm(prev => ({ ...prev, role: e.target.value }))}
                           placeholder="e.g. Your Role"
-                          style={{ width: '100%', padding: '10px 14px', borderRadius: '10px', border: '1px solid #CBD5E1', fontSize: '0.88rem' }}
+                          style={{ width: '100%', padding: '10px 14px', borderRadius: '10px', border: isDark ? '1px solid #2B1E3E' : '1px solid #CBD5E1', backgroundColor: isDark ? '#0E0A16' : '#FFFFFF', color: isDark ? '#FFFFFF' : '#191522', fontSize: '0.88rem' }}
                         />
                       </div>
                       <div>
-                        <label style={{ display: 'block', fontSize: '0.78rem', fontWeight: 700, color: '#334155', marginBottom: '6px' }}>
+                        <label style={{ display: 'block', fontSize: '0.78rem', fontWeight: 700, color: isDark ? '#E2E8F0' : '#334155', marginBottom: '6px' }}>
                           Front Card Tagline
                         </label>
                         <input
@@ -3454,14 +4111,14 @@ export default function AdminDashboard({ initialTab = 'overview', initialOrderId
                           value={demoForm.tagline}
                           onChange={(e) => setDemoForm(prev => ({ ...prev, tagline: e.target.value }))}
                           placeholder="e.g. Your Tagline"
-                          style={{ width: '100%', padding: '10px 14px', borderRadius: '10px', border: '1px solid #CBD5E1', fontSize: '0.88rem' }}
+                          style={{ width: '100%', padding: '10px 14px', borderRadius: '10px', border: isDark ? '1px solid #2B1E3E' : '1px solid #CBD5E1', backgroundColor: isDark ? '#0E0A16' : '#FFFFFF', color: isDark ? '#FFFFFF' : '#191522', fontSize: '0.88rem' }}
                         />
                       </div>
                     </div>
 
                     {/* Company */}
                     <div>
-                      <label style={{ display: 'block', fontSize: '0.78rem', fontWeight: 700, color: '#334155', marginBottom: '6px' }}>
+                      <label style={{ display: 'block', fontSize: '0.78rem', fontWeight: 700, color: isDark ? '#E2E8F0' : '#334155', marginBottom: '6px' }}>
                         Company Name
                       </label>
                       <input
@@ -3469,14 +4126,14 @@ export default function AdminDashboard({ initialTab = 'overview', initialOrderId
                         value={demoForm.company}
                         onChange={(e) => setDemoForm(prev => ({ ...prev, company: e.target.value }))}
                         placeholder="e.g. Your Company"
-                        style={{ width: '100%', padding: '10px 14px', borderRadius: '10px', border: '1px solid #CBD5E1', fontSize: '0.88rem' }}
+                        style={{ width: '100%', padding: '10px 14px', borderRadius: '10px', border: isDark ? '1px solid #2B1E3E' : '1px solid #CBD5E1', backgroundColor: isDark ? '#0E0A16' : '#FFFFFF', color: isDark ? '#FFFFFF' : '#191522', fontSize: '0.88rem' }}
                       />
                     </div>
 
                     {/* Custom Image / Logo Upload */}
                     <div>
                       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '6px' }}>
-                        <label style={{ fontSize: '0.78rem', fontWeight: 700, color: '#334155' }}>
+                        <label style={{ fontSize: '0.78rem', fontWeight: 700, color: isDark ? '#E2E8F0' : '#334155' }}>
                           Custom Brand Photo or Logo
                         </label>
                         {(demoForm.avatar || demoForm.logo) && (
@@ -3492,11 +4149,11 @@ export default function AdminDashboard({ initialTab = 'overview', initialOrderId
 
                       <div
                         style={{
-                          border: '2px dashed #CBD5E1',
+                          border: isDark ? '2px dashed #33224B' : '2px dashed #CBD5E1',
                           borderRadius: '12px',
                           padding: '16px',
                           textAlign: 'center',
-                          backgroundColor: '#F8FAFC',
+                          backgroundColor: isDark ? '#0E0A16' : '#F8FAFC',
                           display: 'flex',
                           alignItems: 'center',
                           justifyContent: 'center',
@@ -3508,19 +4165,19 @@ export default function AdminDashboard({ initialTab = 'overview', initialOrderId
                             <img
                               src={demoForm.avatar || demoForm.logo}
                               alt="Demo Logo"
-                              style={{ width: '50px', height: '50px', borderRadius: '10px', objectFit: 'cover', border: '1px solid #CBD5E1' }}
+                              style={{ width: '50px', height: '50px', borderRadius: '10px', objectFit: 'cover', border: isDark ? '1px solid #33224B' : '1px solid #CBD5E1' }}
                             />
                             <div style={{ textAlign: 'left' }}>
-                              <div style={{ fontSize: '0.8rem', fontWeight: 700, color: '#0F172A' }}>Active Custom Image</div>
-                              <div style={{ fontSize: '0.72rem', color: '#64748B' }}>Displayed on demo cards and profile</div>
+                              <div style={{ fontSize: '0.8rem', fontWeight: 700, color: isDark ? '#F1F5F9' : '#0F172A' }}>Active Custom Image</div>
+                              <div style={{ fontSize: '0.72rem', color: isDark ? '#9B90AD' : '#64748B' }}>Displayed on demo cards and profile</div>
                             </div>
                           </div>
                         ) : (
                           <div style={{ textAlign: 'left' }}>
-                            <div style={{ fontSize: '0.82rem', fontWeight: 700, color: '#475569' }}>
+                            <div style={{ fontSize: '0.82rem', fontWeight: 700, color: isDark ? '#E2E8F0' : '#475569' }}>
                               No custom photo uploaded
                             </div>
-                            <div style={{ fontSize: '0.72rem', color: '#94A3B8' }}>
+                            <div style={{ fontSize: '0.72rem', color: isDark ? '#9B90AD' : '#94A3B8' }}>
                               Cards will display the luxury &quot;YOUR LOGO&quot; text placeholder
                             </div>
                           </div>
@@ -3531,11 +4188,11 @@ export default function AdminDashboard({ initialTab = 'overview', initialOrderId
                             marginLeft: 'auto',
                             padding: '7px 14px',
                             borderRadius: '8px',
-                            background: '#F1F5F9',
-                            border: '1px solid #CBD5E1',
+                            background: isDark ? '#1F162C' : '#F1F5F9',
+                            border: isDark ? '1px solid #3B2857' : '1px solid #CBD5E1',
                             fontSize: '0.78rem',
                             fontWeight: 700,
-                            color: '#334155',
+                            color: isDark ? '#D8B4FE' : '#334155',
                             cursor: uploadingDemoImage ? 'wait' : 'pointer',
                             display: 'inline-flex',
                             alignItems: 'center',
@@ -3556,13 +4213,13 @@ export default function AdminDashboard({ initialTab = 'overview', initialOrderId
                     </div>
 
                     {/* Contact & Card Finish */}
-                    <div style={{ fontSize: '0.9rem', fontWeight: 800, textTransform: 'uppercase', letterSpacing: '0.05em', color: '#6B00FF', borderBottom: '1px solid #F3EEFF', paddingBottom: '8px', marginTop: '6px' }}>
+                    <div style={{ fontSize: '0.9rem', fontWeight: 800, textTransform: 'uppercase', letterSpacing: '0.05em', color: '#6B00FF', borderBottom: isDark ? '1px solid #2B1E3E' : '1px solid #F3EEFF', paddingBottom: '8px', marginTop: '6px' }}>
                       Contact Details &amp; Card Finish
                     </div>
 
                     <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
                       <div>
-                        <label style={{ display: 'block', fontSize: '0.78rem', fontWeight: 700, color: '#334155', marginBottom: '6px' }}>
+                        <label style={{ display: 'block', fontSize: '0.78rem', fontWeight: 700, color: isDark ? '#E2E8F0' : '#334155', marginBottom: '6px' }}>
                           Phone Number
                         </label>
                         <input
@@ -3570,11 +4227,11 @@ export default function AdminDashboard({ initialTab = 'overview', initialOrderId
                           value={demoForm.phone}
                           onChange={(e) => setDemoForm(prev => ({ ...prev, phone: e.target.value }))}
                           placeholder="+91 98765 43210"
-                          style={{ width: '100%', padding: '10px 14px', borderRadius: '10px', border: '1px solid #CBD5E1', fontSize: '0.88rem' }}
+                          style={{ width: '100%', padding: '10px 14px', borderRadius: '10px', border: isDark ? '1px solid #2B1E3E' : '1px solid #CBD5E1', backgroundColor: isDark ? '#0E0A16' : '#FFFFFF', color: isDark ? '#FFFFFF' : '#191522', fontSize: '0.88rem' }}
                         />
                       </div>
                       <div>
-                        <label style={{ display: 'block', fontSize: '0.78rem', fontWeight: 700, color: '#334155', marginBottom: '6px' }}>
+                        <label style={{ display: 'block', fontSize: '0.78rem', fontWeight: 700, color: isDark ? '#E2E8F0' : '#334155', marginBottom: '6px' }}>
                           Email Address
                         </label>
                         <input
@@ -3582,14 +4239,14 @@ export default function AdminDashboard({ initialTab = 'overview', initialOrderId
                           value={demoForm.email}
                           onChange={(e) => setDemoForm(prev => ({ ...prev, email: e.target.value }))}
                           placeholder="contact@flocard.in"
-                          style={{ width: '100%', padding: '10px 14px', borderRadius: '10px', border: '1px solid #CBD5E1', fontSize: '0.88rem' }}
+                          style={{ width: '100%', padding: '10px 14px', borderRadius: '10px', border: isDark ? '1px solid #2B1E3E' : '1px solid #CBD5E1', backgroundColor: isDark ? '#0E0A16' : '#FFFFFF', color: isDark ? '#FFFFFF' : '#191522', fontSize: '0.88rem' }}
                         />
                       </div>
                     </div>
 
                     {/* Card Finish Selector */}
                     <div>
-                      <label style={{ display: 'block', fontSize: '0.78rem', fontWeight: 700, color: '#334155', marginBottom: '6px' }}>
+                      <label style={{ display: 'block', fontSize: '0.78rem', fontWeight: 700, color: isDark ? '#E2E8F0' : '#334155', marginBottom: '6px' }}>
                         Card Finish Theme
                       </label>
                       <div style={{ display: 'flex', gap: '10px' }}>
@@ -3606,7 +4263,7 @@ export default function AdminDashboard({ initialTab = 'overview', initialOrderId
                               flex: 1,
                               padding: '10px',
                               borderRadius: '10px',
-                              border: demoForm.cardFinish === finish.id ? `2px solid ${finish.color}` : '1px solid #E2E8F0',
+                              border: demoForm.cardFinish === finish.id ? `2px solid ${finish.color}` : (isDark ? '1px solid #2B1E3E' : '1px solid #E2E8F0'),
                               background: finish.bg,
                               color: '#FFFFFF',
                               fontSize: '0.78rem',
@@ -3615,7 +4272,8 @@ export default function AdminDashboard({ initialTab = 'overview', initialOrderId
                               display: 'flex',
                               alignItems: 'center',
                               justifyContent: 'center',
-                              gap: '6px'
+                              gap: '6px',
+                              boxShadow: demoForm.cardFinish === finish.id ? `0 0 12px ${finish.color}40` : 'none'
                             }}
                           >
                             <span style={{ width: '10px', height: '10px', borderRadius: '50%', backgroundColor: finish.color }} />
@@ -3649,7 +4307,7 @@ export default function AdminDashboard({ initialTab = 'overview', initialOrderId
                 {/* Live Previews Column (Right) */}
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
                   {/* Shiny Card Preview */}
-                  <div style={{ backgroundColor: '#09060F', borderRadius: '16px', border: '1px solid #281D3D', padding: '24px', textAlign: 'center' }}>
+                  <div style={{ backgroundColor: isDark ? '#09060F' : '#FFFFFF', borderRadius: '16px', border: isDark ? '1px solid #281D3D' : '1px solid #E8E3EF', padding: '24px', textAlign: 'center', boxShadow: isDark ? '0 10px 30px rgba(0,0,0,0.5)' : '0 4px 20px rgba(107,0,255,0.06)' }}>
                     <div style={{ fontSize: '0.75rem', fontWeight: 700, textTransform: 'uppercase', color: '#A855F7', marginBottom: '14px', letterSpacing: '0.08em' }}>
                       Live Digital Profile Shiny Card Preview
                     </div>
@@ -3673,7 +4331,7 @@ export default function AdminDashboard({ initialTab = 'overview', initialOrderId
                   </div>
 
                   {/* 3D Physical Card Preview */}
-                  <div style={{ backgroundColor: '#09060F', borderRadius: '16px', border: '1px solid #281D3D', padding: '24px', textAlign: 'center' }}>
+                  <div style={{ backgroundColor: isDark ? '#09060F' : '#FFFFFF', borderRadius: '16px', border: isDark ? '1px solid #281D3D' : '1px solid #E8E3EF', padding: '24px', textAlign: 'center', boxShadow: isDark ? '0 10px 30px rgba(0,0,0,0.5)' : '0 4px 20px rgba(107,0,255,0.06)' }}>
                     <div style={{ fontSize: '0.75rem', fontWeight: 700, textTransform: 'uppercase', color: '#A855F7', marginBottom: '14px', letterSpacing: '0.08em' }}>
                       Live 3D NFC Card Artwork Preview
                     </div>
@@ -3705,31 +4363,31 @@ export default function AdminDashboard({ initialTab = 'overview', initialOrderId
               VIEW: ANALYTICS
               ==================================================================== */}
           {activeTab === 'analytics' && (
-            <div style={{ backgroundColor: '#FFFFFF', borderRadius: '16px', border: '1px solid #E8E3EF', padding: '24px' }}>
+            <div style={{ backgroundColor: 'var(--adm-card-bg)', borderRadius: '16px', border: 'var(--adm-card-border)', padding: '24px' }}>
               <div style={{ marginBottom: '24px' }}>
-                <h3 style={{ margin: 0, fontSize: '1.1rem', fontWeight: 700, color: '#191522' }}>Real Contactless Tap Telemetry</h3>
-                <p style={{ margin: '2px 0 0', fontSize: '0.8rem', color: '#777184' }}>Live physical interaction data across all issued FLOCARD smart cards.</p>
+                <h3 style={{ margin: 0, fontSize: '1.1rem', fontWeight: 700, color: 'var(--adm-text-primary)' }}>Real Contactless Tap Telemetry</h3>
+                <p style={{ margin: '2px 0 0', fontSize: '0.8rem', color: 'var(--adm-text-secondary)' }}>Live physical interaction data across all issued FLOCARD smart cards.</p>
               </div>
 
               <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 240px), 1fr))', gap: '20px', marginBottom: '24px' }}>
-                <div style={{ padding: '20px', borderRadius: '14px', backgroundColor: '#F3EEFF', border: '1px solid #E4D8FF' }}>
-                  <div style={{ fontSize: '0.8rem', color: '#6B00FF', fontWeight: 600 }}>Total Tap Count</div>
-                  <div style={{ fontSize: '2rem', fontWeight: 800, color: '#191522', marginTop: '4px' }}>
+                <div style={{ padding: '20px', borderRadius: '14px', backgroundColor: isDark ? 'rgba(107, 0, 255, 0.15)' : '#F3EEFF', border: isDark ? '1px solid rgba(168, 85, 247, 0.3)' : '1px solid #E4D8FF' }}>
+                  <div style={{ fontSize: '0.8rem', color: isDark ? '#C084FC' : '#6B00FF', fontWeight: 600 }}>Total Tap Count</div>
+                  <div style={{ fontSize: '2rem', fontWeight: 800, color: 'var(--adm-text-primary)', marginTop: '4px' }}>
                     {cards.reduce((sum, c) => sum + (c.tapCount || 0), 0)}
                   </div>
-                  <div style={{ fontSize: '0.74rem', color: '#16A36A', marginTop: '4px' }}>Across {cards.length} encoded cards</div>
+                  <div style={{ fontSize: '0.74rem', color: isDark ? '#4ADE80' : '#16A36A', marginTop: '4px' }}>Across {cards.length} encoded cards</div>
                 </div>
 
-                <div style={{ padding: '20px', borderRadius: '14px', backgroundColor: '#EEFAF5', border: '1px solid #D0F2E3' }}>
-                  <div style={{ fontSize: '0.8rem', color: '#16A36A', fontWeight: 600 }}>Resolution Success Rate</div>
-                  <div style={{ fontSize: '2rem', fontWeight: 800, color: '#191522', marginTop: '4px' }}>99.98%</div>
-                  <div style={{ fontSize: '0.74rem', color: '#777184', marginTop: '4px' }}>Sub-15ms DNS & Edge Routing</div>
+                <div style={{ padding: '20px', borderRadius: '14px', backgroundColor: isDark ? 'rgba(22, 163, 106, 0.15)' : '#EEFAF5', border: isDark ? '1px solid rgba(34, 197, 94, 0.3)' : '1px solid #D0F2E3' }}>
+                  <div style={{ fontSize: '0.8rem', color: isDark ? '#4ADE80' : '#16A36A', fontWeight: 600 }}>Resolution Success Rate</div>
+                  <div style={{ fontSize: '2rem', fontWeight: 800, color: 'var(--adm-text-primary)', marginTop: '4px' }}>99.98%</div>
+                  <div style={{ fontSize: '0.74rem', color: 'var(--adm-text-secondary)', marginTop: '4px' }}>Sub-15ms DNS & Edge Routing</div>
                 </div>
 
-                <div style={{ padding: '20px', borderRadius: '14px', backgroundColor: '#EEF6FF', border: '1px solid #D6E7FF' }}>
-                  <div style={{ fontSize: '0.8rem', color: '#2563EB', fontWeight: 600 }}>Most Tapped Card</div>
-                  <div style={{ fontSize: '1.2rem', fontWeight: 800, color: '#191522', marginTop: '6px' }}>FC-0001240 (Akhil Anvar)</div>
-                  <div style={{ fontSize: '0.74rem', color: '#2563EB', marginTop: '4px' }}>340 recorded taps</div>
+                <div style={{ padding: '20px', borderRadius: '14px', backgroundColor: isDark ? 'rgba(37, 99, 235, 0.15)' : '#EEF6FF', border: isDark ? '1px solid rgba(59, 130, 246, 0.3)' : '1px solid #D6E7FF' }}>
+                  <div style={{ fontSize: '0.8rem', color: isDark ? '#60A5FA' : '#2563EB', fontWeight: 600 }}>Most Tapped Card</div>
+                  <div style={{ fontSize: '1.2rem', fontWeight: 800, color: 'var(--adm-text-primary)', marginTop: '6px' }}>FC-0001240 (Akhil Anvar)</div>
+                  <div style={{ fontSize: '0.74rem', color: isDark ? '#60A5FA' : '#2563EB', marginTop: '4px' }}>340 recorded taps</div>
                 </div>
               </div>
             </div>
@@ -3739,13 +4397,13 @@ export default function AdminDashboard({ initialTab = 'overview', initialOrderId
               VIEW: OWNER-CONTROLLED ADMIN ACCESS (Owner Only)
               ==================================================================== */}
           {activeTab === 'admin-access' && isOwner && (
-            <div style={{ backgroundColor: '#FFFFFF', borderRadius: '16px', border: '1px solid #E8E3EF', padding: '24px' }}>
+            <div style={{ backgroundColor: 'var(--adm-card-bg)', borderRadius: '16px', border: 'var(--adm-card-border)', padding: '24px' }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '24px' }}>
                 <div>
-                  <h3 style={{ margin: 0, fontSize: '1.1rem', fontWeight: 700, color: '#191522' }}>
+                  <h3 style={{ margin: 0, fontSize: '1.1rem', fontWeight: 700, color: 'var(--adm-text-primary)' }}>
                     Owner-Controlled Administrator Access
                   </h3>
-                  <p style={{ margin: '2px 0 0', fontSize: '0.8rem', color: '#777184' }}>
+                  <p style={{ margin: '2px 0 0', fontSize: '0.8rem', color: 'var(--adm-text-secondary)' }}>
                     Only the platform owner can grant, revoke, or reassign administrator access privileges.
                   </p>
                 </div>
@@ -3790,18 +4448,18 @@ export default function AdminDashboard({ initialTab = 'overview', initialOrderId
               VIEW: AUDIT LOGS
               ==================================================================== */}
           {activeTab === 'audit-logs' && (
-            <div style={{ backgroundColor: '#FFFFFF', borderRadius: '16px', border: '1px solid #E8E3EF', padding: '24px' }}>
+            <div style={{ backgroundColor: 'var(--adm-card-bg)', borderRadius: '16px', border: 'var(--adm-card-border)', padding: '24px' }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
                 <div>
-                  <h3 style={{ margin: 0, fontSize: '1.1rem', fontWeight: 700, color: '#191522' }}>Platform Audit Trail</h3>
-                  <p style={{ margin: '2px 0 0', fontSize: '0.8rem', color: '#777184' }}>Immutable operational events for regulatory and security traceability.</p>
+                  <h3 style={{ margin: 0, fontSize: '1.1rem', fontWeight: 700, color: 'var(--adm-text-primary)' }}>Platform Audit Trail</h3>
+                  <p style={{ margin: '2px 0 0', fontSize: '0.8rem', color: 'var(--adm-text-secondary)' }}>Immutable operational events for regulatory and security traceability.</p>
                 </div>
               </div>
 
               <div style={{ overflowX: 'auto' }}>
                 <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left', fontSize: '0.84rem' }}>
                   <thead>
-                    <tr style={{ borderBottom: '1px solid #F2ECFF', color: '#777184', fontSize: '0.74rem', textTransform: 'uppercase' }}>
+                    <tr style={{ borderBottom: 'var(--adm-divider)', color: 'var(--adm-text-secondary)', fontSize: '0.74rem', textTransform: 'uppercase' }}>
                       <th style={{ padding: '10px 12px' }}>Type</th>
                       <th style={{ padding: '10px 12px' }}>Event Description</th>
                       <th style={{ padding: '10px 12px' }}>Actor</th>
@@ -3811,21 +4469,21 @@ export default function AdminDashboard({ initialTab = 'overview', initialOrderId
                   <tbody>
                     {auditLogs.length === 0 ? (
                       <tr>
-                        <td colSpan={4} style={{ padding: '36px 12px', textAlign: 'center', color: '#777184' }}>
+                        <td colSpan={4} style={{ padding: '36px 12px', textAlign: 'center', color: 'var(--adm-text-secondary)' }}>
                           No operational audit logs recorded yet.
                         </td>
                       </tr>
                     ) : (
                       auditLogs.map((log) => (
-                        <tr key={log.id} style={{ borderBottom: '1px solid #F7F6FA' }}>
+                        <tr key={log.id} style={{ borderBottom: 'var(--adm-divider)' }}>
                           <td style={{ padding: '12px' }}>
                             <span style={{ fontSize: '0.74rem', fontWeight: 600, padding: '3px 8px', borderRadius: '6px', backgroundColor: '#F3EEFF', color: '#6B00FF' }}>
                               {log.type}
                             </span>
                           </td>
-                          <td style={{ padding: '12px', fontWeight: 500, color: '#191522' }}>{log.details}</td>
+                          <td style={{ padding: '12px', fontWeight: 500, color: 'var(--adm-text-primary)' }}>{log.details}</td>
                           <td style={{ padding: '12px', fontWeight: 600 }}>{log.userName}</td>
-                          <td style={{ padding: '12px', color: '#777184', fontSize: '0.78rem' }}>{log.timeAgo}</td>
+                          <td style={{ padding: '12px', color: 'var(--adm-text-secondary)', fontSize: '0.78rem' }}>{log.timeAgo}</td>
                         </tr>
                       ))
                     )}
@@ -3839,19 +4497,19 @@ export default function AdminDashboard({ initialTab = 'overview', initialOrderId
               VIEW: SETTINGS
               ==================================================================== */}
           {activeTab === 'settings' && (
-            <div style={{ backgroundColor: '#FFFFFF', borderRadius: '16px', border: '1px solid #E8E3EF', padding: '24px' }}>
+            <div style={{ backgroundColor: 'var(--adm-card-bg)', borderRadius: '16px', border: 'var(--adm-card-border)', padding: '24px' }}>
               <div style={{ marginBottom: '24px' }}>
-                <h3 style={{ margin: 0, fontSize: '1.1rem', fontWeight: 700, color: '#191522' }}>Platform Configuration & Environment</h3>
-                <p style={{ margin: '2px 0 0', fontSize: '0.8rem', color: '#777184' }}>Telemetry connections and system persistence settings.</p>
+                <h3 style={{ margin: 0, fontSize: '1.1rem', fontWeight: 700, color: 'var(--adm-text-primary)' }}>Platform Configuration & Environment</h3>
+                <p style={{ margin: '2px 0 0', fontSize: '0.8rem', color: 'var(--adm-text-secondary)' }}>Telemetry connections and system persistence settings.</p>
               </div>
 
               <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
                 {/* Database Telemetry Status */}
-                <div style={{ padding: '18px 20px', borderRadius: '12px', border: '1px solid #E8E3EF', backgroundColor: '#F7F6FA' }}>
+                <div style={{ padding: '18px 20px', borderRadius: '12px', border: 'var(--adm-card-border)', backgroundColor: 'var(--adm-search-bg)' }}>
                   <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
                     <div>
-                      <div style={{ fontWeight: 600, color: '#191522', fontSize: '0.92rem' }}>Storage Engine Mode</div>
-                      <div style={{ color: '#777184', fontSize: '0.8rem', marginTop: '2px' }}>{dbStatus.mode}</div>
+                      <div style={{ fontWeight: 600, color: 'var(--adm-text-primary)', fontSize: '0.92rem' }}>Storage Engine Mode</div>
+                      <div style={{ color: 'var(--adm-text-secondary)', fontSize: '0.8rem', marginTop: '2px' }}>{dbStatus.mode}</div>
                     </div>
                     <span style={{ fontSize: '0.74rem', padding: '4px 10px', borderRadius: '9999px', backgroundColor: '#EEFAF5', color: '#16A36A', fontWeight: 700 }}>
                       ● Operational
@@ -3860,17 +4518,17 @@ export default function AdminDashboard({ initialTab = 'overview', initialOrderId
                 </div>
 
                 {/* Studio Background Setting */}
-                <div style={{ padding: '18px 20px', borderRadius: '12px', border: '1px solid #E8E3EF', backgroundColor: '#F7F6FA' }}>
+                <div style={{ padding: '18px 20px', borderRadius: '12px', border: 'var(--adm-card-border)', backgroundColor: 'var(--adm-search-bg)' }}>
                   <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
                     <div>
-                      <div style={{ fontWeight: 600, color: '#191522', fontSize: '0.92rem' }}>Global Studio 3D Environment</div>
-                      <div style={{ color: '#777184', fontSize: '0.8rem', marginTop: '2px' }}>Current: {studioBackground}</div>
+                      <div style={{ fontWeight: 600, color: 'var(--adm-text-primary)', fontSize: '0.92rem' }}>Global Studio 3D Environment</div>
+                      <div style={{ color: 'var(--adm-text-secondary)', fontSize: '0.8rem', marginTop: '2px' }}>Current: {studioBackground}</div>
                     </div>
                     {isOwner && (
                       <button
                         type="button"
                         onClick={() => resetStudioBg('admin')}
-                        style={{ padding: '6px 14px', borderRadius: '8px', border: '1px solid #E8E3EF', backgroundColor: '#FFFFFF', color: '#191522', fontSize: '0.78rem', fontWeight: 600, cursor: 'pointer' }}
+                        style={{ padding: '6px 14px', borderRadius: '8px', border: 'var(--adm-card-border)', backgroundColor: 'var(--adm-card-bg)', color: 'var(--adm-text-primary)', fontSize: '0.78rem', fontWeight: 600, cursor: 'pointer' }}
                       >
                         Reset to Default
                       </button>
@@ -3883,7 +4541,7 @@ export default function AdminDashboard({ initialTab = 'overview', initialOrderId
                   <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '14px' }}>
                     <div>
                       <div style={{ fontWeight: 700, color: '#DC4545', fontSize: '0.92rem' }}>Reset Demo Records</div>
-                      <div style={{ color: '#777184', fontSize: '0.78rem', marginTop: '2px' }}>
+                      <div style={{ color: 'var(--adm-text-secondary)', fontSize: '0.78rem', marginTop: '2px' }}>
                         Press and hold to wipe local custom modifications and re-initialize factory records.
                       </div>
                     </div>
@@ -3922,9 +4580,9 @@ export default function AdminDashboard({ initialTab = 'overview', initialOrderId
         >
           <div
             style={{
-              backgroundColor: '#FFFFFF',
+              backgroundColor: 'var(--adm-card-bg)',
               borderRadius: '24px',
-              border: '1px solid #E8E3EF',
+              border: 'var(--adm-card-border)',
               width: '100%',
               maxWidth: '840px',
               maxHeight: '90vh',
@@ -3938,10 +4596,10 @@ export default function AdminDashboard({ initialTab = 'overview', initialOrderId
                 <span style={{ fontSize: '0.74rem', fontWeight: 700, color: '#6B00FF', textTransform: 'uppercase' }}>
                   Design Review #{reviewModalDesign.id}
                 </span>
-                <h2 style={{ margin: '4px 0 0', fontSize: '1.35rem', fontWeight: 800, color: '#191522' }}>
+                <h2 style={{ margin: '4px 0 0', fontSize: '1.35rem', fontWeight: 800, color: 'var(--adm-text-primary)' }}>
                   {reviewModalDesign.title}
                 </h2>
-                <p style={{ margin: '2px 0 0', color: '#777184', fontSize: '0.84rem' }}>
+                <p style={{ margin: '2px 0 0', color: 'var(--adm-text-secondary)', fontSize: '0.84rem' }}>
                   Submitted by {reviewModalDesign.customerName} ({reviewModalDesign.customerEmail || 'customer@flocard.in'})
                 </p>
               </div>
@@ -3949,7 +4607,7 @@ export default function AdminDashboard({ initialTab = 'overview', initialOrderId
               <button
                 type="button"
                 onClick={() => setReviewModalDesign(null)}
-                style={{ background: 'none', border: 'none', color: '#777184', cursor: 'pointer' }}
+                style={{ background: 'none', border: 'none', color: 'var(--adm-text-secondary)', cursor: 'pointer' }}
               >
                 <X size={20} />
               </button>
@@ -3966,7 +4624,7 @@ export default function AdminDashboard({ initialTab = 'overview', initialOrderId
 
             {/* Review Notes */}
             <div style={{ marginTop: '20px' }}>
-              <label style={{ display: 'block', fontSize: '0.82rem', fontWeight: 600, color: '#191522', marginBottom: '6px' }}>
+              <label style={{ display: 'block', fontSize: '0.82rem', fontWeight: 600, color: 'var(--adm-text-primary)', marginBottom: '6px' }}>
                 Master Print Technician Review Notes
               </label>
               <textarea
@@ -3978,11 +4636,11 @@ export default function AdminDashboard({ initialTab = 'overview', initialOrderId
                   width: '100%',
                   padding: '10px 14px',
                   borderRadius: '10px',
-                  border: '1px solid #E8E3EF',
+                  border: 'var(--adm-card-border)',
                   fontSize: '0.84rem',
-                  color: '#191522',
+                  color: 'var(--adm-text-primary)',
                   outline: 'none',
-                  backgroundColor: '#F7F6FA'
+                  backgroundColor: 'var(--adm-search-bg)'
                 }}
               />
             </div>
@@ -3998,9 +4656,9 @@ export default function AdminDashboard({ initialTab = 'overview', initialOrderId
                   gap: '6px',
                   padding: '10px 18px',
                   borderRadius: '10px',
-                  border: '1px solid #E8E3EF',
-                  backgroundColor: '#FFFFFF',
-                  color: '#191522',
+                  border: 'var(--adm-card-border)',
+                  backgroundColor: 'var(--adm-card-bg)',
+                  color: 'var(--adm-text-primary)',
                   fontWeight: 600,
                   fontSize: '0.84rem',
                   cursor: 'pointer'
@@ -4051,8 +4709,8 @@ export default function AdminDashboard({ initialTab = 'overview', initialOrderId
           ==================================================================== */}
       {newCustomerModal && (
         <div style={{ position: 'fixed', inset: 0, backgroundColor: 'rgba(8, 6, 13, 0.85)', backdropFilter: 'blur(4px)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000, padding: '20px' }}>
-          <div style={{ backgroundColor: '#FFFFFF', borderRadius: '20px', width: '100%', maxWidth: '440px', padding: '28px', border: '1px solid #E8E3EF' }}>
-            <h3 style={{ margin: '0 0 16px', fontSize: '1.2rem', fontWeight: 800, color: '#191522' }}>Add New Customer</h3>
+          <div style={{ backgroundColor: 'var(--adm-card-bg)', borderRadius: '20px', width: '100%', maxWidth: '440px', padding: '28px', border: 'var(--adm-card-border)' }}>
+            <h3 style={{ margin: '0 0 16px', fontSize: '1.2rem', fontWeight: 800, color: 'var(--adm-text-primary)' }}>Add New Customer</h3>
             <form onSubmit={handleCreateCustomer} style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
               <div>
                 <label style={{ display: 'block', fontSize: '0.78rem', fontWeight: 600, marginBottom: '4px' }}>Full Name</label>
@@ -4062,7 +4720,7 @@ export default function AdminDashboard({ initialTab = 'overview', initialOrderId
                   value={newCustForm.name}
                   onChange={(e) => setNewCustForm({ ...newCustForm, name: e.target.value })}
                   placeholder="e.g. Zainab Tariq"
-                  style={{ width: '100%', padding: '9px 12px', borderRadius: '8px', border: '1px solid #E8E3EF' }}
+                  style={{ width: '100%', padding: '9px 12px', borderRadius: '8px', border: 'var(--adm-card-border)' }}
                 />
               </div>
               <div>
@@ -4073,7 +4731,7 @@ export default function AdminDashboard({ initialTab = 'overview', initialOrderId
                   value={newCustForm.email}
                   onChange={(e) => setNewCustForm({ ...newCustForm, email: e.target.value })}
                   placeholder="zainab@example.com"
-                  style={{ width: '100%', padding: '9px 12px', borderRadius: '8px', border: '1px solid #E8E3EF' }}
+                  style={{ width: '100%', padding: '9px 12px', borderRadius: '8px', border: 'var(--adm-card-border)' }}
                 />
               </div>
               <div>
@@ -4083,11 +4741,11 @@ export default function AdminDashboard({ initialTab = 'overview', initialOrderId
                   value={newCustForm.company}
                   onChange={(e) => setNewCustForm({ ...newCustForm, company: e.target.value })}
                   placeholder="Studio Crescent"
-                  style={{ width: '100%', padding: '9px 12px', borderRadius: '8px', border: '1px solid #E8E3EF' }}
+                  style={{ width: '100%', padding: '9px 12px', borderRadius: '8px', border: 'var(--adm-card-border)' }}
                 />
               </div>
               <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '10px', marginTop: '10px' }}>
-                <button type="button" onClick={() => setNewCustomerModal(false)} style={{ padding: '8px 16px', borderRadius: '8px', border: '1px solid #E8E3EF', background: 'none' }}>
+                <button type="button" onClick={() => setNewCustomerModal(false)} style={{ padding: '8px 16px', borderRadius: '8px', border: 'var(--adm-card-border)', background: 'none' }}>
                   Cancel
                 </button>
                 <button type="submit" style={{ padding: '8px 20px', borderRadius: '8px', border: 'none', backgroundColor: '#6B00FF', color: '#FFFFFF', fontWeight: 600 }}>
@@ -4104,8 +4762,8 @@ export default function AdminDashboard({ initialTab = 'overview', initialOrderId
           ==================================================================== */}
       {newProfileModal && (
         <div style={{ position: 'fixed', inset: 0, backgroundColor: 'rgba(8, 6, 13, 0.85)', backdropFilter: 'blur(4px)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000, padding: '20px' }}>
-          <div style={{ backgroundColor: '#FFFFFF', borderRadius: '20px', width: '100%', maxWidth: '440px', padding: '28px', border: '1px solid #E8E3EF' }}>
-            <h3 style={{ margin: '0 0 16px', fontSize: '1.2rem', fontWeight: 800, color: '#191522' }}>Create Digital Profile</h3>
+          <div style={{ backgroundColor: 'var(--adm-card-bg)', borderRadius: '20px', width: '100%', maxWidth: '440px', padding: '28px', border: 'var(--adm-card-border)' }}>
+            <h3 style={{ margin: '0 0 16px', fontSize: '1.2rem', fontWeight: 800, color: 'var(--adm-text-primary)' }}>Create Digital Profile</h3>
             <form onSubmit={handleCreateProfile} style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
               <div>
                 <label style={{ display: 'block', fontSize: '0.78rem', fontWeight: 600, marginBottom: '4px' }}>Profile Name</label>
@@ -4115,7 +4773,7 @@ export default function AdminDashboard({ initialTab = 'overview', initialOrderId
                   value={newProfForm.name}
                   onChange={(e) => setNewProfForm({ ...newProfForm, name: e.target.value })}
                   placeholder="e.g. Farhan Ali"
-                  style={{ width: '100%', padding: '9px 12px', borderRadius: '8px', border: '1px solid #E8E3EF' }}
+                  style={{ width: '100%', padding: '9px 12px', borderRadius: '8px', border: 'var(--adm-card-border)' }}
                 />
               </div>
               <div>
@@ -4126,7 +4784,7 @@ export default function AdminDashboard({ initialTab = 'overview', initialOrderId
                   value={newProfForm.slug}
                   onChange={(e) => setNewProfForm({ ...newProfForm, slug: e.target.value })}
                   placeholder="farhan"
-                  style={{ width: '100%', padding: '9px 12px', borderRadius: '8px', border: '1px solid #E8E3EF' }}
+                  style={{ width: '100%', padding: '9px 12px', borderRadius: '8px', border: 'var(--adm-card-border)' }}
                 />
               </div>
               <div>
@@ -4136,11 +4794,11 @@ export default function AdminDashboard({ initialTab = 'overview', initialOrderId
                   value={newProfForm.role}
                   onChange={(e) => setNewProfForm({ ...newProfForm, role: e.target.value })}
                   placeholder="Product Designer"
-                  style={{ width: '100%', padding: '9px 12px', borderRadius: '8px', border: '1px solid #E8E3EF' }}
+                  style={{ width: '100%', padding: '9px 12px', borderRadius: '8px', border: 'var(--adm-card-border)' }}
                 />
               </div>
               <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '10px', marginTop: '10px' }}>
-                <button type="button" onClick={() => setNewProfileModal(false)} style={{ padding: '8px 16px', borderRadius: '8px', border: '1px solid #E8E3EF', background: 'none' }}>
+                <button type="button" onClick={() => setNewProfileModal(false)} style={{ padding: '8px 16px', borderRadius: '8px', border: 'var(--adm-card-border)', background: 'none' }}>
                   Cancel
                 </button>
                 <button type="submit" style={{ padding: '8px 20px', borderRadius: '8px', border: 'none', backgroundColor: '#6B00FF', color: '#FFFFFF', fontWeight: 600 }}>
@@ -4157,8 +4815,8 @@ export default function AdminDashboard({ initialTab = 'overview', initialOrderId
           ==================================================================== */}
       {assignCardModal && (
         <div style={{ position: 'fixed', inset: 0, backgroundColor: 'rgba(8, 6, 13, 0.85)', backdropFilter: 'blur(4px)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000, padding: '20px' }}>
-          <div style={{ backgroundColor: '#FFFFFF', borderRadius: '20px', width: '100%', maxWidth: '440px', padding: '28px', border: '1px solid #E8E3EF' }}>
-            <h3 style={{ margin: '0 0 16px', fontSize: '1.2rem', fontWeight: 800, color: '#191522' }}>Assign NFC Hardware Card</h3>
+          <div style={{ backgroundColor: 'var(--adm-card-bg)', borderRadius: '20px', width: '100%', maxWidth: '440px', padding: '28px', border: 'var(--adm-card-border)' }}>
+            <h3 style={{ margin: '0 0 16px', fontSize: '1.2rem', fontWeight: 800, color: 'var(--adm-text-primary)' }}>Assign NFC Hardware Card</h3>
             <form onSubmit={handleAssignCard} style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
               <div>
                 <label style={{ display: 'block', fontSize: '0.78rem', fontWeight: 600, marginBottom: '4px' }}>NFC Hardware ID</label>
@@ -4168,7 +4826,7 @@ export default function AdminDashboard({ initialTab = 'overview', initialOrderId
                   value={assignCardForm.cardCode}
                   onChange={(e) => setAssignCardForm({ ...assignCardForm, cardCode: e.target.value })}
                   placeholder="FC-0001246"
-                  style={{ width: '100%', padding: '9px 12px', borderRadius: '8px', border: '1px solid #E8E3EF' }}
+                  style={{ width: '100%', padding: '9px 12px', borderRadius: '8px', border: 'var(--adm-card-border)' }}
                 />
               </div>
               <div>
@@ -4176,7 +4834,7 @@ export default function AdminDashboard({ initialTab = 'overview', initialOrderId
                 <select
                   value={assignCardForm.customerId}
                   onChange={(e) => setAssignCardForm({ ...assignCardForm, customerId: e.target.value })}
-                  style={{ width: '100%', padding: '9px 12px', borderRadius: '8px', border: '1px solid #E8E3EF' }}
+                  style={{ width: '100%', padding: '9px 12px', borderRadius: '8px', border: 'var(--adm-card-border)' }}
                 >
                   <option value="">Unassigned (Keep in Stock)</option>
                   {customers.map(c => (
@@ -4189,7 +4847,7 @@ export default function AdminDashboard({ initialTab = 'overview', initialOrderId
                 <select
                   value={assignCardForm.profileSlug}
                   onChange={(e) => setAssignCardForm({ ...assignCardForm, profileSlug: e.target.value })}
-                  style={{ width: '100%', padding: '9px 12px', borderRadius: '8px', border: '1px solid #E8E3EF' }}
+                  style={{ width: '100%', padding: '9px 12px', borderRadius: '8px', border: 'var(--adm-card-border)' }}
                 >
                   <option value="">Select Profile Destination</option>
                   {profiles.map(p => (
@@ -4198,7 +4856,7 @@ export default function AdminDashboard({ initialTab = 'overview', initialOrderId
                 </select>
               </div>
               <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '10px', marginTop: '10px' }}>
-                <button type="button" onClick={() => setAssignCardModal(false)} style={{ padding: '8px 16px', borderRadius: '8px', border: '1px solid #E8E3EF', background: 'none' }}>
+                <button type="button" onClick={() => setAssignCardModal(false)} style={{ padding: '8px 16px', borderRadius: '8px', border: 'var(--adm-card-border)', background: 'none' }}>
                   Cancel
                 </button>
                 <button type="submit" style={{ padding: '8px 20px', borderRadius: '8px', border: 'none', backgroundColor: '#6B00FF', color: '#FFFFFF', fontWeight: 600 }}>
@@ -4215,9 +4873,9 @@ export default function AdminDashboard({ initialTab = 'overview', initialOrderId
           ==================================================================== */}
       {inviteAdminModal && (
         <div style={{ position: 'fixed', inset: 0, backgroundColor: 'rgba(8, 6, 13, 0.85)', backdropFilter: 'blur(4px)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000, padding: '20px' }}>
-          <div style={{ backgroundColor: '#FFFFFF', borderRadius: '20px', width: '100%', maxWidth: '440px', padding: '28px', border: '1px solid #E8E3EF' }}>
-            <h3 style={{ margin: '0 0 8px', fontSize: '1.2rem', fontWeight: 800, color: '#191522' }}>Grant Admin Privileges</h3>
-            <p style={{ margin: '0 0 16px', fontSize: '0.8rem', color: '#777184' }}>
+          <div style={{ backgroundColor: 'var(--adm-card-bg)', borderRadius: '20px', width: '100%', maxWidth: '440px', padding: '28px', border: 'var(--adm-card-border)' }}>
+            <h3 style={{ margin: '0 0 8px', fontSize: '1.2rem', fontWeight: 800, color: 'var(--adm-text-primary)' }}>Grant Admin Privileges</h3>
+            <p style={{ margin: '0 0 16px', fontSize: '0.8rem', color: 'var(--adm-text-secondary)' }}>
               Authorize a Google email account to access the FLOCARD admin console.
             </p>
             <form onSubmit={handleInviteAdmin} style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
@@ -4229,7 +4887,7 @@ export default function AdminDashboard({ initialTab = 'overview', initialOrderId
                   value={newAdminForm.email}
                   onChange={(e) => setNewAdminForm({ ...newAdminForm, email: e.target.value })}
                   placeholder="partner@flocard.in"
-                  style={{ width: '100%', padding: '9px 12px', borderRadius: '8px', border: '1px solid #E8E3EF' }}
+                  style={{ width: '100%', padding: '9px 12px', borderRadius: '8px', border: 'var(--adm-card-border)' }}
                 />
               </div>
               <div>
@@ -4239,7 +4897,7 @@ export default function AdminDashboard({ initialTab = 'overview', initialOrderId
                   value={newAdminForm.name}
                   onChange={(e) => setNewAdminForm({ ...newAdminForm, name: e.target.value })}
                   placeholder="e.g. Althaf A"
-                  style={{ width: '100%', padding: '9px 12px', borderRadius: '8px', border: '1px solid #E8E3EF' }}
+                  style={{ width: '100%', padding: '9px 12px', borderRadius: '8px', border: 'var(--adm-card-border)' }}
                 />
               </div>
               <div>
@@ -4247,14 +4905,14 @@ export default function AdminDashboard({ initialTab = 'overview', initialOrderId
                 <select
                   value={newAdminForm.role}
                   onChange={(e) => setNewAdminForm({ ...newAdminForm, role: e.target.value })}
-                  style={{ width: '100%', padding: '9px 12px', borderRadius: '8px', border: '1px solid #E8E3EF' }}
+                  style={{ width: '100%', padding: '9px 12px', borderRadius: '8px', border: 'var(--adm-card-border)' }}
                 >
                   <option value="admin">Administrator (Review designs, manage cards & profiles)</option>
                   <option value="owner">Owner (Full unrestricted administrative authority)</option>
                 </select>
               </div>
               <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '10px', marginTop: '10px' }}>
-                <button type="button" onClick={() => setInviteAdminModal(false)} style={{ padding: '8px 16px', borderRadius: '8px', border: '1px solid #E8E3EF', background: 'none' }}>
+                <button type="button" onClick={() => setInviteAdminModal(false)} style={{ padding: '8px 16px', borderRadius: '8px', border: 'var(--adm-card-border)', background: 'none' }}>
                   Cancel
                 </button>
                 <button type="submit" style={{ padding: '8px 20px', borderRadius: '8px', border: 'none', backgroundColor: '#6B00FF', color: '#FFFFFF', fontWeight: 600 }}>
@@ -4271,60 +4929,60 @@ export default function AdminDashboard({ initialTab = 'overview', initialOrderId
           ==================================================================== */}
       {editingCustomer && (
         <div style={{ position: 'fixed', inset: 0, backgroundColor: 'rgba(8, 6, 13, 0.85)', backdropFilter: 'blur(4px)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000, padding: '20px' }}>
-          <div style={{ backgroundColor: '#FFFFFF', borderRadius: '20px', width: '100%', maxWidth: '480px', padding: '28px', border: '1px solid #E8E3EF', maxHeight: '90vh', overflowY: 'auto' }}>
+          <div style={{ backgroundColor: 'var(--adm-card-bg)', borderRadius: '20px', width: '100%', maxWidth: '480px', padding: '28px', border: 'var(--adm-card-border)', maxHeight: '90vh', overflowY: 'auto' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
-              <h3 style={{ margin: 0, fontSize: '1.2rem', fontWeight: 800, color: '#191522' }}>Edit Customer Account</h3>
-              <button type="button" onClick={() => setEditingCustomer(null)} style={{ background: 'none', border: 'none', color: '#777184', cursor: 'pointer' }}>
+              <h3 style={{ margin: 0, fontSize: '1.2rem', fontWeight: 800, color: 'var(--adm-text-primary)' }}>Edit Customer Account</h3>
+              <button type="button" onClick={() => setEditingCustomer(null)} style={{ background: 'none', border: 'none', color: 'var(--adm-text-secondary)', cursor: 'pointer' }}>
                 <X size={18} />
               </button>
             </div>
             <form onSubmit={handleUpdateCustomer} style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
               <div>
-                <label style={{ display: 'block', fontSize: '0.78rem', fontWeight: 600, marginBottom: '4px', color: '#191522' }}>Full Name</label>
+                <label style={{ display: 'block', fontSize: '0.78rem', fontWeight: 600, marginBottom: '4px', color: 'var(--adm-text-primary)' }}>Full Name</label>
                 <input
                   type="text"
                   required
                   value={editingCustomer.name || ''}
                   onChange={(e) => setEditingCustomer({ ...editingCustomer, name: e.target.value })}
-                  style={{ width: '100%', padding: '9px 12px', borderRadius: '8px', border: '1px solid #E8E3EF', fontSize: '0.84rem' }}
+                  style={{ width: '100%', padding: '9px 12px', borderRadius: '8px', border: 'var(--adm-card-border)', fontSize: '0.84rem' }}
                 />
               </div>
               <div>
-                <label style={{ display: 'block', fontSize: '0.78rem', fontWeight: 600, marginBottom: '4px', color: '#191522' }}>Email Address</label>
+                <label style={{ display: 'block', fontSize: '0.78rem', fontWeight: 600, marginBottom: '4px', color: 'var(--adm-text-primary)' }}>Email Address</label>
                 <input
                   type="email"
                   required
                   value={editingCustomer.email || ''}
                   onChange={(e) => setEditingCustomer({ ...editingCustomer, email: e.target.value })}
-                  style={{ width: '100%', padding: '9px 12px', borderRadius: '8px', border: '1px solid #E8E3EF', fontSize: '0.84rem' }}
+                  style={{ width: '100%', padding: '9px 12px', borderRadius: '8px', border: 'var(--adm-card-border)', fontSize: '0.84rem' }}
                 />
               </div>
               <div>
-                <label style={{ display: 'block', fontSize: '0.78rem', fontWeight: 600, marginBottom: '4px', color: '#191522' }}>Phone Number</label>
+                <label style={{ display: 'block', fontSize: '0.78rem', fontWeight: 600, marginBottom: '4px', color: 'var(--adm-text-primary)' }}>Phone Number</label>
                 <input
                   type="text"
                   value={editingCustomer.phone || ''}
                   onChange={(e) => setEditingCustomer({ ...editingCustomer, phone: e.target.value })}
                   placeholder="+91 98765 43210"
-                  style={{ width: '100%', padding: '9px 12px', borderRadius: '8px', border: '1px solid #E8E3EF', fontSize: '0.84rem' }}
+                  style={{ width: '100%', padding: '9px 12px', borderRadius: '8px', border: 'var(--adm-card-border)', fontSize: '0.84rem' }}
                 />
               </div>
               <div>
-                <label style={{ display: 'block', fontSize: '0.78rem', fontWeight: 600, marginBottom: '4px', color: '#191522' }}>Company / Organization</label>
+                <label style={{ display: 'block', fontSize: '0.78rem', fontWeight: 600, marginBottom: '4px', color: 'var(--adm-text-primary)' }}>Company / Organization</label>
                 <input
                   type="text"
                   value={editingCustomer.company || ''}
                   onChange={(e) => setEditingCustomer({ ...editingCustomer, company: e.target.value })}
                   placeholder="Company Name"
-                  style={{ width: '100%', padding: '9px 12px', borderRadius: '8px', border: '1px solid #E8E3EF', fontSize: '0.84rem' }}
+                  style={{ width: '100%', padding: '9px 12px', borderRadius: '8px', border: 'var(--adm-card-border)', fontSize: '0.84rem' }}
                 />
               </div>
               <div>
-                <label style={{ display: 'block', fontSize: '0.78rem', fontWeight: 600, marginBottom: '4px', color: '#191522' }}>Account Status</label>
+                <label style={{ display: 'block', fontSize: '0.78rem', fontWeight: 600, marginBottom: '4px', color: 'var(--adm-text-primary)' }}>Account Status</label>
                 <select
                   value={editingCustomer.status || 'active'}
                   onChange={(e) => setEditingCustomer({ ...editingCustomer, status: e.target.value })}
-                  style={{ width: '100%', padding: '9px 12px', borderRadius: '8px', border: '1px solid #E8E3EF', fontSize: '0.84rem' }}
+                  style={{ width: '100%', padding: '9px 12px', borderRadius: '8px', border: 'var(--adm-card-border)', fontSize: '0.84rem' }}
                 >
                   <option value="active">Active (Full access)</option>
                   <option value="suspended">Suspended (Access locked)</option>
@@ -4332,7 +4990,7 @@ export default function AdminDashboard({ initialTab = 'overview', initialOrderId
                 </select>
               </div>
 
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: '16px', paddingTop: '14px', borderTop: '1px solid #F2ECFF' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: '16px', paddingTop: '14px', borderTop: 'var(--adm-divider)' }}>
                 <button
                   type="button"
                   onClick={() => handleDeleteCustomer(editingCustomer.id)}
@@ -4341,7 +4999,7 @@ export default function AdminDashboard({ initialTab = 'overview', initialOrderId
                   Delete Customer
                 </button>
                 <div style={{ display: 'flex', gap: '8px' }}>
-                  <button type="button" onClick={() => setEditingCustomer(null)} style={{ padding: '8px 16px', borderRadius: '8px', border: '1px solid #E8E3EF', background: 'none', fontSize: '0.8rem', cursor: 'pointer' }}>
+                  <button type="button" onClick={() => setEditingCustomer(null)} style={{ padding: '8px 16px', borderRadius: '8px', border: 'var(--adm-card-border)', background: 'none', fontSize: '0.8rem', cursor: 'pointer' }}>
                     Cancel
                   </button>
                   <button type="submit" style={{ padding: '8px 20px', borderRadius: '8px', border: 'none', backgroundColor: '#6B00FF', color: '#FFFFFF', fontWeight: 600, fontSize: '0.8rem', cursor: 'pointer' }}>
@@ -4359,12 +5017,12 @@ export default function AdminDashboard({ initialTab = 'overview', initialOrderId
           ==================================================================== */}
       {editingProfile && (
         <div style={{ position: 'fixed', inset: 0, backgroundColor: 'rgba(8, 6, 13, 0.85)', backdropFilter: 'blur(4px)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000, padding: '20px' }}>
-          <div style={{ backgroundColor: '#FFFFFF', borderRadius: '20px', width: '100%', maxWidth: '580px', padding: '28px', border: '1px solid #E8E3EF', maxHeight: '90vh', overflowY: 'auto' }}>
+          <div style={{ backgroundColor: 'var(--adm-card-bg)', borderRadius: '20px', width: '100%', maxWidth: '580px', padding: '28px', border: 'var(--adm-card-border)', maxHeight: '90vh', overflowY: 'auto' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
               <div>
-                <h3 style={{ margin: 0, fontSize: '1.2rem', fontWeight: 800, color: '#191522' }}>Edit Digital Profile</h3>
+                <h3 style={{ margin: 0, fontSize: '1.2rem', fontWeight: 800, color: 'var(--adm-text-primary)' }}>Edit Digital Profile</h3>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginTop: '2px' }}>
-                  <span style={{ fontSize: '0.78rem', color: '#777184' }}>flocard.in/p/{editingProfile.slug}</span>
+                  <span style={{ fontSize: '0.78rem', color: 'var(--adm-text-secondary)' }}>flocard.in/p/{editingProfile.slug}</span>
                   <a
                     href={`/p/${editingProfile.slug}`}
                     target="_blank"
@@ -4375,16 +5033,16 @@ export default function AdminDashboard({ initialTab = 'overview', initialOrderId
                   </a>
                 </div>
               </div>
-              <button type="button" onClick={() => setEditingProfile(null)} style={{ background: 'none', border: 'none', color: '#777184', cursor: 'pointer' }}>
+              <button type="button" onClick={() => setEditingProfile(null)} style={{ background: 'none', border: 'none', color: 'var(--adm-text-secondary)', cursor: 'pointer' }}>
                 <X size={18} />
               </button>
             </div>
             <form onSubmit={handleUpdateProfile} style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
               {/* Profile Avatar & Company Logo Uploads */}
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px', background: '#F8F6FC', padding: '12px', borderRadius: '12px', border: '1px solid #E8E3EF' }}>
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px', background: '#F8F6FC', padding: '12px', borderRadius: '12px', border: 'var(--adm-card-border)' }}>
                 {/* Avatar Upload */}
                 <div>
-                  <label style={{ display: 'block', fontSize: '0.74rem', fontWeight: 700, marginBottom: '6px', color: '#191522' }}>Profile Avatar / Photo</label>
+                  <label style={{ display: 'block', fontSize: '0.74rem', fontWeight: 700, marginBottom: '6px', color: 'var(--adm-text-primary)' }}>Profile Avatar / Photo</label>
                   <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
                     <div style={{ width: '46px', height: '46px', minWidth: '46px', borderRadius: '50%', background: '#6B00FF', overflow: 'hidden', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#FFFFFF', fontWeight: 700 }}>
                       {editingProfile.avatar ? (
@@ -4394,7 +5052,7 @@ export default function AdminDashboard({ initialTab = 'overview', initialOrderId
                       )}
                     </div>
                     <div>
-                      <label style={{ display: 'inline-flex', alignItems: 'center', gap: '4px', padding: '4px 10px', borderRadius: '6px', border: '1px solid #DDD6FE', backgroundColor: '#FFFFFF', color: '#6B00FF', fontSize: '0.74rem', fontWeight: 600, cursor: 'pointer' }}>
+                      <label style={{ display: 'inline-flex', alignItems: 'center', gap: '4px', padding: '4px 10px', borderRadius: '6px', border: '1px solid #DDD6FE', backgroundColor: 'var(--adm-card-bg)', color: '#6B00FF', fontSize: '0.74rem', fontWeight: 600, cursor: 'pointer' }}>
                         <Upload size={12} />
                         <span>Upload</span>
                         <input
@@ -4429,9 +5087,9 @@ export default function AdminDashboard({ initialTab = 'overview', initialOrderId
 
                 {/* Company Logo Upload */}
                 <div>
-                  <label style={{ display: 'block', fontSize: '0.74rem', fontWeight: 700, marginBottom: '6px', color: '#191522' }}>Company / Brand Logo</label>
+                  <label style={{ display: 'block', fontSize: '0.74rem', fontWeight: 700, marginBottom: '6px', color: 'var(--adm-text-primary)' }}>Company / Brand Logo</label>
                   <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-                    <div style={{ width: '46px', height: '46px', minWidth: '46px', borderRadius: '8px', background: '#FFFFFF', border: '1px solid #E8E3EF', overflow: 'hidden', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '4px' }}>
+                    <div style={{ width: '46px', height: '46px', minWidth: '46px', borderRadius: '8px', background: 'var(--adm-card-bg)', border: 'var(--adm-card-border)', overflow: 'hidden', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '4px' }}>
                       {editingProfile.logo ? (
                         <img src={editingProfile.logo} alt="" style={{ maxWidth: '100%', maxHeight: '100%', objectFit: 'contain' }} />
                       ) : (
@@ -4439,7 +5097,7 @@ export default function AdminDashboard({ initialTab = 'overview', initialOrderId
                       )}
                     </div>
                     <div>
-                      <label style={{ display: 'inline-flex', alignItems: 'center', gap: '4px', padding: '4px 10px', borderRadius: '6px', border: '1px solid #DDD6FE', backgroundColor: '#FFFFFF', color: '#6B00FF', fontSize: '0.74rem', fontWeight: 600, cursor: 'pointer' }}>
+                      <label style={{ display: 'inline-flex', alignItems: 'center', gap: '4px', padding: '4px 10px', borderRadius: '6px', border: '1px solid #DDD6FE', backgroundColor: 'var(--adm-card-bg)', color: '#6B00FF', fontSize: '0.74rem', fontWeight: 600, cursor: 'pointer' }}>
                         <Upload size={12} />
                         <span>Upload</span>
                         <input
@@ -4475,87 +5133,87 @@ export default function AdminDashboard({ initialTab = 'overview', initialOrderId
 
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
                 <div>
-                  <label style={{ display: 'block', fontSize: '0.78rem', fontWeight: 600, marginBottom: '4px', color: '#191522' }}>Full Name</label>
+                  <label style={{ display: 'block', fontSize: '0.78rem', fontWeight: 600, marginBottom: '4px', color: 'var(--adm-text-primary)' }}>Full Name</label>
                   <input
                     type="text"
                     required
                     value={editingProfile.name || ''}
                     onChange={(e) => setEditingProfile({ ...editingProfile, name: e.target.value })}
-                    style={{ width: '100%', padding: '9px 12px', borderRadius: '8px', border: '1px solid #E8E3EF', fontSize: '0.84rem' }}
+                    style={{ width: '100%', padding: '9px 12px', borderRadius: '8px', border: 'var(--adm-card-border)', fontSize: '0.84rem' }}
                   />
                 </div>
                 <div>
-                  <label style={{ display: 'block', fontSize: '0.78rem', fontWeight: 600, marginBottom: '4px', color: '#191522' }}>Public Slug</label>
+                  <label style={{ display: 'block', fontSize: '0.78rem', fontWeight: 600, marginBottom: '4px', color: 'var(--adm-text-primary)' }}>Public Slug</label>
                   <input
                     type="text"
                     required
                     value={editingProfile.slug || ''}
                     onChange={(e) => setEditingProfile({ ...editingProfile, slug: e.target.value.toLowerCase().replace(/[^a-z0-9_-]/g, '') })}
-                    style={{ width: '100%', padding: '9px 12px', borderRadius: '8px', border: '1px solid #E8E3EF', fontSize: '0.84rem' }}
+                    style={{ width: '100%', padding: '9px 12px', borderRadius: '8px', border: 'var(--adm-card-border)', fontSize: '0.84rem' }}
                   />
                 </div>
               </div>
 
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
                 <div>
-                  <label style={{ display: 'block', fontSize: '0.78rem', fontWeight: 600, marginBottom: '4px', color: '#191522' }}>Role / Title</label>
+                  <label style={{ display: 'block', fontSize: '0.78rem', fontWeight: 600, marginBottom: '4px', color: 'var(--adm-text-primary)' }}>Role / Title</label>
                   <input
                     type="text"
                     value={editingProfile.role || ''}
                     onChange={(e) => setEditingProfile({ ...editingProfile, role: e.target.value })}
-                    style={{ width: '100%', padding: '9px 12px', borderRadius: '8px', border: '1px solid #E8E3EF', fontSize: '0.84rem' }}
+                    style={{ width: '100%', padding: '9px 12px', borderRadius: '8px', border: 'var(--adm-card-border)', fontSize: '0.84rem' }}
                   />
                 </div>
                 <div>
-                  <label style={{ display: 'block', fontSize: '0.78rem', fontWeight: 600, marginBottom: '4px', color: '#191522' }}>Company</label>
+                  <label style={{ display: 'block', fontSize: '0.78rem', fontWeight: 600, marginBottom: '4px', color: 'var(--adm-text-primary)' }}>Company</label>
                   <input
                     type="text"
                     value={editingProfile.company || ''}
                     onChange={(e) => setEditingProfile({ ...editingProfile, company: e.target.value })}
-                    style={{ width: '100%', padding: '9px 12px', borderRadius: '8px', border: '1px solid #E8E3EF', fontSize: '0.84rem' }}
+                    style={{ width: '100%', padding: '9px 12px', borderRadius: '8px', border: 'var(--adm-card-border)', fontSize: '0.84rem' }}
                   />
                 </div>
               </div>
 
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
                 <div>
-                  <label style={{ display: 'block', fontSize: '0.78rem', fontWeight: 600, marginBottom: '4px', color: '#191522' }}>Location / City</label>
+                  <label style={{ display: 'block', fontSize: '0.78rem', fontWeight: 600, marginBottom: '4px', color: 'var(--adm-text-primary)' }}>Location / City</label>
                   <input
                     type="text"
                     value={editingProfile.location || ''}
                     onChange={(e) => setEditingProfile({ ...editingProfile, location: e.target.value })}
                     placeholder="e.g. Bengaluru, India"
-                    style={{ width: '100%', padding: '9px 12px', borderRadius: '8px', border: '1px solid #E8E3EF', fontSize: '0.84rem' }}
+                    style={{ width: '100%', padding: '9px 12px', borderRadius: '8px', border: 'var(--adm-card-border)', fontSize: '0.84rem' }}
                   />
                 </div>
                 <div>
-                  <label style={{ display: 'block', fontSize: '0.78rem', fontWeight: 600, marginBottom: '4px', color: '#191522' }}>Tagline</label>
+                  <label style={{ display: 'block', fontSize: '0.78rem', fontWeight: 600, marginBottom: '4px', color: 'var(--adm-text-primary)' }}>Tagline</label>
                   <input
                     type="text"
                     value={editingProfile.tagline || ''}
                     onChange={(e) => setEditingProfile({ ...editingProfile, tagline: e.target.value })}
-                    style={{ width: '100%', padding: '9px 12px', borderRadius: '8px', border: '1px solid #E8E3EF', fontSize: '0.84rem' }}
+                    style={{ width: '100%', padding: '9px 12px', borderRadius: '8px', border: 'var(--adm-card-border)', fontSize: '0.84rem' }}
                   />
                 </div>
               </div>
 
               <div>
-                <label style={{ display: 'block', fontSize: '0.78rem', fontWeight: 600, marginBottom: '4px', color: '#191522' }}>Bio</label>
+                <label style={{ display: 'block', fontSize: '0.78rem', fontWeight: 600, marginBottom: '4px', color: 'var(--adm-text-primary)' }}>Bio</label>
                 <textarea
                   rows={3}
                   value={editingProfile.bio || ''}
                   onChange={(e) => setEditingProfile({ ...editingProfile, bio: e.target.value })}
-                  style={{ width: '100%', padding: '9px 12px', borderRadius: '8px', border: '1px solid #E8E3EF', fontSize: '0.84rem' }}
+                  style={{ width: '100%', padding: '9px 12px', borderRadius: '8px', border: 'var(--adm-card-border)', fontSize: '0.84rem' }}
                 />
               </div>
 
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
                 <div>
-                  <label style={{ display: 'block', fontSize: '0.78rem', fontWeight: 600, marginBottom: '4px', color: '#191522' }}>Theme Style</label>
+                  <label style={{ display: 'block', fontSize: '0.78rem', fontWeight: 600, marginBottom: '4px', color: 'var(--adm-text-primary)' }}>Theme Style</label>
                   <select
                     value={editingProfile.theme || 'purple'}
                     onChange={(e) => setEditingProfile({ ...editingProfile, theme: e.target.value })}
-                    style={{ width: '100%', padding: '9px 12px', borderRadius: '8px', border: '1px solid #E8E3EF', fontSize: '0.84rem' }}
+                    style={{ width: '100%', padding: '9px 12px', borderRadius: '8px', border: 'var(--adm-card-border)', fontSize: '0.84rem' }}
                   >
                     <option value="purple">Obsidian Purple (Signature)</option>
                     <option value="gold">24K Gold Foil</option>
@@ -4563,11 +5221,11 @@ export default function AdminDashboard({ initialTab = 'overview', initialOrderId
                   </select>
                 </div>
                 <div>
-                  <label style={{ display: 'block', fontSize: '0.78rem', fontWeight: 600, marginBottom: '4px', color: '#191522' }}>Publication Status</label>
+                  <label style={{ display: 'block', fontSize: '0.78rem', fontWeight: 600, marginBottom: '4px', color: 'var(--adm-text-primary)' }}>Publication Status</label>
                   <select
                     value={editingProfile.status || 'published'}
                     onChange={(e) => setEditingProfile({ ...editingProfile, status: e.target.value })}
-                    style={{ width: '100%', padding: '9px 12px', borderRadius: '8px', border: '1px solid #E8E3EF', fontSize: '0.84rem' }}
+                    style={{ width: '100%', padding: '9px 12px', borderRadius: '8px', border: 'var(--adm-card-border)', fontSize: '0.84rem' }}
                   >
                     <option value="published">Published (Live at /p/:slug)</option>
                     <option value="draft">Draft (Private)</option>
@@ -4578,52 +5236,52 @@ export default function AdminDashboard({ initialTab = 'overview', initialOrderId
 
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
                 <div>
-                  <label style={{ display: 'block', fontSize: '0.78rem', fontWeight: 600, marginBottom: '4px', color: '#191522' }}>Phone Number</label>
+                  <label style={{ display: 'block', fontSize: '0.78rem', fontWeight: 600, marginBottom: '4px', color: 'var(--adm-text-primary)' }}>Phone Number</label>
                   <input
                     type="text"
                     value={editingProfile.phone || ''}
                     onChange={(e) => setEditingProfile({ ...editingProfile, phone: e.target.value })}
-                    style={{ width: '100%', padding: '9px 12px', borderRadius: '8px', border: '1px solid #E8E3EF', fontSize: '0.84rem' }}
+                    style={{ width: '100%', padding: '9px 12px', borderRadius: '8px', border: 'var(--adm-card-border)', fontSize: '0.84rem' }}
                   />
                 </div>
                 <div>
-                  <label style={{ display: 'block', fontSize: '0.78rem', fontWeight: 600, marginBottom: '4px', color: '#191522' }}>Contact Email</label>
+                  <label style={{ display: 'block', fontSize: '0.78rem', fontWeight: 600, marginBottom: '4px', color: 'var(--adm-text-primary)' }}>Contact Email</label>
                   <input
                     type="email"
                     value={editingProfile.email || ''}
                     onChange={(e) => setEditingProfile({ ...editingProfile, email: e.target.value })}
-                    style={{ width: '100%', padding: '9px 12px', borderRadius: '8px', border: '1px solid #E8E3EF', fontSize: '0.84rem' }}
+                    style={{ width: '100%', padding: '9px 12px', borderRadius: '8px', border: 'var(--adm-card-border)', fontSize: '0.84rem' }}
                   />
                 </div>
               </div>
 
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
                 <div>
-                  <label style={{ display: 'block', fontSize: '0.78rem', fontWeight: 600, marginBottom: '4px', color: '#191522' }}>WhatsApp (digits with country code)</label>
+                  <label style={{ display: 'block', fontSize: '0.78rem', fontWeight: 600, marginBottom: '4px', color: 'var(--adm-text-primary)' }}>WhatsApp (digits with country code)</label>
                   <input
                     type="text"
                     value={editingProfile.whatsapp || ''}
                     onChange={(e) => setEditingProfile({ ...editingProfile, whatsapp: e.target.value })}
                     placeholder="919876543210"
-                    style={{ width: '100%', padding: '9px 12px', borderRadius: '8px', border: '1px solid #E8E3EF', fontSize: '0.84rem' }}
+                    style={{ width: '100%', padding: '9px 12px', borderRadius: '8px', border: 'var(--adm-card-border)', fontSize: '0.84rem' }}
                   />
                 </div>
                 <div>
-                  <label style={{ display: 'block', fontSize: '0.78rem', fontWeight: 600, marginBottom: '4px', color: '#191522' }}>Website URL</label>
+                  <label style={{ display: 'block', fontSize: '0.78rem', fontWeight: 600, marginBottom: '4px', color: 'var(--adm-text-primary)' }}>Website URL</label>
                   <input
                     type="text"
                     value={editingProfile.website || ''}
                     onChange={(e) => setEditingProfile({ ...editingProfile, website: e.target.value })}
                     placeholder="https://example.com"
-                    style={{ width: '100%', padding: '9px 12px', borderRadius: '8px', border: '1px solid #E8E3EF', fontSize: '0.84rem' }}
+                    style={{ width: '100%', padding: '9px 12px', borderRadius: '8px', border: 'var(--adm-card-border)', fontSize: '0.84rem' }}
                   />
                 </div>
               </div>
 
               {/* Portfolio / Work Showcase Projects */}
-              <div style={{ borderTop: '1px solid #E8E3EF', paddingTop: '14px' }}>
+              <div style={{ borderTop: 'var(--adm-card-border)', paddingTop: '14px' }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '10px' }}>
-                  <label style={{ fontSize: '0.82rem', fontWeight: 700, color: '#191522' }}>Portfolio Work Images & Projects</label>
+                  <label style={{ fontSize: '0.82rem', fontWeight: 700, color: 'var(--adm-text-primary)' }}>Portfolio Work Images & Projects</label>
                   <label style={{ display: 'inline-flex', alignItems: 'center', gap: '4px', padding: '4px 10px', borderRadius: '6px', backgroundColor: '#F3EEFF', color: '#6B00FF', fontSize: '0.74rem', fontWeight: 700, cursor: 'pointer' }}>
                     <Plus size={12} />
                     <span>Add Work Image</span>
@@ -4670,7 +5328,7 @@ export default function AdminDashboard({ initialTab = 'overview', initialOrderId
                     </div>
                   ) : (
                     (editingProfile.portfolio || []).map((portItem, portIdx) => (
-                      <div key={portItem.id || portIdx} style={{ display: 'flex', alignItems: 'center', gap: '10px', padding: '8px 10px', borderRadius: '8px', background: '#F9F8FC', border: '1px solid #E8E3EF' }}>
+                      <div key={portItem.id || portIdx} style={{ display: 'flex', alignItems: 'center', gap: '10px', padding: '8px 10px', borderRadius: '8px', background: '#F9F8FC', border: 'var(--adm-card-border)' }}>
                         <div style={{ width: '44px', height: '44px', minWidth: '44px', borderRadius: '6px', background: '#E8E3EF', overflow: 'hidden' }}>
                           {portItem.image ? (
                             <img src={portItem.image} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
@@ -4688,7 +5346,7 @@ export default function AdminDashboard({ initialTab = 'overview', initialOrderId
                               setEditingProfile({ ...editingProfile, portfolio: nextPort });
                             }}
                             placeholder="Project Title"
-                            style={{ width: '100%', padding: '4px 6px', fontSize: '0.78rem', fontWeight: 600, border: '1px solid #E8E3EF', borderRadius: '4px', marginBottom: '4px' }}
+                            style={{ width: '100%', padding: '4px 6px', fontSize: '0.78rem', fontWeight: 600, border: 'var(--adm-card-border)', borderRadius: '4px', marginBottom: '4px' }}
                           />
                           <input
                             type="text"
@@ -4699,7 +5357,7 @@ export default function AdminDashboard({ initialTab = 'overview', initialOrderId
                               setEditingProfile({ ...editingProfile, portfolio: nextPort });
                             }}
                             placeholder="Category (e.g. Branding / Hardware)"
-                            style={{ width: '100%', padding: '3px 6px', fontSize: '0.72rem', border: '1px solid #E8E3EF', borderRadius: '4px' }}
+                            style={{ width: '100%', padding: '3px 6px', fontSize: '0.72rem', border: 'var(--adm-card-border)', borderRadius: '4px' }}
                           />
                         </div>
                         <button
@@ -4719,7 +5377,7 @@ export default function AdminDashboard({ initialTab = 'overview', initialOrderId
                 </div>
               </div>
 
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: '16px', paddingTop: '14px', borderTop: '1px solid #F2ECFF' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: '16px', paddingTop: '14px', borderTop: 'var(--adm-divider)' }}>
                 <button
                   type="button"
                   onClick={() => handleDeleteProfile(editingProfile.id)}
@@ -4728,7 +5386,7 @@ export default function AdminDashboard({ initialTab = 'overview', initialOrderId
                   Delete Profile
                 </button>
                 <div style={{ display: 'flex', gap: '8px' }}>
-                  <button type="button" onClick={() => setEditingProfile(null)} style={{ padding: '8px 16px', borderRadius: '8px', border: '1px solid #E8E3EF', background: 'none', fontSize: '0.8rem', cursor: 'pointer' }}>
+                  <button type="button" onClick={() => setEditingProfile(null)} style={{ padding: '8px 16px', borderRadius: '8px', border: 'var(--adm-card-border)', background: 'none', fontSize: '0.8rem', cursor: 'pointer' }}>
                     Cancel
                   </button>
                   <button type="submit" style={{ padding: '8px 20px', borderRadius: '8px', border: 'none', backgroundColor: '#6B00FF', color: '#FFFFFF', fontWeight: 600, fontSize: '0.8rem', cursor: 'pointer' }}>
@@ -4746,30 +5404,30 @@ export default function AdminDashboard({ initialTab = 'overview', initialOrderId
           ==================================================================== */}
       {editingCard && (
         <div style={{ position: 'fixed', inset: 0, backgroundColor: 'rgba(8, 6, 13, 0.85)', backdropFilter: 'blur(4px)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000, padding: '20px' }}>
-          <div style={{ backgroundColor: '#FFFFFF', borderRadius: '20px', width: '100%', maxWidth: '480px', padding: '28px', border: '1px solid #E8E3EF', maxHeight: '90vh', overflowY: 'auto' }}>
+          <div style={{ backgroundColor: 'var(--adm-card-bg)', borderRadius: '20px', width: '100%', maxWidth: '480px', padding: '28px', border: 'var(--adm-card-border)', maxHeight: '90vh', overflowY: 'auto' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
               <div>
-                <h3 style={{ margin: 0, fontSize: '1.2rem', fontWeight: 800, color: '#191522' }}>Edit NFC Card</h3>
-                <p style={{ margin: '2px 0 0', fontSize: '0.78rem', color: '#777184', fontFamily: 'monospace' }}>{editingCard.cardCode}</p>
+                <h3 style={{ margin: 0, fontSize: '1.2rem', fontWeight: 800, color: 'var(--adm-text-primary)' }}>Edit NFC Card</h3>
+                <p style={{ margin: '2px 0 0', fontSize: '0.78rem', color: 'var(--adm-text-secondary)', fontFamily: 'monospace' }}>{editingCard.cardCode}</p>
               </div>
-              <button type="button" onClick={() => setEditingCard(null)} style={{ background: 'none', border: 'none', color: '#777184', cursor: 'pointer' }}>
+              <button type="button" onClick={() => setEditingCard(null)} style={{ background: 'none', border: 'none', color: 'var(--adm-text-secondary)', cursor: 'pointer' }}>
                 <X size={18} />
               </button>
             </div>
             <form onSubmit={handleUpdateCard} style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
               <div>
-                <label style={{ display: 'block', fontSize: '0.78rem', fontWeight: 600, marginBottom: '4px', color: '#191522' }}>Card Hardware Code</label>
+                <label style={{ display: 'block', fontSize: '0.78rem', fontWeight: 600, marginBottom: '4px', color: 'var(--adm-text-primary)' }}>Card Hardware Code</label>
                 <input
                   type="text"
                   required
                   value={editingCard.cardCode || ''}
                   onChange={(e) => setEditingCard({ ...editingCard, cardCode: e.target.value })}
-                  style={{ width: '100%', padding: '9px 12px', borderRadius: '8px', border: '1px solid #E8E3EF', fontSize: '0.84rem', fontFamily: 'monospace', fontWeight: 700 }}
+                  style={{ width: '100%', padding: '9px 12px', borderRadius: '8px', border: 'var(--adm-card-border)', fontSize: '0.84rem', fontFamily: 'monospace', fontWeight: 700 }}
                 />
               </div>
 
               <div>
-                <label style={{ display: 'block', fontSize: '0.78rem', fontWeight: 600, marginBottom: '4px', color: '#191522' }}>Assigned Customer</label>
+                <label style={{ display: 'block', fontSize: '0.78rem', fontWeight: 600, marginBottom: '4px', color: 'var(--adm-text-primary)' }}>Assigned Customer</label>
                 <select
                   value={editingCard.customerId || ''}
                   onChange={(e) => {
@@ -4780,7 +5438,7 @@ export default function AdminDashboard({ initialTab = 'overview', initialOrderId
                       customerName: cust ? cust.name : null
                     });
                   }}
-                  style={{ width: '100%', padding: '9px 12px', borderRadius: '8px', border: '1px solid #E8E3EF', fontSize: '0.84rem' }}
+                  style={{ width: '100%', padding: '9px 12px', borderRadius: '8px', border: 'var(--adm-card-border)', fontSize: '0.84rem' }}
                 >
                   <option value="">Unassigned (In Stock)</option>
                   {customers.map(c => (
@@ -4790,7 +5448,7 @@ export default function AdminDashboard({ initialTab = 'overview', initialOrderId
               </div>
 
               <div>
-                <label style={{ display: 'block', fontSize: '0.78rem', fontWeight: 600, marginBottom: '4px', color: '#191522' }}>Permanent Redirect Profile Destination</label>
+                <label style={{ display: 'block', fontSize: '0.78rem', fontWeight: 600, marginBottom: '4px', color: 'var(--adm-text-primary)' }}>Permanent Redirect Profile Destination</label>
                 <select
                   value={editingCard.profileSlug || ''}
                   onChange={(e) => {
@@ -4801,7 +5459,7 @@ export default function AdminDashboard({ initialTab = 'overview', initialOrderId
                       profileName: prof ? prof.name : null
                     });
                   }}
-                  style={{ width: '100%', padding: '9px 12px', borderRadius: '8px', border: '1px solid #E8E3EF', fontSize: '0.84rem' }}
+                  style={{ width: '100%', padding: '9px 12px', borderRadius: '8px', border: 'var(--adm-card-border)', fontSize: '0.84rem' }}
                 >
                   <option value="">None (Unlinked)</option>
                   {profiles.map(p => (
@@ -4812,11 +5470,11 @@ export default function AdminDashboard({ initialTab = 'overview', initialOrderId
 
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
                 <div>
-                  <label style={{ display: 'block', fontSize: '0.78rem', fontWeight: 600, marginBottom: '4px', color: '#191522' }}>Card Edition</label>
+                  <label style={{ display: 'block', fontSize: '0.78rem', fontWeight: 600, marginBottom: '4px', color: 'var(--adm-text-primary)' }}>Card Edition</label>
                   <select
                     value={editingCard.edition || 'purple'}
                     onChange={(e) => setEditingCard({ ...editingCard, edition: e.target.value })}
-                    style={{ width: '100%', padding: '9px 12px', borderRadius: '8px', border: '1px solid #E8E3EF', fontSize: '0.84rem' }}
+                    style={{ width: '100%', padding: '9px 12px', borderRadius: '8px', border: 'var(--adm-card-border)', fontSize: '0.84rem' }}
                   >
                     <option value="purple">Purple Edition</option>
                     <option value="gold">Gold Edition</option>
@@ -4824,11 +5482,11 @@ export default function AdminDashboard({ initialTab = 'overview', initialOrderId
                   </select>
                 </div>
                 <div>
-                  <label style={{ display: 'block', fontSize: '0.78rem', fontWeight: 600, marginBottom: '4px', color: '#191522' }}>Status</label>
+                  <label style={{ display: 'block', fontSize: '0.78rem', fontWeight: 600, marginBottom: '4px', color: 'var(--adm-text-primary)' }}>Status</label>
                   <select
                     value={editingCard.status || 'active'}
                     onChange={(e) => setEditingCard({ ...editingCard, status: e.target.value })}
-                    style={{ width: '100%', padding: '9px 12px', borderRadius: '8px', border: '1px solid #E8E3EF', fontSize: '0.84rem' }}
+                    style={{ width: '100%', padding: '9px 12px', borderRadius: '8px', border: 'var(--adm-card-border)', fontSize: '0.84rem' }}
                   >
                     <option value="active">Active (Tappable)</option>
                     <option value="suspended">Suspended (Redirect Disabled)</option>
@@ -4839,27 +5497,27 @@ export default function AdminDashboard({ initialTab = 'overview', initialOrderId
 
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
                 <div>
-                  <label style={{ display: 'block', fontSize: '0.78rem', fontWeight: 600, marginBottom: '4px', color: '#191522' }}>Chip Type</label>
+                  <label style={{ display: 'block', fontSize: '0.78rem', fontWeight: 600, marginBottom: '4px', color: 'var(--adm-text-primary)' }}>Chip Type</label>
                   <input
                     type="text"
                     value={editingCard.chipType || 'NXP NTAG216 (888 Bytes)'}
                     onChange={(e) => setEditingCard({ ...editingCard, chipType: e.target.value })}
-                    style={{ width: '100%', padding: '9px 12px', borderRadius: '8px', border: '1px solid #E8E3EF', fontSize: '0.84rem' }}
+                    style={{ width: '100%', padding: '9px 12px', borderRadius: '8px', border: 'var(--adm-card-border)', fontSize: '0.84rem' }}
                   />
                 </div>
                 <div>
-                  <label style={{ display: 'block', fontSize: '0.78rem', fontWeight: 600, marginBottom: '4px', color: '#191522' }}>Tap Count</label>
+                  <label style={{ display: 'block', fontSize: '0.78rem', fontWeight: 600, marginBottom: '4px', color: 'var(--adm-text-primary)' }}>Tap Count</label>
                   <input
                     type="number"
                     min="0"
                     value={editingCard.tapCount ?? 0}
                     onChange={(e) => setEditingCard({ ...editingCard, tapCount: parseInt(e.target.value, 10) || 0 })}
-                    style={{ width: '100%', padding: '9px 12px', borderRadius: '8px', border: '1px solid #E8E3EF', fontSize: '0.84rem' }}
+                    style={{ width: '100%', padding: '9px 12px', borderRadius: '8px', border: 'var(--adm-card-border)', fontSize: '0.84rem' }}
                   />
                 </div>
               </div>
 
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: '16px', paddingTop: '14px', borderTop: '1px solid #F2ECFF' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: '16px', paddingTop: '14px', borderTop: 'var(--adm-divider)' }}>
                 <button
                   type="button"
                   onClick={() => handleDeleteCard(editingCard.id)}
@@ -4868,7 +5526,7 @@ export default function AdminDashboard({ initialTab = 'overview', initialOrderId
                   Delete Card
                 </button>
                 <div style={{ display: 'flex', gap: '8px' }}>
-                  <button type="button" onClick={() => setEditingCard(null)} style={{ padding: '8px 16px', borderRadius: '8px', border: '1px solid #E8E3EF', background: 'none', fontSize: '0.8rem', cursor: 'pointer' }}>
+                  <button type="button" onClick={() => setEditingCard(null)} style={{ padding: '8px 16px', borderRadius: '8px', border: 'var(--adm-card-border)', background: 'none', fontSize: '0.8rem', cursor: 'pointer' }}>
                     Cancel
                   </button>
                   <button type="submit" style={{ padding: '8px 20px', borderRadius: '8px', border: 'none', backgroundColor: '#6B00FF', color: '#FFFFFF', fontWeight: 600, fontSize: '0.8rem', cursor: 'pointer' }}>
@@ -4886,56 +5544,56 @@ export default function AdminDashboard({ initialTab = 'overview', initialOrderId
           ==================================================================== */}
       {editingDesign && (
         <div style={{ position: 'fixed', inset: 0, backgroundColor: 'rgba(8, 6, 13, 0.85)', backdropFilter: 'blur(4px)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000, padding: '20px' }}>
-          <div style={{ backgroundColor: '#FFFFFF', borderRadius: '20px', width: '100%', maxWidth: '520px', padding: '28px', border: '1px solid #E8E3EF', maxHeight: '90vh', overflowY: 'auto' }}>
+          <div style={{ backgroundColor: 'var(--adm-card-bg)', borderRadius: '20px', width: '100%', maxWidth: '520px', padding: '28px', border: 'var(--adm-card-border)', maxHeight: '90vh', overflowY: 'auto' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
               <div>
-                <h3 style={{ margin: 0, fontSize: '1.2rem', fontWeight: 800, color: '#191522' }}>Edit Card Design Metadata</h3>
-                <p style={{ margin: '2px 0 0', fontSize: '0.78rem', color: '#777184', fontFamily: 'monospace' }}>Design {editingDesign.id}</p>
+                <h3 style={{ margin: 0, fontSize: '1.2rem', fontWeight: 800, color: 'var(--adm-text-primary)' }}>Edit Card Design Metadata</h3>
+                <p style={{ margin: '2px 0 0', fontSize: '0.78rem', color: 'var(--adm-text-secondary)', fontFamily: 'monospace' }}>Design {editingDesign.id}</p>
               </div>
-              <button type="button" onClick={() => setEditingDesign(null)} style={{ background: 'none', border: 'none', color: '#777184', cursor: 'pointer' }}>
+              <button type="button" onClick={() => setEditingDesign(null)} style={{ background: 'none', border: 'none', color: 'var(--adm-text-secondary)', cursor: 'pointer' }}>
                 <X size={18} />
               </button>
             </div>
             <form onSubmit={handleUpdateDesign} style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
               <div>
-                <label style={{ display: 'block', fontSize: '0.78rem', fontWeight: 600, marginBottom: '4px', color: '#191522' }}>Design Title</label>
+                <label style={{ display: 'block', fontSize: '0.78rem', fontWeight: 600, marginBottom: '4px', color: 'var(--adm-text-primary)' }}>Design Title</label>
                 <input
                   type="text"
                   required
                   value={editingDesign.title || ''}
                   onChange={(e) => setEditingDesign({ ...editingDesign, title: e.target.value })}
-                  style={{ width: '100%', padding: '9px 12px', borderRadius: '8px', border: '1px solid #E8E3EF', fontSize: '0.84rem' }}
+                  style={{ width: '100%', padding: '9px 12px', borderRadius: '8px', border: 'var(--adm-card-border)', fontSize: '0.84rem' }}
                 />
               </div>
 
               <div>
-                <label style={{ display: 'block', fontSize: '0.78rem', fontWeight: 600, marginBottom: '4px', color: '#191522' }}>Customer Name</label>
+                <label style={{ display: 'block', fontSize: '0.78rem', fontWeight: 600, marginBottom: '4px', color: 'var(--adm-text-primary)' }}>Customer Name</label>
                 <input
                   type="text"
                   value={editingDesign.customerName || ''}
                   onChange={(e) => setEditingDesign({ ...editingDesign, customerName: e.target.value })}
-                  style={{ width: '100%', padding: '9px 12px', borderRadius: '8px', border: '1px solid #E8E3EF', fontSize: '0.84rem' }}
+                  style={{ width: '100%', padding: '9px 12px', borderRadius: '8px', border: 'var(--adm-card-border)', fontSize: '0.84rem' }}
                 />
               </div>
 
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
                 <div>
-                  <label style={{ display: 'block', fontSize: '0.78rem', fontWeight: 600, marginBottom: '4px', color: '#191522' }}>Template Family</label>
+                  <label style={{ display: 'block', fontSize: '0.78rem', fontWeight: 600, marginBottom: '4px', color: 'var(--adm-text-primary)' }}>Template Family</label>
                   <select
                     value={editingDesign.templateType || 'standard'}
                     onChange={(e) => setEditingDesign({ ...editingDesign, templateType: e.target.value, template: e.target.value === 'customer_logo' ? 'Customer Logo' : 'Standard FLOCARD' })}
-                    style={{ width: '100%', padding: '9px 12px', borderRadius: '8px', border: '1px solid #E8E3EF', fontSize: '0.84rem' }}
+                    style={{ width: '100%', padding: '9px 12px', borderRadius: '8px', border: 'var(--adm-card-border)', fontSize: '0.84rem' }}
                   >
                     <option value="standard">Standard FLOCARD Design (Theme 1)</option>
                     <option value="customer_logo">Customer Logo Design (Theme 2)</option>
                   </select>
                 </div>
                 <div>
-                  <label style={{ display: 'block', fontSize: '0.78rem', fontWeight: 600, marginBottom: '4px', color: '#191522' }}>Edition Finish</label>
+                  <label style={{ display: 'block', fontSize: '0.78rem', fontWeight: 600, marginBottom: '4px', color: 'var(--adm-text-primary)' }}>Edition Finish</label>
                   <select
                     value={editingDesign.edition || 'purple'}
                     onChange={(e) => setEditingDesign({ ...editingDesign, edition: e.target.value })}
-                    style={{ width: '100%', padding: '9px 12px', borderRadius: '8px', border: '1px solid #E8E3EF', fontSize: '0.84rem' }}
+                    style={{ width: '100%', padding: '9px 12px', borderRadius: '8px', border: 'var(--adm-card-border)', fontSize: '0.84rem' }}
                   >
                     <option value="purple">Purple Obsidian</option>
                     <option value="gold">24K Gold Foil</option>
@@ -4945,11 +5603,11 @@ export default function AdminDashboard({ initialTab = 'overview', initialOrderId
               </div>
 
               <div>
-                <label style={{ display: 'block', fontSize: '0.78rem', fontWeight: 600, marginBottom: '4px', color: '#191522' }}>Approval Status</label>
+                <label style={{ display: 'block', fontSize: '0.78rem', fontWeight: 600, marginBottom: '4px', color: 'var(--adm-text-primary)' }}>Approval Status</label>
                 <select
                   value={editingDesign.status || 'submitted'}
                   onChange={(e) => setEditingDesign({ ...editingDesign, status: e.target.value })}
-                  style={{ width: '100%', padding: '9px 12px', borderRadius: '8px', border: '1px solid #E8E3EF', fontSize: '0.84rem' }}
+                  style={{ width: '100%', padding: '9px 12px', borderRadius: '8px', border: 'var(--adm-card-border)', fontSize: '0.84rem' }}
                 >
                   <option value="submitted">Submitted (Pending Review)</option>
                   <option value="in_review">In Review</option>
@@ -4959,13 +5617,13 @@ export default function AdminDashboard({ initialTab = 'overview', initialOrderId
               </div>
 
               <div>
-                <label style={{ display: 'block', fontSize: '0.78rem', fontWeight: 600, marginBottom: '4px', color: '#191522' }}>Review Technician Notes</label>
+                <label style={{ display: 'block', fontSize: '0.78rem', fontWeight: 600, marginBottom: '4px', color: 'var(--adm-text-primary)' }}>Review Technician Notes</label>
                 <textarea
                   rows={3}
                   value={editingDesign.reviewNotes || ''}
                   onChange={(e) => setEditingDesign({ ...editingDesign, reviewNotes: e.target.value })}
                   placeholder="Review notes, bleed check results, or instructions..."
-                  style={{ width: '100%', padding: '9px 12px', borderRadius: '8px', border: '1px solid #E8E3EF', fontSize: '0.84rem' }}
+                  style={{ width: '100%', padding: '9px 12px', borderRadius: '8px', border: 'var(--adm-card-border)', fontSize: '0.84rem' }}
                 />
               </div>
 
@@ -4994,7 +5652,7 @@ export default function AdminDashboard({ initialTab = 'overview', initialOrderId
                 </a>
               </div>
 
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: '16px', paddingTop: '14px', borderTop: '1px solid #F2ECFF' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: '16px', paddingTop: '14px', borderTop: 'var(--adm-divider)' }}>
                 <button
                   type="button"
                   onClick={() => handleDeleteDesign(editingDesign.id)}
@@ -5003,7 +5661,7 @@ export default function AdminDashboard({ initialTab = 'overview', initialOrderId
                   Delete Design
                 </button>
                 <div style={{ display: 'flex', gap: '8px' }}>
-                  <button type="button" onClick={() => setEditingDesign(null)} style={{ padding: '8px 16px', borderRadius: '8px', border: '1px solid #E8E3EF', background: 'none', fontSize: '0.8rem', cursor: 'pointer' }}>
+                  <button type="button" onClick={() => setEditingDesign(null)} style={{ padding: '8px 16px', borderRadius: '8px', border: 'var(--adm-card-border)', background: 'none', fontSize: '0.8rem', cursor: 'pointer' }}>
                     Cancel
                   </button>
                   <button
@@ -5032,97 +5690,97 @@ export default function AdminDashboard({ initialTab = 'overview', initialOrderId
           ==================================================================== */}
       {editingTemplate && (
         <div style={{ position: 'fixed', inset: 0, backgroundColor: 'rgba(8, 6, 13, 0.85)', backdropFilter: 'blur(4px)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000, padding: '20px' }}>
-          <div style={{ backgroundColor: '#FFFFFF', borderRadius: '20px', width: '100%', maxWidth: '560px', padding: '28px', border: '1px solid #E8E3EF', maxHeight: '90vh', overflowY: 'auto' }}>
+          <div style={{ backgroundColor: 'var(--adm-card-bg)', borderRadius: '20px', width: '100%', maxWidth: '560px', padding: '28px', border: 'var(--adm-card-border)', maxHeight: '90vh', overflowY: 'auto' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
               <div>
-                <h3 style={{ margin: 0, fontSize: '1.2rem', fontWeight: 800, color: '#191522' }}>Edit Card Template</h3>
-                <p style={{ margin: '2px 0 0', fontSize: '0.78rem', color: '#777184' }}>{editingTemplate.name}</p>
+                <h3 style={{ margin: 0, fontSize: '1.2rem', fontWeight: 800, color: 'var(--adm-text-primary)' }}>Edit Card Template</h3>
+                <p style={{ margin: '2px 0 0', fontSize: '0.78rem', color: 'var(--adm-text-secondary)' }}>{editingTemplate.name}</p>
               </div>
-              <button type="button" onClick={() => setEditingTemplate(null)} style={{ background: 'none', border: 'none', color: '#777184', cursor: 'pointer' }}>
+              <button type="button" onClick={() => setEditingTemplate(null)} style={{ background: 'none', border: 'none', color: 'var(--adm-text-secondary)', cursor: 'pointer' }}>
                 <X size={18} />
               </button>
             </div>
             <form onSubmit={handleUpdateTemplate} style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
                 <div>
-                  <label style={{ display: 'block', fontSize: '0.78rem', fontWeight: 600, marginBottom: '4px', color: '#191522' }}>Template Name</label>
+                  <label style={{ display: 'block', fontSize: '0.78rem', fontWeight: 600, marginBottom: '4px', color: 'var(--adm-text-primary)' }}>Template Name</label>
                   <input
                     type="text"
                     required
                     value={editingTemplate.name || ''}
                     onChange={(e) => setEditingTemplate({ ...editingTemplate, name: e.target.value })}
-                    style={{ width: '100%', padding: '9px 12px', borderRadius: '8px', border: '1px solid #E8E3EF', fontSize: '0.84rem' }}
+                    style={{ width: '100%', padding: '9px 12px', borderRadius: '8px', border: 'var(--adm-card-border)', fontSize: '0.84rem' }}
                   />
                 </div>
                 <div>
-                  <label style={{ display: 'block', fontSize: '0.78rem', fontWeight: 600, marginBottom: '4px', color: '#191522' }}>Badge Text</label>
+                  <label style={{ display: 'block', fontSize: '0.78rem', fontWeight: 600, marginBottom: '4px', color: 'var(--adm-text-primary)' }}>Badge Text</label>
                   <input
                     type="text"
                     value={editingTemplate.badge || ''}
                     onChange={(e) => setEditingTemplate({ ...editingTemplate, badge: e.target.value })}
                     placeholder="Signature / Luxury"
-                    style={{ width: '100%', padding: '9px 12px', borderRadius: '8px', border: '1px solid #E8E3EF', fontSize: '0.84rem' }}
+                    style={{ width: '100%', padding: '9px 12px', borderRadius: '8px', border: 'var(--adm-card-border)', fontSize: '0.84rem' }}
                   />
                 </div>
               </div>
 
               <div>
-                <label style={{ display: 'block', fontSize: '0.78rem', fontWeight: 600, marginBottom: '4px', color: '#191522' }}>Tagline</label>
+                <label style={{ display: 'block', fontSize: '0.78rem', fontWeight: 600, marginBottom: '4px', color: 'var(--adm-text-primary)' }}>Tagline</label>
                 <input
                   type="text"
                   value={editingTemplate.tagline || ''}
                   onChange={(e) => setEditingTemplate({ ...editingTemplate, tagline: e.target.value })}
-                  style={{ width: '100%', padding: '9px 12px', borderRadius: '8px', border: '1px solid #E8E3EF', fontSize: '0.84rem' }}
+                  style={{ width: '100%', padding: '9px 12px', borderRadius: '8px', border: 'var(--adm-card-border)', fontSize: '0.84rem' }}
                 />
               </div>
 
               <div>
-                <label style={{ display: 'block', fontSize: '0.78rem', fontWeight: 600, marginBottom: '4px', color: '#191522' }}>Description</label>
+                <label style={{ display: 'block', fontSize: '0.78rem', fontWeight: 600, marginBottom: '4px', color: 'var(--adm-text-primary)' }}>Description</label>
                 <textarea
                   rows={2}
                   value={editingTemplate.description || ''}
                   onChange={(e) => setEditingTemplate({ ...editingTemplate, description: e.target.value })}
-                  style={{ width: '100%', padding: '9px 12px', borderRadius: '8px', border: '1px solid #E8E3EF', fontSize: '0.84rem' }}
+                  style={{ width: '100%', padding: '9px 12px', borderRadius: '8px', border: 'var(--adm-card-border)', fontSize: '0.84rem' }}
                 />
               </div>
 
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
                 <div>
-                  <label style={{ display: 'block', fontSize: '0.78rem', fontWeight: 600, marginBottom: '4px', color: '#191522' }}>Material Specification</label>
+                  <label style={{ display: 'block', fontSize: '0.78rem', fontWeight: 600, marginBottom: '4px', color: 'var(--adm-text-primary)' }}>Material Specification</label>
                   <input
                     type="text"
                     value={editingTemplate.material || ''}
                     onChange={(e) => setEditingTemplate({ ...editingTemplate, material: e.target.value })}
-                    style={{ width: '100%', padding: '9px 12px', borderRadius: '8px', border: '1px solid #E8E3EF', fontSize: '0.84rem' }}
+                    style={{ width: '100%', padding: '9px 12px', borderRadius: '8px', border: 'var(--adm-card-border)', fontSize: '0.84rem' }}
                   />
                 </div>
                 <div>
-                  <label style={{ display: 'block', fontSize: '0.78rem', fontWeight: 600, marginBottom: '4px', color: '#191522' }}>Surface Finish</label>
+                  <label style={{ display: 'block', fontSize: '0.78rem', fontWeight: 600, marginBottom: '4px', color: 'var(--adm-text-primary)' }}>Surface Finish</label>
                   <input
                     type="text"
                     value={editingTemplate.finish || ''}
                     onChange={(e) => setEditingTemplate({ ...editingTemplate, finish: e.target.value })}
-                    style={{ width: '100%', padding: '9px 12px', borderRadius: '8px', border: '1px solid #E8E3EF', fontSize: '0.84rem' }}
+                    style={{ width: '100%', padding: '9px 12px', borderRadius: '8px', border: 'var(--adm-card-border)', fontSize: '0.84rem' }}
                   />
                 </div>
               </div>
 
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
                 <div>
-                  <label style={{ display: 'block', fontSize: '0.78rem', fontWeight: 600, marginBottom: '4px', color: '#191522' }}>Chip Hardware</label>
+                  <label style={{ display: 'block', fontSize: '0.78rem', fontWeight: 600, marginBottom: '4px', color: 'var(--adm-text-primary)' }}>Chip Hardware</label>
                   <input
                     type="text"
                     value={editingTemplate.chip || ''}
                     onChange={(e) => setEditingTemplate({ ...editingTemplate, chip: e.target.value })}
-                    style={{ width: '100%', padding: '9px 12px', borderRadius: '8px', border: '1px solid #E8E3EF', fontSize: '0.84rem' }}
+                    style={{ width: '100%', padding: '9px 12px', borderRadius: '8px', border: 'var(--adm-card-border)', fontSize: '0.84rem' }}
                   />
                 </div>
                 <div>
-                  <label style={{ display: 'block', fontSize: '0.78rem', fontWeight: 600, marginBottom: '4px', color: '#191522' }}>Status</label>
+                  <label style={{ display: 'block', fontSize: '0.78rem', fontWeight: 600, marginBottom: '4px', color: 'var(--adm-text-primary)' }}>Status</label>
                   <select
                     value={editingTemplate.status || 'active'}
                     onChange={(e) => setEditingTemplate({ ...editingTemplate, status: e.target.value })}
-                    style={{ width: '100%', padding: '9px 12px', borderRadius: '8px', border: '1px solid #E8E3EF', fontSize: '0.84rem' }}
+                    style={{ width: '100%', padding: '9px 12px', borderRadius: '8px', border: 'var(--adm-card-border)', fontSize: '0.84rem' }}
                   >
                     <option value="active">Active (Available in studio)</option>
                     <option value="draft">Draft (Hidden)</option>
@@ -5133,36 +5791,36 @@ export default function AdminDashboard({ initialTab = 'overview', initialOrderId
 
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '12px' }}>
                 <div>
-                  <label style={{ display: 'block', fontSize: '0.74rem', fontWeight: 600, marginBottom: '4px', color: '#191522' }}>Accent Color</label>
+                  <label style={{ display: 'block', fontSize: '0.74rem', fontWeight: 600, marginBottom: '4px', color: 'var(--adm-text-primary)' }}>Accent Color</label>
                   <input
                     type="color"
                     value={editingTemplate.accentColor || '#6B00FF'}
                     onChange={(e) => setEditingTemplate({ ...editingTemplate, accentColor: e.target.value })}
-                    style={{ width: '100%', height: '36px', borderRadius: '8px', border: '1px solid #E8E3EF', cursor: 'pointer' }}
+                    style={{ width: '100%', height: '36px', borderRadius: '8px', border: 'var(--adm-card-border)', cursor: 'pointer' }}
                   />
                 </div>
                 <div>
-                  <label style={{ display: 'block', fontSize: '0.74rem', fontWeight: 600, marginBottom: '4px', color: '#191522' }}>Text Color</label>
+                  <label style={{ display: 'block', fontSize: '0.74rem', fontWeight: 600, marginBottom: '4px', color: 'var(--adm-text-primary)' }}>Text Color</label>
                   <input
                     type="color"
                     value={editingTemplate.textColor || '#FFFFFF'}
                     onChange={(e) => setEditingTemplate({ ...editingTemplate, textColor: e.target.value })}
-                    style={{ width: '100%', height: '36px', borderRadius: '8px', border: '1px solid #E8E3EF', cursor: 'pointer' }}
+                    style={{ width: '100%', height: '36px', borderRadius: '8px', border: 'var(--adm-card-border)', cursor: 'pointer' }}
                   />
                 </div>
                 <div>
-                  <label style={{ display: 'block', fontSize: '0.74rem', fontWeight: 600, marginBottom: '4px', color: '#191522' }}>Card Background</label>
+                  <label style={{ display: 'block', fontSize: '0.74rem', fontWeight: 600, marginBottom: '4px', color: 'var(--adm-text-primary)' }}>Card Background</label>
                   <input
                     type="color"
                     value={editingTemplate.cardBg || '#15101D'}
                     onChange={(e) => setEditingTemplate({ ...editingTemplate, cardBg: e.target.value })}
-                    style={{ width: '100%', height: '36px', borderRadius: '8px', border: '1px solid #E8E3EF', cursor: 'pointer' }}
+                    style={{ width: '100%', height: '36px', borderRadius: '8px', border: 'var(--adm-card-border)', cursor: 'pointer' }}
                   />
                 </div>
               </div>
 
-              <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '8px', marginTop: '16px', paddingTop: '14px', borderTop: '1px solid #F2ECFF' }}>
-                <button type="button" onClick={() => setEditingTemplate(null)} style={{ padding: '8px 16px', borderRadius: '8px', border: '1px solid #E8E3EF', background: 'none', fontSize: '0.8rem', cursor: 'pointer' }}>
+              <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '8px', marginTop: '16px', paddingTop: '14px', borderTop: 'var(--adm-divider)' }}>
+                <button type="button" onClick={() => setEditingTemplate(null)} style={{ padding: '8px 16px', borderRadius: '8px', border: 'var(--adm-card-border)', background: 'none', fontSize: '0.8rem', cursor: 'pointer' }}>
                   Cancel
                 </button>
                 <button type="submit" style={{ padding: '8px 20px', borderRadius: '8px', border: 'none', backgroundColor: '#6B00FF', color: '#FFFFFF', fontWeight: 600, fontSize: '0.8rem', cursor: 'pointer' }}>
@@ -5179,20 +5837,20 @@ export default function AdminDashboard({ initialTab = 'overview', initialOrderId
           ==================================================================== */}
       {editingProduct && (
         <div style={{ position: 'fixed', inset: 0, backgroundColor: 'rgba(8, 6, 13, 0.85)', backdropFilter: 'blur(4px)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000, padding: '20px' }}>
-          <div style={{ backgroundColor: '#FFFFFF', borderRadius: '16px', width: '100%', maxWidth: '600px', padding: '24px', border: '1px solid #E8E3EF', maxHeight: '92vh', overflowY: 'auto', boxShadow: '0 20px 40px rgba(0,0,0,0.2)' }}>
+          <div style={{ backgroundColor: 'var(--adm-card-bg)', borderRadius: '16px', width: '100%', maxWidth: '600px', padding: '24px', border: 'var(--adm-card-border)', maxHeight: '92vh', overflowY: 'auto', boxShadow: '0 20px 40px rgba(0,0,0,0.3)' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px', paddingBottom: '12px', borderBottom: '1px solid #F3F4F6' }}>
               <div>
-                <h3 style={{ margin: 0, fontSize: '1.2rem', fontWeight: 800, color: '#191522' }}>
+                <h3 style={{ margin: 0, fontSize: '1.2rem', fontWeight: 800, color: 'var(--adm-text-primary)' }}>
                   Edit Product Pricing & Specifications
                 </h3>
-                <p style={{ margin: '2px 0 0', fontSize: '0.78rem', color: '#777184' }}>
+                <p style={{ margin: '2px 0 0', fontSize: '0.78rem', color: 'var(--adm-text-secondary)' }}>
                   {editingProduct.name} ({editingProduct.editionKey?.toUpperCase()} Edition)
                 </p>
               </div>
               <button
                 type="button"
                 onClick={() => { setEditingProduct(null); setProductSaveError(''); setProductSaveSuccess(''); }}
-                style={{ background: 'none', border: 'none', color: '#777184', cursor: 'pointer', padding: '4px' }}
+                style={{ background: 'none', border: 'none', color: 'var(--adm-text-secondary)', cursor: 'pointer', padding: '4px' }}
               >
                 <X size={18} />
               </button>
@@ -5216,7 +5874,7 @@ export default function AdminDashboard({ initialTab = 'overview', initialOrderId
               {/* Pricing Row */}
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
                 <div>
-                  <label style={{ display: 'block', fontSize: '0.78rem', fontWeight: 600, marginBottom: '4px', color: '#191522' }}>
+                  <label style={{ display: 'block', fontSize: '0.78rem', fontWeight: 600, marginBottom: '4px', color: 'var(--adm-text-primary)' }}>
                     Selling Price (₹ INR) <span style={{ color: '#EF4444' }}>*</span>
                   </label>
                   <input
@@ -5226,15 +5884,15 @@ export default function AdminDashboard({ initialTab = 'overview', initialOrderId
                     value={editingProduct.price ?? ''}
                     onChange={(e) => setEditingProduct({ ...editingProduct, price: e.target.value === '' ? null : Number(e.target.value) })}
                     placeholder="e.g. 2499 (0 for Price coming soon)"
-                    style={{ width: '100%', padding: '9px 12px', borderRadius: '8px', border: '1px solid #E8E3EF', fontSize: '0.84rem' }}
+                    style={{ width: '100%', padding: '9px 12px', borderRadius: '8px', border: 'var(--adm-card-border)', fontSize: '0.84rem' }}
                   />
-                  <span style={{ fontSize: '0.7rem', color: '#777184', marginTop: '2px', display: 'block' }}>
+                  <span style={{ fontSize: '0.7rem', color: 'var(--adm-text-secondary)', marginTop: '2px', display: 'block' }}>
                     Leave empty or 0 to show "Price coming soon".
                   </span>
                 </div>
 
                 <div>
-                  <label style={{ display: 'block', fontSize: '0.78rem', fontWeight: 600, marginBottom: '4px', color: '#191522' }}>
+                  <label style={{ display: 'block', fontSize: '0.78rem', fontWeight: 600, marginBottom: '4px', color: 'var(--adm-text-primary)' }}>
                     Comparison Price (₹ INR)
                   </label>
                   <input
@@ -5244,9 +5902,9 @@ export default function AdminDashboard({ initialTab = 'overview', initialOrderId
                     value={editingProduct.comparePrice ?? ''}
                     onChange={(e) => setEditingProduct({ ...editingProduct, comparePrice: e.target.value === '' ? null : Number(e.target.value) })}
                     placeholder="e.g. 2999 (optional strike-through)"
-                    style={{ width: '100%', padding: '9px 12px', borderRadius: '8px', border: '1px solid #E8E3EF', fontSize: '0.84rem' }}
+                    style={{ width: '100%', padding: '9px 12px', borderRadius: '8px', border: 'var(--adm-card-border)', fontSize: '0.84rem' }}
                   />
-                  <span style={{ fontSize: '0.7rem', color: '#777184', marginTop: '2px', display: 'block' }}>
+                  <span style={{ fontSize: '0.7rem', color: 'var(--adm-text-secondary)', marginTop: '2px', display: 'block' }}>
                     Only displayed when greater than selling price.
                   </span>
                 </div>
@@ -5254,7 +5912,7 @@ export default function AdminDashboard({ initialTab = 'overview', initialOrderId
 
               {/* Product Title */}
               <div>
-                <label style={{ display: 'block', fontSize: '0.78rem', fontWeight: 600, marginBottom: '4px', color: '#191522' }}>
+                <label style={{ display: 'block', fontSize: '0.78rem', fontWeight: 600, marginBottom: '4px', color: 'var(--adm-text-primary)' }}>
                   Product Edition Name
                 </label>
                 <input
@@ -5262,33 +5920,33 @@ export default function AdminDashboard({ initialTab = 'overview', initialOrderId
                   required
                   value={editingProduct.name || ''}
                   onChange={(e) => setEditingProduct({ ...editingProduct, name: e.target.value })}
-                  style={{ width: '100%', padding: '9px 12px', borderRadius: '8px', border: '1px solid #E8E3EF', fontSize: '0.84rem' }}
+                  style={{ width: '100%', padding: '9px 12px', borderRadius: '8px', border: 'var(--adm-card-border)', fontSize: '0.84rem' }}
                 />
               </div>
 
               {/* Description */}
               <div>
-                <label style={{ display: 'block', fontSize: '0.78rem', fontWeight: 600, marginBottom: '4px', color: '#191522' }}>
+                <label style={{ display: 'block', fontSize: '0.78rem', fontWeight: 600, marginBottom: '4px', color: 'var(--adm-text-primary)' }}>
                   Product Finish & Description
                 </label>
                 <textarea
                   rows={2}
                   value={editingProduct.description || ''}
                   onChange={(e) => setEditingProduct({ ...editingProduct, description: e.target.value })}
-                  style={{ width: '100%', padding: '9px 12px', borderRadius: '8px', border: '1px solid #E8E3EF', fontSize: '0.84rem', resize: 'vertical' }}
+                  style={{ width: '100%', padding: '9px 12px', borderRadius: '8px', border: 'var(--adm-card-border)', fontSize: '0.84rem', resize: 'vertical' }}
                 />
               </div>
 
               {/* Status & Availability & Featured */}
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '12px' }}>
                 <div>
-                  <label style={{ display: 'block', fontSize: '0.78rem', fontWeight: 600, marginBottom: '4px', color: '#191522' }}>
+                  <label style={{ display: 'block', fontSize: '0.78rem', fontWeight: 600, marginBottom: '4px', color: 'var(--adm-text-primary)' }}>
                     Product Status
                   </label>
                   <select
                     value={editingProduct.status || 'active'}
                     onChange={(e) => setEditingProduct({ ...editingProduct, status: e.target.value })}
-                    style={{ width: '100%', padding: '9px 12px', borderRadius: '8px', border: '1px solid #E8E3EF', fontSize: '0.84rem' }}
+                    style={{ width: '100%', padding: '9px 12px', borderRadius: '8px', border: 'var(--adm-card-border)', fontSize: '0.84rem' }}
                   >
                     <option value="active">Active (Visible)</option>
                     <option value="disabled">Disabled (Hidden)</option>
@@ -5296,13 +5954,13 @@ export default function AdminDashboard({ initialTab = 'overview', initialOrderId
                 </div>
 
                 <div>
-                  <label style={{ display: 'block', fontSize: '0.78rem', fontWeight: 600, marginBottom: '4px', color: '#191522' }}>
+                  <label style={{ display: 'block', fontSize: '0.78rem', fontWeight: 600, marginBottom: '4px', color: 'var(--adm-text-primary)' }}>
                     Inventory Status
                   </label>
                   <select
                     value={editingProduct.availability || 'in_stock'}
                     onChange={(e) => setEditingProduct({ ...editingProduct, availability: e.target.value })}
-                    style={{ width: '100%', padding: '9px 12px', borderRadius: '8px', border: '1px solid #E8E3EF', fontSize: '0.84rem' }}
+                    style={{ width: '100%', padding: '9px 12px', borderRadius: '8px', border: 'var(--adm-card-border)', fontSize: '0.84rem' }}
                   >
                     <option value="in_stock">In Stock</option>
                     <option value="low_stock">Low Stock</option>
@@ -5312,10 +5970,10 @@ export default function AdminDashboard({ initialTab = 'overview', initialOrderId
                 </div>
 
                 <div>
-                  <label style={{ display: 'block', fontSize: '0.78rem', fontWeight: 600, marginBottom: '4px', color: '#191522' }}>
+                  <label style={{ display: 'block', fontSize: '0.78rem', fontWeight: 600, marginBottom: '4px', color: 'var(--adm-text-primary)' }}>
                     Featured Edition
                   </label>
-                  <label style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '9px 12px', borderRadius: '8px', border: '1px solid #E8E3EF', cursor: 'pointer', fontSize: '0.82rem' }}>
+                  <label style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '9px 12px', borderRadius: '8px', border: 'var(--adm-card-border)', cursor: 'pointer', fontSize: '0.82rem' }}>
                     <input
                       type="checkbox"
                       checked={!!editingProduct.featured}
@@ -5328,7 +5986,7 @@ export default function AdminDashboard({ initialTab = 'overview', initialOrderId
 
               {/* Included Features Management */}
               <div>
-                <label style={{ display: 'block', fontSize: '0.78rem', fontWeight: 600, marginBottom: '6px', color: '#191522' }}>
+                <label style={{ display: 'block', fontSize: '0.78rem', fontWeight: 600, marginBottom: '6px', color: 'var(--adm-text-primary)' }}>
                   Key Included Features (Strictly shown on product card)
                 </label>
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '6px', marginBottom: '8px' }}>
@@ -5342,7 +6000,7 @@ export default function AdminDashboard({ initialTab = 'overview', initialOrderId
                           updated[idx] = e.target.value;
                           setEditingProduct({ ...editingProduct, features: updated });
                         }}
-                        style={{ flex: 1, padding: '7px 10px', borderRadius: '8px', border: '1px solid #E8E3EF', fontSize: '0.8rem' }}
+                        style={{ flex: 1, padding: '7px 10px', borderRadius: '8px', border: 'var(--adm-card-border)', fontSize: '0.8rem' }}
                       />
                       <button
                         type="button"
@@ -5363,7 +6021,7 @@ export default function AdminDashboard({ initialTab = 'overview', initialOrderId
                     onChange={(e) => setNewFeatureText(e.target.value)}
                     placeholder="Type new feature to include..."
                     onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); handleAddProductFeature(); } }}
-                    style={{ flex: 1, padding: '7px 10px', borderRadius: '8px', border: '1px solid #E8E3EF', fontSize: '0.8rem' }}
+                    style={{ flex: 1, padding: '7px 10px', borderRadius: '8px', border: 'var(--adm-card-border)', fontSize: '0.8rem' }}
                   />
                   <button
                     type="button"
@@ -5378,26 +6036,26 @@ export default function AdminDashboard({ initialTab = 'overview', initialOrderId
               {/* Sample Card Images */}
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
                 <div>
-                  <label style={{ display: 'block', fontSize: '0.78rem', fontWeight: 600, marginBottom: '4px', color: '#191522' }}>
+                  <label style={{ display: 'block', fontSize: '0.78rem', fontWeight: 600, marginBottom: '4px', color: 'var(--adm-text-primary)' }}>
                     Front Card Asset URL
                   </label>
                   <input
                     type="text"
                     value={editingProduct.sampleFrontImage || ''}
                     onChange={(e) => setEditingProduct({ ...editingProduct, sampleFrontImage: e.target.value })}
-                    style={{ width: '100%', padding: '7px 10px', borderRadius: '8px', border: '1px solid #E8E3EF', fontSize: '0.8rem' }}
+                    style={{ width: '100%', padding: '7px 10px', borderRadius: '8px', border: 'var(--adm-card-border)', fontSize: '0.8rem' }}
                   />
                 </div>
 
                 <div>
-                  <label style={{ display: 'block', fontSize: '0.78rem', fontWeight: 600, marginBottom: '4px', color: '#191522' }}>
+                  <label style={{ display: 'block', fontSize: '0.78rem', fontWeight: 600, marginBottom: '4px', color: 'var(--adm-text-primary)' }}>
                     Back Card Asset URL
                   </label>
                   <input
                     type="text"
                     value={editingProduct.sampleBackImage || ''}
                     onChange={(e) => setEditingProduct({ ...editingProduct, sampleBackImage: e.target.value })}
-                    style={{ width: '100%', padding: '7px 10px', borderRadius: '8px', border: '1px solid #E8E3EF', fontSize: '0.8rem' }}
+                    style={{ width: '100%', padding: '7px 10px', borderRadius: '8px', border: 'var(--adm-card-border)', fontSize: '0.8rem' }}
                   />
                 </div>
               </div>
@@ -5407,7 +6065,7 @@ export default function AdminDashboard({ initialTab = 'overview', initialOrderId
                 <button
                   type="button"
                   onClick={() => { setEditingProduct(null); setProductSaveError(''); setProductSaveSuccess(''); }}
-                  style={{ padding: '8px 16px', borderRadius: '8px', border: '1px solid #E8E3EF', background: 'none', fontSize: '0.82rem', cursor: 'pointer' }}
+                  style={{ padding: '8px 16px', borderRadius: '8px', border: 'var(--adm-card-border)', background: 'none', fontSize: '0.82rem', cursor: 'pointer' }}
                 >
                   Cancel
                 </button>
@@ -5428,93 +6086,93 @@ export default function AdminDashboard({ initialTab = 'overview', initialOrderId
           ==================================================================== */}
       {newTemplateModal && (
         <div style={{ position: 'fixed', inset: 0, backgroundColor: 'rgba(8, 6, 13, 0.85)', backdropFilter: 'blur(4px)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000, padding: '20px' }}>
-          <div style={{ backgroundColor: '#FFFFFF', borderRadius: '20px', width: '100%', maxWidth: '520px', padding: '28px', border: '1px solid #E8E3EF', maxHeight: '90vh', overflowY: 'auto' }}>
+          <div style={{ backgroundColor: 'var(--adm-card-bg)', borderRadius: '20px', width: '100%', maxWidth: '520px', padding: '28px', border: 'var(--adm-card-border)', maxHeight: '90vh', overflowY: 'auto' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
-              <h3 style={{ margin: 0, fontSize: '1.2rem', fontWeight: 800, color: '#191522' }}>Create New Card Template</h3>
-              <button type="button" onClick={() => setNewTemplateModal(false)} style={{ background: 'none', border: 'none', color: '#777184', cursor: 'pointer' }}>
+              <h3 style={{ margin: 0, fontSize: '1.2rem', fontWeight: 800, color: 'var(--adm-text-primary)' }}>Create New Card Template</h3>
+              <button type="button" onClick={() => setNewTemplateModal(false)} style={{ background: 'none', border: 'none', color: 'var(--adm-text-secondary)', cursor: 'pointer' }}>
                 <X size={18} />
               </button>
             </div>
             <form onSubmit={handleCreateTemplate} style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
                 <div>
-                  <label style={{ display: 'block', fontSize: '0.78rem', fontWeight: 600, marginBottom: '4px', color: '#191522' }}>Template Name</label>
+                  <label style={{ display: 'block', fontSize: '0.78rem', fontWeight: 600, marginBottom: '4px', color: 'var(--adm-text-primary)' }}>Template Name</label>
                   <input
                     type="text"
                     required
                     value={newTmplForm.name}
                     onChange={(e) => setNewTmplForm({ ...newTmplForm, name: e.target.value })}
                     placeholder="e.g. Damascus Steel Edition"
-                    style={{ width: '100%', padding: '9px 12px', borderRadius: '8px', border: '1px solid #E8E3EF', fontSize: '0.84rem' }}
+                    style={{ width: '100%', padding: '9px 12px', borderRadius: '8px', border: 'var(--adm-card-border)', fontSize: '0.84rem' }}
                   />
                 </div>
                 <div>
-                  <label style={{ display: 'block', fontSize: '0.78rem', fontWeight: 600, marginBottom: '4px', color: '#191522' }}>Badge Text</label>
+                  <label style={{ display: 'block', fontSize: '0.78rem', fontWeight: 600, marginBottom: '4px', color: 'var(--adm-text-primary)' }}>Badge Text</label>
                   <input
                     type="text"
                     value={newTmplForm.badge}
                     onChange={(e) => setNewTmplForm({ ...newTmplForm, badge: e.target.value })}
                     placeholder="e.g. Exclusive"
-                    style={{ width: '100%', padding: '9px 12px', borderRadius: '8px', border: '1px solid #E8E3EF', fontSize: '0.84rem' }}
+                    style={{ width: '100%', padding: '9px 12px', borderRadius: '8px', border: 'var(--adm-card-border)', fontSize: '0.84rem' }}
                   />
                 </div>
               </div>
 
               <div>
-                <label style={{ display: 'block', fontSize: '0.78rem', fontWeight: 600, marginBottom: '4px', color: '#191522' }}>Tagline</label>
+                <label style={{ display: 'block', fontSize: '0.78rem', fontWeight: 600, marginBottom: '4px', color: 'var(--adm-text-primary)' }}>Tagline</label>
                 <input
                   type="text"
                   value={newTmplForm.tagline}
                   onChange={(e) => setNewTmplForm({ ...newTmplForm, tagline: e.target.value })}
                   placeholder="e.g. Hand-forged layered carbon steel with embedded NFC."
-                  style={{ width: '100%', padding: '9px 12px', borderRadius: '8px', border: '1px solid #E8E3EF', fontSize: '0.84rem' }}
+                  style={{ width: '100%', padding: '9px 12px', borderRadius: '8px', border: 'var(--adm-card-border)', fontSize: '0.84rem' }}
                 />
               </div>
 
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
                 <div>
-                  <label style={{ display: 'block', fontSize: '0.78rem', fontWeight: 600, marginBottom: '4px', color: '#191522' }}>Material</label>
+                  <label style={{ display: 'block', fontSize: '0.78rem', fontWeight: 600, marginBottom: '4px', color: 'var(--adm-text-primary)' }}>Material</label>
                   <input
                     type="text"
                     value={newTmplForm.material}
                     onChange={(e) => setNewTmplForm({ ...newTmplForm, material: e.target.value })}
-                    style={{ width: '100%', padding: '9px 12px', borderRadius: '8px', border: '1px solid #E8E3EF', fontSize: '0.84rem' }}
+                    style={{ width: '100%', padding: '9px 12px', borderRadius: '8px', border: 'var(--adm-card-border)', fontSize: '0.84rem' }}
                   />
                 </div>
                 <div>
-                  <label style={{ display: 'block', fontSize: '0.78rem', fontWeight: 600, marginBottom: '4px', color: '#191522' }}>Surface Finish</label>
+                  <label style={{ display: 'block', fontSize: '0.78rem', fontWeight: 600, marginBottom: '4px', color: 'var(--adm-text-primary)' }}>Surface Finish</label>
                   <input
                     type="text"
                     value={newTmplForm.finish}
                     onChange={(e) => setNewTmplForm({ ...newTmplForm, finish: e.target.value })}
-                    style={{ width: '100%', padding: '9px 12px', borderRadius: '8px', border: '1px solid #E8E3EF', fontSize: '0.84rem' }}
+                    style={{ width: '100%', padding: '9px 12px', borderRadius: '8px', border: 'var(--adm-card-border)', fontSize: '0.84rem' }}
                   />
                 </div>
               </div>
 
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
                 <div>
-                  <label style={{ display: 'block', fontSize: '0.78rem', fontWeight: 600, marginBottom: '4px', color: '#191522' }}>Accent Color</label>
+                  <label style={{ display: 'block', fontSize: '0.78rem', fontWeight: 600, marginBottom: '4px', color: 'var(--adm-text-primary)' }}>Accent Color</label>
                   <input
                     type="color"
                     value={newTmplForm.accentColor}
                     onChange={(e) => setNewTmplForm({ ...newTmplForm, accentColor: e.target.value })}
-                    style={{ width: '100%', height: '36px', borderRadius: '8px', border: '1px solid #E8E3EF', cursor: 'pointer' }}
+                    style={{ width: '100%', height: '36px', borderRadius: '8px', border: 'var(--adm-card-border)', cursor: 'pointer' }}
                   />
                 </div>
                 <div>
-                  <label style={{ display: 'block', fontSize: '0.78rem', fontWeight: 600, marginBottom: '4px', color: '#191522' }}>Card Background Color</label>
+                  <label style={{ display: 'block', fontSize: '0.78rem', fontWeight: 600, marginBottom: '4px', color: 'var(--adm-text-primary)' }}>Card Background Color</label>
                   <input
                     type="color"
                     value={newTmplForm.cardBg}
                     onChange={(e) => setNewTmplForm({ ...newTmplForm, cardBg: e.target.value })}
-                    style={{ width: '100%', height: '36px', borderRadius: '8px', border: '1px solid #E8E3EF', cursor: 'pointer' }}
+                    style={{ width: '100%', height: '36px', borderRadius: '8px', border: 'var(--adm-card-border)', cursor: 'pointer' }}
                   />
                 </div>
               </div>
 
-              <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '8px', marginTop: '16px', paddingTop: '14px', borderTop: '1px solid #F2ECFF' }}>
-                <button type="button" onClick={() => setNewTemplateModal(false)} style={{ padding: '8px 16px', borderRadius: '8px', border: '1px solid #E8E3EF', background: 'none', fontSize: '0.8rem', cursor: 'pointer' }}>
+              <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '8px', marginTop: '16px', paddingTop: '14px', borderTop: 'var(--adm-divider)' }}>
+                <button type="button" onClick={() => setNewTemplateModal(false)} style={{ padding: '8px 16px', borderRadius: '8px', border: 'var(--adm-card-border)', background: 'none', fontSize: '0.8rem', cursor: 'pointer' }}>
                   Cancel
                 </button>
                 <button type="submit" style={{ padding: '8px 20px', borderRadius: '8px', border: 'none', backgroundColor: '#6B00FF', color: '#FFFFFF', fontWeight: 600, fontSize: '0.8rem', cursor: 'pointer' }}>
@@ -5531,16 +6189,16 @@ export default function AdminDashboard({ initialTab = 'overview', initialOrderId
           ==================================================================== */}
       {selectedOrder && (
         <div style={{ position: 'fixed', inset: 0, backgroundColor: 'rgba(8, 6, 13, 0.85)', backdropFilter: 'blur(4px)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000, padding: '20px' }}>
-          <div style={{ backgroundColor: '#FFFFFF', borderRadius: '20px', width: '100%', maxWidth: '560px', padding: '28px', border: '1px solid #E8E3EF', maxHeight: '90vh', overflowY: 'auto' }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '18px', borderBottom: '1px solid #F2ECFF', paddingBottom: '14px' }}>
+          <div style={{ backgroundColor: 'var(--adm-card-bg)', borderRadius: '20px', width: '100%', maxWidth: '560px', padding: '28px', border: 'var(--adm-card-border)', maxHeight: '90vh', overflowY: 'auto' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '18px', borderBottom: 'var(--adm-divider)', paddingBottom: '14px' }}>
               <div>
                 <span style={{ fontSize: '0.72rem', fontWeight: 700, color: '#6B00FF', textTransform: 'uppercase' }}>Production Order Specs</span>
-                <h3 style={{ margin: '2px 0 0', fontSize: '1.25rem', fontWeight: 800, color: '#191522' }}>{selectedOrder.id}</h3>
+                <h3 style={{ margin: '2px 0 0', fontSize: '1.25rem', fontWeight: 800, color: 'var(--adm-text-primary)' }}>{selectedOrder.id}</h3>
               </div>
               <button
                 type="button"
                 onClick={() => setSelectedOrder(null)}
-                style={{ background: 'none', border: 'none', color: '#777184', cursor: 'pointer', padding: '4px' }}
+                style={{ background: 'none', border: 'none', color: 'var(--adm-text-secondary)', cursor: 'pointer', padding: '4px' }}
               >
                 <X size={20} />
               </button>
@@ -5548,7 +6206,7 @@ export default function AdminDashboard({ initialTab = 'overview', initialOrderId
 
             <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
               {/* Customer Profile Banner */}
-              <div style={{ display: 'flex', alignItems: 'center', gap: '14px', padding: '14px', borderRadius: '12px', backgroundColor: '#F7F6FA', border: '1px solid #E8E3EF' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '14px', padding: '14px', borderRadius: '12px', backgroundColor: 'var(--adm-search-bg)', border: 'var(--adm-card-border)' }}>
                 <div style={{ width: '48px', height: '48px', borderRadius: '50%', backgroundColor: '#100819', border: '2px solid #A855F7', overflow: 'hidden', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#FFFFFF', fontWeight: 700, flexShrink: 0 }}>
                   {selectedOrder.customerLogo ? (
                     <img src={selectedOrder.customerLogo} alt="Logo" style={{ width: '100%', height: '100%', objectFit: 'contain' }} />
@@ -5557,37 +6215,37 @@ export default function AdminDashboard({ initialTab = 'overview', initialOrderId
                   )}
                 </div>
                 <div>
-                  <div style={{ fontWeight: 800, fontSize: '0.96rem', color: '#191522' }}>{selectedOrder.customerName}</div>
-                  <div style={{ fontSize: '0.78rem', color: '#777184' }}>{selectedOrder.customerEmail} • {selectedOrder.customerPhone}</div>
+                  <div style={{ fontWeight: 800, fontSize: '0.96rem', color: 'var(--adm-text-primary)' }}>{selectedOrder.customerName}</div>
+                  <div style={{ fontSize: '0.78rem', color: 'var(--adm-text-secondary)' }}>{selectedOrder.customerEmail} • {selectedOrder.customerPhone}</div>
                   <div style={{ fontSize: '0.76rem', color: '#6B00FF', fontWeight: 600 }}>{selectedOrder.company}</div>
                 </div>
               </div>
 
               {/* Order Specs Grid */}
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
-                <div style={{ padding: '12px', borderRadius: '10px', backgroundColor: '#FFFFFF', border: '1px solid #E8E3EF' }}>
-                  <div style={{ fontSize: '0.72rem', color: '#777184', fontWeight: 600 }}>CARD EDITION</div>
-                  <div style={{ fontSize: '0.86rem', fontWeight: 700, color: '#191522', textTransform: 'capitalize', marginTop: '2px' }}>
+                <div style={{ padding: '12px', borderRadius: '10px', backgroundColor: 'var(--adm-card-bg)', border: 'var(--adm-card-border)' }}>
+                  <div style={{ fontSize: '0.72rem', color: 'var(--adm-text-secondary)', fontWeight: 600 }}>CARD EDITION</div>
+                  <div style={{ fontSize: '0.86rem', fontWeight: 700, color: 'var(--adm-text-primary)', textTransform: 'capitalize', marginTop: '2px' }}>
                     {selectedOrder.edition || 'Purple'} Edition
                   </div>
                 </div>
 
-                <div style={{ padding: '12px', borderRadius: '10px', backgroundColor: '#FFFFFF', border: '1px solid #E8E3EF' }}>
-                  <div style={{ fontSize: '0.72rem', color: '#777184', fontWeight: 600 }}>TEMPLATE TYPE</div>
-                  <div style={{ fontSize: '0.86rem', fontWeight: 700, color: '#191522', marginTop: '2px' }}>
+                <div style={{ padding: '12px', borderRadius: '10px', backgroundColor: 'var(--adm-card-bg)', border: 'var(--adm-card-border)' }}>
+                  <div style={{ fontSize: '0.72rem', color: 'var(--adm-text-secondary)', fontWeight: 600 }}>TEMPLATE TYPE</div>
+                  <div style={{ fontSize: '0.86rem', fontWeight: 700, color: 'var(--adm-text-primary)', marginTop: '2px' }}>
                     {selectedOrder.templateType === 'customer_logo' ? 'With Customer Logo' : 'Standard FLOCARD'}
                   </div>
                 </div>
 
-                <div style={{ padding: '12px', borderRadius: '10px', backgroundColor: '#FFFFFF', border: '1px solid #E8E3EF' }}>
-                  <div style={{ fontSize: '0.72rem', color: '#777184', fontWeight: 600 }}>ROLE / TITLE</div>
-                  <div style={{ fontSize: '0.86rem', fontWeight: 700, color: '#191522', marginTop: '2px' }}>
+                <div style={{ padding: '12px', borderRadius: '10px', backgroundColor: 'var(--adm-card-bg)', border: 'var(--adm-card-border)' }}>
+                  <div style={{ fontSize: '0.72rem', color: 'var(--adm-text-secondary)', fontWeight: 600 }}>ROLE / TITLE</div>
+                  <div style={{ fontSize: '0.86rem', fontWeight: 700, color: 'var(--adm-text-primary)', marginTop: '2px' }}>
                     {selectedOrder.role || selectedOrder.frontConfig?.role || 'Executive'}
                   </div>
                 </div>
 
-                <div style={{ padding: '12px', borderRadius: '10px', backgroundColor: '#FFFFFF', border: '1px solid #E8E3EF' }}>
-                  <div style={{ fontSize: '0.72rem', color: '#777184', fontWeight: 600 }}>CURRENT STATUS</div>
+                <div style={{ padding: '12px', borderRadius: '10px', backgroundColor: 'var(--adm-card-bg)', border: 'var(--adm-card-border)' }}>
+                  <div style={{ fontSize: '0.72rem', color: 'var(--adm-text-secondary)', fontWeight: 600 }}>CURRENT STATUS</div>
                   <div style={{ fontSize: '0.86rem', fontWeight: 700, color: selectedOrder.status === 'delivered' ? '#16A36A' : '#EA580C', textTransform: 'capitalize', marginTop: '2px' }}>
                     ● {selectedOrder.status}
                   </div>
@@ -5595,9 +6253,9 @@ export default function AdminDashboard({ initialTab = 'overview', initialOrderId
               </div>
 
               {/* Tagline & Shipping Address */}
-              <div style={{ padding: '12px', borderRadius: '10px', backgroundColor: '#FFFFFF', border: '1px solid #E8E3EF' }}>
-                <div style={{ fontSize: '0.72rem', color: '#777184', fontWeight: 600 }}>CARD TAGLINE</div>
-                <div style={{ fontSize: '0.82rem', color: '#191522', marginTop: '2px' }}>
+              <div style={{ padding: '12px', borderRadius: '10px', backgroundColor: 'var(--adm-card-bg)', border: 'var(--adm-card-border)' }}>
+                <div style={{ fontSize: '0.72rem', color: 'var(--adm-text-secondary)', fontWeight: 600 }}>CARD TAGLINE</div>
+                <div style={{ fontSize: '0.82rem', color: 'var(--adm-text-primary)', marginTop: '2px' }}>
                   "{selectedOrder.tagline || selectedOrder.frontConfig?.tagline || 'One Tap Every Connection'}"
                 </div>
               </div>
@@ -5617,7 +6275,7 @@ export default function AdminDashboard({ initialTab = 'overview', initialOrderId
                       style={{
                         padding: '6px 12px',
                         borderRadius: '8px',
-                        backgroundColor: '#FFFFFF',
+                        backgroundColor: 'var(--adm-card-bg)',
                         border: '1px solid #6EE7B7',
                         color: '#065F46',
                         fontSize: '0.76rem',
@@ -5639,7 +6297,7 @@ export default function AdminDashboard({ initialTab = 'overview', initialOrderId
                       style={{
                         padding: '6px 12px',
                         borderRadius: '8px',
-                        backgroundColor: '#FFFFFF',
+                        backgroundColor: 'var(--adm-card-bg)',
                         border: '1px solid #6EE7B7',
                         color: '#065F46',
                         fontSize: '0.76rem',
@@ -5659,11 +6317,11 @@ export default function AdminDashboard({ initialTab = 'overview', initialOrderId
               )}
             </div>
 
-            <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '10px', marginTop: '20px', paddingTop: '16px', borderTop: '1px solid #F2ECFF' }}>
+            <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '10px', marginTop: '20px', paddingTop: '16px', borderTop: 'var(--adm-divider)' }}>
               <button
                 type="button"
                 onClick={() => setSelectedOrder(null)}
-                style={{ padding: '9px 18px', borderRadius: '8px', border: '1px solid #E8E3EF', background: 'none', fontSize: '0.82rem', fontWeight: 600, cursor: 'pointer' }}
+                style={{ padding: '9px 18px', borderRadius: '8px', border: 'var(--adm-card-border)', background: 'none', fontSize: '0.82rem', fontWeight: 600, cursor: 'pointer' }}
               >
                 Close
               </button>
@@ -5795,6 +6453,32 @@ export default function AdminDashboard({ initialTab = 'overview', initialOrderId
             padding: 16px 14px 40px !important;
           }
         }
+        @media (min-width: 769px) {
+          .admin-mobile-cards {
+            display: none !important;
+          }
+        }
+        @media (max-width: 768px) {
+          .admin-desktop-table {
+            display: none !important;
+          }
+          .admin-mobile-cards {
+            display: flex !important;
+            flex-direction: column !important;
+            gap: 12px !important;
+            width: 100% !important;
+            box-sizing: border-box !important;
+          }
+          .admin-main-content {
+            padding: 12px 10px 48px !important;
+          }
+          .admin-main-content > div {
+            padding: 16px 12px !important;
+            border-radius: 14px !important;
+            box-sizing: border-box !important;
+            max-width: 100% !important;
+          }
+        }
         @media (max-width: 640px) {
           .admin-header {
             padding: 10px 12px !important;
@@ -5814,10 +6498,10 @@ export default function AdminDashboard({ initialTab = 'overview', initialOrderId
             right: 0 !important;
             width: 100% !important;
             box-sizing: border-box !important;
-            background: #FFFFFF !important;
+            background: var(--adm-card-bg) !important;
             padding: 10px 14px !important;
-            border-bottom: 1px solid #E8E3EF !important;
-            box-shadow: 0 6px 18px rgba(0, 0, 0, 0.08) !important;
+            border-bottom: var(--adm-card-border) !important;
+            box-shadow: var(--adm-card-shadow) !important;
             z-index: 89 !important;
           }
           .admin-mobile-search-toggle {
@@ -5845,6 +6529,21 @@ export default function AdminDashboard({ initialTab = 'overview', initialOrderId
           }
           .admin-quick-actions-grid button {
             padding: 12px 8px !important;
+          }
+          /* Native-feeling mobile modal overlays */
+          div[style*="zIndex: 1000"] {
+            padding: 10px !important;
+            align-items: flex-end !important;
+            box-sizing: border-box !important;
+          }
+          div[style*="zIndex: 1000"] > div {
+            padding: 18px 14px !important;
+            max-height: 88vh !important;
+            overflow-y: auto !important;
+            border-radius: 18px 18px 12px 12px !important;
+            width: 100% !important;
+            max-width: 100% !important;
+            box-sizing: border-box !important;
           }
         }
         @media (max-width: 360px) {

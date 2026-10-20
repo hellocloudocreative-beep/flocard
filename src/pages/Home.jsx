@@ -26,7 +26,7 @@ export default function Home() {
     company: demoConfig?.company || 'Your Company',
     avatar: demoConfig?.avatar || '',
     logo: demoConfig?.logo || '',
-    phone: demoConfig?.phone || '+91 97782 78522',
+    phone: demoConfig?.phone || '+91 97782 78552',
     email: demoConfig?.email || 'contact@flocard.in',
     website: demoConfig?.website || 'https://flocard.in',
     cardFinish: demoConfig?.cardFinish || 'purple'
@@ -70,11 +70,11 @@ export default function Home() {
             height: '100%',
             zIndex: 0,
             pointerEvents: 'none',
-            opacity: isLight ? 0.35 : 0.75
+            opacity: isLight ? 0.35 : 0.42
           }}
         >
           <GradientASCII
-            colors={["#731ed8", "#f6f8ff", "#cda5ff", "#7038f8"]}
+            colors={isLight ? ["#731ed8", "#f6f8ff", "#cda5ff", "#7038f8"] : ["#2e1065", "#090514", "#7c3aed", "#13082a"]}
             shape="horizon"
             characters=" .·•●"
             cellSize={18}

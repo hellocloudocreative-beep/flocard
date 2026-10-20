@@ -850,4 +850,54 @@ html {
   }
 }
 
+/* ==========================================================================
+   MOBILE UNZOOM & TOUCH STABILITY
+   - Prevents iOS Safari & Chrome from auto-zooming into input fields on focus
+   - Prevents layout width inflation causing horizontal drift / unzoom
+   - Normalizes text size adjustment across mobile orientations
+   ========================================================================== */
+html, body {
+  overflow-x: clip;
+  max-width: 100vw;
+  -webkit-text-size-adjust: 100%;
+  text-size-adjust: 100%;
+}
+
+@media (max-width: 768px) {
+  /* Prevent iOS automatic zoom on text input focus by guaranteeing 16px font-size minimum */
+  input:not([type="checkbox"]):not([type="radio"]),
+  select,
+  textarea {
+    font-size: 16px !important;
+  }
+  
+  /* Disable double-tap-to-zoom delays on interactive controls */
+  a, button, input, select, textarea, label {
+    touch-action: manipulation;
+  }
+}
+
+/* ==========================================================================
+   ADMIN RESPONSIVE ADAPTATION (ZERO HORIZONTAL SCROLL / NATIVE MOBILE CARDS)
+   ========================================================================== */
+@media (min-width: 769px) {
+  .admin-mobile-cards {
+    display: none !important;
+  }
+}
+
+@media (max-width: 768px) {
+  .admin-desktop-table {
+    display: none !important;
+  }
+  .admin-mobile-cards {
+    display: flex !important;
+    flex-direction: column !important;
+    gap: 12px !important;
+    width: 100% !important;
+    box-sizing: border-box !important;
+  }
+}
+
+
 
