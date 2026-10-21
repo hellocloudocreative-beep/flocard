@@ -36,6 +36,8 @@ import {
   TwitterIcon,
   GithubIcon
 } from '../SocialIcons';
+import ProfileAvatar from './ProfileAvatar';
+import { resolveProfileLinks, DynamicLinkIcon } from '../../lib/socialLinkResolver';
 import { downloadVCard } from '../../lib/vcard';
 
 export default function ExpandedPortfolioView({
@@ -49,6 +51,17 @@ export default function ExpandedPortfolioView({
   const [selectedProject, setSelectedProject] = useState(null);
   const [copiedLink, setCopiedLink] = useState(false);
   const [showQrModal, setShowQrModal] = useState(false);
+
+  // Accessible Escape key to collapse
+  useEffect(() => {
+    const handleKeyDown = (e) => {
+      if (e.key === 'Escape' && onCollapse) {
+        onCollapse();
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [onCollapse]);
 
   const bentoItems = useMemo(() => {
     if (!p.portfolio || p.portfolio.length === 0) return [];
@@ -118,7 +131,7 @@ export default function ExpandedPortfolioView({
 
   const transitionConfig = reducedMotion
     ? { duration: 0.15 }
-    : { duration: 0.72, ease: [0.16, 1, 0.3, 1] };
+    : { type: 'spring', stiffness: 280, damping: 28, mass: 0.88 };
 
   const currentUrl = typeof window !== 'undefined'
     ? window.location.origin + `/p/${profile.slug}`
@@ -347,32 +360,15 @@ export default function ExpandedPortfolioView({
           flexWrap: 'wrap'
         }}
       >
-        {/* Shared Photo */}
-        <motion.div
-          layoutId="profile-card-avatar"
-          transition={transitionConfig}
-          style={{
-            width: isCircle ? '124px' : '118px',
-            height: isCircle ? '124px' : '136px',
-            minWidth: isCircle ? '124px' : '118px',
-            borderRadius: isCircle ? '50%' : '24px',
-            padding: '3px',
-            background: `linear-gradient(135deg, ${glowColor} 0%, ${accentColor} 100%)`,
-            boxShadow: `0 0 30px ${glowColor}60, inset 0 0 12px ${accentColor}40`,
-            position: 'relative',
-            flexShrink: 0
-          }}
-        >
-          <img
-            src={profile.avatar || profile.logo || '/assets/akhil.jpg'}
-            alt={profile.name}
-            style={{
-              width: '100%',
-              height: '100%',
-              borderRadius: isCircle ? '50%' : '21px',
-              objectFit: 'cover',
-              display: 'block'
-            }}
+        {/* Shared Photo via ProfileAvatar */}
+        <div style={{ position: 'relative', flexShrink: 0 }}>
+          <ProfileAvatar
+            profile={profile}
+            size={isCircle ? 124 : 118}
+            glowColor={glowColor}
+            accentColor={accentColor}
+            isCircle={isCircle}
+            transitionConfig={transitionConfig}
           />
 
           {profile.isVerified !== false && (
@@ -397,13 +393,13 @@ export default function ExpandedPortfolioView({
               <Check size={14} strokeWidth={3.2} />
             </div>
           )}
-        </motion.div>
+        </div>
 
         {/* Hero Identity Text */}
         <div style={{ flex: 1, minWidth: '240px' }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap', marginBottom: '6px' }}>
             <motion.h1
-              layoutId="profile-card-name"
+              layoutId="flocard-shared-profile-name"
               transition={transitionConfig}
               style={{
                 fontFamily: "var(--font-heading, 'Sora', sans-serif)",
@@ -581,126 +577,78 @@ export default function ExpandedPortfolioView({
           </div>
 
           {(() => {
-            const whatsappNum = (profile?.whatsapp || profile?.phone || '').replace(/[^0-9]/g, '');
-            const iconColor = '#0C0816'; // Unified minimal obsidian
-            const solidBg = '#FFFFFF';   // 100% Solid white background (no transparency)
-
-            const connectActions = [
-              profile.phone && {
-                key: 'call',
-                href: `tel:${profile.phone}`,
-                title: `Call ${profile.phone}`,
-                label: 'Call',
-                icon: <PhoneIcon size={22} color={iconColor} />,
-                external: false
-              },
-              profile.email && {
-                key: 'email',
-                href: `mailto:${profile.email}`,
-                title: `Email ${profile.email}`,
-                label: 'Email',
-                icon: <MailIcon size={21} color={iconColor} />,
-                external: false
-              },
-              whatsappNum && {
-                key: 'whatsapp',
-                href: `https://wa.me/${whatsappNum}`,
-                title: 'WhatsApp Message',
-                label: 'WhatsApp',
-                icon: <WhatsappIcon size={23} color={iconColor} />,
-                external: true
-              },
-              profile.website && {
-                key: 'website',
-                href: profile.website,
-                title: `Visit ${profile.website}`,
-                label: 'Website',
-                icon: <GlobeIcon size={21} color={iconColor} />,
-                external: true
-              },
-              profile.socialLinks?.linkedin && {
-                key: 'linkedin',
-                href: profile.socialLinks.linkedin,
-                title: 'LinkedIn Profile',
-                label: 'LinkedIn',
-                icon: <LinkedinIcon size={21} color={iconColor} />,
-                external: true
-              },
-              profile.socialLinks?.instagram && {
-                key: 'instagram',
-                href: profile.socialLinks.instagram,
-                title: 'Instagram Profile',
-                label: 'Instagram',
-                icon: <InstagramIcon size={21} color={iconColor} />,
-                external: true
-              },
-              profile.socialLinks?.twitter && {
-                key: 'twitter',
-                href: profile.socialLinks.twitter,
-                title: 'Twitter / X Profile',
-                label: 'Twitter',
-                icon: <TwitterIcon size={21} color={iconColor} />,
-                external: true
-              },
-              profile.socialLinks?.github && {
-                key: 'github',
-                href: profile.socialLinks.github,
-                title: 'GitHub Profile',
-                label: 'GitHub',
-                icon: <GithubIcon size={21} color={iconColor} />,
-                external: true
-              }
-            ].filter(Boolean);
+            const resolvedLinks = resolveProfileLinks(profile);
+            if (!resolvedLinks.length) return null;
 
             return (
-              <div style={{ display: 'flex', alignItems: 'center', gap: '14px', flexWrap: 'wrap' }}>
-                {connectActions.map(action => (
+              <div
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: 'clamp(8px, 1.8vw, 14px)',
+                  flexWrap: 'nowrap',
+                  overflowX: 'auto',
+                  padding: '4px 2px 8px',
+                  scrollbarWidth: 'none',
+                  msOverflowStyle: 'none',
+                  width: '100%'
+                }}
+              >
+                {resolvedLinks.map(action => (
                   <div
-                    key={action.key}
+                    key={action.id}
                     style={{
                       display: 'flex',
                       flexDirection: 'column',
                       alignItems: 'center',
-                      gap: '6px'
+                      gap: '5px',
+                      flexShrink: 0
                     }}
                   >
                     <a
                       href={action.href}
-                      target={action.external ? '_blank' : undefined}
-                      rel={action.external ? 'noreferrer' : undefined}
+                      target={action.isExternal ? '_blank' : undefined}
+                      rel={action.isExternal ? 'noopener noreferrer' : undefined}
                       title={action.title}
+                      aria-label={action.label}
                       style={{
-                        width: '48px',
-                        height: '48px',
+                        width: '46px',
+                        height: '46px',
                         borderRadius: '50%',
-                        backgroundColor: solidBg,
-                        border: 'none',
+                        backgroundColor: '#FFFFFF',
+                        border: '1px solid rgba(255, 255, 255, 0.4)',
                         boxShadow: '0 6px 18px rgba(0, 0, 0, 0.4), 0 2px 4px rgba(0, 0, 0, 0.2)',
                         display: 'flex',
                         alignItems: 'center',
                         justifyContent: 'center',
-                        color: iconColor,
+                        color: '#0C0816',
                         textDecoration: 'none',
                         cursor: 'pointer',
-                        transition: 'transform 0.18s cubic-bezier(0.16, 1, 0.3, 1), box-shadow 0.18s cubic-bezier(0.16, 1, 0.3, 1)'
+                        transition: 'transform 0.18s cubic-bezier(0.16, 1, 0.3, 1), box-shadow 0.18s cubic-bezier(0.16, 1, 0.3, 1)',
+                        flexShrink: 0
                       }}
                       onMouseEnter={e => {
                         e.currentTarget.style.transform = 'translateY(-3px) scale(1.08)';
-                        e.currentTarget.style.boxShadow = '0 10px 24px rgba(0, 0, 0, 0.55), 0 0 0 1px rgba(255, 255, 255, 0.8)';
+                        e.currentTarget.style.boxShadow = `0 10px 24px rgba(0, 0, 0, 0.55), 0 0 0 1.5px ${accentColor}`;
                       }}
                       onMouseLeave={e => {
                         e.currentTarget.style.transform = 'translateY(0) scale(1)';
                         e.currentTarget.style.boxShadow = '0 6px 18px rgba(0, 0, 0, 0.4), 0 2px 4px rgba(0, 0, 0, 0.2)';
                       }}
                     >
-                      {action.icon}
+                      <DynamicLinkIcon link={action} size={22} color="#0C0816" />
                     </a>
                     <span
                       style={{
                         fontSize: '0.7rem',
                         fontWeight: 600,
-                        color: isLight ? '#3f3f46' : 'rgba(255, 255, 255, 0.85)',
-                        letterSpacing: '0.02em'
+                        color: isLight ? '#3f3f46' : 'rgba(255, 255, 255, 0.9)',
+                        letterSpacing: '0.01em',
+                        textAlign: 'center',
+                        maxWidth: '56px',
+                        whiteSpace: 'nowrap',
+                        overflow: 'hidden',
+                        textOverflow: 'ellipsis'
                       }}
                     >
                       {action.label}

@@ -136,6 +136,10 @@ export default function CustomerProfilesTab({ profiles = [], customer, onSavePro
       },
       services: profile.services ? [...profile.services] : [],
       portfolio: profile.portfolio ? [...profile.portfolio] : [],
+      whatsapp: profile.whatsapp || profile.socialLinks?.whatsapp || '',
+      linkedin: profile.linkedin || profile.socialLinks?.linkedin || '',
+      instagram: profile.instagram || profile.socialLinks?.instagram || '',
+      customLinks: Array.isArray(profile.customLinks) ? [...profile.customLinks] : [],
       socialLinks: profile.socialLinks ? { ...profile.socialLinks } : {}
     });
   };
@@ -1035,25 +1039,176 @@ export default function CustomerProfilesTab({ profiles = [], customer, onSavePro
 
                   <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
                     <div>
-                      <label style={{ fontSize: '0.76rem', fontWeight: 600, color: 'var(--text-secondary)', display: 'block', marginBottom: '4px' }}>Location</label>
+                      <label style={{ fontSize: '0.76rem', fontWeight: 600, color: 'var(--text-secondary)', display: 'block', marginBottom: '4px' }}>WhatsApp (Phone or wa.me link)</label>
                       <input
                         type="text"
-                        value={formData.location || ''}
-                        onChange={e => setFormData({ ...formData, location: e.target.value })}
+                        value={formData.whatsapp || ''}
+                        onChange={e => setFormData({ ...formData, whatsapp: e.target.value })}
+                        placeholder="+91 97782 78552"
                         className="input"
                         style={{ width: '100%', fontSize: '0.84rem' }}
                       />
                     </div>
                     <div>
-                      <label style={{ fontSize: '0.76rem', fontWeight: 600, color: 'var(--text-secondary)', display: 'block', marginBottom: '4px' }}>Website</label>
+                      <label style={{ fontSize: '0.76rem', fontWeight: 600, color: 'var(--text-secondary)', display: 'block', marginBottom: '4px' }}>Location</label>
                       <input
                         type="text"
-                        value={formData.website || ''}
-                        onChange={e => setFormData({ ...formData, website: e.target.value })}
+                        value={formData.location || ''}
+                        onChange={e => setFormData({ ...formData, location: e.target.value })}
+                        placeholder="Bengaluru, India"
                         className="input"
                         style={{ width: '100%', fontSize: '0.84rem' }}
                       />
                     </div>
+                  </div>
+
+                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
+                    <div>
+                      <label style={{ fontSize: '0.76rem', fontWeight: 600, color: 'var(--text-secondary)', display: 'block', marginBottom: '4px' }}>LinkedIn URL</label>
+                      <input
+                        type="text"
+                        value={formData.linkedin || ''}
+                        onChange={e => setFormData({ ...formData, linkedin: e.target.value })}
+                        placeholder="https://linkedin.com/in/username"
+                        className="input"
+                        style={{ width: '100%', fontSize: '0.84rem' }}
+                      />
+                    </div>
+                    <div>
+                      <label style={{ fontSize: '0.76rem', fontWeight: 600, color: 'var(--text-secondary)', display: 'block', marginBottom: '4px' }}>Instagram URL</label>
+                      <input
+                        type="text"
+                        value={formData.instagram || ''}
+                        onChange={e => setFormData({ ...formData, instagram: e.target.value })}
+                        placeholder="https://instagram.com/username"
+                        className="input"
+                        style={{ width: '100%', fontSize: '0.84rem' }}
+                      />
+                    </div>
+                  </div>
+
+                  <div>
+                    <label style={{ fontSize: '0.76rem', fontWeight: 600, color: 'var(--text-secondary)', display: 'block', marginBottom: '4px' }}>Website URL</label>
+                    <input
+                      type="text"
+                      value={formData.website || ''}
+                      onChange={e => setFormData({ ...formData, website: e.target.value })}
+                      placeholder="https://flocard.in"
+                      className="input"
+                      style={{ width: '100%', fontSize: '0.84rem' }}
+                    />
+                  </div>
+
+                  {/* ── DYNAMIC CUSTOM CONTACT / SOCIAL LINKS ── */}
+                  <div
+                    style={{
+                      padding: '16px',
+                      backgroundColor: 'var(--elevated-surface)',
+                      borderRadius: '14px',
+                      border: '1px solid var(--border-color)',
+                      display: 'flex',
+                      flexDirection: 'column',
+                      gap: '12px'
+                    }}
+                  >
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                      <div>
+                        <div style={{ fontSize: '0.82rem', fontWeight: 700, color: 'var(--text-primary)', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                          <Globe size={14} color="var(--accent-purple)" />
+                          Additional Custom Links (Auto-detected Icons & Favicons)
+                        </div>
+                        <div style={{ fontSize: '0.72rem', color: 'var(--text-secondary)', marginTop: '2px' }}>
+                          Add YouTube, GitHub, Telegram, or any custom website. Favicons and official icons are fetched automatically.
+                        </div>
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          const current = Array.isArray(formData.customLinks) ? [...formData.customLinks] : [];
+                          current.push({ id: `link_${Date.now()}`, label: '', url: '' });
+                          setFormData({ ...formData, customLinks: current });
+                        }}
+                        style={{
+                          display: 'inline-flex',
+                          alignItems: 'center',
+                          gap: '5px',
+                          fontSize: '0.74rem',
+                          fontWeight: 600,
+                          padding: '6px 12px',
+                          borderRadius: '8px',
+                          border: '1px solid var(--accent-purple)',
+                          backgroundColor: 'rgba(107, 0, 255, 0.12)',
+                          color: '#A855F7',
+                          cursor: 'pointer'
+                        }}
+                      >
+                        <Plus size={13} />
+                        Add Link
+                      </button>
+                    </div>
+
+                    {(formData.customLinks || []).length > 0 && (
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                        {formData.customLinks.map((link, lIdx) => (
+                          <div
+                            key={link.id || lIdx}
+                            style={{
+                              display: 'grid',
+                              gridTemplateColumns: '130px 1fr 34px',
+                              gap: '8px',
+                              alignItems: 'center'
+                            }}
+                          >
+                            <input
+                              type="text"
+                              value={link.label || ''}
+                              onChange={e => {
+                                const next = [...formData.customLinks];
+                                next[lIdx] = { ...next[lIdx], label: e.target.value };
+                                setFormData({ ...formData, customLinks: next });
+                              }}
+                              placeholder="Label (e.g. YouTube)"
+                              className="input"
+                              style={{ width: '100%', fontSize: '0.8rem' }}
+                            />
+                            <input
+                              type="text"
+                              value={link.url || ''}
+                              onChange={e => {
+                                const next = [...formData.customLinks];
+                                next[lIdx] = { ...next[lIdx], url: e.target.value };
+                                setFormData({ ...formData, customLinks: next });
+                              }}
+                              placeholder="URL (e.g. https://youtube.com/@channel or website)"
+                              className="input"
+                              style={{ width: '100%', fontSize: '0.8rem' }}
+                            />
+                            <button
+                              type="button"
+                              onClick={() => {
+                                const next = formData.customLinks.filter((_, idx) => idx !== lIdx);
+                                setFormData({ ...formData, customLinks: next });
+                              }}
+                              style={{
+                                width: '32px',
+                                height: '32px',
+                                borderRadius: '8px',
+                                border: '1px solid var(--border-color)',
+                                background: 'transparent',
+                                color: '#F87171',
+                                display: 'flex',
+                                alignItems: 'center',
+                                justifyContent: 'center',
+                                cursor: 'pointer'
+                              }}
+                              title="Delete Link"
+                            >
+                              <Trash2 size={14} />
+                            </button>
+                          </div>
+                        ))}
+                      </div>
+                    )}
                   </div>
 
                   {/* ── PORTFOLIO IMAGES ── */}

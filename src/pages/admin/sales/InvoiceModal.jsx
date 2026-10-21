@@ -5,6 +5,7 @@
    ========================================================================== */
 
 import React, { useRef, useState } from 'react';
+import './AdminSalesManager.css';
 import { jsPDF } from 'jspdf';
 import {
   X,

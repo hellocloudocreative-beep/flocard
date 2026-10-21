@@ -4,6 +4,7 @@
    ========================================================================== */
 
 import React, { useState, useMemo } from 'react';
+import './AdminSalesManager.css';
 import {
   TrendingUp,
   Receipt,

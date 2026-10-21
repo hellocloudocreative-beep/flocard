@@ -26,6 +26,8 @@ import {
   TwitterIcon,
   GithubIcon
 } from '../SocialIcons';
+import ProfileAvatar from './ProfileAvatar';
+import { resolveProfileLinks, DynamicLinkIcon } from '../../lib/socialLinkResolver';
 import { downloadVCard } from '../../lib/vcard';
 
 export default function CompactProfileCard({
@@ -108,7 +110,7 @@ export default function CompactProfileCard({
 
   const transitionConfig = reducedMotion
     ? { duration: 0.15 }
-    : { duration: 0.72, ease: [0.16, 1, 0.3, 1] };
+    : { type: 'spring', stiffness: 280, damping: 28, mass: 0.88 };
 
   const idCode = profile?.phone || profile?.email || `NFC-${profile?.slug?.toUpperCase() || '216'}`;
 
@@ -310,69 +312,21 @@ export default function CompactProfileCard({
               zIndex: 3
             }}
           >
-            {/* Centered User Image */}
-            <motion.div
-              layoutId="profile-card-avatar"
-              transition={transitionConfig}
-              style={{
-                width: '108px',
-                height: '108px',
-                borderRadius: isCircle ? '50%' : '26px',
-                padding: '3px',
-                background: `linear-gradient(135deg, ${glowColor} 0%, ${accentColor} 100%)`,
-                boxShadow: `0 8px 28px ${glowColor}65, 0 0 0 1px ${accentColor}40`,
-                overflow: 'hidden',
-                marginBottom: '14px',
-                position: 'relative',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center'
-              }}
-            >
-              {(profile?.avatar || profile?.logo) ? (
-                <img
-                  src={profile.avatar || profile.logo}
-                  alt={profile?.name || 'User Avatar'}
-                  style={{
-                    width: '100%',
-                    height: '100%',
-                    borderRadius: isCircle ? '50%' : '23px',
-                    objectFit: 'cover',
-                    display: 'block'
-                  }}
-                />
-              ) : (
-                <div
-                  style={{
-                    width: '100%',
-                    height: '100%',
-                    borderRadius: isCircle ? '50%' : '23px',
-                    background: 'rgba(255, 255, 255, 0.12)',
-                    display: 'flex',
-                    flexDirection: 'column',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    gap: '4px'
-                  }}
-                >
-                  <Sparkles size={22} color={accentColor} />
-                  <span
-                    style={{
-                      fontSize: '0.7rem',
-                      fontWeight: 800,
-                      letterSpacing: '0.08em',
-                      textTransform: 'uppercase',
-                      color: '#ffffff'
-                    }}
-                  >
-                    FLOCARD
-                  </span>
-                </div>
-              )}
-            </motion.div>
+            {/* Centered User Image via Shared ProfileAvatar */}
+            <ProfileAvatar
+              profile={profile}
+              size={108}
+              glowColor={glowColor}
+              accentColor={accentColor}
+              isCircle={isCircle}
+              transitionConfig={transitionConfig}
+              style={{ marginBottom: '14px' }}
+            />
 
-            {/* User Name */}
-            <h2
+            {/* User Name with Shared Morphing */}
+            <motion.h2
+              layoutId="flocard-shared-profile-name"
+              transition={transitionConfig}
               style={{
                 fontFamily: "var(--font-heading, 'Sora', sans-serif)",
                 fontSize: '1.68rem',
@@ -385,7 +339,7 @@ export default function CompactProfileCard({
               }}
             >
               {profile?.name || 'YOUR NAME'}
-            </h2>
+            </motion.h2>
 
             {/* Role & Company */}
             <div
@@ -419,62 +373,10 @@ export default function CompactProfileCard({
               </p>
             )}
 
-            {/* In-Card Direct Connect Action Icons (Premium, Minimal, Solid BG, Single Unified Color, Exact Browser Logos) */}
+            {/* In-Card Direct Connect Action Icons (Single Horizontal Row, Never Wraps, Dynamic Icons & Favicons) */}
             {(() => {
-              const whatsappNum = (profile?.whatsapp || profile?.phone || '').replace(/[^0-9]/g, '');
-              const iconColor = '#0C0816'; // Unified luxury obsidian color
-              const solidBg = '#FFFFFF';   // 100% Solid white background (no transparency)
-
-              const quickActions = [
-                profile?.phone && {
-                  key: 'call',
-                  href: `tel:${profile.phone}`,
-                  title: `Call ${profile.phone}`,
-                  label: 'Call',
-                  icon: <PhoneIcon size={23} color={iconColor} />,
-                  external: false
-                },
-                profile?.email && {
-                  key: 'email',
-                  href: `mailto:${profile.email}`,
-                  title: `Email ${profile.email}`,
-                  label: 'Email',
-                  icon: <MailIcon size={22} color={iconColor} />,
-                  external: false
-                },
-                whatsappNum && {
-                  key: 'whatsapp',
-                  href: `https://wa.me/${whatsappNum}`,
-                  title: 'WhatsApp Message',
-                  label: 'WhatsApp',
-                  icon: <WhatsappIcon size={24} color={iconColor} />,
-                  external: true
-                },
-                profile?.website && {
-                  key: 'website',
-                  href: profile.website,
-                  title: `Visit ${profile.website}`,
-                  label: 'Website',
-                  icon: <GlobeIcon size={22} color={iconColor} />,
-                  external: true
-                },
-                profile?.socialLinks?.linkedin && {
-                  key: 'linkedin',
-                  href: profile.socialLinks.linkedin,
-                  title: 'LinkedIn',
-                  label: 'LinkedIn',
-                  icon: <LinkedinIcon size={22} color={iconColor} />,
-                  external: true
-                },
-                profile?.socialLinks?.instagram && {
-                  key: 'instagram',
-                  href: profile.socialLinks.instagram,
-                  title: 'Instagram',
-                  label: 'Instagram',
-                  icon: <InstagramIcon size={22} color={iconColor} />,
-                  external: true
-                }
-              ].filter(Boolean);
+              const resolvedLinks = resolveProfileLinks(profile);
+              if (!resolvedLinks.length) return null;
 
               return (
                 <div
@@ -482,60 +384,74 @@ export default function CompactProfileCard({
                     display: 'flex',
                     alignItems: 'center',
                     justifyContent: 'center',
-                    gap: '14px',
+                    gap: 'clamp(6px, 1.6vw, 10px)',
                     margin: '8px 0 16px',
-                    flexWrap: 'wrap'
+                    width: '100%',
+                    maxWidth: '100%',
+                    flexWrap: 'nowrap',
+                    overflowX: 'auto',
+                    padding: '4px 4px 6px',
+                    scrollbarWidth: 'none',
+                    msOverflowStyle: 'none'
                   }}
                   onClick={e => e.stopPropagation()}
                 >
-                  {quickActions.map(action => (
+                  {resolvedLinks.map(action => (
                     <div
-                      key={action.key}
+                      key={action.id}
                       style={{
                         display: 'flex',
                         flexDirection: 'column',
                         alignItems: 'center',
-                        gap: '6px'
+                        gap: '5px',
+                        flexShrink: 0
                       }}
                     >
                       <a
                         href={action.href}
-                        target={action.external ? '_blank' : undefined}
-                        rel={action.external ? 'noreferrer' : undefined}
+                        target={action.isExternal ? '_blank' : undefined}
+                        rel={action.isExternal ? 'noopener noreferrer' : undefined}
                         title={action.title}
+                        aria-label={action.label}
                         style={{
-                          width: '50px',
-                          height: '50px',
+                          width: 'clamp(38px, 9.2vw, 44px)',
+                          height: 'clamp(38px, 9.2vw, 44px)',
                           borderRadius: '50%',
-                          backgroundColor: solidBg,
-                          border: 'none',
-                          boxShadow: '0 8px 18px rgba(0, 0, 0, 0.42), 0 2px 4px rgba(0, 0, 0, 0.2)',
+                          backgroundColor: '#FFFFFF',
+                          border: '1px solid rgba(255, 255, 255, 0.4)',
+                          boxShadow: '0 6px 16px rgba(0, 0, 0, 0.45), 0 2px 4px rgba(0, 0, 0, 0.2)',
                           display: 'flex',
                           alignItems: 'center',
                           justifyContent: 'center',
-                          color: iconColor,
+                          color: '#0C0816',
                           textDecoration: 'none',
                           cursor: 'pointer',
-                          transition: 'transform 0.18s cubic-bezier(0.16, 1, 0.3, 1), box-shadow 0.18s cubic-bezier(0.16, 1, 0.3, 1)'
+                          transition: 'transform 0.18s cubic-bezier(0.16, 1, 0.3, 1), box-shadow 0.18s cubic-bezier(0.16, 1, 0.3, 1)',
+                          flexShrink: 0
                         }}
                         onMouseEnter={e => {
                           e.currentTarget.style.transform = 'translateY(-3px) scale(1.08)';
-                          e.currentTarget.style.boxShadow = '0 12px 26px rgba(0, 0, 0, 0.55), 0 0 0 1px rgba(255, 255, 255, 0.8)';
+                          e.currentTarget.style.boxShadow = `0 10px 24px rgba(0, 0, 0, 0.6), 0 0 0 1.5px ${accentColor}`;
                         }}
                         onMouseLeave={e => {
                           e.currentTarget.style.transform = 'translateY(0) scale(1)';
-                          e.currentTarget.style.boxShadow = '0 8px 18px rgba(0, 0, 0, 0.42), 0 2px 4px rgba(0, 0, 0, 0.2)';
+                          e.currentTarget.style.boxShadow = '0 6px 16px rgba(0, 0, 0, 0.45), 0 2px 4px rgba(0, 0, 0, 0.2)';
                         }}
                       >
-                        {action.icon}
+                        <DynamicLinkIcon link={action} size={20} color="#0C0816" />
                       </a>
                       <span
                         style={{
-                          fontSize: '0.72rem',
+                          fontSize: '0.68rem',
                           fontWeight: 600,
-                          color: 'rgba(255, 255, 255, 0.88)',
-                          letterSpacing: '0.02em',
-                          textShadow: '0 1px 4px rgba(0, 0, 0, 0.8)'
+                          color: 'rgba(255, 255, 255, 0.92)',
+                          letterSpacing: '0.01em',
+                          textShadow: '0 1px 4px rgba(0, 0, 0, 0.8)',
+                          textAlign: 'center',
+                          maxWidth: '52px',
+                          whiteSpace: 'nowrap',
+                          overflow: 'hidden',
+                          textOverflow: 'ellipsis'
                         }}
                       >
                         {action.label}

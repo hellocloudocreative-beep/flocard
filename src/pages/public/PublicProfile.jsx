@@ -350,7 +350,7 @@ export default function PublicProfile({ slug = 'akhil' }) {
           zIndex: 10
         }}
       >
-        <AnimatePresence mode="wait" initial={false}>
+        <AnimatePresence initial={false}>
           {!isExpanded ? (
             <CompactProfileCard
               key="compact-card"
