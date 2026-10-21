@@ -170,15 +170,757 @@ export const INITIAL_PROFILES = [
     status: 'published'
   }
 ];
+
 const INITIAL_CARDS = [];
 const INITIAL_DESIGNS = [];
 const INITIAL_CUSTOMERS = [];
-const INITIAL_ORDERS = [];
 const INITIAL_ORDER_HISTORY = [];
 const INITIAL_ORDER_NOTES = [];
 const INITIAL_NOTIFICATIONS = [];
 const INITIAL_ANALYTICS_EVENTS = [];
 const INITIAL_AUDIT_LOGS = [];
+
+export const DEFAULT_INVOICE_SETTINGS = {
+  companyName: 'FLOCARD Technologies Pvt. Ltd.',
+  tradeName: 'FLOCARD Connected Identity Systems',
+  gstin: '32AAAAF1234A1Z5',
+  pan: 'AAAAF1234A',
+  taxRatePercent: 18,
+  invoicePrefix: 'INV',
+  supportEmail: 'billing@flocard.in',
+  supportPhone: '+91 97782 78552',
+  website: 'https://flocard.in',
+  addressLine1: 'FLOCARD Innovation Hub, 4th Floor',
+  addressLine2: 'Infopark Expressway, Kakkanad',
+  cityStatePin: 'Kochi, Kerala 682042, India',
+  bankName: 'HDFC Bank Ltd',
+  accountName: 'FLOCARD TECHNOLOGIES PRIVATE LIMITED',
+  accountNumber: '50200084920194',
+  ifsc: 'HDFC0001234',
+  upiId: 'flocard@hdfcbank',
+  notesTerms: '1. Computer generated tax invoice under Rule 46 of CGST Rules, 2017.\n2. All NFC hardware products carry 1-Year manufacturing replacement warranty.\n3. Digital profile lifetime routing is included with card activation.\n4. Subject to Kochi jurisdiction only.'
+};
+
+export function normalizeOrderFinancials(order) {
+  if (!order) return order;
+  const ed = order.edition || 'purple';
+  const unitPrice = Number(order.unitPrice || order.totalAmount || 1899);
+  const qty = Number(order.quantity || 1);
+  const discount = Number(order.discount || 0);
+  const tax = Number(order.tax || 0);
+  const shippingCharge = Number(order.shippingCharge || 0);
+  const totalAmount = Number(order.totalAmount || (unitPrice * qty - discount + tax + shippingCharge));
+
+  const paymentStatus = order.paymentStatus ||
+    (order.status === 'cancelled' ? 'refunded' :
+     (order.status === 'delivered' || order.status === 'shipped' || order.status === 'in_production' ? 'paid' : 'paid'));
+
+  const refundAmount = Number(order.refundAmount !== undefined ? order.refundAmount : (paymentStatus === 'refunded' ? totalAmount : 0));
+  const amountPaid = Number(order.amountPaid !== undefined ? order.amountPaid : (paymentStatus === 'paid' ? totalAmount : (paymentStatus === 'partially_paid' ? Math.round(totalAmount / 2) : 0)));
+  const amountOutstanding = Number(order.amountOutstanding !== undefined ? order.amountOutstanding : Math.max(0, totalAmount - amountPaid - refundAmount));
+
+  const invoiceId = order.invoiceId || `INV-${new Date(order.orderDate || Date.now()).getFullYear()}-${(order.id || '1000').replace(/[^0-9]/g, '').slice(-4).padStart(4, '0')}`;
+
+  const productSkus = {
+    gold: { sku: 'FLC-CRD-GLD-01', name: 'Gold Edition NFC Card', variant: '24K Metallic Champagne Gold', image: '/assets/cardbg-gold.png' },
+    platinum: { sku: 'FLC-CRD-PLT-02', name: 'Platinum Edition NFC Card', variant: 'Brushed Platinum & Silver', image: '/assets/cardbg-platinum.png' },
+    purple: { sku: 'FLC-CRD-PRP-03', name: 'Purple Edition NFC Card', variant: 'Ultraviolet Signature Obsidian', image: '/assets/cardbg-purple.png' },
+    metal: { sku: 'FLC-CRD-MTL-04', name: 'Metal Edition NFC Card', variant: 'Brushed Gunmetal & Laser White', image: '/assets/cardbg-metal.png' }
+  };
+
+  const prodMeta = productSkus[ed] || productSkus.purple;
+  const items = (order.items && order.items.length > 0) ? order.items : [
+    {
+      id: `item_${order.id || '1'}`,
+      productId: `prod_${ed}`,
+      productName: prodMeta.name,
+      sku: prodMeta.sku,
+      edition: ed,
+      variant: prodMeta.variant,
+      templateType: order.templateType || 'standard',
+      quantity: qty,
+      unitPrice,
+      discount,
+      tax,
+      total: totalAmount,
+      image: prodMeta.image
+    }
+  ];
+
+  return {
+    ...order,
+    invoiceId,
+    invoiceDate: order.invoiceDate || order.orderDate || new Date().toISOString(),
+    items,
+    unitPrice,
+    quantity: qty,
+    discount,
+    tax,
+    shippingCharge,
+    totalAmount,
+    amountPaid,
+    amountOutstanding,
+    refundAmount,
+    paymentMethod: order.paymentMethod || 'upi',
+    paymentStatus,
+    transactionReference: order.transactionReference || `TXN-${(order.id || '1000').replace(/[^0-9]/g, '').slice(-6).padStart(6, '1')}`,
+    paymentTransactions: order.paymentTransactions || [
+      {
+        id: `txn_${order.id || '1'}`,
+        type: paymentStatus === 'refunded' ? 'refund' : 'payment',
+        amount: paymentStatus === 'refunded' ? refundAmount : amountPaid,
+        method: order.paymentMethod || 'upi',
+        reference: order.transactionReference || `TXN-${(order.id || '1000').replace(/[^0-9]/g, '').slice(-6).padStart(6, '1')}`,
+        date: order.orderDate || new Date().toISOString(),
+        note: paymentStatus === 'refunded' ? 'Refund processed for order' : 'Payment confirmed at order placement',
+        recordedBy: 'System'
+      }
+    ],
+    cardCode: order.cardCode || `FLC-${ed.slice(0, 3).toUpperCase()}-${(order.id || '1000').replace(/[^0-9]/g, '').slice(-4).padStart(4, '0')}`,
+    nfcUid: order.nfcUid || `04:${((parseInt(order.id?.replace(/\D/g, '') || '1000', 10) * 17) % 255).toString(16).padStart(2, '0').toUpperCase()}:${((parseInt(order.id?.replace(/\D/g, '') || '1000', 10) * 31) % 255).toString(16).padStart(2, '0').toUpperCase()}:1F:90:3C:80`,
+    cardStatus: order.cardStatus || (order.status === 'delivered' ? 'activated' : (order.status === 'dispatched' ? 'shipped' : (order.status === 'quality_checked' ? 'ready_to_dispatch' : (order.status === 'in_production' ? 'processing' : 'designing'))))
+  };
+}
+
+// Generate high-fidelity seed orders dynamically calculated relative to current date
+const _now = Date.now();
+const _d = (daysAgo, hoursAgo = 0) => new Date(_now - daysAgo * 86400000 - hoursAgo * 3600000).toISOString();
+
+const INITIAL_ORDERS = [
+  {
+    id: 'FLC-ORD-9081',
+    orderReference: 'FLC-ORD-9081',
+    invoiceId: 'INV-2026-9081',
+    invoiceDate: _d(0, 3),
+    orderDate: _d(0, 3),
+    customerName: 'Akhil Anvar',
+    customerEmail: 'akhil@flocard.in',
+    customerPhone: '+91 97782 78552',
+    company: 'FLOCARD Technologies',
+    role: 'Founder & CEO',
+    tagline: 'Pioneering connected NFC identity systems.',
+    edition: 'gold',
+    templateType: 'customer_logo',
+    status: 'in_production',
+    quantity: 1,
+    unitPrice: 2499,
+    discount: 0,
+    tax: 381.20,
+    shippingCharge: 0,
+    totalAmount: 2499,
+    amountPaid: 2499,
+    amountOutstanding: 0,
+    refundAmount: 0,
+    paymentMethod: 'upi',
+    paymentStatus: 'paid',
+    transactionReference: 'UPI/202610208491',
+    shippingAddress: 'Plot 42, Infopark Phase II, Kochi, Kerala 682042',
+    cardCode: 'FLC-GLD-0104',
+    nfcUid: '04:7B:A2:1F:90:3C:80',
+    cardStatus: 'processing',
+    profileSlug: 'akhil',
+    source: 'website',
+    items: [
+      {
+        id: 'item_9081_1',
+        productId: 'prod_gold',
+        productName: 'Gold Edition NFC Card',
+        sku: 'FLC-CRD-GLD-01',
+        edition: 'gold',
+        variant: '24K Metallic Champagne Gold',
+        templateType: 'customer_logo',
+        quantity: 1,
+        unitPrice: 2499,
+        discount: 0,
+        tax: 381.20,
+        total: 2499,
+        image: '/assets/cardbg-gold.png'
+      }
+    ],
+    paymentTransactions: [
+      {
+        id: 'txn_9081_1',
+        type: 'payment',
+        amount: 2499,
+        method: 'upi',
+        reference: 'UPI/202610208491',
+        date: _d(0, 3),
+        note: 'UPI Payment verified via QR scan',
+        recordedBy: 'Razorpay Webhook'
+      }
+    ]
+  },
+  {
+    id: 'FLC-ORD-9080',
+    orderReference: 'FLC-ORD-9080',
+    invoiceId: 'INV-2026-9080',
+    invoiceDate: _d(0, 6),
+    orderDate: _d(0, 6),
+    customerName: 'Priya Sharma',
+    customerEmail: 'priya.sharma@nexusfintech.com',
+    customerPhone: '+91 98450 12893',
+    company: 'Nexus Fintech Ventures',
+    role: 'Managing Partner',
+    tagline: 'Empowering digital capital.',
+    edition: 'purple',
+    templateType: 'standard',
+    status: 'design_submitted',
+    quantity: 1,
+    unitPrice: 1899,
+    discount: 0,
+    tax: 289.68,
+    shippingCharge: 0,
+    totalAmount: 1899,
+    amountPaid: 0,
+    amountOutstanding: 1899,
+    refundAmount: 0,
+    paymentMethod: 'upi',
+    paymentStatus: 'pending',
+    transactionReference: 'PENDING-INV-9080',
+    shippingAddress: 'Tower B, 14th Floor, UB City, Bengaluru, Karnataka 560001',
+    cardCode: 'FLC-PRP-0211',
+    nfcUid: '04:8A:2F:3C:44:91:80',
+    cardStatus: 'designing',
+    profileSlug: 'priyasharma',
+    source: 'whatsapp',
+    items: [
+      {
+        id: 'item_9080_1',
+        productId: 'prod_purple',
+        productName: 'Purple Edition NFC Card',
+        sku: 'FLC-CRD-PRP-03',
+        edition: 'purple',
+        variant: 'Ultraviolet Signature Obsidian',
+        templateType: 'standard',
+        quantity: 1,
+        unitPrice: 1899,
+        discount: 0,
+        tax: 289.68,
+        total: 1899,
+        image: '/assets/cardbg-purple.png'
+      }
+    ],
+    paymentTransactions: []
+  },
+  {
+    id: 'FLC-ORD-9074',
+    orderReference: 'FLC-ORD-9074',
+    invoiceId: 'INV-2026-9074',
+    invoiceDate: _d(1, 4),
+    orderDate: _d(1, 4),
+    customerName: 'Rohan Mehta',
+    customerEmail: 'rohan@mehtacapital.in',
+    customerPhone: '+91 98200 44812',
+    company: 'Mehta Capital Partners',
+    role: 'Principal Investor',
+    tagline: 'Long term strategic value creation.',
+    edition: 'metal',
+    templateType: 'customer_logo',
+    status: 'ready_to_dispatch',
+    quantity: 1,
+    unitPrice: 2799,
+    discount: 0,
+    tax: 426.97,
+    shippingCharge: 0,
+    totalAmount: 2799,
+    amountPaid: 2799,
+    amountOutstanding: 0,
+    refundAmount: 0,
+    paymentMethod: 'card',
+    paymentStatus: 'paid',
+    transactionReference: 'CARD-VISA-9821',
+    shippingAddress: '402 Regency Heights, Bandra West, Mumbai 400050',
+    cardCode: 'FLC-MTL-0056',
+    nfcUid: '04:B1:68:5D:82:1A:80',
+    cardStatus: 'ready_to_dispatch',
+    profileSlug: 'rohan',
+    source: 'website',
+    items: [
+      {
+        id: 'item_9074_1',
+        productId: 'prod_metal',
+        productName: 'Metal Edition NFC Card',
+        sku: 'FLC-CRD-MTL-04',
+        edition: 'metal',
+        variant: 'Brushed Gunmetal & Laser White',
+        templateType: 'customer_logo',
+        quantity: 1,
+        unitPrice: 2799,
+        discount: 0,
+        tax: 426.97,
+        total: 2799,
+        image: '/assets/cardbg-metal.png'
+      }
+    ],
+    paymentTransactions: [
+      {
+        id: 'txn_9074_1',
+        type: 'payment',
+        amount: 2799,
+        method: 'card',
+        reference: 'CARD-VISA-9821',
+        date: _d(1, 4),
+        note: 'Visa Business Card verified online',
+        recordedBy: 'Payment Gateway'
+      }
+    ]
+  },
+  {
+    id: 'FLC-ORD-9071',
+    orderReference: 'FLC-ORD-9071',
+    invoiceId: 'INV-2026-9071',
+    invoiceDate: _d(1, 8),
+    orderDate: _d(1, 8),
+    customerName: 'Ananya Nair',
+    customerEmail: 'ananya.nair@aerodesign.io',
+    customerPhone: '+91 97455 33019',
+    company: 'Aero Design Labs',
+    role: 'Chief Creative Officer',
+    tagline: 'Designing tomorrow’s interfaces.',
+    edition: 'platinum',
+    templateType: 'standard',
+    status: 'processing',
+    quantity: 1,
+    unitPrice: 2199,
+    discount: 0,
+    tax: 335.44,
+    shippingCharge: 0,
+    totalAmount: 2199,
+    amountPaid: 1100,
+    amountOutstanding: 1099,
+    refundAmount: 0,
+    paymentMethod: 'bank_transfer',
+    paymentStatus: 'partially_paid',
+    transactionReference: 'NEFT-HDFC-99124',
+    shippingAddress: 'Studio 12, Panampilly Nagar, Kochi, Kerala 682036',
+    cardCode: 'FLC-PLT-0089',
+    nfcUid: '04:5C:3D:7A:12:8E:80',
+    cardStatus: 'processing',
+    profileSlug: 'ananya',
+    source: 'whatsapp',
+    items: [
+      {
+        id: 'item_9071_1',
+        productId: 'prod_platinum',
+        productName: 'Platinum Edition NFC Card',
+        sku: 'FLC-CRD-PLT-02',
+        edition: 'platinum',
+        variant: 'Brushed Platinum & Silver',
+        templateType: 'standard',
+        quantity: 1,
+        unitPrice: 2199,
+        discount: 0,
+        tax: 335.44,
+        total: 2199,
+        image: '/assets/cardbg-platinum.png'
+      }
+    ],
+    paymentTransactions: [
+      {
+        id: 'txn_9071_1',
+        type: 'payment',
+        amount: 1100,
+        method: 'bank_transfer',
+        reference: 'NEFT-HDFC-99124',
+        date: _d(1, 8),
+        note: '50% Advance via Bank NEFT received',
+        recordedBy: 'Administrator'
+      }
+    ]
+  },
+  {
+    id: 'FLC-ORD-9055',
+    orderReference: 'FLC-ORD-9055',
+    invoiceId: 'INV-2026-9055',
+    invoiceDate: _d(3, 2),
+    orderDate: _d(3, 2),
+    customerName: 'Vikram Patel',
+    customerEmail: 'vikram@patellaw.com',
+    customerPhone: '+91 98791 22300',
+    company: 'Patel & Associates Law Firm',
+    role: 'Senior Advocate',
+    tagline: 'Corporate law & IP advisory.',
+    edition: 'gold',
+    templateType: 'standard',
+    status: 'shipped',
+    quantity: 2,
+    unitPrice: 2499,
+    discount: 200,
+    tax: 732.05,
+    shippingCharge: 0,
+    totalAmount: 4798,
+    amountPaid: 4798,
+    amountOutstanding: 0,
+    refundAmount: 0,
+    paymentMethod: 'razorpay',
+    paymentStatus: 'paid',
+    transactionReference: 'pay_P108420489',
+    shippingAddress: '701 Law Chambers, Ashram Road, Ahmedabad, Gujarat 380009',
+    trackingNumber: 'DTDC-77401294',
+    carrierName: 'DTDC Express Air',
+    cardCode: 'FLC-GLD-0105',
+    nfcUid: '04:91:AA:22:3B:5F:80',
+    cardStatus: 'shipped',
+    profileSlug: 'vikrampatel',
+    source: 'website',
+    items: [
+      {
+        id: 'item_9055_1',
+        productId: 'prod_gold',
+        productName: 'Gold Edition NFC Card',
+        sku: 'FLC-CRD-GLD-01',
+        edition: 'gold',
+        variant: '24K Metallic Champagne Gold',
+        templateType: 'standard',
+        quantity: 2,
+        unitPrice: 2499,
+        discount: 200,
+        tax: 732.05,
+        total: 4798,
+        image: '/assets/cardbg-gold.png'
+      }
+    ],
+    paymentTransactions: [
+      {
+        id: 'txn_9055_1',
+        type: 'payment',
+        amount: 4798,
+        method: 'razorpay',
+        reference: 'pay_P108420489',
+        date: _d(3, 2),
+        note: 'Razorpay Auto-settlement (Discount ₹200 applied)',
+        recordedBy: 'Payment Gateway'
+      }
+    ]
+  },
+  {
+    id: 'FLC-ORD-9032',
+    orderReference: 'FLC-ORD-9032',
+    invoiceId: 'INV-2026-9032',
+    invoiceDate: _d(6, 5),
+    orderDate: _d(6, 5),
+    customerName: 'Neha Gupta',
+    customerEmail: 'neha@glowbeauty.in',
+    customerPhone: '+91 99100 88214',
+    company: 'Glow Botanicals',
+    role: 'Founder & Formulator',
+    tagline: 'Clean clinical botanicals.',
+    edition: 'purple',
+    templateType: 'customer_logo',
+    status: 'delivered',
+    quantity: 1,
+    unitPrice: 1899,
+    discount: 0,
+    tax: 289.68,
+    shippingCharge: 0,
+    totalAmount: 1899,
+    amountPaid: 1899,
+    amountOutstanding: 0,
+    refundAmount: 0,
+    paymentMethod: 'upi',
+    paymentStatus: 'paid',
+    transactionReference: 'UPI/202610148920',
+    shippingAddress: 'Villa 45, DLF Phase 5, Gurugram, Haryana 122009',
+    trackingNumber: 'BLUEDART-8891024',
+    carrierName: 'BlueDart Apex',
+    cardCode: 'FLC-PRP-0212',
+    nfcUid: '04:77:E1:9C:55:0B:80',
+    cardStatus: 'activated',
+    profileSlug: 'nehagupta',
+    source: 'website',
+    items: [
+      {
+        id: 'item_9032_1',
+        productId: 'prod_purple',
+        productName: 'Purple Edition NFC Card',
+        sku: 'FLC-CRD-PRP-03',
+        edition: 'purple',
+        variant: 'Ultraviolet Signature Obsidian',
+        templateType: 'customer_logo',
+        quantity: 1,
+        unitPrice: 1899,
+        discount: 0,
+        tax: 289.68,
+        total: 1899,
+        image: '/assets/cardbg-purple.png'
+      }
+    ],
+    paymentTransactions: [
+      {
+        id: 'txn_9032_1',
+        type: 'payment',
+        amount: 1899,
+        method: 'upi',
+        reference: 'UPI/202610148920',
+        date: _d(6, 5),
+        note: 'UPI Payment captured via Google Pay',
+        recordedBy: 'Razorpay'
+      }
+    ]
+  },
+  {
+    id: 'FLC-ORD-8994',
+    orderReference: 'FLC-ORD-8994',
+    invoiceId: 'INV-2026-8994',
+    invoiceDate: _d(12, 1),
+    orderDate: _d(12, 1),
+    customerName: 'Siddharth Sen',
+    customerEmail: 'siddharth@senai.tech',
+    customerPhone: '+91 98300 77123',
+    company: 'Sen Robotics AI',
+    role: 'Chief AI Officer',
+    tagline: 'Perception engineering at scale.',
+    edition: 'metal',
+    templateType: 'standard',
+    status: 'cancelled',
+    quantity: 1,
+    unitPrice: 2799,
+    discount: 0,
+    tax: 426.97,
+    shippingCharge: 0,
+    totalAmount: 2799,
+    amountPaid: 0,
+    amountOutstanding: 0,
+    refundAmount: 2799,
+    paymentMethod: 'card',
+    paymentStatus: 'refunded',
+    transactionReference: 'RFD-2026100801',
+    shippingAddress: 'Sector V, Salt Lake Electronic Complex, Kolkata 700091',
+    cardCode: 'FLC-MTL-0057',
+    nfcUid: '04:19:64:8B:E3:71:80',
+    cardStatus: 'cancelled',
+    profileSlug: 'siddharth',
+    source: 'website',
+    items: [
+      {
+        id: 'item_8994_1',
+        productId: 'prod_metal',
+        productName: 'Metal Edition NFC Card',
+        sku: 'FLC-CRD-MTL-04',
+        edition: 'metal',
+        variant: 'Brushed Gunmetal & Laser White',
+        templateType: 'standard',
+        quantity: 1,
+        unitPrice: 2799,
+        discount: 0,
+        tax: 426.97,
+        total: 2799,
+        image: '/assets/cardbg-metal.png'
+      }
+    ],
+    paymentTransactions: [
+      {
+        id: 'txn_8994_1',
+        type: 'payment',
+        amount: 2799,
+        method: 'card',
+        reference: 'CARD-MC-7712',
+        date: _d(12, 1),
+        note: 'Initial Mastercard payment received',
+        recordedBy: 'Payment Gateway'
+      },
+      {
+        id: 'txn_8994_2',
+        type: 'refund',
+        amount: 2799,
+        method: 'card',
+        reference: 'RFD-2026100801',
+        date: _d(11, 2),
+        note: '[Refund] Client relocated overseas before card print run; full refund issued.',
+        recordedBy: 'Administrator'
+      }
+    ]
+  },
+  {
+    id: 'FLC-ORD-8950',
+    orderReference: 'FLC-ORD-8950',
+    invoiceId: 'INV-2026-8950',
+    invoiceDate: _d(18, 7),
+    orderDate: _d(18, 7),
+    customerName: 'Kabir Joshi',
+    customerEmail: 'kabir@joshistudio.design',
+    customerPhone: '+91 98211 66345',
+    company: 'Joshi Design Studio',
+    role: 'Design Director',
+    tagline: 'Architecture & spatial brand identity.',
+    edition: 'platinum',
+    templateType: 'customer_logo',
+    status: 'delivered',
+    quantity: 2,
+    unitPrice: 2199,
+    discount: 198,
+    tax: 640.68,
+    shippingCharge: 0,
+    totalAmount: 4200,
+    amountPaid: 4200,
+    amountOutstanding: 0,
+    refundAmount: 0,
+    paymentMethod: 'upi',
+    paymentStatus: 'paid',
+    transactionReference: 'UPI/202610023340',
+    shippingAddress: '19 Koregaon Park, Lane 7, Pune, Maharashtra 411001',
+    cardCode: 'FLC-PLT-0090',
+    nfcUid: '04:88:99:AA:BB:CC:80',
+    cardStatus: 'activated',
+    profileSlug: 'kabir',
+    source: 'website',
+    items: [
+      {
+        id: 'item_8950_1',
+        productId: 'prod_platinum',
+        productName: 'Platinum Edition NFC Card',
+        sku: 'FLC-CRD-PLT-02',
+        edition: 'platinum',
+        variant: 'Brushed Platinum & Silver',
+        templateType: 'customer_logo',
+        quantity: 2,
+        unitPrice: 2199,
+        discount: 198,
+        tax: 640.68,
+        total: 4200,
+        image: '/assets/cardbg-platinum.png'
+      }
+    ],
+    paymentTransactions: [
+      {
+        id: 'txn_8950_1',
+        type: 'payment',
+        amount: 4200,
+        method: 'upi',
+        reference: 'UPI/202610023340',
+        date: _d(18, 7),
+        note: 'UPI Payment received via Paytm Business',
+        recordedBy: 'Payment Gateway'
+      }
+    ]
+  },
+  {
+    id: 'FLC-ORD-8870',
+    orderReference: 'FLC-ORD-8870',
+    invoiceId: 'INV-2026-8870',
+    invoiceDate: _d(38, 4),
+    orderDate: _d(38, 4),
+    customerName: 'Deepa Rao',
+    customerEmail: 'deepa@raoconsulting.com',
+    customerPhone: '+91 98490 55123',
+    company: 'Rao Strategy Consultants',
+    role: 'Principal Partner',
+    tagline: 'Healthcare strategy & M&A advisory.',
+    edition: 'gold',
+    templateType: 'standard',
+    status: 'delivered',
+    quantity: 1,
+    unitPrice: 2499,
+    discount: 0,
+    tax: 381.20,
+    shippingCharge: 0,
+    totalAmount: 2499,
+    amountPaid: 2499,
+    amountOutstanding: 0,
+    refundAmount: 0,
+    paymentMethod: 'upi',
+    paymentStatus: 'paid',
+    transactionReference: 'UPI/202609129031',
+    shippingAddress: 'Plot 104, Jubilee Hills Road 36, Hyderabad 500033',
+    cardCode: 'FLC-GLD-0099',
+    nfcUid: '04:44:55:66:77:88:80',
+    cardStatus: 'activated',
+    profileSlug: 'deeparao',
+    source: 'whatsapp',
+    items: [
+      {
+        id: 'item_8870_1',
+        productId: 'prod_gold',
+        productName: 'Gold Edition NFC Card',
+        sku: 'FLC-CRD-GLD-01',
+        edition: 'gold',
+        variant: '24K Metallic Champagne Gold',
+        templateType: 'standard',
+        quantity: 1,
+        unitPrice: 2499,
+        discount: 0,
+        tax: 381.20,
+        total: 2499,
+        image: '/assets/cardbg-gold.png'
+      }
+    ],
+    paymentTransactions: [
+      {
+        id: 'txn_8870_1',
+        type: 'payment',
+        amount: 2499,
+        method: 'upi',
+        reference: 'UPI/202609129031',
+        date: _d(38, 4),
+        note: 'Direct PhonePe Business UPI settlement',
+        recordedBy: 'Administrator'
+      }
+    ]
+  },
+  {
+    id: 'FLC-ORD-8855',
+    orderReference: 'FLC-ORD-8855',
+    invoiceId: 'INV-2026-8855',
+    invoiceDate: _d(42, 6),
+    orderDate: _d(42, 6),
+    customerName: 'Arjun Varma',
+    customerEmail: 'arjun@varmalogistics.com',
+    customerPhone: '+91 98950 44321',
+    company: 'Varma Global Logistics',
+    role: 'Executive Vice President',
+    tagline: 'Intermodal maritime freight solutions.',
+    edition: 'metal',
+    templateType: 'customer_logo',
+    status: 'delivered',
+    quantity: 1,
+    unitPrice: 2799,
+    discount: 0,
+    tax: 426.97,
+    shippingCharge: 0,
+    totalAmount: 2799,
+    amountPaid: 2799,
+    amountOutstanding: 0,
+    refundAmount: 0,
+    paymentMethod: 'card',
+    paymentStatus: 'paid',
+    transactionReference: 'CARD-MC-4491',
+    shippingAddress: 'Marine Drive, Willington Island, Kochi, Kerala 682003',
+    cardCode: 'FLC-MTL-0050',
+    nfcUid: '04:11:22:33:44:55:80',
+    cardStatus: 'activated',
+    profileSlug: 'arjunvarma',
+    source: 'website',
+    items: [
+      {
+        id: 'item_8855_1',
+        productId: 'prod_metal',
+        productName: 'Metal Edition NFC Card',
+        sku: 'FLC-CRD-MTL-04',
+        edition: 'metal',
+        variant: 'Brushed Gunmetal & Laser White',
+        templateType: 'customer_logo',
+        quantity: 1,
+        unitPrice: 2799,
+        discount: 0,
+        tax: 426.97,
+        total: 2799,
+        image: '/assets/cardbg-metal.png'
+      }
+    ],
+    paymentTransactions: [
+      {
+        id: 'txn_8855_1',
+        type: 'payment',
+        amount: 2799,
+        method: 'card',
+        reference: 'CARD-MC-4491',
+        date: _d(42, 6),
+        note: 'Mastercard Corporate verified',
+        recordedBy: 'Payment Gateway'
+      }
+    ]
+  }
+];
 
 const INITIAL_ADMIN_ACCOUNTS = [
   {
@@ -251,6 +993,8 @@ export const INITIAL_PRODUCTS = [
     id: 'prod_gold',
     editionKey: 'gold',
     name: 'Gold Edition',
+    sku: 'FLC-CRD-GLD-01',
+    stock: 45,
     subtitle: 'Black with Premium Metallic Champagne Gold Accents',
     tagline: 'A bold and luxurious design for professionals who stand out.',
     description: 'Near-black charcoal surface adorned with refined metallic champagne gold typography and subtle brushed reflections.',
@@ -283,6 +1027,8 @@ export const INITIAL_PRODUCTS = [
     id: 'prod_platinum',
     editionKey: 'platinum',
     name: 'Platinum Edition',
+    sku: 'FLC-CRD-PLT-02',
+    stock: 32,
     subtitle: 'Black with Metallic Silver & Brushed Platinum Accents',
     tagline: 'A sleek and modern look for forward-thinking professionals.',
     description: 'Engineered brushed platinum and chrome precision lines against pure carbon black.',
@@ -315,6 +1061,8 @@ export const INITIAL_PRODUCTS = [
     id: 'prod_purple',
     editionKey: 'purple',
     name: 'Purple Edition',
+    sku: 'FLC-CRD-PRP-03',
+    stock: 68,
     subtitle: 'Black with Premium Ultraviolet & Neon Purple Accents',
     tagline: 'The signature FLOCARD identity. Engineered for innovators.',
     description: 'Deep ultraviolet neon glow against obsidian matte black with signature FLOCARD identity.',
@@ -347,6 +1095,8 @@ export const INITIAL_PRODUCTS = [
     id: 'prod_metal',
     editionKey: 'metal',
     name: 'Metal Edition',
+    sku: 'FLC-CRD-MTL-04',
+    stock: 18,
     subtitle: 'Brushed Gunmetal with Ultra-Crisp Laser White Typography',
     tagline: 'Precision-engineered brushed gunmetal for modern leaders.',
     description: 'Dark brushed gunmetal finish with ultra-crisp laser-white typography and executive minimalism.',
@@ -601,7 +1351,8 @@ export const StorageEngine = {
 
   // Orders & Fulfillment Pipeline
   getOrders: (currentUser = null) => {
-    const list = getLocal('orders', INITIAL_ORDERS);
+    const rawList = getLocal('orders', INITIAL_ORDERS);
+    const list = rawList.map(o => normalizeOrderFinancials(o));
     if (!currentUser) return list;
     const isElevated = isElevatedUser(currentUser);
     if (isElevated) return list;
@@ -616,7 +1367,7 @@ export const StorageEngine = {
   },
 
   getOrderById: (id, currentUser = null) => {
-    const list = getLocal('orders', INITIAL_ORDERS);
+    const list = getLocal('orders', INITIAL_ORDERS).map(o => normalizeOrderFinancials(o));
     const order = list.find(o => o.id === id || o.orderReference === id);
     if (!order) return null;
 
@@ -633,11 +1384,11 @@ export const StorageEngine = {
     }
 
     const history = StorageEngine.getOrderHistory(order.id);
-    const result = {
+    const result = normalizeOrderFinancials({
       ...order,
       status: normalizeOrderStatus(order.status),
       history
-    };
+    });
 
     // Attach internal notes ONLY to administrators
     if (isElevated) {
@@ -652,11 +1403,11 @@ export const StorageEngine = {
     const index = list.findIndex(o => o.id === order.id);
     let saved;
     if (index >= 0) {
-      saved = { ...list[index], ...order, updatedAt: new Date().toISOString() };
+      saved = normalizeOrderFinancials({ ...list[index], ...order, updatedAt: new Date().toISOString() });
       list[index] = saved;
     } else {
       const orderRef = order.orderReference || `FLC-ORD-${Math.floor(1000 + Math.random() * 9000)}`;
-      saved = {
+      saved = normalizeOrderFinancials({
         ...order,
         id: order.id || orderRef,
         orderReference: orderRef,
@@ -664,10 +1415,11 @@ export const StorageEngine = {
         status: normalizeOrderStatus(order.status || 'design_submitted'),
         createdAt: order.createdAt || new Date().toISOString(),
         updatedAt: new Date().toISOString()
-      };
+      });
       list.unshift(saved);
     }
     setLocal('orders', list);
+    window.dispatchEvent(new CustomEvent('flocard_order_updated', { detail: saved }));
     return saved;
   },
 
@@ -1189,6 +1941,198 @@ export const StorageEngine = {
     notes.unshift(entry);
     setLocal('order_internal_notes', notes);
     return entry;
+  },
+
+  // Financial & Ledger Operations
+  recordOrderPayment: ({ orderId, amount, method = 'upi', reference = '', note = '', recordedBy = 'Administrator' }) => {
+    const orders = getLocal('orders', INITIAL_ORDERS);
+    const index = orders.findIndex(o => o.id === orderId || o.orderReference === orderId);
+    if (index < 0) throw new Error(`Order ${orderId} not found.`);
+
+    const order = normalizeOrderFinancials(orders[index]);
+    const numAmount = Math.max(0, Number(amount) || 0);
+    if (numAmount <= 0) throw new Error('Payment amount must be greater than zero.');
+
+    const newAmountPaid = (order.amountPaid || 0) + numAmount;
+    const newRefund = order.refundAmount || 0;
+    const newOutstanding = Math.max(0, order.totalAmount - newAmountPaid - newRefund);
+    const newPaymentStatus = newAmountPaid >= order.totalAmount ? 'paid' : 'partially_paid';
+
+    const txn = {
+      id: `txn_${Date.now()}_${Math.random().toString(36).substring(7)}`,
+      type: 'payment',
+      amount: numAmount,
+      method: method || 'upi',
+      reference: reference || `MAN-${Date.now().toString().slice(-6)}`,
+      date: new Date().toISOString(),
+      note: note || 'Offline/manual payment received',
+      recordedBy: recordedBy || 'Administrator'
+    };
+
+    const updatedOrder = normalizeOrderFinancials({
+      ...order,
+      amountPaid: newAmountPaid,
+      amountOutstanding: newOutstanding,
+      paymentStatus: newPaymentStatus,
+      paymentMethod: method || order.paymentMethod,
+      transactionReference: reference || order.transactionReference,
+      paymentTransactions: [txn, ...(order.paymentTransactions || [])],
+      updatedAt: new Date().toISOString()
+    });
+
+    orders[index] = updatedOrder;
+    setLocal('orders', orders);
+
+    StorageEngine.addAuditLog(
+      'Sales Ledger',
+      `Payment of ₹${numAmount.toLocaleString('en-IN')} recorded for ${order.id} (${order.customerName}) via ${method.toUpperCase()}${reference ? ' Ref: ' + reference : ''}`,
+      recordedBy
+    );
+
+    if (typeof window !== 'undefined') {
+      window.dispatchEvent(new CustomEvent('flocard_order_updated', { detail: updatedOrder }));
+      window.dispatchEvent(new CustomEvent('flocard_sales_updated', { detail: { type: 'payment', orderId } }));
+    }
+
+    return updatedOrder;
+  },
+
+  recordOrderRefund: ({ orderId, amount, reason, recordedBy = 'Administrator' }) => {
+    if (!reason || !reason.trim()) {
+      throw new Error('A valid reason is strictly required to issue a financial refund.');
+    }
+    const orders = getLocal('orders', INITIAL_ORDERS);
+    const index = orders.findIndex(o => o.id === orderId || o.orderReference === orderId);
+    if (index < 0) throw new Error(`Order ${orderId} not found.`);
+
+    const order = normalizeOrderFinancials(orders[index]);
+    const numAmount = Math.max(0, Number(amount) || 0);
+    if (numAmount <= 0) throw new Error('Refund amount must be greater than zero.');
+
+    const currentRefund = order.refundAmount || 0;
+    const maxRefundable = Math.max(0, (order.amountPaid || 0) - currentRefund);
+    if (numAmount > maxRefundable && maxRefundable > 0) {
+      throw new Error(`Refund amount (₹${numAmount}) exceeds refundable balance (₹${maxRefundable}).`);
+    }
+
+    const newRefundAmount = currentRefund + numAmount;
+    const newOutstanding = Math.max(0, order.totalAmount - (order.amountPaid || 0) - newRefundAmount);
+    const newPaymentStatus = newRefundAmount >= (order.amountPaid || order.totalAmount) ? 'refunded' : order.paymentStatus;
+
+    const txn = {
+      id: `ref_${Date.now()}_${Math.random().toString(36).substring(7)}`,
+      type: 'refund',
+      amount: numAmount,
+      method: order.paymentMethod || 'upi',
+      reference: `REF-${Date.now().toString().slice(-6)}`,
+      date: new Date().toISOString(),
+      reason: reason.trim(),
+      note: `Refund: ${reason.trim()}`,
+      recordedBy: recordedBy || 'Administrator'
+    };
+
+    const updatedOrder = normalizeOrderFinancials({
+      ...order,
+      refundAmount: newRefundAmount,
+      amountOutstanding: newOutstanding,
+      paymentStatus: newPaymentStatus,
+      paymentTransactions: [txn, ...(order.paymentTransactions || [])],
+      updatedAt: new Date().toISOString()
+    });
+
+    orders[index] = updatedOrder;
+    setLocal('orders', orders);
+
+    StorageEngine.addAuditLog(
+      'Sales Ledger',
+      `Refund of ₹${numAmount.toLocaleString('en-IN')} issued for ${order.id} (${order.customerName}). Reason: ${reason.trim()}`,
+      recordedBy
+    );
+
+    if (typeof window !== 'undefined') {
+      window.dispatchEvent(new CustomEvent('flocard_order_updated', { detail: updatedOrder }));
+      window.dispatchEvent(new CustomEvent('flocard_sales_updated', { detail: { type: 'refund', orderId } }));
+    }
+
+    return updatedOrder;
+  },
+
+  recordFinancialAdjustment: ({ orderId, type, amount, reason, recordedBy = 'Administrator' }) => {
+    if (!reason || !reason.trim()) {
+      throw new Error('A reason is required to record a manual financial adjustment.');
+    }
+    const orders = getLocal('orders', INITIAL_ORDERS);
+    const index = orders.findIndex(o => o.id === orderId || o.orderReference === orderId);
+    if (index < 0) throw new Error(`Order ${orderId} not found.`);
+
+    const order = normalizeOrderFinancials(orders[index]);
+    const numAmount = Number(amount) || 0;
+
+    let newDiscount = order.discount || 0;
+    let newTax = order.tax || 0;
+    let newShipping = order.shippingCharge || 0;
+
+    if (type === 'discount') {
+      newDiscount = Math.max(0, (order.discount || 0) + numAmount);
+    } else if (type === 'tax') {
+      newTax = Math.max(0, (order.tax || 0) + numAmount);
+    } else if (type === 'shipping') {
+      newShipping = Math.max(0, (order.shippingCharge || 0) + numAmount);
+    }
+
+    const unitPrice = order.unitPrice || 0;
+    const qty = order.quantity || 1;
+    const newTotal = Math.max(0, (unitPrice * qty) - newDiscount + newTax + newShipping);
+    const newOutstanding = Math.max(0, newTotal - (order.amountPaid || 0) - (order.refundAmount || 0));
+
+    const adj = {
+      id: `adj_${Date.now()}_${Math.random().toString(36).substring(7)}`,
+      type: 'adjustment',
+      adjustmentType: type,
+      amount: numAmount,
+      reason: reason.trim(),
+      date: new Date().toISOString(),
+      recordedBy: recordedBy || 'Administrator'
+    };
+
+    const updatedOrder = normalizeOrderFinancials({
+      ...order,
+      discount: newDiscount,
+      tax: newTax,
+      shippingCharge: newShipping,
+      totalAmount: newTotal,
+      amountOutstanding: newOutstanding,
+      paymentTransactions: [adj, ...(order.paymentTransactions || [])],
+      updatedAt: new Date().toISOString()
+    });
+
+    orders[index] = updatedOrder;
+    setLocal('orders', orders);
+
+    StorageEngine.addAuditLog(
+      'Sales Ledger',
+      `Financial adjustment (${type}: ₹${numAmount}) applied to ${order.id}. Reason: ${reason.trim()}`,
+      recordedBy
+    );
+
+    if (typeof window !== 'undefined') {
+      window.dispatchEvent(new CustomEvent('flocard_order_updated', { detail: updatedOrder }));
+      window.dispatchEvent(new CustomEvent('flocard_sales_updated', { detail: { type: 'adjustment', orderId } }));
+    }
+
+    return updatedOrder;
+  },
+
+  getInvoiceSettings: () => getLocal('invoice_settings', DEFAULT_INVOICE_SETTINGS),
+  saveInvoiceSettings: (settings, adminEmail = 'admin@flocard.in') => {
+    const current = StorageEngine.getInvoiceSettings();
+    const updated = { ...current, ...settings };
+    setLocal('invoice_settings', updated);
+    StorageEngine.addAuditLog('Invoice Settings', 'Tax invoice billing and GST configuration updated', adminEmail);
+    if (typeof window !== 'undefined') {
+      window.dispatchEvent(new CustomEvent('flocard_invoice_settings_updated', { detail: updated }));
+    }
+    return { success: true, settings: updated };
   },
 
   // In-App Customer Notifications

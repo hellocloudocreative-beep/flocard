@@ -378,6 +378,7 @@ export default function Designer() {
   // Hidden export canvases for 300 DPI exports
   const frontExportCanvasRef = useRef(null);
   const backExportCanvasRef = useRef(null);
+  const customerLogoInputRef = useRef(null);
 
   // Switch edition
   const handleEditionChange = (newEdition) => {
@@ -1460,8 +1461,12 @@ _Submitted from FLOCARD Design Studio_`;
               {/* Sub-drawer for Logo or QR when active */}
               {activeElementTab === 'logo' && (
                 <div style={{ marginTop: '12px', padding: '12px', background: 'rgba(255,255,255,0.03)', borderRadius: '10px' }}>
-                  <label
+                  <input ref={customerLogoInputRef} type="file" accept="image/*" onChange={handleCustomerLogoUpload} style={{ display: 'none' }} />
+                  <button
+                    type="button"
+                    onClick={() => customerLogoInputRef.current?.click()}
                     style={{
+                      width: '100%',
                       display: 'flex',
                       alignItems: 'center',
                       justifyContent: 'center',
@@ -1478,8 +1483,7 @@ _Submitted from FLOCARD Design Studio_`;
                   >
                     <Upload size={14} />
                     <span>Upload Transparent PNG Logo</span>
-                    <input type="file" accept="image/*" onChange={handleCustomerLogoUpload} style={{ display: 'none' }} />
-                  </label>
+                  </button>
                   {customerLogo.url && (
                     <div style={{ marginTop: '8px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                       <span style={{ fontSize: '0.7rem', color: '#22c55e' }}>✓ Logo placed</span>

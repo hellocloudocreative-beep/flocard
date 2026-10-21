@@ -20,6 +20,7 @@ export function DataProvider({ children }) {
   const [studioBackground, setStudioBackground] = useState(() => StorageEngine.getStudioBackground());
   const [adminAccounts, setAdminAccounts] = useState(() => StorageEngine.getAdminAccounts());
   const [demoConfig, setDemoConfig] = useState(() => StorageEngine.getDemoConfig());
+  const [invoiceSettings, setInvoiceSettings] = useState(() => StorageEngine.getInvoiceSettings());
   const [lastOrderUpdate, setLastOrderUpdate] = useState(null);
 
   const refreshAll = () => {
@@ -34,6 +35,7 @@ export function DataProvider({ children }) {
     setStudioBackground(StorageEngine.getStudioBackground());
     setAdminAccounts(StorageEngine.getAdminAccounts());
     setDemoConfig(StorageEngine.getDemoConfig());
+    setInvoiceSettings(StorageEngine.getInvoiceSettings());
   };
 
   // Real-time synchronization listeners across browser windows, tabs, and local dispatches
@@ -56,6 +58,8 @@ export function DataProvider({ children }) {
     };
 
     window.addEventListener('flocard_order_updated', handleOrderUpdated);
+    window.addEventListener('flocard_sales_updated', refreshAll);
+    window.addEventListener('flocard_invoice_settings_updated', refreshAll);
     window.addEventListener('flocard_profile_updated', refreshAll);
     window.addEventListener('flocard_card_updated', refreshAll);
     window.addEventListener('flocard_notification_created', refreshAll);
@@ -66,6 +70,8 @@ export function DataProvider({ children }) {
 
     return () => {
       window.removeEventListener('flocard_order_updated', handleOrderUpdated);
+      window.removeEventListener('flocard_sales_updated', refreshAll);
+      window.removeEventListener('flocard_invoice_settings_updated', refreshAll);
       window.removeEventListener('flocard_profile_updated', refreshAll);
       window.removeEventListener('flocard_card_updated', refreshAll);
       window.removeEventListener('flocard_notification_created', refreshAll);
@@ -218,6 +224,30 @@ export function DataProvider({ children }) {
     return res;
   };
 
+  const recordOrderPayment = (params) => {
+    const res = StorageEngine.recordOrderPayment(params);
+    refreshAll();
+    return res;
+  };
+
+  const recordOrderRefund = (params) => {
+    const res = StorageEngine.recordOrderRefund(params);
+    refreshAll();
+    return res;
+  };
+
+  const recordFinancialAdjustment = (params) => {
+    const res = StorageEngine.recordFinancialAdjustment(params);
+    refreshAll();
+    return res;
+  };
+
+  const saveInvoiceSettings = (settings, email) => {
+    const res = StorageEngine.saveInvoiceSettings(settings, email);
+    refreshAll();
+    return res;
+  };
+
   const resetAllData = () => {
     StorageEngine.resetAll();
     refreshAll();
@@ -243,6 +273,12 @@ export function DataProvider({ children }) {
       demoConfig,
       saveDemoConfig: StorageEngine.saveDemoConfig,
       resetDemoConfig: StorageEngine.resetDemoConfig,
+      invoiceSettings,
+      saveInvoiceSettings,
+      getInvoiceSettings: StorageEngine.getInvoiceSettings,
+      recordOrderPayment,
+      recordOrderRefund,
+      recordFinancialAdjustment,
       refreshAll,
       saveProfile,
       deleteProfile,

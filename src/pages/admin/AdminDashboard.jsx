@@ -60,7 +60,9 @@ import {
   Camera,
   Tag,
   Sun,
-  Moon
+  Moon,
+  Receipt,
+  TrendingUp
 } from 'lucide-react';
 import { useData } from '../../context/DataContext';
 import { useAuth } from '../../context/AuthContext';
@@ -77,6 +79,7 @@ import AnimatedSwitch from '../../components/spectrum/AnimatedSwitch';
 import HoldToConfirm from '../../components/spectrum/HoldToConfirm';
 import MorphButton from '../../components/spectrum/MorphButton';
 import AdminOrderManager from './AdminOrderManager';
+import AdminSalesManager from './sales/AdminSalesManager';
 import AdminLogin from '../auth/AdminLogin';
 
 export default function AdminDashboard({ initialTab = 'overview', initialOrderId = null }) {
@@ -127,7 +130,7 @@ export default function AdminDashboard({ initialTab = 'overview', initialOrderId
 
   // Navigation & UI State
   const [activeTab, setActiveTab] = useState(
-    ['overview', 'customers', 'profiles', 'designs', 'orders', 'cards', 'pricing', 'templates', 'demo', 'analytics', 'admin-access', 'audit-logs', 'settings'].includes(initialTab)
+    ['overview', 'sales', 'product-sales', 'customers', 'profiles', 'designs', 'orders', 'cards', 'pricing', 'templates', 'demo', 'analytics', 'admin-access', 'audit-logs', 'settings'].includes(initialTab)
       ? initialTab
       : 'overview'
   );
@@ -186,6 +189,14 @@ export default function AdminDashboard({ initialTab = 'overview', initialOrderId
   const [demoSaveSuccess, setDemoSaveSuccess] = useState('');
   const [demoSaveError, setDemoSaveError] = useState('');
   const [uploadingDemoImage, setUploadingDemoImage] = useState(false);
+  const [isUploadingAvatar, setIsUploadingAvatar] = useState(false);
+  const [isUploadingLogo, setIsUploadingLogo] = useState(false);
+  const [isUploadingWorkImages, setIsUploadingWorkImages] = useState(false);
+
+  const avatarInputRef = useRef(null);
+  const logoInputRef = useRef(null);
+  const workImagesInputRef = useRef(null);
+  const demoImageInputRef = useRef(null);
 
   useEffect(() => {
     if (demoConfig) {
@@ -223,6 +234,75 @@ export default function AdminDashboard({ initialTab = 'overview', initialOrderId
       setDemoSaveError(err.message || 'Error uploading image');
     } finally {
       setUploadingDemoImage(false);
+      if (e.target) e.target.value = '';
+    }
+  };
+
+  const handleProfileAvatarUpload = async (e) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    try {
+      setIsUploadingAvatar(true);
+      const url = await uploadImage(file, 'avatar', editingProfile?.id || 'admin_profile');
+      if (url) {
+        setEditingProfile(prev => ({ ...prev, avatar: url }));
+      }
+    } catch (err) {
+      console.error('Avatar upload failed:', err);
+    } finally {
+      setIsUploadingAvatar(false);
+      if (e.target) e.target.value = '';
+    }
+  };
+
+  const handleProfileLogoUpload = async (e) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    try {
+      setIsUploadingLogo(true);
+      const url = await uploadImage(file, 'logo', editingProfile?.id || 'admin_profile');
+      if (url) {
+        setEditingProfile(prev => ({ ...prev, logo: url }));
+      }
+    } catch (err) {
+      console.error('Logo upload failed:', err);
+    } finally {
+      setIsUploadingLogo(false);
+      if (e.target) e.target.value = '';
+    }
+  };
+
+  const handleProfileWorkImagesUpload = async (e) => {
+    const files = Array.from(e.target.files || []);
+    if (!files.length) return;
+    try {
+      setIsUploadingWorkImages(true);
+      const newItems = [];
+      for (const file of files) {
+        const url = await uploadImage(file, 'portfolio', editingProfile?.id || 'admin_profile');
+        if (url) {
+          const rawTitle = file.name.replace(/\.[^/.]+$/, '').replace(/[-_]/g, ' ');
+          const title = rawTitle.charAt(0).toUpperCase() + rawTitle.slice(1);
+          newItems.push({
+            id: `port_${Date.now()}_${Math.random().toString(36).substring(7)}`,
+            title: title || 'New Work Showcase',
+            category: 'Work Showcase',
+            desc: 'Client project deliverables and visual showcase.',
+            image: url
+          });
+        }
+      }
+      if (newItems.length > 0) {
+        setEditingProfile(prev => ({
+          ...prev,
+          portfolio: [...(prev.portfolio || []), ...newItems]
+        }));
+      }
+    } catch (err) {
+      console.error('Work image upload failed:', err);
+    } finally {
+      setIsUploadingWorkImages(false);
+      if (e.target) e.target.value = '';
     }
   };
 
@@ -293,6 +373,8 @@ export default function AdminDashboard({ initialTab = 'overview', initialOrderId
   // Sidebar Items
   const navItems = [
     { id: 'overview', label: 'Dashboard', icon: LayoutDashboard },
+    { id: 'sales', label: 'Sales & Ledger', icon: Receipt, badge: 'New' },
+    { id: 'product-sales', label: 'Product Sales', icon: TrendingUp },
     { id: 'customers', label: 'Customers', icon: Users, badge: customers.length },
     { id: 'profiles', label: 'Digital Profiles', icon: FileText, badge: profiles.length },
     { id: 'designs', label: 'Card Designs', icon: Palette, badge: stats.pendingApprovals > 0 ? stats.pendingApprovals : null },
@@ -975,6 +1057,8 @@ export default function AdminDashboard({ initialTab = 'overview', initialOrderId
                 }}
               >
                 {activeTab === 'overview' && 'Dashboard'}
+                {activeTab === 'sales' && 'Sales Management & Accounting Ledger'}
+                {activeTab === 'product-sales' && 'Product-wise Sales Tracking'}
                 {activeTab === 'customers' && 'Customers'}
                 {activeTab === 'profiles' && 'Digital Profiles'}
                 {activeTab === 'designs' && 'Card Designs'}
@@ -990,6 +1074,8 @@ export default function AdminDashboard({ initialTab = 'overview', initialOrderId
               </h1>
               <p className="admin-page-subtitle" style={{ margin: '2px 0 0', fontSize: '0.84rem', color: isDark ? '#9B90AD' : '#777184' }}>
                 {activeTab === 'overview' && "Welcome back! Here's what's happening with FLOCARD."}
+                {activeTab === 'sales' && 'Accounting-grade sales ledger, double-entry balances, tax invoices, and payment tracking.'}
+                {activeTab === 'product-sales' && 'Track revenue, discounts, refunds, units sold, and inventory across every FLOCARD edition.'}
                 {activeTab === 'customers' && 'Manage authenticated customer accounts and enterprise partners.'}
                 {activeTab === 'profiles' && 'Public digital identity profiles, slugs, and live resolutions.'}
                 {activeTab === 'designs' && 'Artwork review queue, bleed safe-area checks, and print approvals.'}
@@ -3202,6 +3288,13 @@ export default function AdminDashboard({ initialTab = 'overview', initialOrderId
           )}
 
           {/* ====================================================================
+              VIEW: SALES MANAGEMENT, SALES LEDGER & PRODUCT-WISE SALES TRACKING
+              ==================================================================== */}
+          {(activeTab === 'sales' || activeTab === 'product-sales') && (
+            <AdminSalesManager defaultTab={activeTab} initialOrderId={initialOrderId} />
+          )}
+
+          {/* ====================================================================
               VIEW: ORDERS & CARD FULFILLMENT PIPELINE (ADMIN ORDER MANAGER)
               ==================================================================== */}
           {activeTab === "orders" && (
@@ -3501,7 +3594,7 @@ export default function AdminDashboard({ initialTab = 'overview', initialOrderId
                     <h3 style={{ margin: 0, fontSize: '1.25rem', fontWeight: 800, color: 'var(--adm-text-primary)' }}>
                       Card Products & Pricing Configuration
                     </h3>
-                    <span style={{ fontSize: '0.72rem', fontWeight: 700, padding: '3px 10px', borderRadius: '10px', backgroundColor: '#EDE9FE', color: '#6B00FF' }}>
+                    <span style={{ fontSize: '0.72rem', fontWeight: 700, padding: '3px 10px', borderRadius: '10px', backgroundColor: isDark ? 'rgba(107, 0, 255, 0.25)' : '#EDE9FE', color: isDark ? '#C084FC' : '#6B00FF' }}>
                       INR (₹) Standard
                     </span>
                   </div>
@@ -3511,7 +3604,7 @@ export default function AdminDashboard({ initialTab = 'overview', initialOrderId
                 </div>
 
                 <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '0.8rem', color: '#059669', backgroundColor: '#ECFDF5', padding: '6px 12px', borderRadius: '10px', border: '1px solid #A7F3D0' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '0.8rem', color: isDark ? '#34D399' : '#059669', backgroundColor: isDark ? 'rgba(5, 150, 105, 0.2)' : '#ECFDF5', padding: '6px 12px', borderRadius: '10px', border: isDark ? '1px solid rgba(5, 150, 105, 0.4)' : '1px solid #A7F3D0' }}>
                     <CheckCircle2 size={15} />
                     <span>Multi-tab synchronized</span>
                   </div>
@@ -3520,13 +3613,13 @@ export default function AdminDashboard({ initialTab = 'overview', initialOrderId
 
               {/* Quick Pricing Summary Row */}
               <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 220px), 1fr))', gap: '16px', marginBottom: '28px' }}>
-                <div style={{ padding: '16px', borderRadius: '12px', backgroundColor: '#FAF9FC', border: 'var(--adm-card-border)' }}>
+                <div style={{ padding: '16px', borderRadius: '12px', backgroundColor: isDark ? 'rgba(255, 255, 255, 0.04)' : '#FAF9FC', border: 'var(--adm-card-border)' }}>
                   <div style={{ fontSize: '0.74rem', textTransform: 'uppercase', letterSpacing: '0.05em', color: 'var(--adm-text-secondary)', fontWeight: 600 }}>Physical Editions</div>
                   <div style={{ fontSize: '1.3rem', fontWeight: 800, color: 'var(--adm-text-primary)', marginTop: '4px' }}>3 Editions</div>
-                  <div style={{ fontSize: '0.75rem', color: '#6B00FF', marginTop: '2px' }}>Gold, Platinum, Purple</div>
+                  <div style={{ fontSize: '0.75rem', color: isDark ? '#C084FC' : '#6B00FF', marginTop: '2px' }}>Gold, Platinum, Purple</div>
                 </div>
 
-                <div style={{ padding: '16px', borderRadius: '12px', backgroundColor: '#FAF9FC', border: 'var(--adm-card-border)' }}>
+                <div style={{ padding: '16px', borderRadius: '12px', backgroundColor: isDark ? 'rgba(255, 255, 255, 0.04)' : '#FAF9FC', border: 'var(--adm-card-border)' }}>
                   <div style={{ fontSize: '0.74rem', textTransform: 'uppercase', letterSpacing: '0.05em', color: 'var(--adm-text-secondary)', fontWeight: 600 }}>Active Price Range</div>
                   <div style={{ fontSize: '1.3rem', fontWeight: 800, color: 'var(--adm-text-primary)', marginTop: '4px' }}>
                     {(() => {
@@ -3540,7 +3633,7 @@ export default function AdminDashboard({ initialTab = 'overview', initialOrderId
                   <div style={{ fontSize: '0.75rem', color: '#059669', marginTop: '2px' }}>Indian Rupees (₹)</div>
                 </div>
 
-                <div style={{ padding: '16px', borderRadius: '12px', backgroundColor: '#FAF9FC', border: 'var(--adm-card-border)' }}>
+                <div style={{ padding: '16px', borderRadius: '12px', backgroundColor: isDark ? 'rgba(255, 255, 255, 0.04)' : '#FAF9FC', border: 'var(--adm-card-border)' }}>
                   <div style={{ fontSize: '0.74rem', textTransform: 'uppercase', letterSpacing: '0.05em', color: 'var(--adm-text-secondary)', fontWeight: 600 }}>Store Availability</div>
                   <div style={{ fontSize: '1.3rem', fontWeight: 800, color: '#059669', marginTop: '4px' }}>
                     {(products || []).filter(p => p.availability !== 'out_of_stock' && p.status === 'active').length} / {(products || []).length} In Stock
@@ -3689,13 +3782,13 @@ export default function AdminDashboard({ initialTab = 'overview', initialOrderId
                         </p>
 
                         {/* Key Included Features List */}
-                        <div style={{ borderTop: '1px solid #F3F4F6', paddingTop: '12px', marginBottom: '16px' }}>
-                          <div style={{ fontSize: '0.72rem', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.04em', color: '#4B5563', marginBottom: '8px' }}>
+                        <div style={{ borderTop: isDark ? '1px solid #2B1E3E' : '1px solid #F3F4F6', paddingTop: '12px', marginBottom: '16px' }}>
+                          <div style={{ fontSize: '0.72rem', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.04em', color: 'var(--adm-text-secondary)', marginBottom: '8px' }}>
                             Included Features ({product.features?.length || 0})
                           </div>
                           <ul style={{ listStyle: 'none', margin: 0, padding: 0, display: 'flex', flexDirection: 'column', gap: '6px' }}>
                             {(product.features || []).map((feat, idx) => (
-                              <li key={idx} style={{ display: 'flex', alignItems: 'flex-start', gap: '6px', fontSize: '0.78rem', color: '#374151' }}>
+                              <li key={idx} style={{ display: 'flex', alignItems: 'flex-start', gap: '6px', fontSize: '0.78rem', color: 'var(--adm-text-primary)' }}>
                                 <Check size={14} color="#059669" style={{ marginTop: '2px', flexShrink: 0 }} />
                                 <span>{feat}</span>
                               </li>
@@ -3705,7 +3798,7 @@ export default function AdminDashboard({ initialTab = 'overview', initialOrderId
                       </div>
 
                       {/* Card Footer Actions */}
-                      <div style={{ padding: '14px 20px', borderTop: 'var(--adm-card-border)', backgroundColor: '#FAF9FC', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                      <div style={{ padding: '14px 20px', borderTop: 'var(--adm-card-border)', backgroundColor: isDark ? 'rgba(0, 0, 0, 0.25)' : '#FAF9FC', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                         <span style={{ fontSize: '0.75rem', color: 'var(--adm-text-secondary)' }}>
                           Updated {new Date(product.updatedAt || Date.now()).toLocaleDateString('en-IN')}
                         </span>
@@ -3719,9 +3812,9 @@ export default function AdminDashboard({ initialTab = 'overview', initialOrderId
                             gap: '6px',
                             padding: '7px 14px',
                             borderRadius: '8px',
-                            border: '1px solid #D1D5DB',
+                            border: isDark ? '1px solid #3B2857' : '1px solid #D1D5DB',
                             backgroundColor: 'var(--adm-card-bg)',
-                            color: '#1F2937',
+                            color: 'var(--adm-text-primary)',
                             fontSize: '0.8rem',
                             fontWeight: 600,
                             cursor: 'pointer',
@@ -4183,7 +4276,18 @@ export default function AdminDashboard({ initialTab = 'overview', initialOrderId
                           </div>
                         )}
 
-                        <label
+                        <input
+                          ref={demoImageInputRef}
+                          type="file"
+                          accept="image/*"
+                          onChange={handleDemoImageUpload}
+                          disabled={uploadingDemoImage}
+                          style={{ display: 'none' }}
+                        />
+                        <button
+                          type="button"
+                          onClick={() => demoImageInputRef.current?.click()}
+                          disabled={uploadingDemoImage}
                           style={{
                             marginLeft: 'auto',
                             padding: '7px 14px',
@@ -4201,14 +4305,7 @@ export default function AdminDashboard({ initialTab = 'overview', initialOrderId
                         >
                           <Upload size={13} />
                           <span>{uploadingDemoImage ? 'Uploading...' : 'Choose File'}</span>
-                          <input
-                            type="file"
-                            accept="image/*"
-                            onChange={handleDemoImageUpload}
-                            disabled={uploadingDemoImage}
-                            style={{ display: 'none' }}
-                          />
-                        </label>
+                        </button>
                       </div>
                     </div>
 
@@ -5039,7 +5136,7 @@ export default function AdminDashboard({ initialTab = 'overview', initialOrderId
             </div>
             <form onSubmit={handleUpdateProfile} style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
               {/* Profile Avatar & Company Logo Uploads */}
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px', background: '#F8F6FC', padding: '12px', borderRadius: '12px', border: 'var(--adm-card-border)' }}>
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px', background: isDark ? 'rgba(255, 255, 255, 0.03)' : '#F8F6FC', padding: '12px', borderRadius: '12px', border: 'var(--adm-card-border)' }}>
                 {/* Avatar Upload */}
                 <div>
                   <label style={{ display: 'block', fontSize: '0.74rem', fontWeight: 700, marginBottom: '6px', color: 'var(--adm-text-primary)' }}>Profile Avatar / Photo</label>
@@ -5052,26 +5149,23 @@ export default function AdminDashboard({ initialTab = 'overview', initialOrderId
                       )}
                     </div>
                     <div>
-                      <label style={{ display: 'inline-flex', alignItems: 'center', gap: '4px', padding: '4px 10px', borderRadius: '6px', border: '1px solid #DDD6FE', backgroundColor: 'var(--adm-card-bg)', color: '#6B00FF', fontSize: '0.74rem', fontWeight: 600, cursor: 'pointer' }}>
+                      <input
+                        ref={avatarInputRef}
+                        type="file"
+                        accept="image/*"
+                        style={{ display: 'none' }}
+                        onChange={handleProfileAvatarUpload}
+                        disabled={isUploadingAvatar}
+                      />
+                      <button
+                        type="button"
+                        onClick={() => avatarInputRef.current?.click()}
+                        disabled={isUploadingAvatar}
+                        style={{ display: 'inline-flex', alignItems: 'center', gap: '4px', padding: '4px 10px', borderRadius: '6px', border: isDark ? '1px solid rgba(168, 85, 247, 0.4)' : '1px solid #DDD6FE', backgroundColor: isDark ? 'rgba(107, 0, 255, 0.2)' : 'var(--adm-card-bg)', color: isDark ? '#D8B4FE' : '#6B00FF', fontSize: '0.74rem', fontWeight: 600, cursor: isUploadingAvatar ? 'wait' : 'pointer' }}
+                      >
                         <Upload size={12} />
-                        <span>Upload</span>
-                        <input
-                          type="file"
-                          accept="image/*"
-                          style={{ display: 'none' }}
-                          onChange={async (e) => {
-                            const file = e.target.files?.[0];
-                            if (!file) return;
-                            try {
-                              const compressed = await compressImage(file, { maxWidth: 400, maxHeight: 400, quality: 0.85 });
-                              setEditingProfile(prev => ({ ...prev, avatar: compressed }));
-                            } catch (err) {
-                              console.error('Avatar upload failed:', err);
-                            }
-                            e.target.value = '';
-                          }}
-                        />
-                      </label>
+                        <span>{isUploadingAvatar ? 'Uploading...' : 'Upload'}</span>
+                      </button>
                       {editingProfile.avatar && (
                         <button
                           type="button"
@@ -5089,7 +5183,7 @@ export default function AdminDashboard({ initialTab = 'overview', initialOrderId
                 <div>
                   <label style={{ display: 'block', fontSize: '0.74rem', fontWeight: 700, marginBottom: '6px', color: 'var(--adm-text-primary)' }}>Company / Brand Logo</label>
                   <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-                    <div style={{ width: '46px', height: '46px', minWidth: '46px', borderRadius: '8px', background: 'var(--adm-card-bg)', border: 'var(--adm-card-border)', overflow: 'hidden', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '4px' }}>
+                    <div style={{ width: '46px', height: '46px', minWidth: '46px', borderRadius: '8px', background: isDark ? 'rgba(255, 255, 255, 0.05)' : 'var(--adm-card-bg)', border: 'var(--adm-card-border)', overflow: 'hidden', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '4px' }}>
                       {editingProfile.logo ? (
                         <img src={editingProfile.logo} alt="" style={{ maxWidth: '100%', maxHeight: '100%', objectFit: 'contain' }} />
                       ) : (
@@ -5097,26 +5191,23 @@ export default function AdminDashboard({ initialTab = 'overview', initialOrderId
                       )}
                     </div>
                     <div>
-                      <label style={{ display: 'inline-flex', alignItems: 'center', gap: '4px', padding: '4px 10px', borderRadius: '6px', border: '1px solid #DDD6FE', backgroundColor: 'var(--adm-card-bg)', color: '#6B00FF', fontSize: '0.74rem', fontWeight: 600, cursor: 'pointer' }}>
+                      <input
+                        ref={logoInputRef}
+                        type="file"
+                        accept="image/*"
+                        style={{ display: 'none' }}
+                        onChange={handleProfileLogoUpload}
+                        disabled={isUploadingLogo}
+                      />
+                      <button
+                        type="button"
+                        onClick={() => logoInputRef.current?.click()}
+                        disabled={isUploadingLogo}
+                        style={{ display: 'inline-flex', alignItems: 'center', gap: '4px', padding: '4px 10px', borderRadius: '6px', border: isDark ? '1px solid rgba(168, 85, 247, 0.4)' : '1px solid #DDD6FE', backgroundColor: isDark ? 'rgba(107, 0, 255, 0.2)' : 'var(--adm-card-bg)', color: isDark ? '#D8B4FE' : '#6B00FF', fontSize: '0.74rem', fontWeight: 600, cursor: isUploadingLogo ? 'wait' : 'pointer' }}
+                      >
                         <Upload size={12} />
-                        <span>Upload</span>
-                        <input
-                          type="file"
-                          accept="image/*"
-                          style={{ display: 'none' }}
-                          onChange={async (e) => {
-                            const file = e.target.files?.[0];
-                            if (!file) return;
-                            try {
-                              const compressed = await compressImage(file, { maxWidth: 500, maxHeight: 500, quality: 0.85, outputFormat: file.type === 'image/png' ? 'image/png' : 'image/jpeg' });
-                              setEditingProfile(prev => ({ ...prev, logo: compressed }));
-                            } catch (err) {
-                              console.error('Logo upload failed:', err);
-                            }
-                            e.target.value = '';
-                          }}
-                        />
-                      </label>
+                        <span>{isUploadingLogo ? 'Uploading...' : 'Upload'}</span>
+                      </button>
                       {editingProfile.logo && (
                         <button
                           type="button"
@@ -5282,43 +5373,24 @@ export default function AdminDashboard({ initialTab = 'overview', initialOrderId
               <div style={{ borderTop: 'var(--adm-card-border)', paddingTop: '14px' }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '10px' }}>
                   <label style={{ fontSize: '0.82rem', fontWeight: 700, color: 'var(--adm-text-primary)' }}>Portfolio Work Images & Projects</label>
-                  <label style={{ display: 'inline-flex', alignItems: 'center', gap: '4px', padding: '4px 10px', borderRadius: '6px', backgroundColor: '#F3EEFF', color: '#6B00FF', fontSize: '0.74rem', fontWeight: 700, cursor: 'pointer' }}>
+                  <input
+                    ref={workImagesInputRef}
+                    type="file"
+                    accept="image/*"
+                    multiple
+                    style={{ display: 'none' }}
+                    onChange={handleProfileWorkImagesUpload}
+                    disabled={isUploadingWorkImages}
+                  />
+                  <button
+                    type="button"
+                    onClick={() => workImagesInputRef.current?.click()}
+                    disabled={isUploadingWorkImages}
+                    style={{ display: 'inline-flex', alignItems: 'center', gap: '4px', padding: '5px 12px', borderRadius: '6px', backgroundColor: isDark ? 'rgba(107, 0, 255, 0.22)' : '#F3EEFF', color: isDark ? '#D8B4FE' : '#6B00FF', border: isDark ? '1px solid rgba(168, 85, 247, 0.35)' : '1px solid #DDD6FE', fontSize: '0.74rem', fontWeight: 700, cursor: isUploadingWorkImages ? 'wait' : 'pointer' }}
+                  >
                     <Plus size={12} />
-                    <span>Add Work Image</span>
-                    <input
-                      type="file"
-                      accept="image/*"
-                      multiple
-                      style={{ display: 'none' }}
-                      onChange={async (e) => {
-                        const files = Array.from(e.target.files || []);
-                        if (!files.length) return;
-                        for (const file of files) {
-                          try {
-                            const compressed = await compressImage(file, { maxWidth: 800, maxHeight: 800, quality: 0.82 });
-                            const rawTitle = file.name.replace(/\.[^/.]+$/, '').replace(/[-_]/g, ' ');
-                            const title = rawTitle.charAt(0).toUpperCase() + rawTitle.slice(1);
-                            setEditingProfile(prev => ({
-                              ...prev,
-                              portfolio: [
-                                ...(prev.portfolio || []),
-                                {
-                                  id: `port_${Date.now()}_${Math.random().toString(36).substring(7)}`,
-                                  title: title || 'New Work Showcase',
-                                  category: 'Work Showcase',
-                                  desc: 'Client project deliverables and visual showcase.',
-                                  image: compressed
-                                }
-                              ]
-                            }));
-                          } catch (err) {
-                            console.error('Work image compression failed:', err);
-                          }
-                        }
-                        e.target.value = '';
-                      }}
-                    />
-                  </label>
+                    <span>{isUploadingWorkImages ? 'Uploading images...' : 'Add Work Image'}</span>
+                  </button>
                 </div>
 
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', maxHeight: '180px', overflowY: 'auto' }}>
@@ -5328,8 +5400,8 @@ export default function AdminDashboard({ initialTab = 'overview', initialOrderId
                     </div>
                   ) : (
                     (editingProfile.portfolio || []).map((portItem, portIdx) => (
-                      <div key={portItem.id || portIdx} style={{ display: 'flex', alignItems: 'center', gap: '10px', padding: '8px 10px', borderRadius: '8px', background: '#F9F8FC', border: 'var(--adm-card-border)' }}>
-                        <div style={{ width: '44px', height: '44px', minWidth: '44px', borderRadius: '6px', background: '#E8E3EF', overflow: 'hidden' }}>
+                      <div key={portItem.id || portIdx} style={{ display: 'flex', alignItems: 'center', gap: '10px', padding: '8px 10px', borderRadius: '8px', background: isDark ? 'rgba(255, 255, 255, 0.03)' : '#F9F8FC', border: 'var(--adm-card-border)' }}>
+                        <div style={{ width: '44px', height: '44px', minWidth: '44px', borderRadius: '6px', background: isDark ? 'rgba(255, 255, 255, 0.06)' : '#E8E3EF', overflow: 'hidden' }}>
                           {portItem.image ? (
                             <img src={portItem.image} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
                           ) : (

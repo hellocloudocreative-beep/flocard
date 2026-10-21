@@ -619,7 +619,7 @@ export default function CompactProfileCard({
                   e.currentTarget.style.boxShadow = `0 4px 20px ${glowColor}60`;
                 }}
               >
-                <span>View Portfolio</span>
+                <span>View Details</span>
                 <ArrowUpRight size={16} />
               </button>
             </div>
@@ -690,7 +690,7 @@ export default function CompactProfileCard({
           userSelect: 'none'
         }}
       >
-        Interactive 3D card tilt • Tap to open full portfolio
+        Interactive 3D card tilt • Tap to view details
       </div>
     </motion.div>
   );

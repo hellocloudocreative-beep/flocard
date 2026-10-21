@@ -4,7 +4,7 @@
    public update messages, private internal notes, real carrier tracking, and immutable audit history.
    ========================================================================== */
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import {
   Package,
   Search,
@@ -96,6 +96,7 @@ export default function AdminOrderManager({ initialOrderId = null }) {
 
   const [previewSide, setPreviewSide] = useState('front');
   const [isUploadingLogo, setIsUploadingLogo] = useState(false);
+  const orderLogoInputRef = useRef(null);
 
   // Logo upload handler for Admin Add Order modal
   const handleOrderLogoUpload = async (e) => {
@@ -123,6 +124,7 @@ export default function AdminOrderManager({ initialOrderId = null }) {
       setAddOrderError('Failed to upload logo. Please try another image.');
     } finally {
       setIsUploadingLogo(false);
+      if (e.target) e.target.value = '';
     }
   };
 
@@ -1378,15 +1380,39 @@ export default function AdminOrderManager({ initialOrderId = null }) {
                         <p style={{ margin: 0, fontSize: '0.76rem', color: textPrimary, fontWeight: 600 }}>Custom Logo Attached</p>
                         <p style={{ margin: '2px 0 0', fontSize: '0.7rem', color: textSecondary }}>Will render directly on the physical NFC card face.</p>
                       </div>
-                      <label style={{ padding: '6px 12px', borderRadius: '6px', background: isDark ? 'rgba(255,255,255,0.08)' : '#E9E4F0', color: textPrimary, fontSize: '0.72rem', fontWeight: 600, cursor: 'pointer' }}>
-                        Change
-                        <input type="file" accept="image/*" onChange={handleOrderLogoUpload} style={{ display: 'none' }} disabled={isUploadingLogo} />
-                      </label>
+                      <input
+                        ref={orderLogoInputRef}
+                        type="file"
+                        accept="image/*"
+                        onChange={handleOrderLogoUpload}
+                        style={{ display: 'none' }}
+                        disabled={isUploadingLogo}
+                      />
+                      <button
+                        type="button"
+                        onClick={() => orderLogoInputRef.current?.click()}
+                        disabled={isUploadingLogo}
+                        style={{ padding: '6px 12px', borderRadius: '6px', border: 'none', background: isDark ? 'rgba(255,255,255,0.08)' : '#E9E4F0', color: textPrimary, fontSize: '0.72rem', fontWeight: 600, cursor: isUploadingLogo ? 'wait' : 'pointer' }}
+                      >
+                        {isUploadingLogo ? 'Uploading...' : 'Change'}
+                      </button>
                     </div>
                   ) : (
                     <div>
-                      <label
+                      <input
+                        ref={orderLogoInputRef}
+                        type="file"
+                        accept="image/*"
+                        onChange={handleOrderLogoUpload}
+                        style={{ display: 'none' }}
+                        disabled={isUploadingLogo}
+                      />
+                      <button
+                        type="button"
+                        onClick={() => orderLogoInputRef.current?.click()}
+                        disabled={isUploadingLogo}
                         style={{
+                          width: '100%',
                           display: 'flex',
                           alignItems: 'center',
                           justifyContent: 'center',
@@ -1403,8 +1429,7 @@ export default function AdminOrderManager({ initialOrderId = null }) {
                       >
                         <Upload size={14} color="#7038f8" />
                         <span>{isUploadingLogo ? 'Uploading logo to storage...' : 'Click to Upload Customer Logo (PNG, JPG, SVG)'}</span>
-                        <input type="file" accept="image/*" onChange={handleOrderLogoUpload} style={{ display: 'none' }} disabled={isUploadingLogo} />
-                      </label>
+                      </button>
                     </div>
                   )}
                 </div>
