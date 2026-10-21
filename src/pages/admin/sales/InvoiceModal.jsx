@@ -49,7 +49,7 @@ export default function InvoiceModal({ order, onClose }) {
     notesTerms: '1. Computer generated tax invoice under Rule 46 of CGST Rules, 2017.\n2. All NFC hardware products carry 1-Year manufacturing replacement warranty.\n3. Digital profile lifetime routing is included with card activation.\n4. Subject to Kochi jurisdiction only.'
   };
 
-  const invoiceNumber = order.invoiceId || `INV-${new Date(order.orderDate || Date.now()).getFullYear()}-${(order.id || '1000').slice(-4)}`;
+  const invoiceNumber = order.invoiceId || `INV-${new Date(order.orderDate || Date.now()).getFullYear()}-${String(order.id || '1000').slice(-4)}`;
   const invoiceDate = new Date(order.invoiceDate || order.orderDate || Date.now()).toLocaleDateString('en-IN', {
     day: '2-digit',
     month: 'short',
@@ -59,8 +59,8 @@ export default function InvoiceModal({ order, onClose }) {
   const items = order.items && order.items.length > 0 ? order.items : [
     {
       id: 'item_1',
-      productName: `${(order.edition || 'PURPLE').toUpperCase()} Edition NFC Smart Business Card`,
-      sku: `FLC-CRD-${(order.edition || 'PRP').slice(0, 3).toUpperCase()}-01`,
+      productName: `${String(order.edition || 'PURPLE').toUpperCase()} Edition NFC Smart Business Card`,
+      sku: `FLC-CRD-${String(order.edition || 'PRP').slice(0, 3).toUpperCase()}-01`,
       quantity: order.quantity || 1,
       unitPrice: order.unitPrice || order.totalAmount || 1999,
       discount: order.discount || 0,

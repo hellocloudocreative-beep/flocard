@@ -276,8 +276,8 @@ export function normalizeOrderFinancials(order) {
         recordedBy: 'System'
       }
     ],
-    cardCode: order.cardCode || `FLC-${ed.slice(0, 3).toUpperCase()}-${(order.id || '1000').replace(/[^0-9]/g, '').slice(-4).padStart(4, '0')}`,
-    nfcUid: order.nfcUid || `04:${((parseInt(order.id?.replace(/\D/g, '') || '1000', 10) * 17) % 255).toString(16).padStart(2, '0').toUpperCase()}:${((parseInt(order.id?.replace(/\D/g, '') || '1000', 10) * 31) % 255).toString(16).padStart(2, '0').toUpperCase()}:1F:90:3C:80`,
+    cardCode: order.cardCode || `FLC-${String(ed || 'PUR').slice(0, 3).toUpperCase()}-${String(order.id || '1000').replace(/[^0-9]/g, '').slice(-4).padStart(4, '0')}`,
+    nfcUid: order.nfcUid || `04:${((parseInt(String(order.id || '1000').replace(/\D/g, '') || '1000', 10) * 17) % 255).toString(16).padStart(2, '0').toUpperCase()}:${((parseInt(String(order.id || '1000').replace(/\D/g, '') || '1000', 10) * 31) % 255).toString(16).padStart(2, '0').toUpperCase()}:1F:90:3C:80`,
     cardStatus: order.cardStatus || (order.status === 'delivered' ? 'activated' : (order.status === 'dispatched' ? 'shipped' : (order.status === 'quality_checked' ? 'ready_to_dispatch' : (order.status === 'in_production' ? 'processing' : 'designing'))))
   };
 }

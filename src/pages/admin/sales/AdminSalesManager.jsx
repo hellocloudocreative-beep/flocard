@@ -363,17 +363,18 @@ export default function AdminSalesManager({ defaultTab = 'overview', initialOrde
 
     // Merge with products in store if configured
     products.forEach(p => {
-      const idx = catalog.findIndex(c => c.edition === p.edition);
+      const edKey = p.edition || p.editionKey || (p.id ? String(p.id).replace('prod_', '') : 'purple');
+      const idx = catalog.findIndex(c => c.edition === edKey);
       if (idx >= 0) {
-        catalog[idx] = { ...catalog[idx], ...p };
+        catalog[idx] = { ...catalog[idx], ...p, edition: edKey };
       } else {
         catalog.push({
-          id: p.id || p.edition,
-          edition: p.edition,
-          name: p.name,
-          sku: p.sku || `FLC-CRD-${p.edition.slice(0, 3).toUpperCase()}-99`,
-          variant: p.material || 'Custom NFC Edition',
-          image: p.previewImage || '/assets/cardbg-purple.png',
+          id: p.id || edKey,
+          edition: edKey,
+          name: p.name || `${String(edKey).toUpperCase()} Edition`,
+          sku: p.sku || `FLC-CRD-${String(edKey).slice(0, 3).toUpperCase()}-99`,
+          variant: p.material || p.subtitle || 'Custom NFC Edition',
+          image: p.previewImage || p.cardBg || '/assets/cardbg-purple.png',
           price: p.price || 1999,
           stock: p.stock || 50
         });
@@ -1224,7 +1225,7 @@ export default function AdminSalesManager({ defaultTab = 'overview', initialOrde
                           <div className="text-[10px] text-zinc-500">{item.variant || 'Standard'}</div>
                         </td>
                         <td className="py-3.5 px-4 font-mono text-zinc-400 text-[11px]">
-                          {item.sku || order.cardCode || `FLC-SKU-${order.id.slice(-4)}`}
+                          {item.sku || order.cardCode || `FLC-SKU-${String(order.id || '0000').slice(-4)}`}
                         </td>
                         <td className="py-3.5 px-4 text-center font-semibold text-white">
                           {order.quantity || 1}
@@ -1432,7 +1433,7 @@ export default function AdminSalesManager({ defaultTab = 'overview', initialOrde
                 </thead>
                 <tbody className="divide-y divide-white/5">
                   {filteredOrders.map(order => {
-                    const cardCode = order.cardCode || `FLC-${(order.edition || 'PUR').slice(0, 3).toUpperCase()}-${order.id.slice(-4)}`;
+                    const cardCode = order.cardCode || `FLC-${String(order.edition || 'PUR').slice(0, 3).toUpperCase()}-${String(order.id || '0000').slice(-4)}`;
                     const nfcUid = order.nfcUid || '04:7B:A2:1F:90:3C:80';
                     const profileUrl = order.profileSlug ? `https://${order.profileSlug}.flocard.in` : null;
 
