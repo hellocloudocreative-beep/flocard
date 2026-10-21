@@ -47,8 +47,9 @@ import { uploadImage } from '../../lib/uploadImage';
 export default function AdminOrderManager({ initialOrderId = null }) {
   const { user } = useAuth();
   const themeContext = useTheme();
-  const isLight = themeContext ? themeContext.isLight : true;
-  const isDark = themeContext ? themeContext.isDark : false;
+  // Admin orders manager ALWAYS uses obsidian dark theme
+  const isLight = false;
+  const isDark = true;
 
   const cardBg = isLight ? '#FFFFFF' : '#100B19';
   const cardBorder = isLight ? '#E8E3EF' : '#2A1D3B';

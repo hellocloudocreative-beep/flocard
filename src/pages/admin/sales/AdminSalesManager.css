@@ -378,7 +378,65 @@ table {
 
 /* Print Overrides */
 @media print {
-  .print\:hidden { display: none !important; }
+  /* Complete isolation: Hide all navigation, admin headers, sidebars, and site chrome */
+  header,
+  nav,
+  aside,
+  .admin-header,
+  .admin-sidebar,
+  .admin-sidebar-backdrop,
+  .admin-dashboard-root > aside,
+  .admin-main-container > header,
+  .flocard-app-root > nav,
+  .flocard-app-root > header,
+  .flocard-app-root > footer,
+  .print\:hidden {
+    display: none !important;
+    visibility: hidden !important;
+  }
+
+  body {
+    background-color: #ffffff !important;
+    color: #000000 !important;
+    margin: 0 !important;
+    padding: 0 !important;
+  }
+
+  .admin-dashboard-root {
+    display: block !important;
+    background: #ffffff !important;
+    padding: 0 !important;
+    margin: 0 !important;
+  }
+
+  .admin-main-container {
+    padding: 0 !important;
+    margin: 0 !important;
+    overflow: visible !important;
+  }
+
+  .flocard-invoice-modal-overlay {
+    position: static !important;
+    inset: auto !important;
+    padding: 0 !important;
+    margin: 0 !important;
+    background: #ffffff !important;
+    backdrop-filter: none !important;
+    display: block !important;
+    width: 100% !important;
+    max-width: 100% !important;
+    z-index: auto !important;
+  }
+
+  .flocard-invoice-modal-overlay > div {
+    border: none !important;
+    box-shadow: none !important;
+    margin: 0 !important;
+    width: 100% !important;
+    max-width: 100% !important;
+    background-color: #ffffff !important;
+  }
+
   .print\:bg-white { background-color: #ffffff !important; }
   .print\:text-black { color: #000000 !important; }
   .print\:text-zinc-800 { color: #27272a !important; }

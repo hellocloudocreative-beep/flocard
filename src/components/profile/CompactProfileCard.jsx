@@ -110,7 +110,7 @@ export default function CompactProfileCard({
 
   const transitionConfig = reducedMotion
     ? { duration: 0.15 }
-    : { type: 'spring', stiffness: 280, damping: 28, mass: 0.88 };
+    : { type: 'spring', stiffness: 290, damping: 29, mass: 0.85 };
 
   const idCode = profile?.phone || profile?.email || `NFC-${profile?.slug?.toUpperCase() || '216'}`;
 
@@ -140,9 +140,7 @@ export default function CompactProfileCard({
   };
 
   return (
-    <motion.div
-      layoutId="profile-card-container"
-      transition={transitionConfig}
+    <div
       style={{
         display: 'flex',
         flexDirection: 'column',
@@ -184,7 +182,9 @@ export default function CompactProfileCard({
         />
 
         {/* FLOCARD Portrait Artwork Card Container (Substantial, Executive Scale) */}
-        <div
+        <motion.div
+          layoutId="flocard-profile-card-surface"
+          transition={transitionConfig}
           onMouseMove={handleMouseMove}
           onMouseLeave={handleMouseLeave}
           style={{
@@ -591,7 +591,7 @@ export default function CompactProfileCard({
               <ArrowUpRight size={13} />
             </div>
           </div>
-        </div>
+        </motion.div>
       </div>
 
       {/* Subtle Hint Underneath */}
@@ -608,6 +608,6 @@ export default function CompactProfileCard({
       >
         Interactive 3D card tilt • Tap to view details
       </div>
-    </motion.div>
+    </div>
   );
 }

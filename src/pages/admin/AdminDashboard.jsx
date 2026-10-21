@@ -85,8 +85,9 @@ import AdminLogin from '../auth/AdminLogin';
 export default function AdminDashboard({ initialTab = 'overview', initialOrderId = null }) {
   const { user, isOwner, isAdmin, logout, switchPersona } = useAuth();
   const themeContext = useTheme();
-  const isDark = themeContext ? themeContext.isDark : false;
-  const isLight = themeContext ? themeContext.isLight : true;
+  // Admin dashboard ALWAYS uses dark theme regardless of site-wide toggle
+  const isDark = true;
+  const isLight = false;
   const toggleTheme = themeContext ? themeContext.toggleTheme : () => {};
 
   const {
@@ -382,7 +383,6 @@ export default function AdminDashboard({ initialTab = 'overview', initialOrderId
     { id: 'cards', label: 'NFC Cards', icon: Radio, badge: cards.length },
     { id: 'pricing', label: 'Products & Pricing', icon: Tag, badge: products?.length || 3 },
     { id: 'templates', label: 'Card Templates', icon: Layers },
-    { id: 'demo', label: 'Demo Showcase', icon: Sparkles },
     { id: 'analytics', label: 'Analytics', icon: BarChart3 },
     { id: 'admin-access', label: 'Admin Access', icon: ShieldCheck, ownerOnly: true },
     { id: 'audit-logs', label: 'Audit Logs', icon: ClipboardList },

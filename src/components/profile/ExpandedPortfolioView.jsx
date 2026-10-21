@@ -131,7 +131,7 @@ export default function ExpandedPortfolioView({
 
   const transitionConfig = reducedMotion
     ? { duration: 0.15 }
-    : { type: 'spring', stiffness: 280, damping: 28, mass: 0.88 };
+    : { type: 'spring', stiffness: 290, damping: 29, mass: 0.85 };
 
   const currentUrl = typeof window !== 'undefined'
     ? window.location.origin + `/p/${profile.slug}`
@@ -182,9 +182,7 @@ export default function ExpandedPortfolioView({
     finishPortraitBgs.purple;
 
   return (
-    <motion.div
-      layoutId="profile-card-container"
-      transition={transitionConfig}
+    <div
       style={{
         width: '100%',
         maxWidth: '900px',
@@ -195,7 +193,9 @@ export default function ExpandedPortfolioView({
         alignItems: 'center'
       }}
     >
-      <div
+      <motion.div
+        layoutId="flocard-profile-card-surface"
+        transition={transitionConfig}
         className="flocard-expanded-portfolio-card"
         style={{
           width: '100%',
@@ -239,7 +239,10 @@ export default function ExpandedPortfolioView({
       />
 
       {/* Top Bar with Brand & Back/Collapse Control */}
-      <div
+      <motion.div
+        initial={reducedMotion ? false : { opacity: 0, y: -6 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.25, delay: 0.08 }}
         style={{
           display: 'flex',
           alignItems: 'center',
@@ -346,7 +349,7 @@ export default function ExpandedPortfolioView({
             {copiedLink ? <Check size={16} /> : <Share2 size={16} />}
           </button>
         </div>
-      </div>
+      </motion.div>
 
       {/* Expanded Hero Lockup (Shared Photo, Name, Role) */}
       <div
@@ -933,7 +936,7 @@ export default function ExpandedPortfolioView({
         </div>
       </motion.div>
     </div>
-  </div>
+  </motion.div>
 
   {/* Project Lightbox Modal */}
       {selectedProject && (
@@ -1026,6 +1029,6 @@ export default function ExpandedPortfolioView({
           </div>
         </div>
       )}
-    </motion.div>
+    </div>
   );
 }

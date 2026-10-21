@@ -13,18 +13,19 @@ export default function DigitalProfiles() {
   const { profiles, demoConfig } = useData();
   const { isLight } = useTheme();
 
+  const baseProfile = profiles.find(p => p.slug === 'akhil') || profiles[0] || {};
   const demoProfile = {
-    ...(profiles.find(p => p.slug === 'akhil') || profiles[0] || {}),
-    name: demoConfig?.name || 'Your Name',
-    role: demoConfig?.role || 'Your Role',
-    tagline: demoConfig?.tagline || 'Your Tagline',
-    company: demoConfig?.company || 'Your Company',
-    avatar: demoConfig?.avatar || '',
-    logo: demoConfig?.logo || '',
-    phone: demoConfig?.phone || '+91 97782 78552',
-    email: demoConfig?.email || 'contact@flocard.in',
-    website: demoConfig?.website || 'https://flocard.in',
-    cardFinish: demoConfig?.cardFinish || 'purple'
+    ...baseProfile,
+    name: (demoConfig?.name && demoConfig.name !== 'Your Name') ? demoConfig.name : (baseProfile?.name && baseProfile.name !== 'Your Name' ? baseProfile.name : 'Akhil Anvar'),
+    role: (demoConfig?.role && demoConfig.role !== 'Your Role') ? demoConfig.role : (baseProfile?.role && baseProfile.role !== 'Your Role' ? baseProfile.role : 'Founder & CEO'),
+    tagline: (demoConfig?.tagline && demoConfig.tagline !== 'Your Tagline') ? demoConfig.tagline : (baseProfile?.tagline || 'Pioneering connected NFC identity for executives and pioneers.'),
+    company: (demoConfig?.company && demoConfig.company !== 'Your Company') ? demoConfig.company : (baseProfile?.company && baseProfile.company !== 'Your Company' ? baseProfile.company : 'FLOCARD'),
+    avatar: demoConfig?.avatar || baseProfile?.avatar || '/assets/akhil.jpg',
+    logo: demoConfig?.logo || baseProfile?.logo || '',
+    phone: demoConfig?.phone || baseProfile?.phone || '+91 97782 78552',
+    email: demoConfig?.email || baseProfile?.email || 'contact@flocard.in',
+    website: demoConfig?.website || baseProfile?.website || 'https://flocard.in',
+    cardFinish: demoConfig?.cardFinish || baseProfile?.cardFinish || 'purple'
   };
 
   return (

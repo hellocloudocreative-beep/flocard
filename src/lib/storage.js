@@ -63,12 +63,12 @@ export function getDefaultPublicMessage(status) {
 }
 
 export const DEFAULT_DEMO_CONFIG = {
-  name: 'Your Name',
-  role: 'Your Role',
-  tagline: 'Your Tagline',
-  company: 'Your Company',
-  avatar: '', // Empty by default: do not automatically inject photos
-  logo: '',   // Empty by default: shows "YOUR LOGO" placeholder
+  name: 'Akhil Anvar',
+  role: 'Founder & CEO',
+  tagline: 'Connected Identity Systems',
+  company: 'FLOCARD',
+  avatar: '/assets/akhil.jpg',
+  logo: '',
   phone: '+91 97782 78552',
   email: 'contact@flocard.in',
   whatsapp: '919778278552',
@@ -88,10 +88,10 @@ export const INITIAL_PROFILES = [
     id: 'prof_akhil_001',
     userId: 'usr_akhil_founder',
     slug: 'akhil',
-    name: 'Your Name',
-    role: 'Your Role',
-    company: 'Your Company',
-    avatar: '', // Don't make images automatically
+    name: 'Akhil Anvar',
+    role: 'Founder & CEO',
+    company: 'FLOCARD',
+    avatar: '/assets/akhil.jpg',
     location: 'Bengaluru, India',
     bio: 'Pioneering connected NFC identity for executives and global tech pioneers. One tap. Every connection.',
     phone: '+91 97782 78552',
@@ -1212,11 +1212,22 @@ function setLocal(key, value) {
 
 export const StorageEngine = {
   // Profiles
-  getProfiles: () => getLocal('profiles', INITIAL_PROFILES),
+  getProfiles: () => {
+    const list = getLocal('profiles', INITIAL_PROFILES);
+    const primary = list.find(p => p.id === 'prof_akhil_001' || p.slug === 'akhil');
+    if (primary && (primary.name === 'Your Name' || !primary.avatar)) {
+      primary.name = 'Akhil Anvar';
+      primary.role = primary.role === 'Your Role' ? 'Founder & CEO' : primary.role;
+      primary.company = primary.company === 'Your Company' ? 'FLOCARD' : primary.company;
+      primary.avatar = primary.avatar || '/assets/akhil.jpg';
+      setLocal('profiles', list);
+    }
+    return list;
+  },
   getProfileBySlug: (slug) => {
     if (!slug) return null;
     const cleanSlug = String(slug).trim().toLowerCase();
-    const list = getLocal('profiles', INITIAL_PROFILES);
+    const list = StorageEngine.getProfiles();
     const found = list.find(p => p.slug && p.slug.trim().toLowerCase() === cleanSlug);
     if (found) return found;
 
