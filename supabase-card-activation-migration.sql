@@ -64,13 +64,14 @@ RETURNS BOOLEAN AS $$
 BEGIN
     RETURN (
         auth.jwt() ->> 'role' = 'owner' OR
+        (auth.jwt() -> 'app_metadata' ->> 'role') = 'owner' OR
         auth.jwt() ->> 'email' = 'flocard@flocard.in' OR
         auth.jwt() ->> 'email' = 'admin@flocard.in' OR
         auth.jwt() ->> 'email' = 'hello.flocard@gmail.com' OR
         auth.jwt() ->> 'email' = 'akhil@flocard.in' OR
         (auth.jwt() -> 'custom_permissions') ? 'nfc.status_manage'
     );
-END $$;
+END $$ LANGUAGE plpgsql SECURITY DEFINER;
 
 -- 6. Enforce that only verified owners or authorized staff can update card status
 DROP POLICY IF EXISTS "Owner can manage card activation" ON public.nfc_cards;

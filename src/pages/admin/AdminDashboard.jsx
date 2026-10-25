@@ -747,36 +747,44 @@ export default function AdminDashboard({ initialTab = 'overview', initialOrderId
 
     setCardActionConfirm(prev => ({ ...prev, isSubmitting: true }));
 
-    const result = await updateCardActivationStatus({
-      cardId: card.id || card.cardCode,
-      newStatus: targetStatus,
-      reason: reason || (targetStatus === 'disabled' ? 'Admin disabled card' : 'Admin activated card'),
-      actorUser: user || { role: 'owner', name: 'Owner' }
-    });
-
-    setCardActionConfirm(null);
-
-    if (result.success) {
-      if (typeof refreshAll === 'function') {
-        refreshAll();
-      }
-      setCardToast({
-        type: 'success',
-        message: targetStatus === 'disabled'
-          ? `Card ${card.cardCode} successfully disabled. Public NFC redirect paused.`
-          : `Card ${card.cardCode} successfully enabled and linked to @${card.profileSlug}.`
+    try {
+      const result = await updateCardActivationStatus({
+        cardId: card.id || card.cardCode,
+        newStatus: targetStatus,
+        reason: reason || (targetStatus === 'disabled' ? 'Admin disabled card' : 'Admin activated card'),
+        actorUser: user || { role: 'owner', name: 'Owner' }
       });
-      if (cardDetailsModal && (cardDetailsModal.id === card.id || cardDetailsModal.cardCode === card.cardCode)) {
-        setCardDetailsModal(result.card);
+
+      if (result.success) {
+        if (typeof refreshAll === 'function') {
+          refreshAll();
+        }
+        setCardToast({
+          type: 'success',
+          message: targetStatus === 'disabled'
+            ? `Card ${card.cardCode} successfully disabled. Public NFC redirect paused.`
+            : `Card ${card.cardCode} successfully enabled and linked to @${card.profileSlug}.`
+        });
+        if (cardDetailsModal && (cardDetailsModal.id === card.id || cardDetailsModal.cardCode === card.cardCode)) {
+          setCardDetailsModal(result.card);
+        }
+        setCardActionConfirm(null);
+      } else {
+        setCardToast({
+          type: 'error',
+          message: result.error || 'Failed to update card status in database.'
+        });
+        setCardActionConfirm(prev => (prev ? { ...prev, isSubmitting: false } : null));
       }
-    } else {
+    } catch (err) {
       setCardToast({
         type: 'error',
-        message: result.error || 'Failed to update card status in database.'
+        message: err.message || 'An unexpected error occurred while updating card status.'
       });
+      setCardActionConfirm(prev => (prev ? { ...prev, isSubmitting: false } : null));
+    } finally {
+      setTimeout(() => setCardToast(null), 5000);
     }
-
-    setTimeout(() => setCardToast(null), 5000);
   };
 
   // Handle Bulk Status Change
@@ -7062,7 +7070,7 @@ export default function AdminDashboard({ initialTab = 'overview', initialOrderId
                 </a>
               </div>
               <div style={{ display: 'flex', gap: '8px' }}>
-                {cardDetailsModal.status === 'active' ? (
+                {(cardDetailsModal.status || '').toLowerCase() === 'active' ? (
                   <button
                     type="button"
                     onClick={() => {
@@ -7081,7 +7089,7 @@ export default function AdminDashboard({ initialTab = 'overview', initialOrderId
                   >
                     Disable Card
                   </button>
-                ) : (
+                ) : ['disabled', 'revoked', 'suspended'].includes((cardDetailsModal.status || '').toLowerCase()) ? (
                   <button
                     type="button"
                     onClick={() => {
@@ -7099,6 +7107,28 @@ export default function AdminDashboard({ initialTab = 'overview', initialOrderId
                     }}
                   >
                     Enable Card
+                  </button>
+                ) : (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      triggerCardStatusChange(cardDetailsModal, 'active');
+                    }}
+                    disabled={!verifyActivationRequirements(cardDetailsModal).valid}
+                    title={verifyActivationRequirements(cardDetailsModal).valid ? 'Satisfies requirements: activate card' : verifyActivationRequirements(cardDetailsModal).reason}
+                    style={{
+                      padding: '8px 16px',
+                      borderRadius: '8px',
+                      border: verifyActivationRequirements(cardDetailsModal).valid ? '1px solid #6B00FF55' : '1px solid rgba(255,255,255,0.1)',
+                      backgroundColor: verifyActivationRequirements(cardDetailsModal).valid ? '#6B00FF22' : 'rgba(255,255,255,0.04)',
+                      color: verifyActivationRequirements(cardDetailsModal).valid ? '#6B00FF' : 'var(--adm-text-secondary)',
+                      fontWeight: 700,
+                      fontSize: '0.8rem',
+                      cursor: verifyActivationRequirements(cardDetailsModal).valid ? 'pointer' : 'not-allowed',
+                      opacity: verifyActivationRequirements(cardDetailsModal).valid ? 1 : 0.6
+                    }}
+                  >
+                    Activate Card
                   </button>
                 )}
                 <button

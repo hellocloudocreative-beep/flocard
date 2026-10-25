@@ -33,21 +33,11 @@ export default function NfcRedirect({ cardCode = 'flc-alex-001' }) {
       setCard(matchedCard);
 
       if (!matchedCard) {
-        // Fallback for legacy demo links
-        if (cardCode.toLowerCase().includes('alex') || cardCode.toLowerCase().includes('akhil') || cardCode.toLowerCase().includes('demo')) {
-          recordTap(cardCode, { os: 'Mobile Web', browser: navigator.userAgent });
-          setTargetSlug('alex');
-          setStatus('redirecting');
-          const timer = setTimeout(() => {
-            window.location.href = '/alex';
-          }, 1200);
-          return () => clearTimeout(timer);
-        }
         setStatus('not_found');
         return;
       }
 
-      // Check for disabled / revoked status
+      // Check for disabled / revoked status (Spec Requirement 4: Enforce Actual NFC Redirect Status)
       const cardStatus = (matchedCard.status || '').toLowerCase();
       if (cardStatus === 'disabled' || cardStatus === 'revoked' || cardStatus === 'suspended') {
         setStatus('disabled');

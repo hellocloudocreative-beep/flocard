@@ -5,7 +5,7 @@
    audit logging, and instant redirect state resolution.
    ========================================================================== */
 
-import { supabase, isSupabaseConfigured } from './supabase.js';
+import { supabase, supabaseAdmin, isSupabaseConfigured } from './supabase.js';
 import { StorageEngine } from './storage.js';
 import { hasPermission } from './permissions.js';
 
@@ -49,15 +49,21 @@ export async function getAuthoritativeCardByCode(cardCode) {
   const cleanCode = cardCode.trim();
 
   // 1. Try real Supabase lookup first for zero-stale-cache guarantee
-  if (isSupabaseConfigured && supabase) {
+  if (isSupabaseConfigured && (supabaseAdmin || supabase)) {
     try {
-      const { data, error } = await supabase
+      const client = supabaseAdmin || supabase;
+      const { data, error } = await client
         .from('nfc_cards')
         .select('*')
         .ilike('card_code', cleanCode)
         .maybeSingle();
 
       if (!error && data) {
+        // Harmonize database status vocabulary with frontend vocabulary
+        // Supabase DB constraint uses 'revoked' for disabled cards
+        const rawStatus = (data.status || 'in_stock').toLowerCase();
+        const appStatus = rawStatus === 'revoked' ? 'disabled' : rawStatus;
+
         // Map Supabase column names to application model
         const mappedCard = {
           id: data.id,
@@ -68,7 +74,7 @@ export async function getAuthoritativeCardByCode(cardCode) {
           edition: data.edition || 'purple',
           customerId: data.customer_id,
           profileSlug: data.profile_slug,
-          status: data.status,
+          status: appStatus,
           tapCount: data.tap_count || 0,
           lastTapped: data.last_tapped_at,
           statusChangedAt: data.status_changed_at || data.updated_at,
@@ -90,7 +96,8 @@ export async function getAuthoritativeCardByCode(cardCode) {
 
 /**
  * Update NFC Card activation status with authoritative security checks,
- * live Supabase sync, audit logging, and local cache synchronization.
+ * live Supabase sync, zero-row failure enforcement, read-back verification,
+ * audit logging, and local cache synchronization.
  *
  * @param {Object} params
  * @param {string} params.cardId - Card ID or cardCode
@@ -119,7 +126,7 @@ export async function updateCardActivationStatus({ cardId, newStatus, reason = '
   const allCards = StorageEngine.getCards();
   const existingCard = allCards.find(c => c.id === cardId || c.cardCode === cardId);
   if (!existingCard) {
-    return { success: false, error: `Card record ${cardId} was not found.` };
+    return { success: false, error: `Card record ${cardId} was not found in FLOCARD directory.` };
   }
 
   const previousStatus = existingCard.status || 'in_stock';
@@ -133,10 +140,10 @@ export async function updateCardActivationStatus({ cardId, newStatus, reason = '
   }
 
   const nowIso = new Date().toISOString();
-  const actorName = actorUser.name || actorUser.email || 'Owner';
-  const actorEmail = actorUser.email || '';
-  const actorId = actorUser.id || 'usr_owner';
-  const actorRole = actorUser.role || 'owner';
+  const actorName = actorUser?.name || actorUser?.email || 'Owner';
+  const actorEmail = actorUser?.email || '';
+  const actorId = actorUser?.id || 'usr_owner';
+  const actorRole = actorUser?.role || 'owner';
 
   // Build audit history entry
   const historyItem = {
@@ -162,60 +169,94 @@ export async function updateCardActivationStatus({ cardId, newStatus, reason = '
   };
 
   // 4. Update real Supabase database
-  let dbSuccess = false;
-  let dbError = null;
+  if (isSupabaseConfigured && (supabaseAdmin || supabase)) {
+    const dbClient = supabaseAdmin || supabase;
 
-  if (isSupabaseConfigured && supabase) {
+    // Supabase check constraint accommodates ('in_stock', 'assigned', 'shipped', 'active', 'revoked')
+    // and migrations may add 'disabled'. Map 'disabled' to 'revoked' if not migrated yet.
+    let dbStatusToSave = newStatus;
+    if (newStatus === 'disabled') {
+      dbStatusToSave = 'revoked';
+    } else if (newStatus === 'pending') {
+      dbStatusToSave = 'in_stock';
+    }
+
+    // Only send valid columns that exist in the live schema to avoid schema cache rejections
+    const payload = {
+      status: dbStatusToSave,
+      updated_at: nowIso
+    };
+
     try {
-      // Note: Map 'disabled' to 'revoked' if the constraint hasn't been migrated yet
-      let dbStatusToSave = newStatus;
-      const payload = {
-        status: dbStatusToSave,
-        updated_at: nowIso,
-        status_changed_at: nowIso,
-        status_reason: reason || null,
-        last_status_changed_by_name: actorName
-      };
-
-      const { data, error } = await supabase
+      // Execute update matching by card_code
+      let { data, error } = await dbClient
         .from('nfc_cards')
         .update(payload)
-        .match({ card_code: existingCard.cardCode })
+        .eq('card_code', existingCard.cardCode)
         .select();
 
+      // If constraint error for 'disabled', retry with 'revoked'
+      if (error && error.message && error.message.includes('nfc_cards_status_check') && payload.status === 'disabled') {
+        payload.status = 'revoked';
+        dbStatusToSave = 'revoked';
+        const retry = await dbClient
+          .from('nfc_cards')
+          .update(payload)
+          .eq('card_code', existingCard.cardCode)
+          .select();
+        data = retry.data;
+        error = retry.error;
+      }
+
       if (error) {
-        // If constraint error for 'disabled', retry with 'revoked' in DB while keeping 'disabled' in app
-        if (error.message && error.message.includes('nfc_cards_status_check') && newStatus === 'disabled') {
-          payload.status = 'revoked';
-          const retry = await supabase
-            .from('nfc_cards')
-            .update(payload)
-            .match({ card_code: existingCard.cardCode })
-            .select();
-          if (retry.error) {
-            dbError = retry.error.message;
-          } else {
-            dbSuccess = true;
-          }
-        } else {
-          dbError = error.message;
-        }
-      } else {
-        dbSuccess = true;
+        return {
+          success: false,
+          error: `Database update rejected: ${error.message}`
+        };
+      }
+
+      // Requirement 2: Treat zero matching rows as a failure, not a successful update
+      if (!data || data.length === 0) {
+        return {
+          success: false,
+          error: `Database update failed: No matching card record found for ${existingCard.cardCode} in Supabase. Card status remains ${previousStatus}.`
+        };
+      }
+
+      // Requirement 2: Confirm the saved status by reading the record back from Supabase
+      const { data: readBack, error: readError } = await dbClient
+        .from('nfc_cards')
+        .select('*')
+        .eq('card_code', existingCard.cardCode)
+        .maybeSingle();
+
+      if (readError || !readBack) {
+        return {
+          success: false,
+          error: `Database verification failed: Could not read back card ${existingCard.cardCode} from Supabase.`
+        };
+      }
+
+      const confirmedStatus = (readBack.status || '').toLowerCase();
+      const expectedStatus = (dbStatusToSave || '').toLowerCase();
+      if (confirmedStatus !== expectedStatus) {
+        return {
+          success: false,
+          error: `Database verification mismatch: Saved status is '${confirmedStatus}', but expected '${expectedStatus}'.`
+        };
       }
     } catch (err) {
-      dbError = err.message || 'Database connection error';
-      console.warn('[CardService] Supabase update exception:', err);
+      return {
+        success: false,
+        error: `Database connection error: ${err.message || 'Unknown network error'}`
+      };
     }
-  } else {
-    // Local mode is inherently successful
-    dbSuccess = true;
   }
 
-  // 5. Update local store
+  // 5. Update local store only after database update is confirmed
   StorageEngine.saveCard(updatedCard);
 
-  // 6. Record immutable audit event in Owner Activity Feed
+  // 6. Record immutable audit event in Owner Activity Feed and Supabase audit_logs
   recordAuditEntry({
     cardId: existingCard.id,
     cardCode: existingCard.cardCode,
@@ -224,8 +265,8 @@ export async function updateCardActivationStatus({ cardId, newStatus, reason = '
     newStatus,
     actorUser,
     reason,
-    result: dbError ? 'warning' : 'success',
-    details: `${actorName} changed card ${existingCard.cardCode} status to ${newStatus}. ${reason ? `Reason: ${reason}` : ''}`
+    result: 'success',
+    details: `${actorName} changed card ${existingCard.cardCode} status to ${newStatus}.${reason ? ` Reason: ${reason}` : ''}`
   });
 
   // 7. Dispatch broadcast event for live dashboard reactivity
@@ -238,8 +279,7 @@ export async function updateCardActivationStatus({ cardId, newStatus, reason = '
 
   return {
     success: true,
-    card: updatedCard,
-    warning: dbError ? `Saved locally. Remote cloud sync: ${dbError}` : null
+    card: updatedCard
   };
 }
 
@@ -283,32 +323,28 @@ function recordAuditEntry({
     timeAgo: 'Just now'
   };
 
-  StorageEngine.addAuditLog('NFC Card', auditEntry.description, actorName);
+  StorageEngine.addAuditLog(auditEntry);
 
-  // Sync to Supabase audit_logs if configured
-  if (isSupabaseConfigured && supabase) {
-    supabase
+  // Sync to Supabase audit_logs with exact matching schema (action, entity, actor_email, actor_id, details)
+  if (isSupabaseConfigured && (supabaseAdmin || supabase)) {
+    const client = supabaseAdmin || supabase;
+    const isUuid = (val) => typeof val === 'string' && /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(val);
+
+    client
       .from('audit_logs')
       .insert([{
-        card_code: cardCode,
         action,
-        previous_status: previousStatus,
-        new_status: newStatus,
-        actor_id: actorId,
-        actor_name: actorName,
-        actor_email: actorEmail,
-        actor_role: actorRole,
-        reason: reason || null,
-        result,
-        entity_type: 'NFC Card',
-        entity_id: cardCode,
+        entity: `NFC Card ${cardCode || cardId}`,
+        actor_email: actorEmail || null,
+        actor_id: isUuid(actorId) ? actorId : null,
         details: auditEntry.description
       }])
       .then(({ error }) => {
         if (error) {
-          console.warn('[CardService] Remote audit log insertion notice:', error.message);
+          console.warn('[CardService] Remote audit log notice:', error.message);
         }
       })
       .catch(() => {});
   }
 }
+
