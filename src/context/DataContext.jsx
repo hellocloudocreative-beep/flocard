@@ -226,6 +226,28 @@ export function DataProvider({ children }) {
     return res;
   };
 
+  const reorderProducts = (orderedKeysOrIds, role, email) => {
+    const res = StorageEngine.reorderProducts(orderedKeysOrIds, role, email);
+    if (res.success) {
+      refreshAll();
+      if (typeof window !== 'undefined') {
+        window.dispatchEvent(new CustomEvent('flocard_products_updated', { detail: res.products }));
+      }
+    }
+    return res;
+  };
+
+  const toggleProductStatus = (editionKeyOrId, newStatus, role, email) => {
+    const res = StorageEngine.toggleProductStatus(editionKeyOrId, newStatus, role, email);
+    if (res.success) {
+      refreshAll();
+      if (typeof window !== 'undefined') {
+        window.dispatchEvent(new CustomEvent('flocard_products_updated', { detail: res.product }));
+      }
+    }
+    return res;
+  };
+
   const recordOrderPayment = (params) => {
     const res = StorageEngine.recordOrderPayment(params);
     refreshAll();
@@ -301,6 +323,8 @@ export function DataProvider({ children }) {
       saveTemplate,
       deleteTemplate,
       saveProduct,
+      reorderProducts,
+      toggleProductStatus,
       getProductByEdition: StorageEngine.getProductByEdition,
       resetAllData,
       getProfileBySlug: StorageEngine.getProfileBySlug,

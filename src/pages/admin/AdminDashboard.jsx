@@ -39,6 +39,11 @@ import {
   XCircle,
   AlertCircle,
   Eye,
+  EyeOff,
+  ArrowUp,
+  ArrowDown,
+  ArrowLeft,
+  ArrowRight,
   Plus,
   Check,
   Copy,
@@ -120,6 +125,8 @@ export default function AdminDashboard({ initialTab = 'overview', initialOrderId
     templates = [],
     products = [],
     saveProduct,
+    reorderProducts,
+    toggleProductStatus,
     getProductByEdition,
     auditLogs = [],
     adminAccounts = [],
@@ -954,6 +961,10 @@ export default function AdminDashboard({ initialTab = 'overview', initialOrderId
       return;
     }
 
+    if (editingProduct.displayOrder !== undefined && editingProduct.displayOrder !== null) {
+      handleChangeProductPosition(editingProduct.editionKey || editingProduct.id, Number(editingProduct.displayOrder));
+    }
+
     setProductSaveSuccess(`Product details and pricing saved for ${editingProduct.name}!`);
     setFulfillmentToast({
       title: 'Product Pricing Published!',
@@ -985,6 +996,64 @@ export default function AdminDashboard({ initialTab = 'overview', initialOrderId
       ...editingProduct,
       features: currentFeatures
     });
+  };
+
+  // Handle moving card position on home page (Move Up / Down)
+  const handleMoveProduct = (editionKeyOrId, direction) => {
+    const sorted = [...(products || [])].sort((a, b) => (a.displayOrder ?? 999) - (b.displayOrder ?? 999));
+    const idx = sorted.findIndex(p => p.id === editionKeyOrId || p.editionKey === editionKeyOrId);
+    if (idx === -1) return;
+    const targetIdx = direction === 'up' ? idx - 1 : idx + 1;
+    if (targetIdx < 0 || targetIdx >= sorted.length) return;
+    const temp = sorted[idx];
+    sorted[idx] = sorted[targetIdx];
+    sorted[targetIdx] = temp;
+    const orderedKeys = sorted.map(p => p.id || p.editionKey);
+    const res = reorderProducts(orderedKeys, user?.role || 'admin', user?.email || 'admin@flocard.in');
+    if (res?.success) {
+      setFulfillmentToast({
+        title: 'Home Page Cards Reordered!',
+        message: `${temp.name} is now #${targetIdx + 1} on the home page.`
+      });
+      setTimeout(() => setFulfillmentToast(null), 4000);
+    }
+  };
+
+  // Handle setting card position directly (1st, 2nd, etc.)
+  const handleChangeProductPosition = (editionKeyOrId, newPos) => {
+    const sorted = [...(products || [])].sort((a, b) => (a.displayOrder ?? 999) - (b.displayOrder ?? 999));
+    const idx = sorted.findIndex(p => p.id === editionKeyOrId || p.editionKey === editionKeyOrId);
+    if (idx === -1) return;
+    const targetIdx = Math.max(0, Math.min(sorted.length - 1, Number(newPos) - 1));
+    if (targetIdx === idx) return;
+    const [moved] = sorted.splice(idx, 1);
+    sorted.splice(targetIdx, 0, moved);
+    const orderedKeys = sorted.map(p => p.id || p.editionKey);
+    const res = reorderProducts(orderedKeys, user?.role || 'admin', user?.email || 'admin@flocard.in');
+    if (res?.success) {
+      setFulfillmentToast({
+        title: 'Home Page Position Updated!',
+        message: `${moved.name} arranged to position #${targetIdx + 1} on Home.`
+      });
+      setTimeout(() => setFulfillmentToast(null), 4000);
+    }
+  };
+
+  // Handle quick toggle visibility (Enable / Disable)
+  const handleToggleProductVisibility = (editionKeyOrId) => {
+    const prod = (products || []).find(p => p.id === editionKeyOrId || p.editionKey === editionKeyOrId);
+    if (!prod) return;
+    const targetStatus = prod.status === 'active' ? 'disabled' : 'active';
+    const res = toggleProductStatus(editionKeyOrId, targetStatus, user?.role || 'admin', user?.email || 'admin@flocard.in');
+    if (res?.success) {
+      setFulfillmentToast({
+        title: targetStatus === 'active' ? 'Card Enabled on Home!' : 'Card Disabled & Hidden!',
+        message: targetStatus === 'active'
+          ? `${prod.name} is now enabled and visible to users on Home.`
+          : `${prod.name} has been disabled and hidden from Home and visitor views.`
+      });
+      setTimeout(() => setFulfillmentToast(null), 4500);
+    }
   };
 
   const dbStatus = getSupabaseStatus();
@@ -4489,12 +4558,189 @@ export default function AdminDashboard({ initialTab = 'overview', initialOrderId
                 </div>
               </div>
 
+              {/* Home Page Cards Sequence & Live Visibility Reordering Banner */}
+              <div
+                style={{
+                  padding: '20px 24px',
+                  borderRadius: '16px',
+                  backgroundColor: isDark ? 'rgba(107, 0, 255, 0.08)' : '#F5F3FF',
+                  border: isDark ? '1px solid rgba(168, 85, 247, 0.3)' : '1px solid #DDD6FE',
+                  marginBottom: '28px'
+                }}
+              >
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '14px', flexWrap: 'wrap', gap: '10px' }}>
+                  <div>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                      <span style={{ fontSize: '0.98rem', fontWeight: 800, color: 'var(--adm-text-primary)' }}>
+                        Home Page Card Sequence & Arrangement
+                      </span>
+                      <span style={{ fontSize: '0.68rem', fontWeight: 700, padding: '2px 8px', borderRadius: '6px', backgroundColor: '#6B00FF', color: '#FFFFFF' }}>
+                        LIVE HOME CONTROLS
+                      </span>
+                    </div>
+                    <p style={{ margin: '3px 0 0', fontSize: '0.78rem', color: 'var(--adm-text-secondary)' }}>
+                      Arrange cards to change which edition appears 1st, 2nd, etc. on the home page. Disabled cards are hidden from Home and visitors.
+                    </p>
+                  </div>
+                </div>
+
+                {/* Sequence Reorder Strip */}
+                <div style={{ display: 'flex', gap: '12px', flexWrap: 'wrap', alignItems: 'stretch' }}>
+                  {[...(products || [])].sort((a, b) => (a.displayOrder ?? 999) - (b.displayOrder ?? 999)).map((prod, idx, arr) => {
+                    const isVisible = prod.status === 'active' && prod.isActive !== false;
+                    return (
+                      <div
+                        key={prod.id || prod.editionKey}
+                        style={{
+                          flex: '1 1 200px',
+                          minWidth: '190px',
+                          padding: '12px 14px',
+                          borderRadius: '12px',
+                          backgroundColor: 'var(--adm-card-bg)',
+                          border: isVisible ? `1.5px solid ${prod.accentColor || '#6B00FF'}55` : '1.5px dashed #EF444466',
+                          opacity: isVisible ? 1 : 0.72,
+                          display: 'flex',
+                          flexDirection: 'column',
+                          justifyContent: 'space-between',
+                          gap: '10px',
+                          boxShadow: '0 2px 8px rgba(0,0,0,0.04)'
+                        }}
+                      >
+                        <div>
+                          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '6px' }}>
+                            <span
+                              style={{
+                                fontSize: '0.72rem',
+                                fontWeight: 800,
+                                padding: '2px 8px',
+                                borderRadius: '6px',
+                                backgroundColor: isVisible ? '#6B00FF22' : '#EF444422',
+                                color: isVisible ? '#6B00FF' : '#DC2626'
+                              }}
+                            >
+                              #{idx + 1} on Home
+                            </span>
+                            <span
+                              style={{
+                                fontSize: '0.68rem',
+                                fontWeight: 700,
+                                padding: '2px 6px',
+                                borderRadius: '4px',
+                                backgroundColor: isVisible ? '#ECFDF5' : '#FEF2F2',
+                                color: isVisible ? '#059669' : '#DC2626'
+                              }}
+                            >
+                              {isVisible ? 'Visible' : 'Hidden'}
+                            </span>
+                          </div>
+
+                          <div style={{ fontSize: '0.88rem', fontWeight: 800, color: 'var(--adm-text-primary)' }}>
+                            {prod.name}
+                          </div>
+                          <div style={{ fontSize: '0.74rem', color: 'var(--adm-text-secondary)', marginTop: '2px' }}>
+                            {formatCurrencyINR(prod.price) || 'Price unassigned'}
+                          </div>
+                        </div>
+
+                        {/* Quick Arrangement Controls */}
+                        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', borderTop: 'var(--adm-divider)', paddingTop: '8px', gap: '6px' }}>
+                          <div style={{ display: 'flex', gap: '4px' }}>
+                            <button
+                              type="button"
+                              disabled={idx === 0}
+                              onClick={() => handleMoveProduct(prod.id || prod.editionKey, 'up')}
+                              title="Move Earlier (1st / Left)"
+                              style={{
+                                padding: '4px 8px',
+                                borderRadius: '6px',
+                                border: 'var(--adm-card-border)',
+                                backgroundColor: idx === 0 ? 'transparent' : 'var(--adm-card-bg)',
+                                cursor: idx === 0 ? 'not-allowed' : 'pointer',
+                                opacity: idx === 0 ? 0.35 : 1,
+                                display: 'flex',
+                                alignItems: 'center',
+                                justifyContent: 'center'
+                              }}
+                            >
+                              <ArrowLeft size={13} />
+                            </button>
+                            <button
+                              type="button"
+                              disabled={idx === arr.length - 1}
+                              onClick={() => handleMoveProduct(prod.id || prod.editionKey, 'down')}
+                              title="Move Later (Right / Down)"
+                              style={{
+                                padding: '4px 8px',
+                                borderRadius: '6px',
+                                border: 'var(--adm-card-border)',
+                                backgroundColor: idx === arr.length - 1 ? 'transparent' : 'var(--adm-card-bg)',
+                                cursor: idx === arr.length - 1 ? 'not-allowed' : 'pointer',
+                                opacity: idx === arr.length - 1 ? 0.35 : 1,
+                                display: 'flex',
+                                alignItems: 'center',
+                                justifyContent: 'center'
+                              }}
+                            >
+                              <ArrowRight size={13} />
+                            </button>
+                          </div>
+
+                          {/* Quick Position Select */}
+                          <select
+                            value={idx + 1}
+                            onChange={(e) => handleChangeProductPosition(prod.id || prod.editionKey, e.target.value)}
+                            style={{
+                              fontSize: '0.74rem',
+                              padding: '3px 6px',
+                              borderRadius: '6px',
+                              border: 'var(--adm-card-border)',
+                              backgroundColor: 'var(--adm-card-bg)',
+                              cursor: 'pointer'
+                            }}
+                          >
+                            {arr.map((_, pIdx) => (
+                              <option key={pIdx + 1} value={pIdx + 1}>
+                                {pIdx === 0 ? '1st' : pIdx === 1 ? '2nd' : pIdx === 2 ? '3rd' : `${pIdx + 1}th`}
+                              </option>
+                            ))}
+                          </select>
+
+                          {/* Quick Visibility Toggle */}
+                          <button
+                            type="button"
+                            onClick={() => handleToggleProductVisibility(prod.id || prod.editionKey)}
+                            title={isVisible ? 'Hide from Home & Visitors' : 'Show on Home & Visitors'}
+                            style={{
+                              padding: '4px 8px',
+                              borderRadius: '6px',
+                              border: isVisible ? '1px solid #EF444455' : '1px solid #10B98155',
+                              backgroundColor: isVisible ? '#FEF2F2' : '#ECFDF5',
+                              color: isVisible ? '#DC2626' : '#059669',
+                              cursor: 'pointer',
+                              display: 'flex',
+                              alignItems: 'center',
+                              gap: '4px',
+                              fontSize: '0.72rem',
+                              fontWeight: 700
+                            }}
+                          >
+                            {isVisible ? <EyeOff size={13} /> : <Eye size={13} />}
+                            <span>{isVisible ? 'Hide' : 'Show'}</span>
+                          </button>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+
               {/* Edition Cards Grid */}
               <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 320px), 1fr))', gap: '24px' }}>
-                {(products || []).map((product) => {
+                {[...(products || [])].sort((a, b) => (a.displayOrder ?? 999) - (b.displayOrder ?? 999)).map((product, index, allProducts) => {
                   const formattedPrice = formatCurrencyINR(product.price);
                   const formattedCompare = product.comparePrice && product.comparePrice > product.price ? formatCurrencyINR(product.comparePrice) : null;
                   const isAvailable = product.availability !== 'out_of_stock' && product.status === 'active';
+                  const isVisibleOnHome = product.status === 'active' && product.isActive !== false;
 
                   return (
                     <div
@@ -4542,6 +4788,19 @@ export default function AdminDashboard({ initialTab = 'overview', initialOrderId
                             >
                               {product.editionKey?.toUpperCase()} EDITION
                             </span>
+                            <span
+                              style={{
+                                fontSize: '0.72rem',
+                                fontWeight: 800,
+                                padding: '3px 8px',
+                                borderRadius: '6px',
+                                backgroundColor: isVisibleOnHome ? '#6B00FF22' : '#EF444422',
+                                color: isVisibleOnHome ? '#6B00FF' : '#DC2626',
+                                border: isVisibleOnHome ? '1px solid #6B00FF44' : '1px solid #EF444444'
+                              }}
+                            >
+                              Home #{product.displayOrder || (index + 1)}
+                            </span>
                             {product.featured && (
                               <span style={{ fontSize: '0.68rem', fontWeight: 800, padding: '3px 8px', borderRadius: '6px', backgroundColor: '#FEF3C7', color: '#B45309', border: '1px solid #FDE68A' }}>
                                 ★ FEATURED
@@ -4556,8 +4815,8 @@ export default function AdminDashboard({ initialTab = 'overview', initialOrderId
                                 fontWeight: 600,
                                 padding: '2px 8px',
                                 borderRadius: '6px',
-                                backgroundColor: product.status === 'active' ? '#ECFDF5' : '#F3F4F6',
-                                color: product.status === 'active' ? '#059669' : '#6B7280'
+                                backgroundColor: product.status === 'active' ? '#ECFDF5' : '#FEF2F2',
+                                color: product.status === 'active' ? '#059669' : '#DC2626'
                               }}
                             >
                               {product.status === 'active' ? 'Active' : 'Disabled'}
@@ -4645,10 +4904,71 @@ export default function AdminDashboard({ initialTab = 'overview', initialOrderId
                       </div>
 
                       {/* Card Footer Actions */}
-                      <div style={{ padding: '14px 20px', borderTop: 'var(--adm-card-border)', backgroundColor: isDark ? 'rgba(0, 0, 0, 0.25)' : '#FAF9FC', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                        <span style={{ fontSize: '0.75rem', color: 'var(--adm-text-secondary)' }}>
-                          Updated {new Date(product.updatedAt || Date.now()).toLocaleDateString('en-IN')}
-                        </span>
+                      <div style={{ padding: '14px 20px', borderTop: 'var(--adm-card-border)', backgroundColor: isDark ? 'rgba(0, 0, 0, 0.25)' : '#FAF9FC', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '8px' }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                          <button
+                            type="button"
+                            onClick={() => handleToggleProductVisibility(product.id || product.editionKey)}
+                            title={product.status === 'active' ? 'Hide this edition from homepage & visitors' : 'Make this edition active on homepage'}
+                            style={{
+                              display: 'flex',
+                              alignItems: 'center',
+                              gap: '5px',
+                              padding: '7px 11px',
+                              borderRadius: '8px',
+                              border: product.status === 'active' ? '1px solid #FCA5A5' : '1px solid #A7F3D0',
+                              backgroundColor: product.status === 'active' ? '#FEF2F2' : '#ECFDF5',
+                              color: product.status === 'active' ? '#B91C1C' : '#047857',
+                              fontSize: '0.76rem',
+                              fontWeight: 700,
+                              cursor: 'pointer'
+                            }}
+                          >
+                            {product.status === 'active' ? <EyeOff size={13} /> : <Eye size={13} />}
+                            <span>{product.status === 'active' ? 'Disable (Hide)' : 'Enable (Show)'}</span>
+                          </button>
+
+                          <div style={{ display: 'flex', gap: '2px' }}>
+                            <button
+                              type="button"
+                              disabled={index === 0}
+                              onClick={() => handleMoveProduct(product.id || product.editionKey, 'up')}
+                              title="Move Earlier in Homepage Sequence"
+                              style={{
+                                padding: '6px 8px',
+                                borderRadius: '6px',
+                                border: 'var(--adm-card-border)',
+                                backgroundColor: 'var(--adm-card-bg)',
+                                cursor: index === 0 ? 'not-allowed' : 'pointer',
+                                opacity: index === 0 ? 0.35 : 1,
+                                display: 'flex',
+                                alignItems: 'center',
+                                justifyContent: 'center'
+                              }}
+                            >
+                              <ArrowUp size={13} />
+                            </button>
+                            <button
+                              type="button"
+                              disabled={index === allProducts.length - 1}
+                              onClick={() => handleMoveProduct(product.id || product.editionKey, 'down')}
+                              title="Move Later in Homepage Sequence"
+                              style={{
+                                padding: '6px 8px',
+                                borderRadius: '6px',
+                                border: 'var(--adm-card-border)',
+                                backgroundColor: 'var(--adm-card-bg)',
+                                cursor: index === allProducts.length - 1 ? 'not-allowed' : 'pointer',
+                                opacity: index === allProducts.length - 1 ? 0.35 : 1,
+                                display: 'flex',
+                                alignItems: 'center',
+                                justifyContent: 'center'
+                              }}
+                            >
+                              <ArrowDown size={13} />
+                            </button>
+                          </div>
+                        </div>
 
                         <button
                           type="button"
@@ -7578,7 +7898,7 @@ export default function AdminDashboard({ initialTab = 'overview', initialOrderId
               </div>
 
               {/* Status & Availability & Featured */}
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '12px' }}>
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(130px, 1fr))', gap: '12px' }}>
                 <div>
                   <label style={{ display: 'block', fontSize: '0.78rem', fontWeight: 600, marginBottom: '4px', color: 'var(--adm-text-primary)' }}>
                     Product Status
@@ -7590,6 +7910,23 @@ export default function AdminDashboard({ initialTab = 'overview', initialOrderId
                   >
                     <option value="active">Active (Visible)</option>
                     <option value="disabled">Disabled (Hidden)</option>
+                  </select>
+                </div>
+
+                <div>
+                  <label style={{ display: 'block', fontSize: '0.78rem', fontWeight: 600, marginBottom: '4px', color: 'var(--adm-text-primary)' }}>
+                    Home Page Position
+                  </label>
+                  <select
+                    value={editingProduct.displayOrder ?? 1}
+                    onChange={(e) => setEditingProduct({ ...editingProduct, displayOrder: Number(e.target.value) })}
+                    style={{ width: '100%', padding: '9px 12px', borderRadius: '8px', border: 'var(--adm-card-border)', fontSize: '0.84rem' }}
+                  >
+                    {products.map((_, idx) => (
+                      <option key={idx + 1} value={idx + 1}>
+                        Position #{idx + 1} {idx === 0 ? '(1st on Home)' : ''}
+                      </option>
+                    ))}
                   </select>
                 </div>
 

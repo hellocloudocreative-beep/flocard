@@ -15,8 +15,13 @@ import { useTheme } from '../context/ThemeContext';
 import { formatCurrencyINR } from '../lib/storage';
 
 export default function Home() {
-  const { profiles, getProductByEdition, demoConfig } = useData();
+  const { profiles, products, getProductByEdition, demoConfig } = useData();
   const { isLight } = useTheme();
+
+  // Active, ordered products configured by admin (hidden if disabled by admin)
+  const activeProducts = (products || [])
+    .filter(p => p.status !== 'disabled' && p.isActive !== false)
+    .sort((a, b) => (a.displayOrder ?? 999) - (b.displayOrder ?? 999));
 
   const baseProfile = profiles.find(p => p.slug === 'alex') || profiles[0] || {};
   const demoProfile = {
@@ -33,13 +38,11 @@ export default function Home() {
     cardFinish: demoConfig?.cardFinish || baseProfile?.cardFinish || 'purple'
   };
 
-  const metalProduct = getProductByEdition('metal') || EDITIONS.metal;
-  const goldProduct = getProductByEdition('gold') || EDITIONS.gold;
-  const platinumProduct = getProductByEdition('platinum') || EDITIONS.platinum;
-  const purpleProduct = getProductByEdition('purple') || EDITIONS.purple;
-  const whiteProduct = getProductByEdition('white') || EDITIONS.white;
-
   const [heroEdition, setHeroEdition] = useState('purple');
+  // Ensure hero edition is an active product
+  const effectiveHeroEdition = (activeProducts.some(p => p.editionKey === heroEdition))
+    ? heroEdition
+    : (activeProducts[0]?.editionKey || 'purple');
 
   return (
     <div className="homepage-wrapper" style={{ overflowX: 'hidden' }}>
@@ -178,35 +181,32 @@ export default function Home() {
               flexWrap: 'wrap'
             }}
           >
-            {[
-              { id: 'purple', name: 'Purple', dot: '#A855F7', border: '#A855F7' },
-              { id: 'platinum', name: 'Platinum', dot: '#CBD5E1', border: '#CBD5E1' },
-              { id: 'gold', name: 'Gold', dot: '#E9C766', border: '#E9C766' },
-              { id: 'metal', name: 'Metal', dot: '#94A3B8', border: '#94A3B8' },
-              { id: 'white', name: 'Pure White', dot: '#FFFFFF', border: '#FFFFFF', isNew: true }
-            ].map((fin) => {
-              const isSelected = heroEdition === fin.id;
+            {activeProducts.map((prod) => {
+              const finId = prod.editionKey;
+              const isSelected = effectiveHeroEdition === finId;
+              const dotColor = prod.accentColor || (finId === 'white' ? '#FFFFFF' : '#A855F7');
+              const borderColor = prod.accentColor || '#A855F7';
               return (
                 <button
-                  key={fin.id}
+                  key={prod.id || finId}
                   type="button"
-                  onClick={() => setHeroEdition(fin.id)}
+                  onClick={() => setHeroEdition(finId)}
                   style={{
                     display: 'inline-flex',
                     alignItems: 'center',
                     gap: '8px',
                     padding: '7px 16px',
                     borderRadius: '9999px',
-                    border: isSelected ? `2px solid ${fin.border}` : '1px solid var(--border-color)',
+                    border: isSelected ? `2px solid ${borderColor}` : '1px solid var(--border-color)',
                     backgroundColor: isSelected
-                      ? (fin.id === 'white' ? 'rgba(255, 255, 255, 0.22)' : `${fin.dot}24`)
+                      ? (finId === 'white' ? 'rgba(255, 255, 255, 0.22)' : `${dotColor}24`)
                       : 'var(--elevated-surface)',
                     color: 'var(--text-primary)',
                     fontSize: '0.82rem',
                     fontWeight: isSelected ? 800 : 600,
                     cursor: 'pointer',
                     transition: 'all 0.2s ease',
-                    boxShadow: isSelected ? `0 0 16px ${fin.dot}44` : 'none'
+                    boxShadow: isSelected ? `0 0 16px ${dotColor}44` : 'none'
                   }}
                 >
                   <span
@@ -214,12 +214,12 @@ export default function Home() {
                       width: '10px',
                       height: '10px',
                       borderRadius: '50%',
-                      backgroundColor: fin.dot,
-                      border: fin.id === 'white' ? '1px solid #00000044' : 'none'
+                      backgroundColor: dotColor,
+                      border: finId === 'white' ? '1px solid #00000044' : 'none'
                     }}
                   />
-                  <span>{fin.name}</span>
-                  {fin.isNew && (
+                  <span>{prod.name.replace(/ Edition$/i, '')}</span>
+                  {finId === 'white' && (
                     <span
                       style={{
                         fontSize: '0.64rem',
@@ -263,7 +263,7 @@ export default function Home() {
               }}
             >
               <Card3DPreview
-                edition={heroEdition}
+                edition={effectiveHeroEdition}
                 width={390}
                 initialSide="front"
                 allowFlip={true}
@@ -272,7 +272,7 @@ export default function Home() {
                     name: (demoConfig?.name || 'YOUR NAME').toUpperCase(),
                     role: (demoConfig?.role || 'YOUR ROLE').toUpperCase(),
                     tagline: demoConfig?.tagline || 'Your Tagline',
-                    textColor: heroEdition === 'white' ? '#000000' : undefined
+                    textColor: effectiveHeroEdition === 'white' ? '#000000' : undefined
                   },
                   customerLogo: { url: demoConfig?.logo || null }
                 }}
@@ -290,14 +290,14 @@ export default function Home() {
               }}
             >
               <Card3DPreview
-                edition={heroEdition}
+                edition={effectiveHeroEdition}
                 width={390}
                 initialSide="back"
                 allowFlip={true}
                 config={{
                   back: {
                     brandUrl: `flocard.in/${(demoConfig?.name || 'yourname').toLowerCase().replace(/\s+/g, '')}`,
-                    textColor: heroEdition === 'white' ? '#000000' : undefined
+                    textColor: effectiveHeroEdition === 'white' ? '#000000' : undefined
                   }
                 }}
               />
@@ -458,431 +458,182 @@ export default function Home() {
             </a>
           </div>
 
-          {/* Cards Grid: Platinum, Purple, Gold, Metal, Pure White */}
+          {/* Cards Grid: Dynamically rendered based on Admin displayOrder and status */}
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(260px, 1fr))', gap: '32px 24px', paddingTop: '18px', alignItems: 'stretch' }}>
-            {/* 1. Platinum Edition */}
-            <div
-              className="glass-panel"
-              style={{
-                padding: '24px 16px 22px',
-                display: 'flex',
-                flexDirection: 'column',
-                justifyContent: 'space-between',
-                borderRadius: '16px',
-                height: '100%',
-                transition: 'transform 0.3s ease, border-color 0.3s ease, box-shadow 0.3s ease'
-              }}
-              onMouseEnter={(e) => {
-                e.currentTarget.style.borderColor = 'rgba(203, 213, 225, 0.6)';
-                e.currentTarget.style.transform = 'translateY(-6px)';
-              }}
-              onMouseLeave={(e) => {
-                e.currentTarget.style.borderColor = 'var(--border-color)';
-                e.currentTarget.style.transform = 'translateY(0)';
-              }}
-            >
-              <div>
-                <div style={{ marginBottom: '24px', width: '100%', display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
-                  <Card3DPreview edition="platinum" width={248} allowFlip={true} />
-                </div>
-                <div style={{ fontSize: '0.68rem', fontWeight: 800, textTransform: 'uppercase', letterSpacing: '0.08em', color: '#CBD5E1', marginBottom: '4px' }}>
-                  PLATINUM EDITION
-                </div>
-                <h3 style={{ fontSize: '1.22rem', fontWeight: 800, color: 'var(--text-primary)', textTransform: 'uppercase', letterSpacing: '-0.01em', marginBottom: '8px' }}>
-                  {platinumProduct.name || EDITIONS.platinum.name}
-                </h3>
+            {activeProducts.map((product) => {
+              const key = product.editionKey;
+              const isPurple = key === 'purple';
+              const isWhite = key === 'white';
+              const isGold = key === 'gold';
+              const isPlatinum = key === 'platinum';
+              const isMetal = key === 'metal';
 
-                {/* Authoritative Price Display */}
-                <div style={{ display: 'flex', alignItems: 'baseline', gap: '8px', marginBottom: '10px' }}>
-                  {formatCurrencyINR(platinumProduct.price) ? (
-                    <>
-                      <span style={{ fontSize: '1.45rem', fontWeight: 800, color: 'var(--text-primary)' }}>
-                        {formatCurrencyINR(platinumProduct.price)}
-                      </span>
-                      {platinumProduct.comparePrice && platinumProduct.comparePrice > platinumProduct.price && (
-                        <span style={{ fontSize: '0.88rem', color: 'var(--text-muted)', textDecoration: 'line-through' }}>
-                          {formatCurrencyINR(platinumProduct.comparePrice)}
-                        </span>
-                      )}
-                    </>
-                  ) : (
-                    <span style={{ fontSize: '1.05rem', fontWeight: 700, color: '#F59E0B' }}>
-                      Price coming soon
-                    </span>
+              const accentColor = product.accentColor || (isGold ? '#E9C766' : isPurple ? '#A855F7' : isWhite ? '#FFFFFF' : '#CBD5E1');
+              const formattedPrice = formatCurrencyINR(product.price);
+              const formattedCompare = product.comparePrice && product.comparePrice > product.price ? formatCurrencyINR(product.comparePrice) : null;
+              const hasBadge = !!(product.featured || product.featuredBadge || isPurple);
+              const badgeText = product.featuredBadge || (isPurple ? 'Most Popular' : 'Featured Edition');
+
+              return (
+                <div
+                  key={product.id || key}
+                  style={{
+                    position: 'relative',
+                    display: 'flex',
+                    flexDirection: 'column',
+                    height: '100%',
+                    transition: 'transform 0.3s ease'
+                  }}
+                  onMouseEnter={(e) => (e.currentTarget.style.transform = 'translateY(-6px)')}
+                  onMouseLeave={(e) => (e.currentTarget.style.transform = 'translateY(0)')}
+                >
+                  {/* Floating Featured / Most Popular Badge */}
+                  {hasBadge && (
+                    <div
+                      style={{
+                        position: 'absolute',
+                        top: '-13px',
+                        right: '24px',
+                        background: isPurple
+                          ? 'linear-gradient(135deg, var(--primary-purple), var(--deep-violet))'
+                          : 'linear-gradient(135deg, #F59E0B, #B45309)',
+                        padding: '5px 14px',
+                        borderRadius: '9999px',
+                        fontSize: '0.74rem',
+                        fontWeight: 800,
+                        letterSpacing: '0.04em',
+                        textTransform: 'uppercase',
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: '5px',
+                        color: '#ffffff',
+                        boxShadow: isPurple
+                          ? '0 4px 16px rgba(107, 0, 255, 0.45), 0 0 0 1px rgba(168, 85, 247, 0.4)'
+                          : '0 4px 16px rgba(245, 158, 11, 0.45), 0 0 0 1px rgba(245, 158, 11, 0.4)',
+                        zIndex: 30,
+                        pointerEvents: 'none'
+                      }}
+                    >
+                      <Sparkles size={12} />
+                      <span>{badgeText}</span>
+                    </div>
                   )}
-                </div>
 
-                <p style={{ fontSize: '0.82rem', color: 'var(--text-secondary)', lineHeight: 1.45, marginBottom: '18px' }}>
-                  {platinumProduct.description || EDITIONS.platinum.description}
-                </p>
-              </div>
-              <a
-                href="/designer?edition=platinum"
-                className="btn btn-secondary"
-                style={{
-                  width: '100%',
-                  borderRadius: '10px',
-                  fontWeight: 700,
-                  fontSize: '0.84rem',
-                  padding: '11px 18px',
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  gap: '8px'
-                }}
-              >
-                <span>Customize Platinum Card</span>
-                <ArrowRight size={15} />
-              </a>
-            </div>
+                  <div
+                    className={isPurple ? 'glass-panel glass-panel-glow' : 'glass-panel'}
+                    style={{
+                      padding: '24px 16px 22px',
+                      display: 'flex',
+                      flexDirection: 'column',
+                      justifyContent: 'space-between',
+                      borderRadius: '16px',
+                      height: '100%',
+                      flex: 1,
+                      backgroundColor: isWhite
+                        ? (isLight ? '#FFFFFF' : 'rgba(255, 255, 255, 0.05)')
+                        : isPurple
+                        ? (isLight ? '#FFFFFF' : 'linear-gradient(180deg, rgba(23, 16, 32, 0.9) 0%, rgba(32, 11, 59, 0.4) 100%)')
+                        : undefined,
+                      borderColor: isWhite
+                        ? (isLight ? 'rgba(0, 0, 0, 0.15)' : 'rgba(255, 255, 255, 0.2)')
+                        : isPurple
+                        ? (isLight ? 'rgba(107, 0, 255, 0.35)' : 'rgba(168, 85, 247, 0.5)')
+                        : 'var(--border-color)',
+                      transition: 'border-color 0.3s ease, box-shadow 0.3s ease'
+                    }}
+                    onMouseEnter={(e) => {
+                      if (isWhite) {
+                        e.currentTarget.style.borderColor = 'rgba(255, 255, 255, 0.8)';
+                        e.currentTarget.style.boxShadow = '0 12px 30px rgba(255, 255, 255, 0.15)';
+                      } else if (isGold) {
+                        e.currentTarget.style.borderColor = 'rgba(233, 199, 102, 0.6)';
+                      } else if (isPurple) {
+                        e.currentTarget.style.borderColor = 'rgba(168, 85, 247, 0.8)';
+                      } else {
+                        e.currentTarget.style.borderColor = 'rgba(203, 213, 225, 0.6)';
+                      }
+                    }}
+                    onMouseLeave={(e) => {
+                      e.currentTarget.style.borderColor = isWhite
+                        ? (isLight ? 'rgba(0, 0, 0, 0.15)' : 'rgba(255, 255, 255, 0.2)')
+                        : isPurple
+                        ? (isLight ? 'rgba(107, 0, 255, 0.35)' : 'rgba(168, 85, 247, 0.5)')
+                        : 'var(--border-color)';
+                      e.currentTarget.style.boxShadow = 'none';
+                    }}
+                  >
+                    <div>
+                      <div style={{ marginBottom: '24px', width: '100%', display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
+                        <Card3DPreview edition={key} width={248} allowFlip={true} />
+                      </div>
+                      <div
+                        style={{
+                          fontSize: '0.68rem',
+                          fontWeight: 800,
+                          textTransform: 'uppercase',
+                          letterSpacing: '0.08em',
+                          color: isWhite ? (isLight ? '#08060D' : '#F8FAFC') : accentColor,
+                          marginBottom: '4px'
+                        }}
+                      >
+                        {product.subtitle || `${key.toUpperCase()} EDITION`}
+                      </div>
+                      <h3 style={{ fontSize: '1.22rem', fontWeight: 800, color: 'var(--text-primary)', textTransform: 'uppercase', letterSpacing: '-0.01em', marginBottom: '8px' }}>
+                        {product.name}
+                      </h3>
 
-            {/* 2. Purple Edition (Signature & Most Popular) */}
-            <div
-              style={{
-                position: 'relative',
-                display: 'flex',
-                flexDirection: 'column',
-                height: '100%',
-                transition: 'transform 0.3s ease'
-              }}
-              onMouseEnter={(e) => (e.currentTarget.style.transform = 'translateY(-6px)')}
-              onMouseLeave={(e) => (e.currentTarget.style.transform = 'translateY(0)')}
-            >
-              {/* Floating Most Popular Badge */}
-              <div
-                style={{
-                  position: 'absolute',
-                  top: '-13px',
-                  right: '24px',
-                  background: 'linear-gradient(135deg, var(--primary-purple), var(--deep-violet))',
-                  padding: '5px 14px',
-                  borderRadius: '9999px',
-                  fontSize: '0.74rem',
-                  fontWeight: 800,
-                  letterSpacing: '0.04em',
-                  textTransform: 'uppercase',
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: '5px',
-                  color: '#ffffff',
-                  boxShadow: '0 4px 16px rgba(107, 0, 255, 0.45), 0 0 0 1px rgba(168, 85, 247, 0.4)',
-                  zIndex: 30,
-                  pointerEvents: 'none'
-                }}
-              >
-                <Sparkles size={12} />
-                <span>Most Popular</span>
-              </div>
-
-              <div
-                className="glass-panel glass-panel-glow"
-                style={{
-                  padding: '24px 16px 22px',
-                  display: 'flex',
-                  flexDirection: 'column',
-                  justifyContent: 'space-between',
-                  borderRadius: '16px',
-                  borderColor: isLight ? 'rgba(107, 0, 255, 0.35)' : 'rgba(168, 85, 247, 0.5)',
-                  background: isLight 
-                    ? '#FFFFFF' 
-                    : 'linear-gradient(180deg, rgba(23, 16, 32, 0.9) 0%, rgba(32, 11, 59, 0.4) 100%)',
-                  position: 'relative',
-                  height: '100%',
-                  flex: 1,
-                  overflow: 'visible',
-                  transition: 'box-shadow 0.3s ease'
-                }}
-              >
-                <div>
-                  <div style={{ marginBottom: '24px', width: '100%', display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
-                    <Card3DPreview edition="purple" width={248} allowFlip={true} />
-                  </div>
-                  <div style={{ fontSize: '0.68rem', fontWeight: 800, textTransform: 'uppercase', letterSpacing: '0.08em', color: '#A855F7', marginBottom: '4px' }}>
-                    PURPLE EDITION
-                  </div>
-                  <h3 style={{ fontSize: '1.22rem', fontWeight: 800, color: 'var(--text-primary)', textTransform: 'uppercase', letterSpacing: '-0.01em', marginBottom: '8px' }}>
-                    {purpleProduct.name || EDITIONS.purple.name}
-                  </h3>
-
-                  {/* Authoritative Price Display */}
-                  <div style={{ display: 'flex', alignItems: 'baseline', gap: '8px', marginBottom: '10px' }}>
-                    {formatCurrencyINR(purpleProduct.price) ? (
-                      <>
-                        <span style={{ fontSize: '1.45rem', fontWeight: 800, color: 'var(--text-primary)' }}>
-                          {formatCurrencyINR(purpleProduct.price)}
-                        </span>
-                        {purpleProduct.comparePrice && purpleProduct.comparePrice > purpleProduct.price && (
-                          <span style={{ fontSize: '0.88rem', color: 'var(--text-muted)', textDecoration: 'line-through' }}>
-                            {formatCurrencyINR(purpleProduct.comparePrice)}
+                      {/* Authoritative Price Display */}
+                      <div style={{ display: 'flex', alignItems: 'baseline', gap: '8px', marginBottom: '10px' }}>
+                        {formattedPrice ? (
+                          <>
+                            <span style={{ fontSize: '1.45rem', fontWeight: 800, color: 'var(--text-primary)' }}>
+                              {formattedPrice}
+                            </span>
+                            {formattedCompare && (
+                              <span style={{ fontSize: '0.88rem', color: 'var(--text-muted)', textDecoration: 'line-through' }}>
+                                {formattedCompare}
+                              </span>
+                            )}
+                          </>
+                        ) : (
+                          <span style={{ fontSize: '1.05rem', fontWeight: 700, color: '#F59E0B' }}>
+                            Price coming soon
                           </span>
                         )}
-                      </>
-                    ) : (
-                      <span style={{ fontSize: '1.05rem', fontWeight: 700, color: '#F59E0B' }}>
-                        Price coming soon
-                      </span>
-                    )}
+                      </div>
+
+                      <p style={{ fontSize: '0.82rem', color: 'var(--text-secondary)', lineHeight: 1.45, marginBottom: '18px' }}>
+                        {product.description}
+                      </p>
+                    </div>
+
+                    <a
+                      href={`/designer?edition=${key}`}
+                      className={isPurple ? 'btn btn-primary' : 'btn btn-secondary'}
+                      style={{
+                        width: '100%',
+                        borderRadius: '10px',
+                        fontWeight: 700,
+                        fontSize: '0.84rem',
+                        padding: '11px 18px',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        gap: '8px',
+                        ...(isWhite ? {
+                          backgroundColor: '#FFFFFF',
+                          color: '#08060D',
+                          border: '1px solid rgba(0, 0, 0, 0.2)'
+                        } : {})
+                      }}
+                    >
+                      <span>{product.ctaText || `Customize ${product.name}`}</span>
+                      <ArrowRight size={15} />
+                    </a>
                   </div>
-
-                  <p style={{ fontSize: '0.82rem', color: 'var(--text-secondary)', lineHeight: 1.45, marginBottom: '18px' }}>
-                    {purpleProduct.description || EDITIONS.purple.description}
-                  </p>
                 </div>
-                <a
-                  href="/designer?edition=purple"
-                  className="btn btn-primary"
-                  style={{
-                    width: '100%',
-                    borderRadius: '10px',
-                    fontWeight: 700,
-                    fontSize: '0.84rem',
-                    padding: '11px 18px',
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    gap: '8px'
-                  }}
-                >
-                  <span>Customize Purple Card</span>
-                  <ArrowRight size={15} />
-                </a>
-              </div>
-            </div>
-
-            {/* 3. Gold Edition */}
-            <div
-              className="glass-panel"
-              style={{
-                padding: '24px 16px 22px',
-                display: 'flex',
-                flexDirection: 'column',
-                justifyContent: 'space-between',
-                borderRadius: '16px',
-                height: '100%',
-                transition: 'transform 0.3s ease, border-color 0.3s ease, box-shadow 0.3s ease'
-              }}
-              onMouseEnter={(e) => {
-                e.currentTarget.style.borderColor = 'rgba(233, 199, 102, 0.6)';
-                e.currentTarget.style.transform = 'translateY(-6px)';
-              }}
-              onMouseLeave={(e) => {
-                e.currentTarget.style.borderColor = 'var(--border-color)';
-                e.currentTarget.style.transform = 'translateY(0)';
-              }}
-            >
-              <div>
-                <div style={{ marginBottom: '24px', width: '100%', display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
-                  <Card3DPreview edition="gold" width={248} allowFlip={true} />
-                </div>
-                <div style={{ fontSize: '0.68rem', fontWeight: 800, textTransform: 'uppercase', letterSpacing: '0.08em', color: '#E9C766', marginBottom: '4px' }}>
-                  GOLD EDITION
-                </div>
-                <h3 style={{ fontSize: '1.22rem', fontWeight: 800, color: 'var(--text-primary)', textTransform: 'uppercase', letterSpacing: '-0.01em', marginBottom: '8px' }}>
-                  {goldProduct.name || EDITIONS.gold.name}
-                </h3>
-                
-                {/* Authoritative Price Display */}
-                <div style={{ display: 'flex', alignItems: 'baseline', gap: '8px', marginBottom: '10px' }}>
-                  {formatCurrencyINR(goldProduct.price) ? (
-                    <>
-                      <span style={{ fontSize: '1.45rem', fontWeight: 800, color: 'var(--text-primary)' }}>
-                        {formatCurrencyINR(goldProduct.price)}
-                      </span>
-                      {goldProduct.comparePrice && goldProduct.comparePrice > goldProduct.price && (
-                        <span style={{ fontSize: '0.88rem', color: 'var(--text-muted)', textDecoration: 'line-through' }}>
-                          {formatCurrencyINR(goldProduct.comparePrice)}
-                        </span>
-                      )}
-                    </>
-                  ) : (
-                    <span style={{ fontSize: '1.05rem', fontWeight: 700, color: '#F59E0B' }}>
-                      Price coming soon
-                    </span>
-                  )}
-                </div>
-
-                <p style={{ fontSize: '0.82rem', color: 'var(--text-secondary)', lineHeight: 1.45, marginBottom: '18px' }}>
-                  {goldProduct.description || EDITIONS.gold.description}
-                </p>
-              </div>
-              <a
-                href="/designer?edition=gold"
-                className="btn btn-secondary"
-                style={{
-                  width: '100%',
-                  borderRadius: '10px',
-                  fontWeight: 700,
-                  fontSize: '0.84rem',
-                  padding: '11px 18px',
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  gap: '8px'
-                }}
-              >
-                <span>Customize Gold Card</span>
-                <ArrowRight size={15} />
-              </a>
-            </div>
-
-            {/* 4. Metal Edition */}
-            <div
-              className="glass-panel"
-              style={{
-                padding: '24px 16px 22px',
-                display: 'flex',
-                flexDirection: 'column',
-                justifyContent: 'space-between',
-                borderRadius: '16px',
-                height: '100%',
-                transition: 'transform 0.3s ease, border-color 0.3s ease, box-shadow 0.3s ease'
-              }}
-              onMouseEnter={(e) => {
-                e.currentTarget.style.borderColor = 'rgba(203, 213, 225, 0.6)';
-                e.currentTarget.style.transform = 'translateY(-6px)';
-              }}
-              onMouseLeave={(e) => {
-                e.currentTarget.style.borderColor = 'var(--border-color)';
-                e.currentTarget.style.transform = 'translateY(0)';
-              }}
-            >
-              <div>
-                <div style={{ marginBottom: '24px', width: '100%', display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
-                  <Card3DPreview edition="metal" width={248} allowFlip={true} />
-                </div>
-                <div style={{ fontSize: '0.68rem', fontWeight: 800, textTransform: 'uppercase', letterSpacing: '0.08em', color: '#CBD5E1', marginBottom: '4px' }}>
-                  METAL EDITION
-                </div>
-                <h3 style={{ fontSize: '1.22rem', fontWeight: 800, color: 'var(--text-primary)', textTransform: 'uppercase', letterSpacing: '-0.01em', marginBottom: '8px' }}>
-                  {metalProduct.name || EDITIONS.metal.name}
-                </h3>
-
-                {/* Authoritative Price Display */}
-                <div style={{ display: 'flex', alignItems: 'baseline', gap: '8px', marginBottom: '10px' }}>
-                  {formatCurrencyINR(metalProduct.price) ? (
-                    <>
-                      <span style={{ fontSize: '1.45rem', fontWeight: 800, color: 'var(--text-primary)' }}>
-                        {formatCurrencyINR(metalProduct.price)}
-                      </span>
-                      {metalProduct.comparePrice && metalProduct.comparePrice > metalProduct.price && (
-                        <span style={{ fontSize: '0.88rem', color: 'var(--text-muted)', textDecoration: 'line-through' }}>
-                          {formatCurrencyINR(metalProduct.comparePrice)}
-                        </span>
-                      )}
-                    </>
-                  ) : (
-                    <span style={{ fontSize: '1.05rem', fontWeight: 700, color: '#F59E0B' }}>
-                      Price coming soon
-                    </span>
-                  )}
-                </div>
-
-                <p style={{ fontSize: '0.82rem', color: 'var(--text-secondary)', lineHeight: 1.45, marginBottom: '18px' }}>
-                  {metalProduct.description || EDITIONS.metal.description}
-                </p>
-              </div>
-              <a
-                href="/designer?edition=metal"
-                className="btn btn-secondary"
-                style={{
-                  width: '100%',
-                  borderRadius: '10px',
-                  fontWeight: 700,
-                  fontSize: '0.84rem',
-                  padding: '11px 18px',
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  gap: '8px'
-                }}
-              >
-                <span>Customize Metal Card</span>
-                <ArrowRight size={15} />
-              </a>
-            </div>
-
-            {/* 5. Pure White Edition */}
-            <div
-              className="glass-panel"
-              style={{
-                padding: '24px 16px 22px',
-                display: 'flex',
-                flexDirection: 'column',
-                justifyContent: 'space-between',
-                borderRadius: '16px',
-                height: '100%',
-                backgroundColor: isLight ? '#FFFFFF' : 'rgba(255, 255, 255, 0.05)',
-                borderColor: isLight ? 'rgba(0, 0, 0, 0.15)' : 'rgba(255, 255, 255, 0.2)',
-                transition: 'transform 0.3s ease, border-color 0.3s ease, box-shadow 0.3s ease'
-              }}
-              onMouseEnter={(e) => {
-                e.currentTarget.style.borderColor = 'rgba(255, 255, 255, 0.8)';
-                e.currentTarget.style.transform = 'translateY(-6px)';
-                e.currentTarget.style.boxShadow = '0 12px 30px rgba(255, 255, 255, 0.15)';
-              }}
-              onMouseLeave={(e) => {
-                e.currentTarget.style.borderColor = isLight ? 'rgba(0, 0, 0, 0.15)' : 'rgba(255, 255, 255, 0.2)';
-                e.currentTarget.style.transform = 'translateY(0)';
-                e.currentTarget.style.boxShadow = 'none';
-              }}
-            >
-              <div>
-                <div style={{ marginBottom: '24px', width: '100%', display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
-                  <Card3DPreview edition="white" width={248} allowFlip={true} />
-                </div>
-                <div style={{ fontSize: '0.68rem', fontWeight: 800, textTransform: 'uppercase', letterSpacing: '0.08em', color: isLight ? '#08060D' : '#F8FAFC', marginBottom: '4px' }}>
-                  PURE WHITE EDITION
-                </div>
-                <h3 style={{ fontSize: '1.22rem', fontWeight: 800, color: 'var(--text-primary)', textTransform: 'uppercase', letterSpacing: '-0.01em', marginBottom: '8px' }}>
-                  {whiteProduct.name || EDITIONS.white.name}
-                </h3>
-
-                {/* Authoritative Price Display */}
-                <div style={{ display: 'flex', alignItems: 'baseline', gap: '8px', marginBottom: '10px' }}>
-                  {formatCurrencyINR(whiteProduct.price) ? (
-                    <>
-                      <span style={{ fontSize: '1.45rem', fontWeight: 800, color: 'var(--text-primary)' }}>
-                        {formatCurrencyINR(whiteProduct.price)}
-                      </span>
-                      {whiteProduct.comparePrice && whiteProduct.comparePrice > whiteProduct.price && (
-                        <span style={{ fontSize: '0.88rem', color: 'var(--text-muted)', textDecoration: 'line-through' }}>
-                          {formatCurrencyINR(whiteProduct.comparePrice)}
-                        </span>
-                      )}
-                    </>
-                  ) : (
-                    <span style={{ fontSize: '1.05rem', fontWeight: 700, color: '#F59E0B' }}>
-                      Price coming soon
-                    </span>
-                  )}
-                </div>
-
-                <p style={{ fontSize: '0.82rem', color: 'var(--text-secondary)', lineHeight: 1.45, marginBottom: '18px' }}>
-                  {whiteProduct.description || EDITIONS.white.description}
-                </p>
-              </div>
-              <a
-                href="/designer?edition=white"
-                className="btn btn-secondary"
-                style={{
-                  width: '100%',
-                  borderRadius: '10px',
-                  fontWeight: 700,
-                  fontSize: '0.84rem',
-                  padding: '11px 18px',
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  gap: '8px',
-                  backgroundColor: '#FFFFFF',
-                  color: '#08060D',
-                  border: '1px solid rgba(0, 0, 0, 0.2)'
-                }}
-              >
-                <span>Customize Pure White Card</span>
-                <ArrowRight size={15} />
-              </a>
-            </div>
+              );
+            })}
           </div>
         </div>
       </section>

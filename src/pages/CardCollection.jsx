@@ -18,8 +18,15 @@ export default function CardCollection() {
   const { isLight } = useTheme();
   const { products, getProductByEdition } = useData();
 
-  // Master-crafted editions: Platinum, Purple, Gold, Metal, White
-  const editionKeys = filter === 'all' ? ['platinum', 'purple', 'gold', 'metal', 'white'] : [filter];
+  // Active, ordered editions configured by admin (hidden if disabled)
+  const activeProducts = (products || [])
+    .filter(p => p.status !== 'disabled' && p.isActive !== false)
+    .sort((a, b) => (a.displayOrder ?? 999) - (b.displayOrder ?? 999));
+
+  const activeEditionKeys = activeProducts.map(p => p.editionKey);
+  const editionKeys = filter === 'all'
+    ? activeEditionKeys
+    : activeEditionKeys.filter(k => k === filter);
 
   return (
     <div style={{ paddingTop: 'calc(var(--header-height) + 40px)', paddingBottom: '100px' }}>
@@ -33,7 +40,7 @@ export default function CardCollection() {
             THE FLOCARD <span className="text-gradient-purple">COLLECTION</span>
           </h1>
           <p style={{ fontSize: '1.1rem', color: 'var(--text-secondary)' }}>
-            Five master-crafted editions combining aerospace-grade physical materials with secure encrypted NFC microcontrollers.
+            {activeProducts.length} master-crafted edition{activeProducts.length === 1 ? '' : 's'} combining aerospace-grade physical materials with secure encrypted NFC microcontrollers.
           </p>
 
           {/* Template & Edition Filter Controls */}
@@ -102,11 +109,10 @@ export default function CardCollection() {
             >
               {[
                 { id: 'all', label: 'All Editions' },
-                { id: 'white', label: 'Pure White (New)' },
-                { id: 'metal', label: 'Metal Edition' },
-                { id: 'gold', label: 'Gold Edition' },
-                { id: 'platinum', label: 'Platinum Edition' },
-                { id: 'purple', label: 'Purple Edition (Signature)' }
+                ...activeProducts.map(p => ({
+                  id: p.editionKey,
+                  label: `${p.name}${p.editionKey === 'purple' ? ' (Signature)' : p.editionKey === 'white' ? ' (New)' : ''}`
+                }))
               ].map(tab => (
                 <button
                   key={tab.id}

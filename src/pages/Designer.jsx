@@ -229,7 +229,7 @@ function InteractiveFontPicker({
 export default function Designer() {
   const { user, isAdmin } = useAuth();
   const { isLight, toggleTheme } = useTheme();
-  const { saveDesign, designs, studioBackground, updateStudioBackground, resetStudioBg, createOrderFromDesign, getProductByEdition } = useData();
+  const { saveDesign, designs, products, studioBackground, updateStudioBackground, resetStudioBg, createOrderFromDesign, getProductByEdition } = useData();
 
   // URL query params
   const urlParams = new URLSearchParams(window.location.search);
@@ -241,15 +241,31 @@ export default function Designer() {
 
   const existingDesign = initialDesignId ? designs.find(d => d.id === initialDesignId) : null;
 
+  // Active products configured by admin (hidden if disabled)
+  const activeProducts = (products || [])
+    .filter(p => p.status !== 'disabled' && p.isActive !== false)
+    .sort((a, b) => (a.displayOrder ?? 999) - (b.displayOrder ?? 999));
+  const activeEditionKeys = activeProducts.map(p => p.editionKey);
+
   // Active template: 'standard' | 'customer_logo'
   const [templateType, setTemplateType] = useState(
     existingDesign?.templateType || initialTemplate
   );
 
-  // Active signature finish: 'platinum' | 'purple' | 'gold' | 'metal'
-  const [edition, setEdition] = useState(
-    existingDesign?.edition || initialEdition
-  );
+  // Active signature finish: 'platinum' | 'purple' | 'gold' | 'metal' | 'white'
+  const [edition, setEdition] = useState(() => {
+    const candidate = existingDesign?.edition || initialEdition;
+    if (activeEditionKeys.length > 0 && !activeEditionKeys.includes(candidate)) {
+      return activeEditionKeys[0];
+    }
+    return candidate;
+  });
+
+  useEffect(() => {
+    if (activeEditionKeys.length > 0 && !activeEditionKeys.includes(edition)) {
+      handleEditionChange(activeEditionKeys[0]);
+    }
+  }, [activeEditionKeys, edition]);
 
   const currentEditionProduct = getProductByEdition(edition);
 
@@ -1399,15 +1415,15 @@ _Submitted from FLOCARD Design Studio_`;
                 </span>
               </div>
 
-              {/* 5 Finishes: Platinum, Purple, Gold, Metal, White */}
-              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(5, 1fr)', gap: '8px' }}>
+              {/* Active Finishes Filtered by Admin */}
+              <div style={{ display: 'grid', gridTemplateColumns: `repeat(${Math.max((activeEditionKeys.length || 5), 1)}, 1fr)`, gap: '8px' }}>
                 {[
                   { id: 'platinum', name: 'Platinum', bg: 'linear-gradient(135deg, #e2e8f0 0%, #94a3b8 100%)', rim: '#cbd5e1' },
                   { id: 'purple', name: 'Purple', bg: 'linear-gradient(135deg, #a855f7 0%, #6b21a8 100%)', rim: '#a855f7' },
                   { id: 'gold', name: 'Gold', bg: 'linear-gradient(135deg, #facc15 0%, #a16207 100%)', rim: '#eab308' },
                   { id: 'metal', name: 'Metal', bg: 'linear-gradient(135deg, #64748b 0%, #1e293b 100%)', rim: '#94a3b8' },
                   { id: 'white', name: 'White', bg: 'linear-gradient(135deg, #ffffff 0%, #e2e8f0 100%)', rim: '#cbd5e1' }
-                ].map(swatch => {
+                ].filter(swatch => activeEditionKeys.length === 0 || activeEditionKeys.includes(swatch.id)).map(swatch => {
                   const isSelected = edition === swatch.id;
                   return (
                     <button

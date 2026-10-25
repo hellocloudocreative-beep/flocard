@@ -1264,40 +1264,6 @@ const INITIAL_TEMPLATES = [
 
 export const INITIAL_PRODUCTS = [
   {
-    id: 'prod_gold',
-    editionKey: 'gold',
-    name: 'Gold Edition',
-    sku: 'FLC-CRD-GLD-01',
-    stock: 45,
-    subtitle: 'Black with Premium Metallic Champagne Gold Accents',
-    tagline: 'A bold and luxurious design for professionals who stand out.',
-    description: 'Near-black charcoal surface adorned with refined metallic champagne gold typography and subtle brushed reflections.',
-    price: 2499,
-    comparePrice: 3499,
-    currency: 'INR',
-    isActive: true,
-    isAvailable: true,
-    isFeatured: true,
-    featuredBadge: 'Luxury Choice',
-    theme: 'gold',
-    accentColor: '#E9C766',
-    secondaryColor: '#C9972C',
-    spotlightColor: '#E9C766',
-    finishHighlight: 'Near-black matte polymer with metallic champagne gold typography and dual-tone velvet touch.',
-    features: [
-      'NFC-enabled physical card (NXP NTAG216 high frequency chip)',
-      'Personalized name & professional role with metallic gold finish',
-      'Customizable dual-sided card artwork (Standard or Logo Badge)',
-      'Digital profile connection with one-tap instant NFC routing',
-      'High-resolution laser-etched QR code on the reverse',
-      'Waterproof IP68 & scratch-resistant protective coating'
-    ],
-    sampleFrontImage: '/assets/cardbg-gold.png',
-    sampleBackImage: '/assets/flocard-logo-gold.png',
-    ctaText: 'Customize Gold Card',
-    updatedAt: new Date().toISOString()
-  },
-  {
     id: 'prod_platinum',
     editionKey: 'platinum',
     name: 'Platinum Edition',
@@ -1309,12 +1275,14 @@ export const INITIAL_PRODUCTS = [
     price: 2199,
     comparePrice: 2999,
     currency: 'INR',
+    displayOrder: 1,
+    status: 'active',
     isActive: true,
     isAvailable: true,
     isFeatured: false,
     featuredBadge: 'Minimalist Tech',
     theme: 'platinum',
-    accentColor: '#E2E8F0',
+    accentColor: '#CBD5E1',
     secondaryColor: '#94A3B8',
     spotlightColor: '#CBD5E1',
     finishHighlight: 'Precision laser-etched stainless alloy with frosted luster against carbon black.',
@@ -1343,6 +1311,8 @@ export const INITIAL_PRODUCTS = [
     price: 1899,
     comparePrice: 2499,
     currency: 'INR',
+    displayOrder: 2,
+    status: 'active',
     isActive: true,
     isAvailable: true,
     isFeatured: true,
@@ -1366,6 +1336,42 @@ export const INITIAL_PRODUCTS = [
     updatedAt: new Date().toISOString()
   },
   {
+    id: 'prod_gold',
+    editionKey: 'gold',
+    name: 'Gold Edition',
+    sku: 'FLC-CRD-GLD-01',
+    stock: 45,
+    subtitle: 'Black with Premium Metallic Champagne Gold Accents',
+    tagline: 'A bold and luxurious design for professionals who stand out.',
+    description: 'Near-black charcoal surface adorned with refined metallic champagne gold typography and subtle brushed reflections.',
+    price: 2499,
+    comparePrice: 3499,
+    currency: 'INR',
+    displayOrder: 3,
+    status: 'active',
+    isActive: true,
+    isAvailable: true,
+    isFeatured: true,
+    featuredBadge: 'Luxury Choice',
+    theme: 'gold',
+    accentColor: '#E9C766',
+    secondaryColor: '#C9972C',
+    spotlightColor: '#E9C766',
+    finishHighlight: 'Near-black matte polymer with metallic champagne gold typography and dual-tone velvet touch.',
+    features: [
+      'NFC-enabled physical card (NXP NTAG216 high frequency chip)',
+      'Personalized name & professional role with metallic gold finish',
+      'Customizable dual-sided card artwork (Standard or Logo Badge)',
+      'Digital profile connection with one-tap instant NFC routing',
+      'High-resolution laser-etched QR code on the reverse',
+      'Waterproof IP68 & scratch-resistant protective coating'
+    ],
+    sampleFrontImage: '/assets/cardbg-gold.png',
+    sampleBackImage: '/assets/flocard-logo-gold.png',
+    ctaText: 'Customize Gold Card',
+    updatedAt: new Date().toISOString()
+  },
+  {
     id: 'prod_metal',
     editionKey: 'metal',
     name: 'Metal Edition',
@@ -1377,6 +1383,8 @@ export const INITIAL_PRODUCTS = [
     price: 2799,
     comparePrice: 3799,
     currency: 'INR',
+    displayOrder: 4,
+    status: 'active',
     isActive: true,
     isAvailable: true,
     isFeatured: true,
@@ -1411,6 +1419,8 @@ export const INITIAL_PRODUCTS = [
     price: 2199,
     comparePrice: 2899,
     currency: 'INR',
+    displayOrder: 5,
+    status: 'active',
     isActive: true,
     isAvailable: true,
     isFeatured: false,
@@ -2975,11 +2985,33 @@ export const StorageEngine = {
     const list = getLocal('products', INITIAL_PRODUCTS);
     let changed = false;
     INITIAL_PRODUCTS.forEach(initP => {
-      if (!list.some(p => p.editionKey === initP.editionKey || p.id === initP.id)) {
+      const idx = list.findIndex(p => p.editionKey === initP.editionKey || p.id === initP.id);
+      if (idx === -1) {
         list.push(initP);
         changed = true;
       }
     });
+
+    // Ensure every product has displayOrder and status
+    list.forEach((p, idx) => {
+      if (typeof p.displayOrder !== 'number') {
+        const init = INITIAL_PRODUCTS.find(ip => ip.editionKey === p.editionKey);
+        p.displayOrder = init?.displayOrder || idx + 1;
+        changed = true;
+      }
+      if (!p.status) {
+        p.status = p.isActive !== false ? 'active' : 'disabled';
+        changed = true;
+      }
+      if (p.isActive === undefined) {
+        p.isActive = p.status === 'active';
+        changed = true;
+      }
+    });
+
+    // Sort by displayOrder ascending
+    list.sort((a, b) => (a.displayOrder ?? 999) - (b.displayOrder ?? 999));
+
     if (changed) {
       setLocal('products', list);
     }
@@ -2988,6 +3020,51 @@ export const StorageEngine = {
   getProductByEdition: (editionKey) => {
     const list = StorageEngine.getProducts();
     return list.find(p => p.editionKey === editionKey) || null;
+  },
+  reorderProducts: (orderedKeysOrIds, adminRole, adminEmail = 'admin@flocard.in') => {
+    if (adminRole !== 'admin' && adminRole !== 'owner') {
+      return { success: false, error: 'Unauthorized: Only platform administrators can arrange cards.' };
+    }
+    if (!Array.isArray(orderedKeysOrIds)) {
+      return { success: false, error: 'Invalid reorder array' };
+    }
+    const list = StorageEngine.getProducts();
+    orderedKeysOrIds.forEach((keyOrId, index) => {
+      const prod = list.find(p => p.id === keyOrId || p.editionKey === keyOrId);
+      if (prod) {
+        prod.displayOrder = index + 1;
+        prod.updatedAt = new Date().toISOString();
+      }
+    });
+    list.sort((a, b) => (a.displayOrder ?? 999) - (b.displayOrder ?? 999));
+    setLocal('products', list);
+    StorageEngine.addAuditLog(
+      'Card Products & Pricing',
+      `Rearranged homepage card sequence: ${list.map(p => `#${p.displayOrder} ${p.name}`).join(', ')}`,
+      adminEmail
+    );
+    return { success: true, products: list };
+  },
+  toggleProductStatus: (editionKeyOrId, newStatus, adminRole, adminEmail = 'admin@flocard.in') => {
+    if (adminRole !== 'admin' && adminRole !== 'owner') {
+      return { success: false, error: 'Unauthorized: Only platform administrators can change card visibility.' };
+    }
+    const list = StorageEngine.getProducts();
+    const prod = list.find(p => p.id === editionKeyOrId || p.editionKey === editionKeyOrId);
+    if (!prod) {
+      return { success: false, error: 'Product not found.' };
+    }
+    const targetStatus = newStatus || (prod.status === 'active' ? 'disabled' : 'active');
+    prod.status = targetStatus;
+    prod.isActive = targetStatus === 'active';
+    prod.updatedAt = new Date().toISOString();
+    setLocal('products', list);
+    StorageEngine.addAuditLog(
+      'Card Products & Pricing',
+      `Card ${prod.name} status updated to ${targetStatus} (${targetStatus === 'active' ? 'Visible on Home' : 'Hidden from Home'})`,
+      adminEmail
+    );
+    return { success: true, product: prod, products: list };
   },
   saveProduct: (product, adminRole, adminEmail = 'admin@flocard.in') => {
     if (adminRole !== 'admin' && adminRole !== 'owner') {
@@ -3018,13 +3095,22 @@ export const StorageEngine = {
       validCompare = Math.round(num);
     }
 
-    const list = getLocal('products', INITIAL_PRODUCTS);
+    const list = StorageEngine.getProducts();
     const index = list.findIndex(p => p.id === product.id || p.editionKey === product.editionKey);
+    const newStatus = product.status || (product.isActive === false ? 'disabled' : 'active');
+    const newIsActive = newStatus === 'active';
+    const displayOrder = product.displayOrder !== undefined && product.displayOrder !== '' && product.displayOrder !== null
+      ? Number(product.displayOrder)
+      : undefined;
+
     let updated;
     if (index >= 0) {
       updated = {
         ...list[index],
         ...product,
+        status: newStatus,
+        isActive: newIsActive,
+        displayOrder: displayOrder !== undefined ? displayOrder : list[index].displayOrder,
         price: validPrice,
         comparePrice: validCompare,
         updatedAt: new Date().toISOString()
@@ -3034,6 +3120,9 @@ export const StorageEngine = {
       updated = {
         ...product,
         id: product.id || `prod_${product.editionKey || Date.now()}`,
+        status: newStatus,
+        isActive: newIsActive,
+        displayOrder: displayOrder !== undefined ? displayOrder : list.length + 1,
         price: validPrice,
         comparePrice: validCompare,
         updatedAt: new Date().toISOString()
@@ -3041,9 +3130,10 @@ export const StorageEngine = {
       list.push(updated);
     }
 
+    list.sort((a, b) => (a.displayOrder ?? 999) - (b.displayOrder ?? 999));
     setLocal('products', list);
     const priceFormatted = validPrice !== null ? `₹${validPrice}` : 'Unset (Coming Soon)';
-    StorageEngine.addAuditLog('Card Products & Pricing', `Updated pricing/specs for ${updated.name}: ${priceFormatted}`, adminEmail);
+    StorageEngine.addAuditLog('Card Products & Pricing', `Updated specs/pricing for ${updated.name}: ${priceFormatted} (${updated.status})`, adminEmail);
     return { success: true, product: updated };
   },
 
