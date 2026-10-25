@@ -18,14 +18,14 @@ export default function Home() {
   const { profiles, getProductByEdition, demoConfig } = useData();
   const { isLight } = useTheme();
 
-  const baseProfile = profiles.find(p => p.slug === 'akhil') || profiles[0] || {};
+  const baseProfile = profiles.find(p => p.slug === 'alex') || profiles[0] || {};
   const demoProfile = {
     ...baseProfile,
-    name: (demoConfig?.name && demoConfig.name !== 'Your Name') ? demoConfig.name : (baseProfile?.name && baseProfile.name !== 'Your Name' ? baseProfile.name : 'Akhil Anvar'),
+    name: (demoConfig?.name && demoConfig.name !== 'Your Name') ? demoConfig.name : (baseProfile?.name && baseProfile.name !== 'Your Name' ? baseProfile.name : 'Alex Morgan'),
     role: (demoConfig?.role && demoConfig.role !== 'Your Role') ? demoConfig.role : (baseProfile?.role && baseProfile.role !== 'Your Role' ? baseProfile.role : 'Founder & CEO'),
     tagline: (demoConfig?.tagline && demoConfig.tagline !== 'Your Tagline') ? demoConfig.tagline : (baseProfile?.tagline || 'Pioneering connected NFC identity for executives and pioneers.'),
-    company: (demoConfig?.company && demoConfig.company !== 'Your Company') ? demoConfig.company : (baseProfile?.company && baseProfile.company !== 'Your Company' ? baseProfile.company : 'FLOCARD'),
-    avatar: demoConfig?.avatar || baseProfile?.avatar || '/assets/akhil.jpg',
+    company: (demoConfig?.company && demoConfig.company !== 'Your Company') ? demoConfig.company : (baseProfile?.company && baseProfile.company !== 'Your Company' ? baseProfile.company : 'FLOCARDS'),
+    avatar: demoConfig?.avatar || baseProfile?.avatar || 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=400&auto=format&fit=crop&q=80',
     logo: demoConfig?.logo || baseProfile?.logo || '',
     phone: demoConfig?.phone || baseProfile?.phone || '+91 97782 78552',
     email: demoConfig?.email || baseProfile?.email || 'contact@flocard.in',
@@ -37,6 +37,9 @@ export default function Home() {
   const goldProduct = getProductByEdition('gold') || EDITIONS.gold;
   const platinumProduct = getProductByEdition('platinum') || EDITIONS.platinum;
   const purpleProduct = getProductByEdition('purple') || EDITIONS.purple;
+  const whiteProduct = getProductByEdition('white') || EDITIONS.white;
+
+  const [heroEdition, setHeroEdition] = useState('purple');
 
   return (
     <div className="homepage-wrapper" style={{ overflowX: 'hidden' }}>
@@ -164,6 +167,77 @@ export default function Home() {
             </a>
           </div>
 
+          {/* Interactive Finish Selector for Hero Showcase */}
+          <div
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              gap: '10px',
+              marginBottom: '28px',
+              flexWrap: 'wrap'
+            }}
+          >
+            {[
+              { id: 'purple', name: 'Purple', dot: '#A855F7', border: '#A855F7' },
+              { id: 'platinum', name: 'Platinum', dot: '#CBD5E1', border: '#CBD5E1' },
+              { id: 'gold', name: 'Gold', dot: '#E9C766', border: '#E9C766' },
+              { id: 'metal', name: 'Metal', dot: '#94A3B8', border: '#94A3B8' },
+              { id: 'white', name: 'Pure White', dot: '#FFFFFF', border: '#FFFFFF', isNew: true }
+            ].map((fin) => {
+              const isSelected = heroEdition === fin.id;
+              return (
+                <button
+                  key={fin.id}
+                  type="button"
+                  onClick={() => setHeroEdition(fin.id)}
+                  style={{
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    gap: '8px',
+                    padding: '7px 16px',
+                    borderRadius: '9999px',
+                    border: isSelected ? `2px solid ${fin.border}` : '1px solid var(--border-color)',
+                    backgroundColor: isSelected
+                      ? (fin.id === 'white' ? 'rgba(255, 255, 255, 0.22)' : `${fin.dot}24`)
+                      : 'var(--elevated-surface)',
+                    color: 'var(--text-primary)',
+                    fontSize: '0.82rem',
+                    fontWeight: isSelected ? 800 : 600,
+                    cursor: 'pointer',
+                    transition: 'all 0.2s ease',
+                    boxShadow: isSelected ? `0 0 16px ${fin.dot}44` : 'none'
+                  }}
+                >
+                  <span
+                    style={{
+                      width: '10px',
+                      height: '10px',
+                      borderRadius: '50%',
+                      backgroundColor: fin.dot,
+                      border: fin.id === 'white' ? '1px solid #00000044' : 'none'
+                    }}
+                  />
+                  <span>{fin.name}</span>
+                  {fin.isNew && (
+                    <span
+                      style={{
+                        fontSize: '0.64rem',
+                        fontWeight: 800,
+                        padding: '1px 6px',
+                        borderRadius: '4px',
+                        backgroundColor: '#6B00FF',
+                        color: '#FFFFFF'
+                      }}
+                    >
+                      NEW
+                    </span>
+                  )}
+                </button>
+              );
+            })}
+          </div>
+
           {/* Hero Cards Artwork Display (Front & Back Pair Side-by-Side) */}
           <div
             className="hero-cards-showcase"
@@ -189,7 +263,7 @@ export default function Home() {
               }}
             >
               <Card3DPreview
-                edition="purple"
+                edition={heroEdition}
                 width={390}
                 initialSide="front"
                 allowFlip={true}
@@ -197,7 +271,8 @@ export default function Home() {
                   front: {
                     name: (demoConfig?.name || 'YOUR NAME').toUpperCase(),
                     role: (demoConfig?.role || 'YOUR ROLE').toUpperCase(),
-                    tagline: demoConfig?.tagline || 'Your Tagline'
+                    tagline: demoConfig?.tagline || 'Your Tagline',
+                    textColor: heroEdition === 'white' ? '#000000' : undefined
                   },
                   customerLogo: { url: demoConfig?.logo || null }
                 }}
@@ -215,13 +290,14 @@ export default function Home() {
               }}
             >
               <Card3DPreview
-                edition="purple"
+                edition={heroEdition}
                 width={390}
                 initialSide="back"
                 allowFlip={true}
                 config={{
                   back: {
-                    brandUrl: `flocard.in/${(demoConfig?.name || 'yourname').toLowerCase().replace(/\s+/g, '')}`
+                    brandUrl: `flocard.in/${(demoConfig?.name || 'yourname').toLowerCase().replace(/\s+/g, '')}`,
+                    textColor: heroEdition === 'white' ? '#000000' : undefined
                   }
                 }}
               />
@@ -290,7 +366,7 @@ export default function Home() {
               </div>
               <div>
                 <h4 style={{ fontSize: '0.98rem', fontWeight: 700, color: 'var(--text-primary)' }}>Premium Design</h4>
-                <p style={{ fontSize: '0.82rem', color: 'var(--text-secondary)' }}>Gold, Platinum & Purple</p>
+                <p style={{ fontSize: '0.82rem', color: 'var(--text-secondary)' }}>Gold, Platinum, Metal & Pure White</p>
               </div>
             </div>
 
@@ -372,7 +448,7 @@ export default function Home() {
                 CHOOSE <span className="text-gradient-purple">YOUR STYLE</span>
               </h2>
               <p style={{ fontSize: '1rem', color: 'var(--text-secondary)', marginTop: '8px', maxWidth: '520px' }}>
-                Four premium designs. Same powerful technology. Find the style that fits your personal and corporate brand.
+                Five master-crafted physical editions. Same powerful technology. Find the style that fits your personal and corporate brand.
               </p>
             </div>
 
@@ -382,8 +458,8 @@ export default function Home() {
             </a>
           </div>
 
-          {/* Cards Grid: Platinum, Purple, Gold, Metal */}
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: '32px 24px', paddingTop: '18px', alignItems: 'stretch' }}>
+          {/* Cards Grid: Platinum, Purple, Gold, Metal, Pure White */}
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(260px, 1fr))', gap: '32px 24px', paddingTop: '18px', alignItems: 'stretch' }}>
             {/* 1. Platinum Edition */}
             <div
               className="glass-panel"
@@ -724,6 +800,89 @@ export default function Home() {
                 <ArrowRight size={15} />
               </a>
             </div>
+
+            {/* 5. Pure White Edition */}
+            <div
+              className="glass-panel"
+              style={{
+                padding: '24px 16px 22px',
+                display: 'flex',
+                flexDirection: 'column',
+                justifyContent: 'space-between',
+                borderRadius: '16px',
+                height: '100%',
+                backgroundColor: isLight ? '#FFFFFF' : 'rgba(255, 255, 255, 0.05)',
+                borderColor: isLight ? 'rgba(0, 0, 0, 0.15)' : 'rgba(255, 255, 255, 0.2)',
+                transition: 'transform 0.3s ease, border-color 0.3s ease, box-shadow 0.3s ease'
+              }}
+              onMouseEnter={(e) => {
+                e.currentTarget.style.borderColor = 'rgba(255, 255, 255, 0.8)';
+                e.currentTarget.style.transform = 'translateY(-6px)';
+                e.currentTarget.style.boxShadow = '0 12px 30px rgba(255, 255, 255, 0.15)';
+              }}
+              onMouseLeave={(e) => {
+                e.currentTarget.style.borderColor = isLight ? 'rgba(0, 0, 0, 0.15)' : 'rgba(255, 255, 255, 0.2)';
+                e.currentTarget.style.transform = 'translateY(0)';
+                e.currentTarget.style.boxShadow = 'none';
+              }}
+            >
+              <div>
+                <div style={{ marginBottom: '24px', width: '100%', display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
+                  <Card3DPreview edition="white" width={248} allowFlip={true} />
+                </div>
+                <div style={{ fontSize: '0.68rem', fontWeight: 800, textTransform: 'uppercase', letterSpacing: '0.08em', color: isLight ? '#08060D' : '#F8FAFC', marginBottom: '4px' }}>
+                  PURE WHITE EDITION
+                </div>
+                <h3 style={{ fontSize: '1.22rem', fontWeight: 800, color: 'var(--text-primary)', textTransform: 'uppercase', letterSpacing: '-0.01em', marginBottom: '8px' }}>
+                  {whiteProduct.name || EDITIONS.white.name}
+                </h3>
+
+                {/* Authoritative Price Display */}
+                <div style={{ display: 'flex', alignItems: 'baseline', gap: '8px', marginBottom: '10px' }}>
+                  {formatCurrencyINR(whiteProduct.price) ? (
+                    <>
+                      <span style={{ fontSize: '1.45rem', fontWeight: 800, color: 'var(--text-primary)' }}>
+                        {formatCurrencyINR(whiteProduct.price)}
+                      </span>
+                      {whiteProduct.comparePrice && whiteProduct.comparePrice > whiteProduct.price && (
+                        <span style={{ fontSize: '0.88rem', color: 'var(--text-muted)', textDecoration: 'line-through' }}>
+                          {formatCurrencyINR(whiteProduct.comparePrice)}
+                        </span>
+                      )}
+                    </>
+                  ) : (
+                    <span style={{ fontSize: '1.05rem', fontWeight: 700, color: '#F59E0B' }}>
+                      Price coming soon
+                    </span>
+                  )}
+                </div>
+
+                <p style={{ fontSize: '0.82rem', color: 'var(--text-secondary)', lineHeight: 1.45, marginBottom: '18px' }}>
+                  {whiteProduct.description || EDITIONS.white.description}
+                </p>
+              </div>
+              <a
+                href="/designer?edition=white"
+                className="btn btn-secondary"
+                style={{
+                  width: '100%',
+                  borderRadius: '10px',
+                  fontWeight: 700,
+                  fontSize: '0.84rem',
+                  padding: '11px 18px',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  gap: '8px',
+                  backgroundColor: '#FFFFFF',
+                  color: '#08060D',
+                  border: '1px solid rgba(0, 0, 0, 0.2)'
+                }}
+              >
+                <span>Customize Pure White Card</span>
+                <ArrowRight size={15} />
+              </a>
+            </div>
           </div>
         </div>
       </section>
@@ -851,7 +1010,7 @@ export default function Home() {
             <div style={{ display: 'flex', justifyContent: 'center', width: '100%', minHeight: '580px', alignItems: 'center' }}>
               <CompactProfileCard
                 profile={demoProfile}
-                onExpand={() => window.open(`/p/${demoProfile?.slug || 'akhil'}`, '_blank')}
+                onExpand={() => window.open(`/${demoProfile?.slug || 'alex'}`, '_blank')}
                 isLight={isLight}
               />
             </div>
@@ -880,7 +1039,7 @@ export default function Home() {
               {/* Checklist */}
               <div style={{ display: 'flex', flexDirection: 'column', gap: '14px', marginBottom: '36px' }}>
                 {[
-                  'Custom profile link (flocard.in/p/yourname)',
+                  'Custom profile link (flocard.in/yourname)',
                   'Contact details, phone, email & social links',
                   'Interactive portfolio, projects and services tabs',
                   '1-Tap direct vCard contact save to phonebook',
@@ -894,85 +1053,12 @@ export default function Home() {
               </div>
 
               <div style={{ display: 'flex', gap: '16px', flexWrap: 'wrap' }}>
-                <a href="/digital-profiles" className="btn btn-primary btn-lg">
-                  <span>Explore Digital Profiles</span>
+                <a href="/alex" className="btn btn-primary btn-lg">
+                  <span>View Live Demo Profile</span>
                   <ArrowRight size={18} />
                 </a>
-
-                <a href="/p/akhil" target="_blank" rel="noreferrer" className="btn btn-secondary btn-lg">
-                  <span>View Live Demo Profile</span>
-                  <ExternalLink size={16} />
-                </a>
               </div>
             </div>
-          </div>
-        </div>
-      </section>
-
-      {/* ======================================================================
-          INTERACTIVE NFC TAP SIMULATOR
-          ====================================================================== */}
-      <section
-        style={{
-          padding: '80px 0',
-          background: 'var(--bg-secondary)',
-          borderTop: '1px solid var(--border-color)',
-          borderBottom: '1px solid var(--border-color)'
-        }}
-      >
-        <div className="container" style={{ textAlign: 'center' }}>
-          <div className="badge-tag" style={{ marginBottom: '14px' }}>
-            NFC HARDWARE SIMULATOR
-          </div>
-          <h2 style={{ fontSize: 'clamp(1.8rem, 3vw, 2.6rem)', textTransform: 'uppercase', marginBottom: '14px', color: 'var(--text-primary)' }}>
-            TEST THE <span className="text-gradient-purple">ONE-TAP EXPERIENCE</span>
-          </h2>
-          <p style={{ color: 'var(--text-secondary)', maxWidth: '580px', margin: '0 auto 32px' }}>
-            Curious how NFC tap works? Click the simulator below to experience how a physical card connects instantly via permanent routing link <code style={{ color: 'var(--primary-purple)', fontWeight: 600 }}>/t/flc-akhil-992</code>!
-          </p>
-
-          <div
-            className="glass-panel"
-            style={{
-              maxWidth: '500px',
-              margin: '0 auto',
-              padding: '36px',
-              position: 'relative'
-            }}
-          >
-            <div style={{ marginBottom: '20px' }}>
-              <div
-                style={{
-                  width: '70px',
-                  height: '70px',
-                  borderRadius: '50%',
-                  background: 'linear-gradient(135deg, var(--primary-purple), var(--deep-violet))',
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  margin: '0 auto',
-                  boxShadow: '0 0 30px rgba(107, 0, 255, 0.45)'
-                }}
-              >
-                <Radio size={32} color="#ffffff" className="animate-pulse-glow" />
-              </div>
-            </div>
-
-            <h4 style={{ fontSize: '1.15rem', color: 'var(--text-primary)', marginBottom: '8px' }}>
-              NFC Contactless Antenna Ready
-            </h4>
-            <p style={{ fontSize: '0.85rem', color: 'var(--text-secondary)', marginBottom: '24px' }}>
-              Permanent Redirect Tag: <strong style={{ color: 'var(--primary-purple)' }}>flc-akhil-992</strong>
-            </p>
-
-            <a
-              href="/t/flc-akhil-992"
-              className="btn btn-primary btn-lg"
-              style={{ width: '100%' }}
-            >
-              <span>Tap Phone Against Card</span>
-              <ArrowRight size={18} />
-            </a>
           </div>
         </div>
       </section>

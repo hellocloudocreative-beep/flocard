@@ -316,12 +316,12 @@ export default function InvoiceModal({ order, onClose }) {
 
   return (
     <div
-      className="flocard-invoice-modal-overlay fixed inset-0 flex items-center justify-center p-4 bg-black/85 backdrop-blur-md overflow-y-auto print:p-0 print:bg-white print:static print:inset-auto"
+      className="flocard-invoice-modal-overlay fixed inset-0 flex items-start justify-center p-4 pt-6 pb-12 bg-black/85 backdrop-blur-md overflow-y-auto print:p-0 print:bg-white print:static print:inset-auto"
       style={{ zIndex: 999999 }}
     >
-      <div className="relative w-full max-w-4xl my-8 bg-[#0D0819] border border-purple-500/20 rounded-2xl shadow-2xl overflow-hidden print:border-none print:shadow-none print:my-0 print:w-full print:max-w-none print:bg-white text-white print:text-black">
+      <div className="relative w-full max-w-4xl my-4 bg-[#0D0819] border border-purple-500/20 rounded-2xl shadow-2xl overflow-hidden print:border-none print:shadow-none print:my-0 print:w-full print:max-w-none print:bg-white text-white print:text-black">
         {/* Modal Top Bar (Hidden in Print) */}
-        <div className="flex items-center justify-between px-6 py-4 bg-[#140C26] border-b border-purple-500/20 print:hidden">
+        <div className="sticky top-0 z-20 flex items-center justify-between px-6 py-4 bg-[#140C26] border-b border-purple-500/20 print:hidden">
           <div className="flex items-center gap-3">
             <div className="p-2 rounded-xl bg-purple-500/10 text-purple-400 border border-purple-500/20">
               <FileText className="w-5 h-5" />

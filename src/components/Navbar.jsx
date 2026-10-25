@@ -23,7 +23,7 @@ export default function Navbar({ currentPath = '/' }) {
       p =>
         (user?.id && p.customerId === user.id) ||
         (user?.email && p.email === user.email) ||
-        p.slug === 'akhil'
+        p.slug === 'alex'
     )?.avatar;
 
   const navItems = [
@@ -42,8 +42,8 @@ export default function Navbar({ currentPath = '/' }) {
       description: 'Dynamic personal brand & digital portfolio profiles.',
       links: [
         { label: 'Profiles Overview', href: '/digital-profiles' },
-        { label: 'Live Demo Profile', href: '/p/akhil' },
-        { label: 'Card Studio Designer', href: '/designer' },
+        { label: 'Live Demo Profile', href: '/alex' },
+        { label: 'Card Studio Designer', href: user ? '/designer' : '/signup?redirect=/designer' },
         { label: 'Customer Showcase', href: '/examples' }
       ]
     },
@@ -239,7 +239,7 @@ export default function Navbar({ currentPath = '/' }) {
           logoHref="/"
           items={navItems}
           actions={actions}
-          cta={{ label: 'Design Card', href: '/designer' }}
+          cta={{ label: 'Design Card', href: user ? '/designer' : '/signup?redirect=/designer' }}
           theme={isLight ? 'light' : 'dark'}
           surface="glass"
           cardHeight={215}

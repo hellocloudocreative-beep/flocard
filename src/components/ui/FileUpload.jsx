@@ -253,24 +253,24 @@ export function FileUpload({
             <div
               key={item.id}
               style={{
-                backgroundColor: '#FFFFFF',
+                backgroundColor: 'var(--card-surface, #100b19)',
                 borderRadius: '12px',
-                border: '1px solid #E8E3EF',
+                border: '1px solid var(--border-color, #30243d)',
                 padding: '12px 16px',
                 display: 'flex',
                 flexDirection: 'column',
                 gap: '8px',
-                boxShadow: '0 1px 3px rgba(0, 0, 0, 0.02)'
+                boxShadow: '0 4px 14px rgba(0, 0, 0, 0.2)'
               }}
             >
               <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '10px', minWidth: 0 }}>
-                  <File size={18} color="#6B00FF" style={{ flexShrink: 0 }} />
+                  <File size={18} color="var(--accent-purple, #A855F7)" style={{ flexShrink: 0 }} />
                   <div style={{ minWidth: 0 }}>
-                    <div style={{ fontSize: '0.84rem', fontWeight: 600, color: '#191522', textOverflow: 'ellipsis', overflow: 'hidden', whiteSpace: 'nowrap' }}>
+                    <div style={{ fontSize: '0.84rem', fontWeight: 600, color: 'var(--text-primary, #FFFFFF)', textOverflow: 'ellipsis', overflow: 'hidden', whiteSpace: 'nowrap' }}>
                       {item.name}
                     </div>
-                    <div style={{ fontSize: '0.72rem', color: item.error ? '#DC4545' : '#777184' }}>
+                    <div style={{ fontSize: '0.72rem', color: item.error ? '#DC4545' : 'var(--text-secondary, #B8AEC8)' }}>
                       {item.error ? item.error : formatBytes(item.size)}
                     </div>
                   </div>

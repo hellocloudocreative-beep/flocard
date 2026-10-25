@@ -13,18 +13,18 @@ export default function PhoneProfileMockup({ profile, scale = 1, className = '' 
   const [copied, setCopied] = useState(false);
 
   const sampleProfile = profile || {
-    name: 'Akhil Anvar',
+    name: 'Alex Morgan',
     role: 'CEO & Founder',
-    company: 'FLOCARD',
-    avatar: '/assets/akhil.jpg',
+    company: 'FLOCARDS',
+    avatar: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=400&auto=format&fit=crop&q=80',
     location: 'Bengaluru, India',
     bio: 'Pioneering connected NFC identity for executives and global tech pioneers.',
     phone: '+91 97782 78552',
-    email: 'akhil@flocard.in',
+    email: 'contact@flocard.in',
     whatsapp: '919778278552',
     website: 'https://flocard.in',
-    linkedin: 'https://linkedin.com/in/akhilanvar',
-    instagram: 'https://instagram.com/akhilanvar',
+    linkedin: 'https://linkedin.com',
+    instagram: 'https://instagram.com',
     portfolio: [
       { id: '1', title: 'FLOCARD Core Platform', category: 'Hardware & Web' },
       { id: '2', title: 'Obsidian NFC Architecture', category: 'Industrial Design' }
@@ -38,11 +38,11 @@ export default function PhoneProfileMockup({ profile, scale = 1, className = '' 
   const handleShare = () => {
     if (navigator.share) {
       navigator.share({
-        title: `${sampleProfile.name} — FLOCARD Profile`,
-        url: window.location.origin + `/p/${sampleProfile.slug || 'akhil'}`
+        title: `${sampleProfile.name} — FLOCARDS Profile`,
+        url: window.location.origin + `/${sampleProfile.slug || 'alex'}`
       }).catch(() => {});
     } else {
-      navigator.clipboard.writeText(window.location.origin + `/p/${sampleProfile.slug || 'akhil'}`);
+      navigator.clipboard.writeText(window.location.origin + `/${sampleProfile.slug || 'alex'}`);
       setCopied(true);
       setTimeout(() => setCopied(false), 2000);
     }
@@ -153,7 +153,7 @@ export default function PhoneProfileMockup({ profile, scale = 1, className = '' 
             }}
           >
             <img
-              src={sampleProfile.avatar || '/assets/akhil.jpg'}
+              src={sampleProfile.avatar || 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=400&auto=format&fit=crop&q=80'}
               alt={sampleProfile.name}
               style={{ width: '100%', height: '100%', borderRadius: '50%', objectFit: 'cover' }}
             />

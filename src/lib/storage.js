@@ -3,7 +3,18 @@
    Automatically persists state to localStorage and synchronizes with Supabase.
    ========================================================================== */
 
+function safeDispatchEvent(name, detail) {
+  if (typeof window !== 'undefined' && typeof window.dispatchEvent === 'function') {
+    try {
+      window.dispatchEvent(new CustomEvent(name, { detail }));
+    } catch {
+      // Ignore in headless / test environment
+    }
+  }
+}
+
 const STORAGE_KEY_PREFIX = 'flocard_data_v3_';
+
 
 // Automatically purge legacy demo caches from localStorage so previous demo records never reload
 try {
@@ -63,11 +74,11 @@ export function getDefaultPublicMessage(status) {
 }
 
 export const DEFAULT_DEMO_CONFIG = {
-  name: 'Akhil Anvar',
+  name: 'Alex Morgan',
   role: 'Founder & CEO',
   tagline: 'Connected Identity Systems',
-  company: 'FLOCARD',
-  avatar: '/assets/akhil.jpg',
+  company: 'FLOCARDS',
+  avatar: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=400&auto=format&fit=crop&q=80',
   logo: '',
   phone: '+91 97782 78552',
   email: 'contact@flocard.in',
@@ -85,13 +96,13 @@ export const DEFAULT_DEMO_CONFIG = {
 
 export const INITIAL_PROFILES = [
   {
-    id: 'prof_akhil_001',
-    userId: 'usr_akhil_founder',
-    slug: 'akhil',
-    name: 'Akhil Anvar',
+    id: 'prof_alex_001',
+    userId: 'usr_alex_founder',
+    slug: 'alex',
+    name: 'Alex Morgan',
     role: 'Founder & CEO',
-    company: 'FLOCARD',
-    avatar: '/assets/akhil.jpg',
+    company: 'FLOCARDS',
+    avatar: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=400&auto=format&fit=crop&q=80',
     location: 'Bengaluru, India',
     bio: 'Pioneering connected NFC identity for executives and global tech pioneers. One tap. Every connection.',
     phone: '+91 97782 78552',
@@ -171,14 +182,227 @@ export const INITIAL_PROFILES = [
   }
 ];
 
-const INITIAL_CARDS = [];
+const INITIAL_CARDS = [
+  {
+    id: 'card_alex_001',
+    cardCode: 'flc-alex-001',
+    cardName: 'Alex Rivera — Platinum Matte',
+    chipType: 'NXP NTAG216 (888 Bytes)',
+    batch: 'Batch-2026-A',
+    edition: 'platinum',
+    customerId: 'usr_cust_01',
+    customerName: 'Alex Rivera',
+    customerEmail: 'alex@flocard.in',
+    profileSlug: 'alex',
+    status: 'active',
+    tapCount: 142,
+    registeredAt: '2026-03-15T10:00:00Z',
+    statusChangedAt: '2026-03-15T10:00:00Z',
+    statusReason: 'Initial card deployment & profile link',
+    activationHistory: [
+      {
+        id: 'act_init_01',
+        timestamp: '2026-03-15T10:00:00Z',
+        previousStatus: 'in_stock',
+        newStatus: 'active',
+        actorId: 'usr_owner_01',
+        actorName: 'FLOCARDS Administrator',
+        reason: 'Initial card deployment & profile link'
+      }
+    ]
+  },
+  {
+    id: 'card_white_002',
+    cardCode: 'flc-pure-white-001',
+    cardName: 'Pure White Edition Demo',
+    chipType: 'NXP NTAG216 (888 Bytes)',
+    batch: 'Batch-2026-B',
+    edition: 'white',
+    customerId: 'usr_cust_02',
+    customerName: 'Akhil Sharma',
+    customerEmail: 'akhil@flocard.in',
+    profileSlug: 'alex',
+    status: 'active',
+    tapCount: 38,
+    registeredAt: '2026-04-01T12:00:00Z',
+    statusChangedAt: '2026-04-01T12:00:00Z',
+    statusReason: 'Pure White card activation',
+    activationHistory: []
+  },
+  {
+    id: 'card_pending_003',
+    cardCode: 'flc-sample-pending',
+    cardName: 'Unassigned Test Card',
+    chipType: 'NXP NTAG216 (888 Bytes)',
+    batch: 'Batch-2026-C',
+    edition: 'purple',
+    customerId: null,
+    customerName: null,
+    customerEmail: null,
+    profileSlug: null,
+    status: 'pending',
+    tapCount: 0,
+    registeredAt: '2026-04-10T09:00:00Z',
+    statusChangedAt: '2026-04-10T09:00:00Z',
+    statusReason: 'Inventory intake',
+    activationHistory: []
+  }
+];
 const INITIAL_DESIGNS = [];
 const INITIAL_CUSTOMERS = [];
 const INITIAL_ORDER_HISTORY = [];
 const INITIAL_ORDER_NOTES = [];
 const INITIAL_NOTIFICATIONS = [];
 const INITIAL_ANALYTICS_EVENTS = [];
-const INITIAL_AUDIT_LOGS = [];
+const INITIAL_AUDIT_LOGS = [
+  {
+    id: 'evt_init_01',
+    timestamp: '2026-10-23T11:45:00Z',
+    actorId: 'usr_owner_01',
+    actorName: 'FLOCARDS Administrator',
+    actorEmail: 'admin@flocard.in',
+    actorRole: 'owner',
+    action: 'order.status_update',
+    entityType: 'Order',
+    entityId: 'ORD-9842',
+    description: 'Order status advanced to Dispatched with DTDC Air tracking DTDC-984210',
+    type: 'Order',
+    details: 'Order status advanced to Dispatched with DTDC Air tracking DTDC-984210',
+    userName: 'FLOCARDS Administrator',
+    beforeValues: { status: 'production_ready', carrier: null, trackingNumber: null },
+    afterValues: { status: 'dispatched', carrier: 'DTDC Air Express', trackingNumber: 'DTDC-984210' },
+    status: 'success',
+    severity: 'info',
+    correlationId: 'req_ord_9842_dsp',
+    timeAgo: '1 hour ago'
+  },
+  {
+    id: 'evt_init_02',
+    timestamp: '2026-10-23T10:12:00Z',
+    actorId: 'usr_prod_01',
+    actorName: 'Rajesh Kumar',
+    actorEmail: 'production@flocard.in',
+    actorRole: 'production',
+    action: 'nfc.activate',
+    entityType: 'Card',
+    entityId: 'FC-882194',
+    description: 'NXP NTAG216 chip encoded & bound to digital profile @alex',
+    type: 'NFC Card',
+    details: 'NXP NTAG216 chip encoded & bound to digital profile @alex',
+    userName: 'Rajesh Kumar',
+    beforeValues: { chipStatus: 'unprogrammed', assignedSlug: null },
+    afterValues: { chipStatus: 'active', assignedSlug: 'alex', nfcUrl: 'https://flocard.in/alex' },
+    status: 'success',
+    severity: 'info',
+    correlationId: 'req_nfc_882194',
+    timeAgo: '2 hours ago'
+  },
+  {
+    id: 'evt_init_03',
+    timestamp: '2026-10-23T09:30:00Z',
+    actorId: 'usr_des_01',
+    actorName: 'Vikram Malhotra',
+    actorEmail: 'designer@flocard.in',
+    actorRole: 'designer',
+    action: 'design.approve',
+    entityType: 'Design',
+    entityId: 'des_alex_gold',
+    description: 'Artwork verified: 24K Gold Matte finish approved for UV laser engraving',
+    type: 'Card Design',
+    details: 'Artwork verified: 24K Gold Matte finish approved for UV laser engraving',
+    userName: 'Vikram Malhotra',
+    beforeValues: { approvalStatus: 'pending_review' },
+    afterValues: { approvalStatus: 'approved', notes: 'Artwork vectors verified with 3mm bleed margin.' },
+    status: 'success',
+    severity: 'info',
+    correlationId: 'req_des_approve_01',
+    timeAgo: '3 hours ago'
+  },
+  {
+    id: 'evt_init_04',
+    timestamp: '2026-10-23T08:50:00Z',
+    actorId: 'usr_owner_01',
+    actorName: 'FLOCARDS Administrator',
+    actorEmail: 'admin@flocard.in',
+    actorRole: 'owner',
+    action: 'staff.role_change',
+    entityType: 'Staff',
+    entityId: 'usr_sales_01',
+    description: 'Updated staff role for Priya Nair to Sales with permissions [orders.create, orders.read, customers.read]',
+    type: 'Admin Access',
+    details: 'Updated staff role for Priya Nair to Sales with permissions [orders.create, orders.read, customers.read]',
+    userName: 'FLOCARDS Administrator',
+    beforeValues: { role: 'pending', status: 'invited' },
+    afterValues: { role: 'sales', status: 'active' },
+    status: 'success',
+    severity: 'warning',
+    correlationId: 'req_perm_sales_01',
+    timeAgo: '4 hours ago'
+  },
+  {
+    id: 'evt_init_05',
+    timestamp: '2026-10-23T07:15:00Z',
+    actorId: 'usr_sys_01',
+    actorName: 'System / Auth Gateway',
+    actorEmail: 'system@flocard.in',
+    actorRole: 'system',
+    action: 'login.failed',
+    entityType: 'Auth',
+    entityId: 'auth_attempt_391',
+    description: 'Failed administrator login attempt with invalid credentials',
+    type: 'Security',
+    details: 'Failed administrator login attempt with invalid credentials',
+    userName: 'Auth Gateway',
+    beforeValues: null,
+    afterValues: { identifier: 'unknown_operator@external.org', failureReason: 'Invalid administrator password' },
+    status: 'failure',
+    severity: 'critical',
+    correlationId: 'req_sec_audit_391',
+    timeAgo: '5 hours ago'
+  },
+  {
+    id: 'evt_init_06',
+    timestamp: '2026-10-22T16:20:00Z',
+    actorId: 'usr_acc_01',
+    actorName: 'Anjali Sharma',
+    actorEmail: 'accounts@flocard.in',
+    actorRole: 'accounts',
+    action: 'payment.status_change',
+    entityType: 'Payment',
+    entityId: 'INV-2026-081',
+    description: 'Verified Razorpay settlement for Order ORD-9842 (₹2,240.82 with 18% GST)',
+    type: 'Finance',
+    details: 'Verified Razorpay settlement for Order ORD-9842 (₹2,240.82 with 18% GST)',
+    userName: 'Anjali Sharma',
+    beforeValues: { paymentStatus: 'pending_gateway' },
+    afterValues: { paymentStatus: 'paid', gstInvoiceNumber: 'INV-2026-081' },
+    status: 'success',
+    severity: 'info',
+    correlationId: 'req_pay_inv_081',
+    timeAgo: 'Yesterday'
+  },
+  {
+    id: 'evt_init_07',
+    timestamp: '2026-10-22T14:05:00Z',
+    actorId: 'usr_owner_01',
+    actorName: 'FLOCARDS Administrator',
+    actorEmail: 'admin@flocard.in',
+    actorRole: 'owner',
+    action: 'qr.config_update',
+    entityType: 'Smart QR',
+    entityId: 'cfg_smart_qr_global',
+    description: 'Updated Smart QR canonical redirect host to https://flocard.in with high-contrast quiet zone',
+    type: 'Smart QR',
+    details: 'Updated Smart QR canonical redirect host to https://flocard.in with high-contrast quiet zone',
+    userName: 'FLOCARDS Administrator',
+    beforeValues: { baseUrl: 'https://flocard.in', quietZone: 4 },
+    afterValues: { baseUrl: 'https://flocard.in', quietZone: 4, errorCorrectionLevel: 'H' },
+    status: 'success',
+    severity: 'info',
+    correlationId: 'req_qr_cfg_01',
+    timeAgo: 'Yesterday'
+  }
+];
 
 export const DEFAULT_INVOICE_SETTINGS = {
   companyName: 'FLOCARD Technologies Pvt. Ltd.',
@@ -293,10 +517,10 @@ const INITIAL_ORDERS = [
     invoiceId: 'INV-2026-9081',
     invoiceDate: _d(0, 3),
     orderDate: _d(0, 3),
-    customerName: 'Akhil Anvar',
-    customerEmail: 'akhil@flocard.in',
+    customerName: 'Alex Morgan',
+    customerEmail: 'alex.morgan@flocard.in',
     customerPhone: '+91 97782 78552',
-    company: 'FLOCARD Technologies',
+    company: 'FLOCARDS Technologies',
     role: 'Founder & CEO',
     tagline: 'Pioneering connected NFC identity systems.',
     edition: 'gold',
@@ -318,7 +542,7 @@ const INITIAL_ORDERS = [
     cardCode: 'FLC-GLD-0104',
     nfcUid: '04:7B:A2:1F:90:3C:80',
     cardStatus: 'processing',
-    profileSlug: 'akhil',
+    profileSlug: 'alex',
     source: 'website',
     items: [
       {
@@ -924,27 +1148,77 @@ const INITIAL_ORDERS = [
 
 const INITIAL_ADMIN_ACCOUNTS = [
   {
-    email: 'hello.flocard@gmail.com',
-    name: 'Flocard Admin',
+    id: 'usr_owner_01',
+    email: 'admin@flocard.in',
+    name: 'FLOCARDS Administrator',
     role: 'owner',
-    avatar: '/assets/akhil.jpg',
+    avatar: '',
+    status: 'active',
     grantedAt: '2026-01-01T00:00:00Z',
-    grantedBy: 'Root'
+    grantedBy: 'Root',
+    lastActive: '2026-10-23T11:45:00Z'
   },
   {
-    email: 'akhil@flocard.in',
-    name: 'Akhil Anvar',
+    id: 'usr_owner_02',
+    email: 'hello.flocard@gmail.com',
+    name: 'FLOCARDS Master Ops',
     role: 'owner',
-    avatar: '/assets/akhil.jpg',
+    avatar: '',
+    status: 'active',
     grantedAt: '2026-01-01T00:00:00Z',
-    grantedBy: 'Root'
+    grantedBy: 'Root',
+    lastActive: '2026-10-23T10:00:00Z'
+  },
+  {
+    id: 'usr_sales_01',
+    email: 'sales@flocard.in',
+    name: 'Priya Nair',
+    role: 'sales',
+    avatar: '',
+    status: 'active',
+    grantedAt: '2026-02-15T09:00:00Z',
+    grantedBy: 'admin@flocard.in',
+    lastActive: '2026-10-23T10:30:00Z'
+  },
+  {
+    id: 'usr_des_01',
+    email: 'designer@flocard.in',
+    name: 'Vikram Malhotra',
+    role: 'designer',
+    avatar: '',
+    status: 'active',
+    grantedAt: '2026-02-20T11:30:00Z',
+    grantedBy: 'admin@flocard.in',
+    lastActive: '2026-10-23T09:30:00Z'
+  },
+  {
+    id: 'usr_prod_01',
+    email: 'production@flocard.in',
+    name: 'Rajesh Kumar',
+    role: 'production',
+    avatar: '',
+    status: 'active',
+    grantedAt: '2026-03-01T08:15:00Z',
+    grantedBy: 'admin@flocard.in',
+    lastActive: '2026-10-23T10:12:00Z'
+  },
+  {
+    id: 'usr_acc_01',
+    email: 'accounts@flocard.in',
+    name: 'Anjali Sharma',
+    role: 'accounts',
+    avatar: '',
+    status: 'active',
+    grantedAt: '2026-03-10T14:00:00Z',
+    grantedBy: 'admin@flocard.in',
+    lastActive: '2026-10-22T16:20:00Z'
   }
 ];
 
 const isElevatedUser = (user) => {
   if (!user) return false;
   const email = (user.email || '').toLowerCase().trim();
-  return user.role === 'admin' || user.role === 'owner' || email === 'akhil@flocard.in' || email === 'hello.flocard@gmail.com';
+  return user.role === 'admin' || user.role === 'owner' || email === 'admin@flocard.in' || email === 'hello.flocard@gmail.com' || email.endsWith('@flocard.in');
 };
 
 const INITIAL_TEMPLATES = [
@@ -1124,6 +1398,40 @@ export const INITIAL_PRODUCTS = [
     sampleBackImage: '/assets/flocard-logo-white.png',
     ctaText: 'Customize Metal Card',
     updatedAt: new Date().toISOString()
+  },
+  {
+    id: 'prod_white',
+    editionKey: 'white',
+    name: 'Pure White Edition',
+    sku: 'FLC-CRD-WHT-05',
+    stock: 25,
+    subtitle: 'Porcelain White with High-Contrast Pure Black or Gold Typography',
+    tagline: 'Pristine architectural porcelain white with pure black or metallic gold typography.',
+    description: 'Engineered ultra-dense porcelain white composite with high-contrast obsidian black or metallic gold typography and laser-etched precision.',
+    price: 2199,
+    comparePrice: 2899,
+    currency: 'INR',
+    isActive: true,
+    isAvailable: true,
+    isFeatured: false,
+    featuredBadge: 'Minimalist Porcelain',
+    theme: 'white',
+    accentColor: '#000000',
+    secondaryColor: '#E9C766',
+    spotlightColor: '#000000',
+    finishHighlight: 'Pristine silk-touch porcelain white finish with high-contrast obsidian black or metallic gold typography.',
+    features: [
+      'NFC-enabled physical card (NXP NTAG216 high frequency chip)',
+      'Porcelain white surface with laser precision black or gold typography',
+      'Customizable dual-sided card artwork (Standard or Logo Badge)',
+      'Digital profile connection with one-tap instant NFC routing',
+      'High-contrast laser-etched QR code on the reverse',
+      'Oleophobic stain-resistant coating & Waterproof IP68 rating'
+    ],
+    sampleFrontImage: '/assets/flocard-logo-dark.png',
+    sampleBackImage: '/assets/flocard-logo-dark.png',
+    ctaText: 'Customize Pure White Card',
+    updatedAt: new Date().toISOString()
   }
 ];
 
@@ -1214,12 +1522,12 @@ export const StorageEngine = {
   // Profiles
   getProfiles: () => {
     const list = getLocal('profiles', INITIAL_PROFILES);
-    const primary = list.find(p => p.id === 'prof_akhil_001' || p.slug === 'akhil');
-    if (primary && (primary.name === 'Your Name' || !primary.avatar)) {
-      primary.name = 'Akhil Anvar';
+    const primary = list.find(p => p.id === 'prof_alex_001' || p.slug === 'alex' || p.id === 'prof_akhil_001' || p.slug === 'akhil');
+    if (primary && (primary.name === 'Your Name' || !primary.avatar || primary.name === 'Akhil Anvar')) {
+      primary.name = 'Alex Morgan';
       primary.role = primary.role === 'Your Role' ? 'Founder & CEO' : primary.role;
-      primary.company = primary.company === 'Your Company' ? 'FLOCARD' : primary.company;
-      primary.avatar = primary.avatar || '/assets/akhil.jpg';
+      primary.company = primary.company === 'Your Company' ? 'FLOCARDS' : primary.company;
+      primary.avatar = primary.avatar && !primary.avatar.includes('akhil') ? primary.avatar : 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=400&auto=format&fit=crop&q=80';
       setLocal('profiles', list);
     }
     return list;
@@ -1231,9 +1539,9 @@ export const StorageEngine = {
     const found = list.find(p => p.slug && p.slug.trim().toLowerCase() === cleanSlug);
     if (found) return found;
 
-    // Fallbacks for primary admin/demo profile
-    if (cleanSlug === 'akhil' || cleanSlug === 'default') {
-      const matchPrimary = list.find(p => p.id === 'prof_akhil_001') || list[0] || INITIAL_PROFILES[0];
+    // Fallbacks for primary admin/demo profile (handles legacy 'akhil' redirect gracefully)
+    if (cleanSlug === 'alex' || cleanSlug === 'akhil' || cleanSlug === 'default' || cleanSlug === 'demo') {
+      const matchPrimary = list.find(p => p.id === 'prof_alex_001' || p.slug === 'alex') || list[0] || INITIAL_PROFILES[0];
       return matchPrimary;
     }
     return null;
@@ -1277,19 +1585,28 @@ export const StorageEngine = {
   saveCard: (card) => {
     const list = getLocal('cards', INITIAL_CARDS);
     const index = list.findIndex(c => c.id === card.id || c.cardCode === card.cardCode);
+    let saved;
     if (index >= 0) {
       list[index] = { ...list[index], ...card, updatedAt: new Date().toISOString() };
+      saved = list[index];
     } else {
-      list.unshift({ ...card, id: card.id || `card_${Date.now()}` });
+      saved = { ...card, id: card.id || `card_${Date.now()}` };
+      list.unshift(saved);
     }
     setLocal('cards', list);
     StorageEngine.addAuditLog('NFC Card', `Card updated: ${card.cardCode} (${card.status})`, 'You');
-    return card;
+    if (typeof window !== 'undefined') {
+      window.dispatchEvent(new CustomEvent('flocard_card_updated', { detail: { card: saved, list } }));
+    }
+    return saved;
   },
   deleteCard: (id) => {
     const list = getLocal('cards', INITIAL_CARDS).filter(c => c.id !== id && c.cardCode !== id);
     setLocal('cards', list);
     StorageEngine.addAuditLog('NFC Card', `Card deleted: ${id}`, 'You');
+    if (typeof window !== 'undefined') {
+      window.dispatchEvent(new CustomEvent('flocard_card_updated', { detail: { deletedId: id, list } }));
+    }
   },
   recordCardTap: (cardCode, clientMeta = {}) => {
     const list = getLocal('cards', INITIAL_CARDS);
@@ -1344,7 +1661,7 @@ export const StorageEngine = {
       StorageEngine.addAuditLog(
         'Card Design',
         `Design ${item.id} ${status === 'approved' ? 'approved' : status === 'rejected' ? 'rejected' : 'status changed'} for ${item.customerName}`,
-        'Akhil Anvar'
+        'FLOCARDS Design Team'
       );
 
       // When design is approved, automatically create an Order in orders queue!
@@ -1430,21 +1747,43 @@ export const StorageEngine = {
       list.unshift(saved);
     }
     setLocal('orders', list);
-    window.dispatchEvent(new CustomEvent('flocard_order_updated', { detail: saved }));
+    safeDispatchEvent('flocard_order_updated', saved);
     return saved;
   },
 
   createOrderFromDesign: (design, notes = '', customerUser = null) => {
     const orders = getLocal('orders', INITIAL_ORDERS);
-    let existing = orders.find(o => o.designId === design.id);
+    const existing = orders.find(o => o.designId === design.id);
     if (existing) {
+      const customerName = design.customerName || customerUser?.name || design.front?.name || existing.customerName || '';
+      const email = design.customerEmail || customerUser?.email || existing.customerEmail || '';
+      const phone = design.customerPhone || customerUser?.phone || existing.customerPhone || '';
+      const company = design.company || customerUser?.company || design.front?.company || existing.company || '';
+      const logoUrl = design.customerLogo?.url || (typeof design.customerLogo === 'string' ? design.customerLogo : null) || design.front?.customLogo || existing.customerLogo;
+
+      existing.design = JSON.parse(JSON.stringify(design)); // Frozen snapshot of submitted design
+      existing.customerName = customerName;
+      existing.customerEmail = email;
+      existing.customerPhone = phone;
+      existing.company = company;
+      existing.customerLogo = design.customerLogo || logoUrl;
+      existing.flocardLogo = design.flocardLogo || existing.flocardLogo || { size: 100, position: 'top-left' };
+      existing.templateType = design.templateType || existing.templateType;
+      existing.edition = design.edition || existing.edition;
+      existing.frontConfig = design.front || existing.frontConfig;
+      existing.backConfig = design.back || existing.backConfig;
+      existing.customColors = design.customColors || existing.customColors;
+      existing.role = design.front?.role || existing.role || '';
+      existing.tagline = design.front?.tagline || existing.tagline || '';
+      existing.updatedAt = new Date().toISOString();
+      setLocal('orders', orders);
       return existing;
     }
 
-    const customerName = design.customerName || customerUser?.name || design.front?.name || 'Valued Client';
-    const email = design.customerEmail || customerUser?.email || `${customerName.toLowerCase().replace(/[^a-z0-9]/g, '') || 'client'}@example.com`;
-    const phone = design.customerPhone || customerUser?.phone || '+91 97782 78552';
-    const company = design.company || customerUser?.company || design.front?.company || 'FLOCARD Enterprise';
+    const customerName = design.customerName || customerUser?.name || design.front?.name || '';
+    const email = design.customerEmail || customerUser?.email || (customerName ? `${customerName.toLowerCase().replace(/[^a-z0-9]/g, '')}@example.com` : '');
+    const phone = design.customerPhone || customerUser?.phone || '';
+    const company = design.company || customerUser?.company || design.front?.company || '';
     const logoUrl = design.customerLogo?.url || (typeof design.customerLogo === 'string' ? design.customerLogo : null) || design.front?.customLogo || null;
     const orderRef = `FLC-ORD-${Math.floor(1000 + Math.random() * 9000)}`;
 
@@ -1452,17 +1791,19 @@ export const StorageEngine = {
       id: orderRef,
       orderReference: orderRef,
       designId: design.id,
-      designTitle: design.title || `${customerName}'s Card Design`,
+      design: JSON.parse(JSON.stringify(design)), // Frozen snapshot of submitted design
+      designTitle: design.title || (customerName ? `${customerName}'s Card Design` : 'Custom Card Design'),
       templateType: design.templateType || 'standard',
       edition: design.edition || 'purple',
       customerId: design.customerId || customerUser?.id || `cust_${Date.now()}`,
-      customerName,
+      customerName: customerName || 'Valued Client',
       customerEmail: email,
       customerPhone: phone,
       company,
-      customerLogo: logoUrl,
-      role: design.front?.role || 'Executive',
-      tagline: design.front?.tagline || 'One Tap Every Connection',
+      customerLogo: design.customerLogo || logoUrl,
+      flocardLogo: design.flocardLogo || { size: 100, position: 'top-left' },
+      role: design.front?.role || '',
+      tagline: design.front?.tagline || '',
       frontConfig: design.front || {},
       backConfig: design.back || {},
       customColors: design.customColors || {},
@@ -1472,7 +1813,7 @@ export const StorageEngine = {
       updatedAt: new Date().toISOString(),
       totalAmount: 1999,
       quantity: 1,
-      shippingAddress: design.shippingAddress || 'Plot 42, Infopark Kochi, Kerala 682042',
+      shippingAddress: design.shippingAddress || '',
       trackingNumber: null,
       carrierName: null,
       trackingUrl: null,
@@ -1568,7 +1909,7 @@ export const StorageEngine = {
       newStatus: 'artwork_approved',
       publicMessage: 'Design artwork approved by pre-press engineering. Print queues scheduled.',
       internalNote: notes || 'Design artwork checked and approved for production.',
-      actorUser: adminUser || { id: 'admin', name: 'Akhil Anvar', role: 'admin' }
+      actorUser: adminUser || { id: 'admin', name: 'FLOCARDS Administrator', role: 'admin' }
     });
 
     return { design: item, order };
@@ -2294,75 +2635,339 @@ export const StorageEngine = {
   },
 
   // Audit Logs
-  getAuditLogs: () => getLocal('audit_logs', INITIAL_AUDIT_LOGS),
-  addAuditLog: (type, details, userName = 'You', userAvatar = null) => {
-    const logs = getLocal('audit_logs', INITIAL_AUDIT_LOGS);
-    logs.unshift({
-      id: `log_${Date.now()}_${Math.random().toString(36).substring(7)}`,
-      type,
-      details,
-      userName,
-      userAvatar: userAvatar || (userName === 'Akhil Anvar' ? '/assets/akhil.jpg' : null),
-      timeAgo: 'Just now',
-      timestamp: new Date().toISOString()
-    });
-    setLocal('audit_logs', logs.slice(0, 100));
+  // Audit Logs (Strict Owner-Only Access Enforcement)
+  getAuditLogs: (requestingUser = null) => {
+    if (requestingUser) {
+      const email = (requestingUser.email || '').toLowerCase().trim();
+      const isOwner = requestingUser.role === 'owner' ||
+        ['flocard', 'flocard@flocard.in', 'hello.flocard@gmail.com', 'admin@flocard.in'].includes(email);
+      if (!isOwner) {
+        return [];
+      }
+    }
+    return getLocal('audit_logs', INITIAL_AUDIT_LOGS);
   },
 
-  // Admin Access Management (Owner Controlled)
+  addAuditLog: (typeOrPayload, details, userName = 'FLOCARDS Administrator', userAvatar = null, extra = {}) => {
+    const logs = getLocal('audit_logs', INITIAL_AUDIT_LOGS);
+    let record;
+
+    if (typeof typeOrPayload === 'object' && typeOrPayload !== null) {
+      record = {
+        id: typeOrPayload.id || `evt_${Date.now()}_${Math.random().toString(36).substring(7)}`,
+        timestamp: typeOrPayload.timestamp || new Date().toISOString(),
+        actorId: typeOrPayload.actorId || 'usr_owner_01',
+        actorName: typeOrPayload.actorName || typeOrPayload.userName || 'FLOCARDS Administrator',
+        actorEmail: typeOrPayload.actorEmail || 'admin@flocard.in',
+        actorRole: typeOrPayload.actorRole || 'owner',
+        action: typeOrPayload.action || 'system.event',
+        entityType: typeOrPayload.entityType || typeOrPayload.type || 'System',
+        entityId: typeOrPayload.entityId || null,
+        description: typeOrPayload.description || typeOrPayload.details || 'System event recorded',
+        details: typeOrPayload.description || typeOrPayload.details || 'System event recorded',
+        type: typeOrPayload.type || typeOrPayload.entityType || 'General',
+        userName: typeOrPayload.actorName || typeOrPayload.userName || 'FLOCARDS Administrator',
+        userAvatar: typeOrPayload.userAvatar || null,
+        beforeValues: typeOrPayload.beforeValues || null,
+        afterValues: typeOrPayload.afterValues || null,
+        status: typeOrPayload.status || 'success',
+        severity: typeOrPayload.severity || 'info',
+        correlationId: typeOrPayload.correlationId || `req_${Math.random().toString(36).substring(7)}`,
+        timeAgo: 'Just now'
+      };
+    } else {
+      record = {
+        id: `evt_${Date.now()}_${Math.random().toString(36).substring(7)}`,
+        timestamp: new Date().toISOString(),
+        actorId: extra.actorId || 'usr_owner_01',
+        actorName: userName,
+        actorEmail: extra.actorEmail || (userName.includes('@') ? userName : 'admin@flocard.in'),
+        actorRole: extra.actorRole || 'owner',
+        action: extra.action || `${String(typeOrPayload || 'system').toLowerCase().replace(/\s+/g, '_')}.execute`,
+        entityType: typeOrPayload || 'System',
+        entityId: extra.entityId || null,
+        description: details || 'Operational task performed',
+        details: details || 'Operational task performed',
+        type: typeOrPayload || 'General',
+        userName,
+        userAvatar: userAvatar || null,
+        beforeValues: extra.beforeValues || null,
+        afterValues: extra.afterValues || null,
+        status: extra.status || 'success',
+        severity: extra.severity || 'info',
+        correlationId: extra.correlationId || `req_${Math.random().toString(36).substring(7)}`,
+        timeAgo: 'Just now'
+      };
+    }
+
+    logs.unshift(record);
+    setLocal('audit_logs', logs.slice(0, 300));
+    return record;
+  },
+
+  // Admin & Staff Access Management (Owner Controlled)
   getAdminAccounts: () => {
     const accounts = getLocal('admin_accounts', INITIAL_ADMIN_ACCOUNTS);
-    if (!accounts.some(a => a.email.toLowerCase() === 'hello.flocard@gmail.com')) {
+    if (!accounts.some(a => a.email.toLowerCase() === 'admin@flocard.in' || a.email.toLowerCase() === 'hello.flocard@gmail.com')) {
       accounts.unshift({
-        email: 'hello.flocard@gmail.com',
-        name: 'Flocard Admin',
+        id: 'usr_owner_01',
+        email: 'admin@flocard.in',
+        name: 'FLOCARDS Administrator',
         role: 'owner',
-        avatar: '/assets/akhil.jpg',
+        status: 'active',
+        avatar: null,
         grantedAt: '2026-01-01T00:00:00Z',
-        grantedBy: 'Root'
+        grantedBy: 'Root',
+        lastActive: new Date().toISOString()
       });
       setLocal('admin_accounts', accounts);
     }
     return accounts;
   },
-  addAdminAccount: ({ email, name, role = 'admin', grantedBy = 'hello.flocard@gmail.com' }) => {
+
+  addAdminAccount: ({ email, name, role = 'sales', customPermissions = [], grantedBy = 'admin@flocard.in' }) => {
     const accounts = StorageEngine.getAdminAccounts();
     const cleanEmail = email.trim().toLowerCase();
     const existing = accounts.find(a => a.email.toLowerCase() === cleanEmail);
     if (existing) {
+      const beforeRole = existing.role;
       existing.role = role;
+      existing.customPermissions = customPermissions;
+      existing.status = 'active';
+      if (name) existing.name = name;
+      StorageEngine.addAuditLog({
+        actorName: grantedBy,
+        actorEmail: grantedBy,
+        actorRole: 'owner',
+        action: 'staff.role_change',
+        entityType: 'Staff',
+        entityId: existing.id || cleanEmail,
+        description: `Updated role for ${cleanEmail} from ${beforeRole} to ${role}`,
+        beforeValues: { role: beforeRole },
+        afterValues: { role, customPermissions },
+        status: 'success',
+        severity: 'warning'
+      });
     } else {
-      accounts.push({
+      const newStaff = {
+        id: `staff_${Date.now()}`,
         email: cleanEmail,
         name: name || cleanEmail.split('@')[0],
         role,
+        status: 'active',
+        customPermissions: Array.isArray(customPermissions) ? customPermissions : [],
         avatar: null,
         grantedAt: new Date().toISOString(),
-        grantedBy
+        grantedBy,
+        lastActive: new Date().toISOString()
+      };
+      accounts.push(newStaff);
+      StorageEngine.addAuditLog({
+        actorName: grantedBy,
+        actorEmail: grantedBy,
+        actorRole: 'owner',
+        action: 'staff.invite',
+        entityType: 'Staff',
+        entityId: newStaff.id,
+        description: `Invited new staff member ${newStaff.name} (${cleanEmail}) with role ${role}`,
+        beforeValues: null,
+        afterValues: { email: cleanEmail, role, status: 'active' },
+        status: 'success',
+        severity: 'info'
       });
     }
     setLocal('admin_accounts', accounts);
-    StorageEngine.addAuditLog('Admin Access', `Granted ${role} access to ${cleanEmail}`, grantedBy);
     return accounts;
   },
-  revokeAdminAccount: (email, revokedBy = 'hello.flocard@gmail.com') => {
+
+  updateAdminAccount: (email, updates = {}, actorUser = null) => {
     const accounts = StorageEngine.getAdminAccounts();
     const cleanEmail = email.trim().toLowerCase();
-    // Cannot revoke super-owners
-    if (cleanEmail === 'akhil@flocard.in' || cleanEmail === 'hello.flocard@gmail.com') {
+    const target = accounts.find(a => a.email.toLowerCase() === cleanEmail);
+    if (!target) return { success: false, error: 'Staff account not found' };
+
+    // Prevent changing root owner
+    if ((cleanEmail === 'admin@flocard.in' || cleanEmail === 'hello.flocard@gmail.com') && updates.role && updates.role !== 'owner') {
+      return { success: false, error: 'Cannot demote the root platform owner' };
+    }
+
+    const beforeValues = {
+      role: target.role,
+      status: target.status,
+      customPermissions: target.customPermissions || []
+    };
+
+    if (updates.role) target.role = updates.role;
+    if (updates.status) target.status = updates.status;
+    if (updates.name) target.name = updates.name;
+    if (updates.customPermissions !== undefined) target.customPermissions = updates.customPermissions;
+
+    setLocal('admin_accounts', accounts);
+
+    StorageEngine.addAuditLog({
+      actorId: actorUser?.id || 'usr_owner_01',
+      actorName: actorUser?.name || 'FLOCARDS Administrator',
+      actorEmail: actorUser?.email || 'admin@flocard.in',
+      actorRole: 'owner',
+      action: 'staff.permission_update',
+      entityType: 'Staff',
+      entityId: target.id || cleanEmail,
+      description: `Updated access permissions & role for staff member ${target.name} (${cleanEmail})`,
+      beforeValues,
+      afterValues: {
+        role: target.role,
+        status: target.status,
+        customPermissions: target.customPermissions || []
+      },
+      status: 'success',
+      severity: 'warning'
+    });
+
+    return { success: true, account: target };
+  },
+
+  toggleAdminStatus: (email, actorUser = null) => {
+    const accounts = StorageEngine.getAdminAccounts();
+    const cleanEmail = email.trim().toLowerCase();
+    const target = accounts.find(a => a.email.toLowerCase() === cleanEmail);
+    if (!target) return { success: false, error: 'Staff account not found' };
+
+    if (cleanEmail === 'admin@flocard.in' || cleanEmail === 'hello.flocard@gmail.com') {
+      return { success: false, error: 'Cannot deactivate root platform owner' };
+    }
+
+    const nextStatus = target.status === 'deactivated' ? 'active' : 'deactivated';
+    const prevStatus = target.status || 'active';
+    target.status = nextStatus;
+    setLocal('admin_accounts', accounts);
+
+    StorageEngine.addAuditLog({
+      actorId: actorUser?.id || 'usr_owner_01',
+      actorName: actorUser?.name || 'FLOCARDS Administrator',
+      actorEmail: actorUser?.email || 'admin@flocard.in',
+      actorRole: 'owner',
+      action: nextStatus === 'active' ? 'staff.activate' : 'staff.deactivate',
+      entityType: 'Staff',
+      entityId: target.id || cleanEmail,
+      description: `Staff account ${target.name} (${cleanEmail}) marked as ${nextStatus}`,
+      beforeValues: { status: prevStatus },
+      afterValues: { status: nextStatus },
+      status: 'success',
+      severity: nextStatus === 'deactivated' ? 'warning' : 'info'
+    });
+
+    return { success: true, status: nextStatus };
+  },
+
+  revokeAdminAccount: (email, revokedBy = 'admin@flocard.in') => {
+    const accounts = StorageEngine.getAdminAccounts();
+    const cleanEmail = email.trim().toLowerCase();
+    if (cleanEmail === 'admin@flocard.in' || cleanEmail === 'hello.flocard@gmail.com') {
       return { success: false, error: 'Cannot revoke root platform owner.' };
     }
+    const target = accounts.find(a => a.email.toLowerCase() === cleanEmail);
     const filtered = accounts.filter(a => a.email.toLowerCase() !== cleanEmail);
     setLocal('admin_accounts', filtered);
-    StorageEngine.addAuditLog('Admin Access', `Revoked access for ${cleanEmail}`, revokedBy);
+    StorageEngine.addAuditLog({
+      actorName: typeof revokedBy === 'object' ? revokedBy.name : revokedBy,
+      actorEmail: typeof revokedBy === 'object' ? revokedBy.email : (revokedBy.includes('@') ? revokedBy : 'admin@flocard.in'),
+      actorRole: 'owner',
+      action: 'staff.revoke',
+      entityType: 'Staff',
+      entityId: target?.id || cleanEmail,
+      description: `Revoked all staff access for ${cleanEmail}`,
+      beforeValues: target ? { role: target.role, status: target.status } : null,
+      afterValues: null,
+      status: 'success',
+      severity: 'critical'
+    });
     return { success: true };
   },
+
   isEmailAuthorizedAdmin: (email) => {
     if (!email) return false;
     const clean = email.trim().toLowerCase();
-    if (clean === 'flocard' || clean === 'flocard@flocard.in' || clean === 'hello.flocard@gmail.com' || clean === 'akhil@flocard.in') return true;
+    if (clean === 'flocard' || clean === 'admin@flocard.in' || clean === 'hello.flocard@gmail.com' || clean.endsWith('@flocard.in')) return true;
     const accounts = StorageEngine.getAdminAccounts();
-    return accounts.some(a => a.email.toLowerCase() === clean);
+    const match = accounts.find(a => a.email.toLowerCase() === clean);
+    return match ? match.status !== 'deactivated' : false;
+  },
+
+  // Slug Availability & Allocation (Module 8)
+  checkSlugAvailability: async (rawSlug, excludeProfileId = null) => {
+    if (!rawSlug) return { available: false, reason: 'Slug cannot be empty' };
+    const clean = String(rawSlug).toLowerCase().trim().replace(/[^a-z0-9_-]/g, '-').replace(/-+/g, '-').replace(/^-|-$/g, '');
+    if (!clean || clean.length < 2) return { available: false, reason: 'Must be at least 2 characters' };
+    
+    // Check reserved routes
+    const RESERVED_SLUGS = new Set([
+      'admin', 'admin-login', 't', 'p', 'profile', 'cards', 'designer',
+      'how-it-works', 'digital-profiles', 'examples', 'about', 'contact',
+      'faq', 'privacy', 'terms', 'legal', 'login', 'signup', 'register',
+      'forgot-password', 'reset-password', 'dashboard', 'account', 'checkout',
+      'orders', 'track', 'assets', 'api', 'favicon.ico', 'favicon.png', 'flocard', 'flocards'
+    ]);
+    if (RESERVED_SLUGS.has(clean)) {
+      return { available: false, reason: 'This username is reserved for system routes', cleanSlug: clean };
+    }
+
+    // Check local profiles
+    const localProfiles = StorageEngine.getProfiles();
+    const isTakenLocally = localProfiles.some(p => 
+      p && p.slug && p.slug.toLowerCase().trim() === clean && p.id !== excludeProfileId
+    );
+    if (isTakenLocally) {
+      return { available: false, reason: 'Username is already claimed', cleanSlug: clean };
+    }
+
+    // Also check Supabase profiles table if available
+    try {
+      const { supabase } = await import('./supabase');
+      if (supabase) {
+        const { data, error } = await supabase
+          .from('profiles')
+          .select('id, slug')
+          .ilike('slug', clean)
+          .limit(1);
+        if (!error && data && data.length > 0) {
+          if (!excludeProfileId || data[0].id !== excludeProfileId) {
+            return { available: false, reason: 'Username is already claimed', cleanSlug: clean };
+          }
+        }
+      }
+    } catch {
+      // Offline fallback already validated locally
+    }
+
+    return { available: true, cleanSlug: clean };
+  },
+
+  generateSlugSuggestions: async (fullName = '', preferredSlug = '') => {
+    const base = (preferredSlug || fullName || 'user')
+      .toLowerCase()
+      .trim()
+      .replace(/[^a-z0-9]/g, '-')
+      .replace(/-+/g, '-')
+      .replace(/^-|-$/g, '') || 'card';
+
+    const candidates = [
+      base,
+      `${base}-1`,
+      `${base}-flocard`,
+      `${base}-pro`,
+      `${base}-nfc`,
+      `${base}-${Math.floor(100 + Math.random() * 900)}`
+    ];
+
+    const availableSuggestions = [];
+    for (const cand of candidates) {
+      const res = await StorageEngine.checkSlugAvailability(cand);
+      if (res.available && !availableSuggestions.includes(cand)) {
+        availableSuggestions.push(cand);
+        if (availableSuggestions.length >= 3) break;
+      }
+    }
+    return availableSuggestions;
   },
 
   // Card Products & Pricing
@@ -2384,7 +2989,7 @@ export const StorageEngine = {
     const list = StorageEngine.getProducts();
     return list.find(p => p.editionKey === editionKey) || null;
   },
-  saveProduct: (product, adminRole, adminEmail = 'akhil@flocard.in') => {
+  saveProduct: (product, adminRole, adminEmail = 'admin@flocard.in') => {
     if (adminRole !== 'admin' && adminRole !== 'owner') {
       return { success: false, error: 'Unauthorized: Only platform administrators can change product prices and configurations.' };
     }
@@ -2459,13 +3064,13 @@ export const StorageEngine = {
     const current = StorageEngine.getDemoConfig();
     const updated = { ...current, ...config };
     setLocal('demo_config', updated);
-    window.dispatchEvent(new CustomEvent('flocard_demo_updated', { detail: updated }));
+    safeDispatchEvent('flocard_demo_updated', updated);
     StorageEngine.addAuditLog('Demo Showcase', `Updated global demo showcase settings (Name: ${updated.name || 'Your Name'})`, adminEmail);
     return { success: true, demoConfig: updated };
   },
   resetDemoConfig: () => {
     setLocal('demo_config', DEFAULT_DEMO_CONFIG);
-    window.dispatchEvent(new CustomEvent('flocard_demo_updated', { detail: DEFAULT_DEMO_CONFIG }));
+    safeDispatchEvent('flocard_demo_updated', DEFAULT_DEMO_CONFIG);
     return { success: true, demoConfig: DEFAULT_DEMO_CONFIG };
   },
 

@@ -26,7 +26,8 @@ import {
   Menu,
   ChevronRight,
   Clock,
-  User as UserIcon
+  User as UserIcon,
+  QrCode
 } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 import { useTheme } from '../../context/ThemeContext';
@@ -39,6 +40,7 @@ import CustomerAnalyticsTab from './CustomerAnalyticsTab';
 import CustomerOrdersTab from './CustomerOrdersTab';
 import CustomerOrderDetail from './CustomerOrderDetail';
 import CustomerSettingsTab from './CustomerSettingsTab';
+import CustomerQrCompanion from '../../components/customer/CustomerQrCompanion';
 
 export default function CustomerDashboard({ initialTab = 'overview', initialOrderId = null }) {
   const { user, logout, isCustomer } = useAuth();
@@ -168,6 +170,7 @@ export default function CustomerDashboard({ initialTab = 'overview', initialOrde
     { key: 'overview', label: 'Overview', icon: LayoutDashboard },
     { key: 'cards', label: 'My Cards', icon: Radio, count: customerCards.length },
     { key: 'profiles', label: 'Profiles', icon: FileText, count: customerProfiles.length },
+    { key: 'qr', label: 'Smart QR Companion', icon: QrCode },
     { key: 'analytics', label: 'Analytics', icon: BarChart2 },
     { key: 'orders', label: 'Orders & Tracking', icon: Package, count: customerOrders.length },
     { key: 'settings', label: 'Settings', icon: Settings }
@@ -612,6 +615,11 @@ export default function CustomerDashboard({ initialTab = 'overview', initialOrde
                 <CustomerOrdersTab
                   orders={customerOrders}
                   onViewOrder={handleViewOrderDetail}
+                />
+              )}
+              {activeTab === 'qr' && (
+                <CustomerQrCompanion
+                  profiles={customerProfiles}
                 />
               )}
               {activeTab === 'settings' && (

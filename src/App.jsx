@@ -22,6 +22,7 @@ import AdminLogin from './pages/auth/AdminLogin';
 import NotFound from './pages/NotFound';
 import PublicProfile from './pages/public/PublicProfile';
 import NfcRedirect from './pages/public/NfcRedirect';
+import OrderTracking from './pages/public/OrderTracking';
 import AccountDashboard from './pages/account/AccountDashboard';
 import AccountDesigns from './pages/account/AccountDesigns';
 import AccountProfile from './pages/account/AccountProfile';
@@ -271,10 +272,10 @@ export default function App() {
   let content = null;
   let showHeaderFooter = true;
 
-  // 1. Public Profile: /p/:slug or /profile/:slug
+  // 1. Public Profile: /p/:slug or /profile/:slug (Backward-compatible routes)
   if (path.startsWith('/p/') || path.startsWith('/profile/')) {
     const raw = path.replace(/^\/(p|profile)\//, '').split('?')[0].replace(/\/+$/, '');
-    content = <PublicProfile slug={raw || 'akhil'} />;
+    content = <PublicProfile slug={raw || 'alex'} />;
     showHeaderFooter = false;
   }
   // 1b. Hidden Admin Login: /admin-login
@@ -297,8 +298,12 @@ export default function App() {
   // 2. NFC Redirect: /t/:cardCode
   else if (path.startsWith('/t/')) {
     const cardCode = path.replace('/t/', '');
-    content = <NfcRedirect cardCode={cardCode || 'flc-akhil-992'} />;
+    content = <NfcRedirect cardCode={cardCode || 'flc-alex-001'} />;
     showHeaderFooter = false;
+  }
+  // 2b. Public Order Tracking & Fulfillment Journey: /track
+  else if (path === '/track') {
+    content = <OrderTracking />;
   }
   // 3. Homepage
   else if (path === '/') {
@@ -320,6 +325,9 @@ export default function App() {
   }
   else if (path === '/cards/custom-purple' || path === '/cards/purple') {
     content = <CardDetail editionKey="purple" />;
+  }
+  else if (path === '/cards/white' || path === '/cards/pure-white') {
+    content = <CardDetail editionKey="white" />;
   }
   // 6. Interactive Card Designer Studio
   else if (path === '/designer') {
@@ -387,7 +395,24 @@ export default function App() {
     content = <CustomerDashboard initialTab={initialTab} />;
     showHeaderFooter = false;
   }
-  // 11. 404
+  // 11. Canonical Root Digital Profile URL: https://flocard.in/username
+  else if (/^\/[a-zA-Z0-9_.-]+$/.test(path)) {
+    const rawSlug = path.replace(/^\//, '').split('?')[0];
+    const RESERVED_ROUTES = new Set([
+      'admin', 'admin-login', 't', 'p', 'profile', 'cards', 'designer',
+      'how-it-works', 'digital-profiles', 'examples', 'about', 'contact',
+      'faq', 'privacy', 'terms', 'legal', 'login', 'signup', 'register',
+      'forgot-password', 'reset-password', 'dashboard', 'account', 'checkout',
+      'orders', 'track', 'assets', 'api', 'favicon.ico', 'favicon.png', 'flocard', 'flocards'
+    ]);
+    if (!RESERVED_ROUTES.has(rawSlug.toLowerCase())) {
+      content = <PublicProfile slug={rawSlug} />;
+      showHeaderFooter = false;
+    } else {
+      content = <NotFound />;
+    }
+  }
+  // 12. 404
   else {
     content = <NotFound />;
   }

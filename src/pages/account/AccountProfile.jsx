@@ -29,11 +29,11 @@ export default function AccountProfile() {
   const { user } = useAuth();
   const { profiles, saveProfile } = useData();
 
-  const userProfile = profiles.find(p => p.slug === (user?.profileSlug || 'akhil')) || profiles[0];
+  const userProfile = profiles.find(p => p.slug === (user?.profileSlug || 'alex')) || profiles[0];
 
   const [formData, setFormData] = useState({
-    name: userProfile?.name || 'Akhil Anvar',
-    role: userProfile?.role || 'CEO & Founder',
+    name: userProfile?.name || user?.name || 'Your Name',
+    role: userProfile?.role || 'Executive',
     company: userProfile?.company || 'FLOCARD',
     avatar: userProfile?.avatar || '',
     logo: userProfile?.logo || '',
@@ -197,7 +197,7 @@ export default function AccountProfile() {
     const updated = {
       ...userProfile,
       ...formData,
-      slug: userProfile?.slug || 'akhil',
+      slug: userProfile?.slug || 'alex',
       updatedAt: new Date().toISOString()
     };
     saveProfile(updated);
@@ -277,7 +277,7 @@ export default function AccountProfile() {
                       }}
                     >
                       <img
-                        src={formData.avatar || '/assets/akhil.jpg'}
+                        src={formData.avatar || 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=400&auto=format&fit=crop&q=80'}
                         alt={formData.name}
                         style={{ width: '100%', height: '100%', borderRadius: '50%', objectFit: 'cover', display: 'block' }}
                       />

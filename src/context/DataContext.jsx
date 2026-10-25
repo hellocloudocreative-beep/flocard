@@ -62,6 +62,7 @@ export function DataProvider({ children }) {
     window.addEventListener('flocard_invoice_settings_updated', refreshAll);
     window.addEventListener('flocard_profile_updated', refreshAll);
     window.addEventListener('flocard_card_updated', refreshAll);
+    window.addEventListener('flocard_card_status_changed', refreshAll);
     window.addEventListener('flocard_notification_created', refreshAll);
     window.addEventListener('flocard_products_updated', refreshAll);
     window.addEventListener('flocard_demo_updated', refreshAll);
@@ -74,6 +75,7 @@ export function DataProvider({ children }) {
       window.removeEventListener('flocard_invoice_settings_updated', refreshAll);
       window.removeEventListener('flocard_profile_updated', refreshAll);
       window.removeEventListener('flocard_card_updated', refreshAll);
+      window.removeEventListener('flocard_card_status_changed', refreshAll);
       window.removeEventListener('flocard_notification_created', refreshAll);
       window.removeEventListener('flocard_products_updated', refreshAll);
       window.removeEventListener('flocard_demo_updated', refreshAll);

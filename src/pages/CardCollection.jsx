@@ -18,8 +18,8 @@ export default function CardCollection() {
   const { isLight } = useTheme();
   const { products, getProductByEdition } = useData();
 
-  // Master-crafted editions: Platinum, Purple, Gold, Metal
-  const editionKeys = filter === 'all' ? ['platinum', 'purple', 'gold', 'metal'] : [filter];
+  // Master-crafted editions: Platinum, Purple, Gold, Metal, White
+  const editionKeys = filter === 'all' ? ['platinum', 'purple', 'gold', 'metal', 'white'] : [filter];
 
   return (
     <div style={{ paddingTop: 'calc(var(--header-height) + 40px)', paddingBottom: '100px' }}>
@@ -33,7 +33,7 @@ export default function CardCollection() {
             THE FLOCARD <span className="text-gradient-purple">COLLECTION</span>
           </h1>
           <p style={{ fontSize: '1.1rem', color: 'var(--text-secondary)' }}>
-            Four master-crafted editions combining aerospace-grade physical materials with secure encrypted NFC microcontrollers.
+            Five master-crafted editions combining aerospace-grade physical materials with secure encrypted NFC microcontrollers.
           </p>
 
           {/* Template & Edition Filter Controls */}
@@ -102,7 +102,8 @@ export default function CardCollection() {
             >
               {[
                 { id: 'all', label: 'All Editions' },
-                { id: 'metal', label: 'Metal Edition (New)' },
+                { id: 'white', label: 'Pure White (New)' },
+                { id: 'metal', label: 'Metal Edition' },
                 { id: 'gold', label: 'Gold Edition' },
                 { id: 'platinum', label: 'Platinum Edition' },
                 { id: 'purple', label: 'Purple Edition (Signature)' }
@@ -139,8 +140,11 @@ export default function CardCollection() {
             const isGold = key === 'gold';
             const isPlatinum = key === 'platinum';
             const isPurple = key === 'purple';
+            const isWhite = key === 'white';
 
-            const spotlightColor = isGold
+            const spotlightColor = isWhite
+              ? 'rgba(255, 255, 255, 0.45)'
+              : isGold
               ? 'rgba(233, 199, 102, 0.42)'
               : isPlatinum
                 ? 'rgba(203, 213, 225, 0.42)'

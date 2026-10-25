@@ -82,9 +82,11 @@ function InteractiveFontPicker({
   onChange,
   fieldName,
   hoveredFont,
-  setHoveredFont
+  setHoveredFont,
+  isLight = false
 }) {
   const [isOpen, setIsOpen] = useState(false);
+  const [openUpward, setOpenUpward] = useState(false);
   const dropdownRef = useRef(null);
 
   useEffect(() => {
@@ -96,6 +98,16 @@ function InteractiveFontPicker({
     };
     if (isOpen) {
       document.addEventListener('mousedown', handleClickOutside);
+      // Auto-detect available viewport space
+      if (dropdownRef.current) {
+        const rect = dropdownRef.current.getBoundingClientRect();
+        const spaceBelow = window.innerHeight - rect.bottom;
+        if (spaceBelow < 230 && rect.top > 230) {
+          setOpenUpward(true);
+        } else {
+          setOpenUpward(false);
+        }
+      }
     }
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, [isOpen, fieldName, setHoveredFont]);
@@ -104,15 +116,15 @@ function InteractiveFontPicker({
   const displayFont = isFieldHovered ? hoveredFont.font : (value || 'Space Grotesk');
 
   return (
-    <div ref={dropdownRef} style={{ position: 'relative', width: '100%' }}>
+    <div ref={dropdownRef} style={{ position: 'relative', width: '100%', zIndex: isOpen ? 99999 : 1 }}>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '6px' }}>
-        <span style={{ fontSize: '0.72rem', color: '#94a3b8', fontWeight: 500 }}>{label}</span>
+        <span style={{ fontSize: '0.72rem', color: isLight ? '#64748b' : '#94a3b8', fontWeight: 600 }}>{label}</span>
         {isFieldHovered ? (
           <span style={{ fontSize: '0.66rem', color: '#10B981', fontWeight: 600 }}>
             Hovering: {hoveredFont.font}
           </span>
         ) : (
-          <span style={{ fontSize: '0.7rem', color: '#cda5ff', fontWeight: 500 }}>
+          <span style={{ fontSize: '0.7rem', color: isLight ? '#7038f8' : '#cda5ff', fontWeight: 600 }}>
             {value}
           </span>
         )}
@@ -127,33 +139,40 @@ function InteractiveFontPicker({
           alignItems: 'center',
           justifyContent: 'space-between',
           padding: '8px 12px',
-          background: 'rgba(255, 255, 255, 0.04)',
-          border: isFieldHovered ? '1px solid #10B981' : isOpen ? '1px solid #7038f8' : '1px solid rgba(255, 255, 255, 0.08)',
+          background: isLight ? '#FFFFFF' : 'rgba(255, 255, 255, 0.04)',
+          border: isFieldHovered
+            ? '1.5px solid #10B981'
+            : isOpen
+              ? '1.5px solid #7038f8'
+              : isLight
+                ? '1px solid rgba(112, 56, 248, 0.25)'
+                : '1px solid rgba(255, 255, 255, 0.1)',
           borderRadius: '8px',
-          color: '#f8fafc',
+          color: isLight ? '#1e1040' : '#f8fafc',
           cursor: 'pointer',
           textAlign: 'left',
+          boxShadow: isLight ? '0 1px 3px rgba(0,0,0,0.04)' : 'none',
           transition: 'all 0.15s ease'
         }}
       >
-        <span style={{ fontFamily: `"${displayFont}", sans-serif`, fontSize: '0.82rem', fontWeight: 500 }}>
+        <span style={{ fontFamily: `"${displayFont}", sans-serif`, fontSize: '0.82rem', fontWeight: 600 }}>
           {displayFont}
         </span>
-        <ChevronDown size={14} style={{ color: '#94a3b8', transform: isOpen ? 'rotate(180deg)' : 'none', transition: 'transform 0.2s' }} />
+        <ChevronDown size={14} style={{ color: isLight ? '#7038f8' : '#94a3b8', transform: isOpen ? 'rotate(180deg)' : 'none', transition: 'transform 0.2s' }} />
       </button>
 
       {isOpen && (
         <div
           style={{
             position: 'absolute',
-            top: 'calc(100% + 4px)',
+            ...(openUpward ? { bottom: 'calc(100% + 6px)' } : { top: 'calc(100% + 6px)' }),
             left: 0,
             right: 0,
-            zIndex: 120,
-            background: '#130d22',
-            border: '1px solid rgba(112, 56, 248, 0.3)',
+            zIndex: 999999,
+            background: isLight ? '#FFFFFF' : '#130d22',
+            border: isLight ? '1.5px solid rgba(112, 56, 248, 0.35)' : '1px solid rgba(112, 56, 248, 0.4)',
             borderRadius: '10px',
-            boxShadow: '0 12px 36px rgba(0, 0, 0, 0.8)',
+            boxShadow: isLight ? '0 16px 40px rgba(112, 56, 248, 0.16), 0 4px 12px rgba(0, 0, 0, 0.08)' : '0 16px 40px rgba(0, 0, 0, 0.85), 0 0 25px rgba(112, 56, 248, 0.3)',
             padding: '6px',
             maxHeight: '220px',
             overflowY: 'auto',
@@ -179,21 +198,25 @@ function InteractiveFontPicker({
                   justifyContent: 'space-between',
                   padding: '7px 10px',
                   borderRadius: '6px',
-                  background: isThisHovered ? 'rgba(112, 56, 248, 0.35)' : isSelected ? 'rgba(112, 56, 248, 0.2)' : 'transparent',
-                  transform: isThisHovered ? 'translateX(4px)' : 'none',
+                  background: isThisHovered
+                    ? (isLight ? 'rgba(112, 56, 248, 0.12)' : 'rgba(112, 56, 248, 0.35)')
+                    : isSelected
+                      ? (isLight ? 'rgba(112, 56, 248, 0.08)' : 'rgba(112, 56, 248, 0.2)')
+                      : 'transparent',
+                  transform: isThisHovered ? 'translateX(3px)' : 'none',
                   cursor: 'pointer',
                   transition: 'all 0.15s ease'
                 }}
               >
                 <div style={{ display: 'flex', flexDirection: 'column' }}>
-                  <span style={{ fontFamily: `"${font.id}", sans-serif`, fontSize: '0.82rem', fontWeight: 500, color: '#f8fafc' }}>
+                  <span style={{ fontFamily: `"${font.id}", sans-serif`, fontSize: '0.82rem', fontWeight: 600, color: isLight ? '#1e1040' : '#f8fafc' }}>
                     {font.name}
                   </span>
-                  <span style={{ fontSize: '0.62rem', color: '#94a3b8' }}>
+                  <span style={{ fontSize: '0.62rem', color: isLight ? '#64748b' : '#94a3b8' }}>
                     {font.style}
                   </span>
                 </div>
-                {isSelected && <Check size={14} color="#cda5ff" />}
+                {isSelected && <Check size={14} color="#7038f8" />}
               </div>
             );
           })}
@@ -296,6 +319,13 @@ export default function Designer() {
   const fitScale = Math.min(1, maxAvailableCardWidth / BASE_CARD_WIDTH);
   const [mobileTab, setMobileTab] = useState('preview'); // 'preview' | 'customise' | 'specs'
 
+  // Prompt sign up if guest visits Design Studio directly
+  useEffect(() => {
+    if (!user) {
+      setShowAuthModal(true);
+    }
+  }, [user]);
+
   // Theme-aware styles for panels, inputs, and text
   const panelBg = isLight ? 'rgba(255, 255, 255, 0.9)' : 'rgba(17, 12, 28, 0.75)';
   const panelBorder = isLight ? '1px solid rgba(112, 56, 248, 0.2)' : '1px solid rgba(112, 56, 248, 0.16)';
@@ -336,9 +366,13 @@ export default function Designer() {
     position: existingDesign?.flocardLogo?.position || (templateType === 'customer_logo' ? 'bottom-right' : 'top-left')
   });
 
+  // Dynamic user slug / name handling
+  const defaultUserSlug = user?.profileSlug || (user?.name ? user.name.toLowerCase().replace(/[^a-z0-9]/g, '') : 'your-name');
+  const defaultDisplayName = user?.name || (user ? 'VALUED CLIENT' : 'YOUR NAME');
+
   // Front side configuration
   const [frontConfig, setFrontConfig] = useState({
-    name: existingDesign?.front?.name || (user?.name || 'AKHIL ANVAR'),
+    name: existingDesign?.front?.name || defaultDisplayName,
     role: existingDesign?.front?.role || 'CEO & FOUNDER',
     details: existingDesign?.front?.details || '',
     tagline: existingDesign?.front?.tagline || initialTagline || 'One Tap Every Connection',
@@ -357,18 +391,35 @@ export default function Designer() {
 
   // Back side configuration
   const [backConfig, setBackConfig] = useState({
-    qrUrl: existingDesign?.back?.qrUrl || `https://flocard.in/p/${user?.profileSlug || 'akhil'}`,
+    qrUrl: existingDesign?.back?.qrUrl || `https://flocard.in/p/${defaultUserSlug}`,
     subtext: existingDesign?.back?.subtext || 'SCAN ME',
     showNfcSpecs: existingDesign?.back?.showNfcSpecs ?? true,
     specsText: existingDesign?.back?.specsText || 'NFC | PORTFOLIO | CONTACT | CONNECT',
-    brandUrl: existingDesign?.back?.brandUrl || `flocard.in/${user?.profileSlug || 'akhil'}`
+    brandUrl: existingDesign?.back?.brandUrl || `flocard.in/${defaultUserSlug}`
   });
 
   const [designTitle, setDesignTitle] = useState(
-    existingDesign?.title || getDynamicCardTitle(existingDesign?.front?.name || user?.name || 'AKHIL ANVAR', existingDesign?.edition || initialEdition)
+    existingDesign?.title || getDynamicCardTitle(existingDesign?.front?.name || defaultDisplayName, existingDesign?.edition || initialEdition)
   );
   const [designStatus, setDesignStatus] = useState(existingDesign?.status || 'draft');
   const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
+
+  // Sync destination link when name changes if not manually detached
+  const handleNameChange = (newName) => {
+    setFrontConfig(prev => ({ ...prev, name: newName }));
+    const slug = newName.trim().toLowerCase().replace(/[^a-z0-9]/g, '') || 'your-name';
+    setBackConfig(prev => {
+      const currentUrl = prev.qrUrl || '';
+      if (!currentUrl || currentUrl.includes('/your-name') || currentUrl.includes('/p/your-name') || currentUrl.includes('/akhil') || currentUrl.includes('/alex') || currentUrl.startsWith('https://flocard.in')) {
+        return {
+          ...prev,
+          qrUrl: `https://flocard.in/${slug}`,
+          brandUrl: `flocard.in/${slug}`
+        };
+      }
+      return prev;
+    });
+  };
 
   // Mark changes
   useEffect(() => {
@@ -396,6 +447,22 @@ export default function Designer() {
       qrColor: def.qrColor
     });
     notify(`${EDITIONS[newEdition]?.name || 'Edition'} Applied`, 'Palette and signature finish updated');
+  };
+
+  // Switch Text / Typography Color (Black, Gold, etc.)
+  const handleTextColorChange = (hex, label = '') => {
+    const isGold = hex.toLowerCase() === '#e9c766' || hex.toLowerCase() === '#d4af37';
+    setCustomColors(prev => ({
+      ...prev,
+      nameColor: hex,
+      roleColor: isGold ? '#B8860B' : (hex === '#000000' ? '#1A1A1A' : hex),
+      detailsColor: isGold ? '#B8860B' : (hex === '#000000' ? '#1A1A1A' : hex),
+      taglineColor: isGold ? '#996515' : (hex === '#000000' ? '#475569' : hex),
+      primaryAccent: hex,
+      nfcColor: hex,
+      qrColor: edition === 'white' ? (isGold ? '#D4AF37' : '#000000') : prev.qrColor
+    }));
+    notify('Text Color Updated', `Card typography color set to ${label || hex}`);
   };
 
   // Switch template
@@ -461,15 +528,15 @@ export default function Designer() {
     }
 
     const newStatus = submit ? 'submitted' : designStatus;
-    const clientName = user?.name || frontConfig.name || 'Valued Client';
+    const clientName = user?.name || frontConfig.name || '';
     const clientSlug = clientName.toLowerCase().replace(/[^a-z0-9]/g, '') || 'client';
     const designObj = {
       id: existingDesign?.id || `des_${Date.now()}`,
       customerId: user?.id || (user?.email ? `cust_${user.email}` : `cust_${Date.now()}`),
-      customerName: clientName,
-      customerEmail: user?.email || `${clientSlug}@example.com`,
-      customerPhone: user?.phone || '+91 97782 78552',
-      company: user?.company || frontConfig.company || 'FLOCARD Enterprise',
+      customerName: clientName || 'Valued Client',
+      customerEmail: user?.email || (user?.id ? `${clientSlug}@example.com` : ''),
+      customerPhone: user?.phone || '',
+      company: user?.company || frontConfig.company || '',
       title: designTitle,
       templateType,
       edition,
@@ -1218,8 +1285,8 @@ _Submitted from FLOCARD Design Studio_`;
                   type="button"
                   onClick={() => handleTemplateChange('standard')}
                   style={{
-                    background: templateType === 'standard' ? 'rgba(112, 56, 248, 0.2)' : 'rgba(255, 255, 255, 0.03)',
-                    border: templateType === 'standard' ? '1.5px solid #7038f8' : '1px solid rgba(255, 255, 255, 0.08)',
+                    background: templateType === 'standard' ? (isLight ? 'rgba(112, 56, 248, 0.14)' : 'rgba(112, 56, 248, 0.2)') : (isLight ? 'rgba(112, 56, 248, 0.04)' : 'rgba(255, 255, 255, 0.03)'),
+                    border: templateType === 'standard' ? '1.5px solid #7038f8' : (isLight ? '1px solid rgba(112, 56, 248, 0.18)' : '1px solid rgba(255, 255, 255, 0.08)'),
                     borderRadius: '12px',
                     padding: '12px 8px',
                     cursor: 'pointer',
@@ -1248,8 +1315,8 @@ _Submitted from FLOCARD Design Studio_`;
                     <div style={{ fontSize: '0.45rem', fontWeight: 800, color: '#fff', textAlign: 'left' }}>FLOCARD</div>
                     <div style={{ height: '2px', width: '24px', background: '#7038f8', borderRadius: '1px' }} />
                   </div>
-                  <span style={{ fontSize: '0.8rem', fontWeight: 600, color: '#ffffff' }}>Standard Design</span>
-                  <span style={{ fontSize: '0.66rem', color: '#94a3b8' }}>Pages 1–3</span>
+                  <span style={{ fontSize: '0.8rem', fontWeight: 600, color: isLight ? '#1e1040' : '#ffffff' }}>Standard Design</span>
+                  <span style={{ fontSize: '0.66rem', color: isLight ? '#64748b' : '#94a3b8' }}>Pages 1–3</span>
                 </button>
 
                 {/* Custom Logo Design */}
@@ -1257,8 +1324,8 @@ _Submitted from FLOCARD Design Studio_`;
                   type="button"
                   onClick={() => handleTemplateChange('customer_logo')}
                   style={{
-                    background: templateType === 'customer_logo' ? 'rgba(112, 56, 248, 0.2)' : 'rgba(255, 255, 255, 0.03)',
-                    border: templateType === 'customer_logo' ? '1.5px solid #7038f8' : '1px solid rgba(255, 255, 255, 0.08)',
+                    background: templateType === 'customer_logo' ? (isLight ? 'rgba(112, 56, 248, 0.14)' : 'rgba(112, 56, 248, 0.2)') : (isLight ? 'rgba(112, 56, 248, 0.04)' : 'rgba(255, 255, 255, 0.03)'),
+                    border: templateType === 'customer_logo' ? '1.5px solid #7038f8' : (isLight ? '1px solid rgba(112, 56, 248, 0.18)' : '1px solid rgba(255, 255, 255, 0.08)'),
                     borderRadius: '12px',
                     padding: '12px 8px',
                     cursor: 'pointer',
@@ -1285,8 +1352,8 @@ _Submitted from FLOCARD Design Studio_`;
                   >
                     <div style={{ width: '16px', height: '16px', borderRadius: '50%', background: 'rgba(205, 165, 255, 0.4)', border: '1px solid #cda5ff' }} />
                   </div>
-                  <span style={{ fontSize: '0.8rem', fontWeight: 600, color: '#ffffff' }}>Custom Logo Design</span>
-                  <span style={{ fontSize: '0.66rem', color: '#94a3b8' }}>Pages 4–6</span>
+                  <span style={{ fontSize: '0.8rem', fontWeight: 600, color: isLight ? '#1e1040' : '#ffffff' }}>Custom Logo Design</span>
+                  <span style={{ fontSize: '0.66rem', color: isLight ? '#64748b' : '#94a3b8' }}>Pages 4–6</span>
                 </button>
               </div>
             </div>
@@ -1332,13 +1399,14 @@ _Submitted from FLOCARD Design Studio_`;
                 </span>
               </div>
 
-              {/* 4 Finishes: Platinum, Purple, Gold, Metal */}
-              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '10px' }}>
+              {/* 5 Finishes: Platinum, Purple, Gold, Metal, White */}
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(5, 1fr)', gap: '8px' }}>
                 {[
                   { id: 'platinum', name: 'Platinum', bg: 'linear-gradient(135deg, #e2e8f0 0%, #94a3b8 100%)', rim: '#cbd5e1' },
                   { id: 'purple', name: 'Purple', bg: 'linear-gradient(135deg, #a855f7 0%, #6b21a8 100%)', rim: '#a855f7' },
                   { id: 'gold', name: 'Gold', bg: 'linear-gradient(135deg, #facc15 0%, #a16207 100%)', rim: '#eab308' },
-                  { id: 'metal', name: 'Metal', bg: 'linear-gradient(135deg, #64748b 0%, #1e293b 100%)', rim: '#94a3b8' }
+                  { id: 'metal', name: 'Metal', bg: 'linear-gradient(135deg, #64748b 0%, #1e293b 100%)', rim: '#94a3b8' },
+                  { id: 'white', name: 'White', bg: 'linear-gradient(135deg, #ffffff 0%, #e2e8f0 100%)', rim: '#cbd5e1' }
                 ].map(swatch => {
                   const isSelected = edition === swatch.id;
                   return (
@@ -1359,8 +1427,8 @@ _Submitted from FLOCARD Design Studio_`;
                     >
                       <div
                         style={{
-                          width: '42px',
-                          height: '42px',
+                          width: '38px',
+                          height: '38px',
                           borderRadius: '50%',
                           background: swatch.bg,
                           border: isSelected ? '2.5px solid #7038f8' : `1.5px solid rgba(255, 255, 255, 0.2)`,
@@ -1371,9 +1439,9 @@ _Submitted from FLOCARD Design Studio_`;
                       />
                       <span
                         style={{
-                          fontSize: '0.74rem',
+                          fontSize: '0.72rem',
                           fontWeight: isSelected ? 700 : 500,
-                          color: isSelected ? '#ffffff' : '#94a3b8'
+                          color: isSelected ? (isLight ? '#7038f8' : '#ffffff') : (isLight ? '#64748b' : '#94a3b8')
                         }}
                       >
                         {swatch.name}
@@ -1444,9 +1512,9 @@ _Submitted from FLOCARD Design Studio_`;
                         gap: '6px',
                         padding: '12px 6px',
                         borderRadius: '10px',
-                        background: isActive ? 'rgba(112, 56, 248, 0.25)' : 'rgba(255, 255, 255, 0.03)',
-                        border: isActive ? '1.5px solid #7038f8' : '1px solid rgba(255, 255, 255, 0.08)',
-                        color: isActive ? '#ffffff' : '#94a3b8',
+                        background: isActive ? (isLight ? 'rgba(112, 56, 248, 0.14)' : 'rgba(112, 56, 248, 0.25)') : (isLight ? 'rgba(112, 56, 248, 0.04)' : 'rgba(255, 255, 255, 0.03)'),
+                        border: isActive ? '1.5px solid #7038f8' : (isLight ? '1px solid rgba(112, 56, 248, 0.18)' : '1px solid rgba(255, 255, 255, 0.08)'),
+                        color: isActive ? (isLight ? '#7038f8' : '#ffffff') : (isLight ? '#64748b' : '#94a3b8'),
                         cursor: 'pointer',
                         transition: 'all 0.18s ease'
                       }}
@@ -1460,7 +1528,7 @@ _Submitted from FLOCARD Design Studio_`;
 
               {/* Sub-drawer for Logo or QR when active */}
               {activeElementTab === 'logo' && (
-                <div style={{ marginTop: '12px', padding: '12px', background: 'rgba(255,255,255,0.03)', borderRadius: '10px' }}>
+                <div style={{ marginTop: '12px', padding: '12px', background: isLight ? 'rgba(112, 56, 248, 0.06)' : 'rgba(255,255,255,0.03)', borderRadius: '10px', border: isLight ? '1px solid rgba(112, 56, 248, 0.15)' : 'none' }}>
                   <input ref={customerLogoInputRef} type="file" accept="image/*" onChange={handleCustomerLogoUpload} style={{ display: 'none' }} />
                   <button
                     type="button"
@@ -1475,7 +1543,7 @@ _Submitted from FLOCARD Design Studio_`;
                       background: 'rgba(112, 56, 248, 0.2)',
                       border: '1px dashed #7038f8',
                       borderRadius: '8px',
-                      color: '#ffffff',
+                      color: isLight ? '#7038f8' : '#ffffff',
                       fontSize: '0.78rem',
                       fontWeight: 600,
                       cursor: 'pointer'
@@ -1502,26 +1570,30 @@ _Submitted from FLOCARD Design Studio_`;
                 </div>
               )}
 
-              {activeElementTab === 'qr' && (
-                <div style={{ marginTop: '12px', padding: '12px', background: 'rgba(255,255,255,0.03)', borderRadius: '10px' }}>
-                  <div style={{ fontSize: '0.72rem', color: '#94a3b8', marginBottom: '4px' }}>Destination Link</div>
-                  <input
-                    type="text"
-                    value={backConfig.qrUrl}
-                    onChange={(e) => setBackConfig({ ...backConfig, qrUrl: e.target.value })}
-                    placeholder="https://flocard.in/p/username"
-                    style={{
-                      width: '100%',
-                      padding: '8px 10px',
-                      background: 'rgba(0,0,0,0.3)',
-                      border: '1px solid rgba(255,255,255,0.1)',
-                      borderRadius: '6px',
-                      color: '#fff',
-                      fontSize: '0.76rem'
-                    }}
-                  />
+              {/* Destination Link Box */}
+              <div style={{ marginTop: '12px', padding: '12px', background: isLight ? 'rgba(112, 56, 248, 0.06)' : 'rgba(255,255,255,0.03)', borderRadius: '10px', border: isLight ? '1px solid rgba(112, 56, 248, 0.16)' : '1px solid rgba(255, 255, 255, 0.08)' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '6px' }}>
+                  <span style={{ fontSize: '0.72rem', color: subtextColor, fontWeight: 600 }}>Destination Link</span>
+                  <span style={{ fontSize: '0.66rem', color: isLight ? '#7038f8' : '#cda5ff' }}>NFC & QR Link</span>
                 </div>
-              )}
+                <input
+                  type="text"
+                  value={backConfig.qrUrl}
+                  onChange={(e) => setBackConfig({ ...backConfig, qrUrl: e.target.value })}
+                  placeholder={user ? `https://flocard.in/p/${defaultUserSlug}` : 'https://flocard.in/p/your-name'}
+                  style={{
+                    width: '100%',
+                    padding: '8px 10px',
+                    background: inputBg,
+                    border: inputBorder,
+                    borderRadius: '6px',
+                    color: inputColor,
+                    fontSize: '0.76rem',
+                    outline: 'none',
+                    boxSizing: 'border-box'
+                  }}
+                />
+              </div>
             </div>
 
             {/* STEP 4: Personal Details */}
@@ -1561,7 +1633,7 @@ _Submitted from FLOCARD Design Studio_`;
 
               {/* Full Name */}
               <div style={{ marginBottom: '12px' }}>
-                <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.72rem', color: '#94a3b8', marginBottom: '4px' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.72rem', color: subtextColor, marginBottom: '4px' }}>
                   <span>Full Name</span>
                   <span>{frontConfig.name?.length || 0}/50</span>
                 </div>
@@ -1569,8 +1641,8 @@ _Submitted from FLOCARD Design Studio_`;
                   type="text"
                   maxLength={50}
                   value={frontConfig.name}
-                  onChange={(e) => setFrontConfig({ ...frontConfig, name: e.target.value })}
-                  placeholder="AKHIL ANVAR"
+                  onChange={(e) => handleNameChange(e.target.value)}
+                  placeholder={user?.name ? user.name.toUpperCase() : 'YOUR NAME'}
                   style={{
                     width: '100%',
                     padding: '9px 12px',
@@ -1622,17 +1694,18 @@ _Submitted from FLOCARD Design Studio_`;
                   fieldName="name"
                   hoveredFont={hoveredFont}
                   setHoveredFont={setHoveredFont}
+                  isLight={isLight}
                 />
 
                 <div>
-                  <span style={{ fontSize: '0.72rem', color: '#94a3b8', display: 'block', marginBottom: '6px', fontWeight: 500 }}>
+                  <span style={{ fontSize: '0.72rem', color: subtextColor, display: 'block', marginBottom: '6px', fontWeight: 500 }}>
                     Font Size
                   </span>
                   <div
                     style={{
                       display: 'flex',
-                      background: 'rgba(255, 255, 255, 0.04)',
-                      border: '1px solid rgba(255, 255, 255, 0.08)',
+                      background: isLight ? 'rgba(112, 56, 248, 0.06)' : 'rgba(255, 255, 255, 0.04)',
+                      border: isLight ? '1px solid rgba(112, 56, 248, 0.18)' : '1px solid rgba(255, 255, 255, 0.08)',
                       borderRadius: '8px',
                       padding: '2px'
                     }}
@@ -1654,7 +1727,7 @@ _Submitted from FLOCARD Design Studio_`;
                             borderRadius: '6px',
                             background: isSel ? '#7038f8' : 'transparent',
                             border: 'none',
-                            color: isSel ? '#ffffff' : '#94a3b8',
+                            color: isSel ? '#ffffff' : (isLight ? '#64748b' : '#94a3b8'),
                             fontSize: '0.76rem',
                             fontWeight: 700,
                             cursor: 'pointer',
@@ -1666,6 +1739,73 @@ _Submitted from FLOCARD Design Studio_`;
                       );
                     })}
                   </div>
+                </div>
+              </div>
+
+              {/* Typography Text Color Palette (Black, Gold, White, Custom) */}
+              <div style={{ marginTop: '12px', paddingTop: '12px', borderTop: isLight ? '1px solid rgba(112, 56, 248, 0.12)' : '1px solid rgba(255, 255, 255, 0.08)' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
+                  <span style={{ fontSize: '0.72rem', color: subtextColor, fontWeight: 600 }}>
+                    Text Color {edition === 'white' && <strong style={{ color: '#cda5ff' }}>(Pure White Finish)</strong>}
+                  </span>
+                  <span style={{ fontSize: '0.68rem', fontFamily: 'monospace', color: customColors.nameColor || '#ffffff', fontWeight: 700 }}>
+                    {customColors.nameColor || 'Default'}
+                  </span>
+                </div>
+                <div style={{ display: 'flex', gap: '8px', alignItems: 'center', flexWrap: 'wrap' }}>
+                  {[
+                    { label: 'Black', color: '#000000', border: '#475569' },
+                    { label: 'Gold', color: '#E9C766', border: '#ca8a04' },
+                    { label: 'Metallic Gold', color: '#D4AF37', border: '#a16207' },
+                    { label: 'Charcoal', color: '#1E293B', border: '#64748b' },
+                    { label: 'White', color: '#FFFFFF', border: '#cbd5e1' },
+                    { label: 'Purple', color: '#7038F8', border: '#9333ea' }
+                  ].map((preset) => {
+                    const isSelected = (customColors.nameColor || '').toLowerCase() === preset.color.toLowerCase();
+                    return (
+                      <button
+                        key={preset.label}
+                        type="button"
+                        onClick={() => handleTextColorChange(preset.color, preset.label)}
+                        title={`Set text color to ${preset.label}`}
+                        style={{
+                          width: '28px',
+                          height: '28px',
+                          borderRadius: '50%',
+                          backgroundColor: preset.color,
+                          border: isSelected ? '2.5px solid #a855f7' : `1.5px solid ${preset.border}`,
+                          boxShadow: isSelected ? '0 0 10px rgba(168, 85, 247, 0.7)' : 'inset 0 1px 2px rgba(0,0,0,0.2)',
+                          cursor: 'pointer',
+                          transform: isSelected ? 'scale(1.15)' : 'scale(1)',
+                          transition: 'all 0.15s ease'
+                        }}
+                      />
+                    );
+                  })}
+                  <label
+                    title="Custom Text Color Picker"
+                    style={{
+                      display: 'inline-flex',
+                      alignItems: 'center',
+                      gap: '4px',
+                      padding: '4px 8px',
+                      borderRadius: '8px',
+                      background: isLight ? 'rgba(112, 56, 248, 0.08)' : 'rgba(255, 255, 255, 0.06)',
+                      border: isLight ? '1px solid rgba(112, 56, 248, 0.2)' : '1px solid rgba(255, 255, 255, 0.12)',
+                      fontSize: '0.7rem',
+                      fontWeight: 600,
+                      cursor: 'pointer',
+                      color: isLight ? '#4c1d95' : '#e2e8f0'
+                    }}
+                  >
+                    <span>Custom</span>
+                    <input
+                      type="color"
+                      value={customColors.nameColor || (edition === 'white' ? '#000000' : '#ffffff')}
+                      onChange={(e) => handleTextColorChange(e.target.value, 'Custom')}
+                      style={{ width: '18px', height: '18px', padding: 0, border: 'none', background: 'none', cursor: 'pointer' }}
+                    />
+                  </label>
                 </div>
               </div>
             </div>
@@ -2212,7 +2352,7 @@ _Submitted from FLOCARD Design Studio_`;
                       padding: '6px 0'
                     }}
                   >
-                    <span style={{ fontSize: '0.78rem', color: '#cbd5e1' }}>{ctrl.label}</span>
+                    <span style={{ fontSize: '0.78rem', color: isLight ? '#1e1040' : '#cbd5e1' }}>{ctrl.label}</span>
                     <button
                       type="button"
                       onClick={() => ctrl.setChecked(!ctrl.checked)}
@@ -2220,7 +2360,7 @@ _Submitted from FLOCARD Design Studio_`;
                         width: '36px',
                         height: '20px',
                         borderRadius: '9999px',
-                        background: ctrl.checked ? '#7038f8' : 'rgba(255, 255, 255, 0.15)',
+                        background: ctrl.checked ? '#7038f8' : (isLight ? 'rgba(0, 0, 0, 0.15)' : 'rgba(255, 255, 255, 0.15)'),
                         border: 'none',
                         position: 'relative',
                         cursor: 'pointer',
@@ -2282,21 +2422,21 @@ _Submitted from FLOCARD Design Studio_`;
 
               {/* Spec Items */}
               <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', fontSize: '0.74rem' }}>
-                <div style={{ display: 'flex', justifyContent: 'space-between', color: '#94a3b8' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', color: subtextColor }}>
                   <span>Size</span>
-                  <span style={{ color: '#ffffff', fontWeight: 600 }}>CR80 (85.60 × 53.98 mm)</span>
+                  <span style={{ color: headingColor, fontWeight: 600 }}>CR80 (85.60 × 53.98 mm)</span>
                 </div>
-                <div style={{ display: 'flex', justifyContent: 'space-between', color: '#94a3b8' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', color: subtextColor }}>
                   <span>Thickness</span>
-                  <span style={{ color: '#ffffff', fontWeight: 600 }}>0.76 mm (Standard)</span>
+                  <span style={{ color: headingColor, fontWeight: 600 }}>0.76 mm (Standard)</span>
                 </div>
-                <div style={{ display: 'flex', justifyContent: 'space-between', color: '#94a3b8' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', color: subtextColor }}>
                   <span>Corner Radius</span>
-                  <span style={{ color: '#ffffff', fontWeight: 600 }}>3.18 mm</span>
+                  <span style={{ color: headingColor, fontWeight: 600 }}>3.18 mm</span>
                 </div>
-                <div style={{ display: 'flex', justifyContent: 'space-between', color: '#94a3b8' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', color: subtextColor }}>
                   <span>Print</span>
-                  <span style={{ color: '#ffffff', fontWeight: 600 }}>Full Color, Matte/Gloss</span>
+                  <span style={{ color: headingColor, fontWeight: 600 }}>Full Color, Matte/Gloss</span>
                 </div>
               </div>
             </div>
@@ -2331,8 +2471,8 @@ _Submitted from FLOCARD Design Studio_`;
                   7
                 </span>
                 <div>
-                  <div style={{ fontSize: '0.88rem', fontWeight: 700, color: '#f8fafc' }}>Design Status</div>
-                  <div style={{ fontSize: '0.72rem', color: '#94a3b8' }}>Track your progress</div>
+                  <div style={{ fontSize: '0.88rem', fontWeight: 700, color: headingColor }}>Design Status</div>
+                  <div style={{ fontSize: '0.72rem', color: subtextColor }}>Track your progress</div>
                 </div>
               </div>
 
@@ -2343,7 +2483,7 @@ _Submitted from FLOCARD Design Studio_`;
                   alignItems: 'center',
                   gap: '8px',
                   padding: '8px 12px',
-                  background: 'rgba(255, 255, 255, 0.04)',
+                  background: isLight ? 'rgba(34, 197, 94, 0.08)' : 'rgba(255, 255, 255, 0.04)',
                   borderRadius: '10px',
                   marginBottom: '16px'
                 }}
@@ -2361,7 +2501,7 @@ _Submitted from FLOCARD Design Studio_`;
                   <div style={{ fontSize: '0.78rem', fontWeight: 700, color: '#22c55e', letterSpacing: '0.04em' }}>
                     {designStatus.toUpperCase()}
                   </div>
-                  <div style={{ fontSize: '0.68rem', color: '#94a3b8' }}>
+                  <div style={{ fontSize: '0.68rem', color: subtextColor }}>
                     Last edited just now
                   </div>
                 </div>
@@ -2374,8 +2514,8 @@ _Submitted from FLOCARD Design Studio_`;
                   doneLabel="Sent for Print"
                   errorLabel="Submission failed"
                   onConfirm={() => handleSaveDesign(true)}
-                  trackColor="#191226"
-                  handleColor="#ffffff"
+                  trackColor={isLight ? '#ede9fe' : '#191226'}
+                  handleColor={isLight ? '#7038f8' : '#ffffff'}
                   successColor="#7038f8"
                   width={260}
                   height={50}
@@ -2422,52 +2562,73 @@ _Submitted from FLOCARD Design Studio_`;
         >
           <div
             style={{
-              background: '#130d22',
-              border: '1px solid rgba(112, 56, 248, 0.3)',
+              background: isLight ? '#ffffff' : '#130d22',
+              border: isLight ? '1px solid rgba(112, 56, 248, 0.25)' : '1px solid rgba(112, 56, 248, 0.3)',
               borderRadius: '20px',
               padding: '28px',
               maxWidth: '420px',
               width: '100%',
-              boxShadow: '0 20px 60px rgba(0, 0, 0, 0.8)'
+              boxShadow: isLight ? '0 20px 50px rgba(112, 56, 248, 0.18)' : '0 20px 60px rgba(0, 0, 0, 0.8)'
             }}
           >
-            <h3 style={{ fontSize: '1.15rem', fontWeight: 700, color: '#ffffff', marginBottom: '8px' }}>
-              Sign In to Submit for Print
+            <h3 style={{ fontSize: '1.2rem', fontWeight: 700, color: headingColor, marginBottom: '8px' }}>
+              Create Your FLOCARD Account
             </h3>
-            <p style={{ fontSize: '0.82rem', color: '#94a3b8', lineHeight: 1.5, marginBottom: '20px' }}>
-              Please sign in to your FLOCARD account to link this card design to your production order.
+            <p style={{ fontSize: '0.84rem', color: subtextColor, lineHeight: 1.5, marginBottom: '22px' }}>
+              Sign up to save your custom NFC card designs, sync production orders, and manage live digital profile redirects.
             </p>
-            <div style={{ display: 'flex', gap: '10px' }}>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
               <a
-                href="/login?redirect=/designer?submit=true"
+                href="/signup?redirect=/designer"
                 style={{
-                  flex: 1,
-                  padding: '10px',
+                  width: '100%',
+                  padding: '12px',
                   borderRadius: '10px',
-                  background: '#7038f8',
+                  background: 'linear-gradient(135deg, #7038f8 0%, #905cfc 100%)',
                   color: '#ffffff',
                   textAlign: 'center',
                   textDecoration: 'none',
-                  fontSize: '0.82rem',
-                  fontWeight: 600
+                  fontSize: '0.88rem',
+                  fontWeight: 700,
+                  boxShadow: '0 4px 14px rgba(112, 56, 248, 0.4)'
                 }}
               >
-                Sign In
+                Sign Up for Free
               </a>
-              <button
-                type="button"
-                onClick={() => setShowAuthModal(false)}
-                style={{
-                  padding: '10px 16px',
-                  borderRadius: '10px',
-                  background: 'rgba(255,255,255,0.06)',
-                  border: '1px solid rgba(255,255,255,0.1)',
-                  color: '#94a3b8',
-                  cursor: 'pointer'
-                }}
-              >
-                Cancel
-              </button>
+              <div style={{ display: 'flex', gap: '10px' }}>
+                <a
+                  href="/login?redirect=/designer"
+                  style={{
+                    flex: 1,
+                    padding: '10px',
+                    borderRadius: '10px',
+                    background: isLight ? 'rgba(112, 56, 248, 0.08)' : 'rgba(255,255,255,0.06)',
+                    border: isLight ? '1px solid rgba(112, 56, 248, 0.2)' : '1px solid rgba(255,255,255,0.12)',
+                    color: isLight ? '#6b21a8' : '#ffffff',
+                    textAlign: 'center',
+                    textDecoration: 'none',
+                    fontSize: '0.82rem',
+                    fontWeight: 600
+                  }}
+                >
+                  Already have account? Sign In
+                </a>
+                <button
+                  type="button"
+                  onClick={() => setShowAuthModal(false)}
+                  style={{
+                    padding: '10px 14px',
+                    borderRadius: '10px',
+                    background: isLight ? 'rgba(0,0,0,0.05)' : 'rgba(255,255,255,0.06)',
+                    border: isLight ? '1px solid rgba(0,0,0,0.1)' : '1px solid rgba(255,255,255,0.1)',
+                    color: subtextColor,
+                    cursor: 'pointer',
+                    fontSize: '0.82rem'
+                  }}
+                >
+                  Explore as Guest
+                </button>
+              </div>
             </div>
           </div>
         </div>

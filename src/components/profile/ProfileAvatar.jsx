@@ -22,8 +22,7 @@ export default function ProfileAvatar({
 }) {
   const [imgError, setImgError] = useState(false);
 
-  // Authoritative image source resolution:
-  // Never fallback to Akhil's picture if the profile has no picture!
+  // Never fallback to demo picture if profile has no picture!
   // If profile has an avatar or logo, use that. Otherwise, use the gold FLOCARD badge.
   const rawImage = profile?.avatar || profile?.logo;
   const hasValidImage = Boolean(rawImage && String(rawImage).trim() && !imgError);

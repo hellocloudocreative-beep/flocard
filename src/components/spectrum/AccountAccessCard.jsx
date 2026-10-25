@@ -18,8 +18,8 @@ export default function AccountAccessCard({
   return (
     <div
       style={{
-        background: '#FFFFFF',
-        border: '1px solid #E8E3EF',
+        background: 'var(--card-surface, #100b19)',
+        border: '1px solid var(--border-color, #30243d)',
         borderRadius: '14px',
         padding: '18px 20px',
         display: 'flex',
@@ -27,7 +27,7 @@ export default function AccountAccessCard({
         justifyContent: 'space-between',
         flexWrap: 'wrap',
         gap: '16px',
-        boxShadow: '0 2px 8px rgba(0, 0, 0, 0.02)'
+        boxShadow: '0 4px 18px rgba(0, 0, 0, 0.25)'
       }}
     >
       <div style={{ display: 'flex', alignItems: 'center', gap: '14px' }}>
@@ -36,8 +36,8 @@ export default function AccountAccessCard({
             width: '42px',
             height: '42px',
             borderRadius: '50%',
-            background: isSuperOwner ? 'linear-gradient(135deg, #6B00FF, #A855F7)' : '#F2ECFF',
-            color: isSuperOwner ? '#FFFFFF' : '#6B00FF',
+            background: isSuperOwner ? 'linear-gradient(135deg, #7C3AED, #A855F7)' : 'rgba(124, 58, 237, 0.2)',
+            color: isSuperOwner ? '#FFFFFF' : '#D8B4FE',
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'center',
@@ -58,11 +58,11 @@ export default function AccountAccessCard({
 
         <div>
           <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-            <span style={{ fontWeight: 600, color: '#191522', fontSize: '0.94rem' }}>
+            <span style={{ fontWeight: 600, color: 'var(--text-primary, #FFFFFF)', fontSize: '0.94rem' }}>
               {account.name || account.email.split('@')[0]}
             </span>
             {isCurrentUser && (
-              <span style={{ fontSize: '0.7rem', background: '#F2ECFF', color: '#6B00FF', padding: '2px 8px', borderRadius: '12px', fontWeight: 600 }}>
+              <span style={{ fontSize: '0.7rem', background: 'rgba(124, 58, 237, 0.25)', color: '#D8B4FE', padding: '2px 8px', borderRadius: '12px', fontWeight: 600, border: '1px solid rgba(124, 58, 237, 0.35)' }}>
                 You
               </span>
             )}
@@ -72,15 +72,16 @@ export default function AccountAccessCard({
                 fontWeight: 600,
                 padding: '2px 8px',
                 borderRadius: '12px',
-                background: isSuperOwner ? '#F3EEFF' : '#EEF6FF',
-                color: isSuperOwner ? '#6B00FF' : '#2563EB'
+                background: isSuperOwner ? 'rgba(124, 58, 237, 0.25)' : 'rgba(59, 130, 246, 0.2)',
+                color: isSuperOwner ? '#D8B4FE' : '#93C5FD',
+                border: isSuperOwner ? '1px solid rgba(124, 58, 237, 0.4)' : '1px solid rgba(59, 130, 246, 0.3)'
               }}
             >
               {isSuperOwner ? 'Owner' : 'Administrator'}
             </span>
           </div>
 
-          <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginTop: '4px', fontSize: '0.78rem', color: '#777184' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginTop: '4px', fontSize: '0.78rem', color: 'var(--text-secondary, #B8AEC8)' }}>
             <span style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
               <Mail size={13} />
               {account.email}

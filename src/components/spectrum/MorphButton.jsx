@@ -20,12 +20,13 @@ export default function MorphButton({
   const isDanger = variant === 'danger';
 
   const baseBg = isDanger
-    ? '#DC4545'
+    ? 'var(--btn-danger-bg, #DC2626)'
     : isPrimary
-    ? '#6B00FF'
-    : '#F2ECFF';
+    ? 'var(--btn-primary-bg, #7C3AED)'
+    : 'var(--btn-sec-bg, #24143D)';
 
-  const textColor = isDanger || isPrimary ? '#FFFFFF' : '#6B00FF';
+  const textColor = isDanger || isPrimary ? '#FFFFFF' : 'var(--btn-sec-text, #F3F0FA)';
+  const borderColor = isDanger ? 'var(--btn-danger-border, #EF4444)' : isPrimary ? 'transparent' : 'var(--btn-sec-border, rgba(168, 85, 247, 0.3))';
 
   return (
     <button
@@ -41,7 +42,7 @@ export default function MorphButton({
         gap: '8px',
         padding: status === 'loading' ? '10px 24px' : '10px 20px',
         borderRadius: '10px',
-        border: 'none',
+        border: status === 'success' ? 'none' : borderColor,
         background: status === 'success' ? '#16A36A' : baseBg,
         color: status === 'success' ? '#FFFFFF' : textColor,
         fontWeight: 600,

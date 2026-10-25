@@ -2,15 +2,16 @@
    FLOCARD CUSTOMER ACCOUNT DASHBOARD
    ========================================================================== */
 
-import React from 'react';
+import React, { useState } from 'react';
 import { useAuth } from '../../context/AuthContext';
 import { useData } from '../../context/DataContext';
-import { User, Layers, Radio, ExternalLink, ArrowRight, Eye, CheckCircle2, Clock, Sparkles, LogOut } from 'lucide-react';
+import { User, Layers, Radio, ExternalLink, ArrowRight, Eye, CheckCircle2, Clock, Sparkles, LogOut, Copy, Check } from 'lucide-react';
 import Card3DPreview from '../../components/Card3DPreview';
 
 export default function AccountDashboard() {
   const { user, logout } = useAuth();
   const { profiles, cards, designs } = useData();
+  const [copiedProfile, setCopiedProfile] = useState(false);
 
   if (!user) {
     return (
@@ -39,7 +40,7 @@ export default function AccountDashboard() {
     );
   }
 
-  const userProfile = profiles.find(p => p.slug === (user?.profileSlug || 'akhil')) || profiles[0];
+  const userProfile = profiles.find(p => p.slug === (user?.profileSlug || 'alex')) || profiles[0];
   const userCards = cards.filter(c => c.customerId === user?.id || c.profileSlug === userProfile?.slug);
   const userDesigns = designs.filter(d => d.customerId === user?.id || d.customerName === user?.name);
 
@@ -71,7 +72,7 @@ export default function AccountDashboard() {
               }}
             >
               <img
-                src={userProfile?.avatar || '/assets/akhil.jpg'}
+                src={userProfile?.avatar || 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=400&auto=format&fit=crop&q=80'}
                 alt={user?.name}
                 style={{ width: '100%', height: '100%', borderRadius: '50%', objectFit: 'cover' }}
               />
@@ -84,7 +85,36 @@ export default function AccountDashboard() {
                 Welcome back, {user?.name || 'Partner'}
               </h1>
               <p style={{ fontSize: '0.88rem', color: 'var(--text-secondary)' }}>
-                Managing digital profile <strong style={{ color: 'var(--accent-purple)' }}>flocard.in/p/{userProfile?.slug}</strong>
+                Managing digital profile{' '}
+                <button
+                  type="button"
+                  onClick={() => {
+                    const url = `https://flocard.in/p/${userProfile?.slug}`;
+                    if (navigator.clipboard) {
+                      navigator.clipboard.writeText(url);
+                      setCopiedProfile(true);
+                      setTimeout(() => setCopiedProfile(false), 2000);
+                    }
+                  }}
+                  title="Click to copy digital profile URL"
+                  style={{
+                    background: 'none',
+                    border: 'none',
+                    padding: 0,
+                    cursor: 'pointer',
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    gap: '4px',
+                    color: copiedProfile ? '#10B981' : 'var(--accent-purple)',
+                    fontWeight: 700,
+                    fontSize: '0.88rem',
+                    fontFamily: 'inherit'
+                  }}
+                >
+                  <span>flocard.in/p/{userProfile?.slug}</span>
+                  {copiedProfile ? <Check size={13} color="#10B981" /> : <Copy size={13} style={{ opacity: 0.7 }} />}
+                  {copiedProfile && <span style={{ fontSize: '0.74rem' }}>Copied!</span>}
+                </button>
               </p>
             </div>
           </div>
@@ -173,7 +203,7 @@ export default function AccountDashboard() {
             <div style={{ background: 'var(--elevated-surface)', padding: '14px', borderRadius: '10px', fontSize: '0.82rem', color: 'var(--text-secondary)' }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '6px' }}>
                 <span>Card Identifier:</span>
-                <strong style={{ color: 'var(--text-primary)' }}>{userCards[0]?.cardCode || 'flc-akhil-992'}</strong>
+                <strong style={{ color: 'var(--text-primary)' }}>{userCards[0]?.cardCode || 'flc-vip-001'}</strong>
               </div>
               <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '6px' }}>
                 <span>Tap Tally:</span>
@@ -181,8 +211,8 @@ export default function AccountDashboard() {
               </div>
               <div style={{ display: 'flex', justifyContent: 'space-between' }}>
                 <span>Permanent Link:</span>
-                <a href={`/t/${userCards[0]?.cardCode || 'flc-akhil-992'}`} style={{ color: 'var(--accent-purple)' }}>
-                  /t/{userCards[0]?.cardCode || 'flc-akhil-992'}
+                <a href={`/t/${userCards[0]?.cardCode || 'flc-vip-001'}`} style={{ color: 'var(--accent-purple)' }}>
+                  /t/{userCards[0]?.cardCode || 'flc-vip-001'}
                 </a>
               </div>
             </div>

@@ -41,12 +41,13 @@ export default function CardCanvas({
   };
 
   // Customer logo configuration & scaling
+  const rawLogo = config.customerLogo;
   const customerLogo = {
-    url: config.customerLogo?.url || config.front?.customLogo || null,
-    size: config.customerLogo?.size ?? 100, // percentage 50 - 200
-    posX: config.customerLogo?.posX ?? 0, // offset in px
-    posY: config.customerLogo?.posY ?? 0,
-    showCircleBadge: config.customerLogo?.showCircleBadge ?? true
+    url: typeof rawLogo === 'string' ? rawLogo : (rawLogo?.url || config.front?.customLogo || null),
+    size: (typeof rawLogo === 'object' && typeof rawLogo?.size === 'number') ? rawLogo.size : 100, // percentage 50 - 200
+    posX: (typeof rawLogo === 'object' && typeof rawLogo?.posX === 'number') ? rawLogo.posX : 0, // offset in px
+    posY: (typeof rawLogo === 'object' && typeof rawLogo?.posY === 'number') ? rawLogo.posY : 0,
+    showCircleBadge: (typeof rawLogo === 'object' && rawLogo?.showCircleBadge !== undefined) ? rawLogo.showCircleBadge : true
   };
 
   // FLOCARD logo configuration & scaling
@@ -58,6 +59,19 @@ export default function CardCanvas({
   const isMetal = edition === 'metal';
   const isGold = edition === 'gold';
   const isPlatinum = edition === 'platinum';
+  const isWhite = edition === 'white';
+
+  const isGoldText = (colors.nameColor && (colors.nameColor.toLowerCase() === '#e9c766' || colors.nameColor.toLowerCase() === '#d4af37')) ||
+                     (colors.primaryAccent && (colors.primaryAccent.toLowerCase() === '#e9c766' || colors.primaryAccent.toLowerCase() === '#d4af37'));
+
+  const getCardLogoSrc = () => {
+    if (isGold) return "/assets/flocard-logo-gold.png";
+    if (isPlatinum) return "/assets/flocard-logo-platinum.png";
+    if (isWhite) {
+      return isGoldText ? "/assets/flocard-logo-gold.png" : "/assets/flocard-logo-dark.png";
+    }
+    return "/assets/flocard-logo-white.png";
+  };
 
   const front = {
     name: 'YOUR NAME',
@@ -198,6 +212,77 @@ export default function CardCanvas({
         ...options
       };
     }
+    if (isWhite) {
+      const isGoldText = (colors.nameColor && (colors.nameColor.toLowerCase() === '#e9c766' || colors.nameColor.toLowerCase() === '#d4af37')) ||
+                         (colors.primaryAccent && (colors.primaryAccent.toLowerCase() === '#e9c766' || colors.primaryAccent.toLowerCase() === '#d4af37'));
+      if (isGoldText) {
+        if (element === 'name') {
+          return {
+            color: '#D4AF37',
+            background: 'linear-gradient(100deg, #D4AF37 0%, #B8860B 50%, #D4AF37 100%)',
+            WebkitBackgroundClip: 'text',
+            WebkitTextFillColor: 'transparent',
+            filter: 'drop-shadow(0 1px 1px rgba(0, 0, 0, 0.15))',
+            ...options
+          };
+        }
+        if (element === 'role') {
+          return {
+            color: '#B8860B',
+            letterSpacing: '0.28em',
+            ...options
+          };
+        }
+        if (element === 'tagline') {
+          return {
+            color: '#996515',
+            ...options
+          };
+        }
+        if (element === 'details') {
+          return {
+            color: '#B8860B',
+            ...options
+          };
+        }
+        return {
+          color: '#D4AF37',
+          ...options
+        };
+      }
+
+      // Default Black text on Pure White card
+      if (element === 'name') {
+        return {
+          color: colors.nameColor || '#000000',
+          filter: 'none',
+          ...options
+        };
+      }
+      if (element === 'role') {
+        return {
+          color: colors.roleColor || '#1A1A1A',
+          letterSpacing: '0.24em',
+          ...options
+        };
+      }
+      if (element === 'tagline') {
+        return {
+          color: colors.taglineColor || '#475569',
+          ...options
+        };
+      }
+      if (element === 'details') {
+        return {
+          color: colors.detailsColor || '#1E293B',
+          ...options
+        };
+      }
+      return {
+        color: colors.nameColor || '#000000',
+        ...options
+      };
+    }
     return {
       color: baseColor,
       ...options
@@ -222,7 +307,10 @@ export default function CardCanvas({
   // Generate QR code data URL whenever QR parameters change
   useEffect(() => {
     const targetUrl = back.qrUrl || 'https://flocard.in';
-    const qrColor = colors.qrColor || '#FFFFFF';
+    const isGoldText = (colors.nameColor && (colors.nameColor.toLowerCase() === '#e9c766' || colors.nameColor.toLowerCase() === '#d4af37')) ||
+                       (colors.primaryAccent && (colors.primaryAccent.toLowerCase() === '#e9c766' || colors.primaryAccent.toLowerCase() === '#d4af37'));
+    const defaultWhiteQr = isGoldText ? '#D4AF37' : '#000000';
+    const qrColor = customColors.qrColor || (isWhite ? defaultWhiteQr : (colors.qrColor || '#FFFFFF'));
 
     QRCode.toDataURL(targetUrl, {
       width: 256,
@@ -235,7 +323,7 @@ export default function CardCanvas({
     })
       .then(url => setQrDataUrl(url))
       .catch(err => console.error('QR Gen error:', err));
-  }, [back.qrUrl, colors.qrColor]);
+  }, [back.qrUrl, colors.qrColor, customColors.qrColor, isWhite, colors.nameColor, colors.primaryAccent]);
 
   // Canvas drawing for 300 DPI exports (1080x681)
   const localExportCanvasRef = useRef(null);
@@ -263,7 +351,10 @@ export default function CardCanvas({
 
     // 1. Draw base fallback gradient
     const grad = ctx.createLinearGradient(0, 0, exportW, exportH);
-    if (edition === 'purple') {
+    if (edition === 'white') {
+      grad.addColorStop(0, '#FFFFFF');
+      grad.addColorStop(1, '#F8FAFC');
+    } else if (edition === 'purple') {
       grad.addColorStop(0, '#090510');
       grad.addColorStop(0.5, '#1e0836');
       grad.addColorStop(1, '#090510');
@@ -296,7 +387,7 @@ export default function CardCanvas({
 
     function renderCanvasElements(ctx, w, h) {
       // Edge stroke with restrained highlight
-      ctx.strokeStyle = edition === 'gold' ? 'rgba(233, 199, 102, 0.4)' : edition === 'metal' ? 'rgba(148, 163, 184, 0.35)' : edition === 'platinum' ? 'rgba(226, 232, 240, 0.3)' : 'rgba(168, 85, 247, 0.4)';
+      ctx.strokeStyle = edition === 'white' ? 'rgba(0, 0, 0, 0.12)' : edition === 'gold' ? 'rgba(233, 199, 102, 0.4)' : edition === 'metal' ? 'rgba(148, 163, 184, 0.35)' : edition === 'platinum' ? 'rgba(226, 232, 240, 0.3)' : 'rgba(168, 85, 247, 0.4)';
       ctx.lineWidth = 4;
       ctx.stroke();
 
@@ -321,6 +412,10 @@ export default function CardCanvas({
       };
 
       const getNameFill = (x, y, textW, textH, fallbackColor) => {
+        if (isWhite) {
+          if (isGoldText) return createMetallicGradient(x, y - textH, x + textW, y, 'gold');
+          return colors.nameColor || '#000000';
+        }
         if (isGold) return createMetallicGradient(x, y - textH, x + textW, y, 'gold');
         if (isPlatinum) return createMetallicGradient(x, y - textH, x + textW, y, 'platinum');
         if (isMetal) return '#FFFFFF';
@@ -328,6 +423,10 @@ export default function CardCanvas({
       };
 
       const getRoleFill = (x, y, textW, textH, fallbackColor) => {
+        if (isWhite) {
+          if (isGoldText) return '#B8860B';
+          return colors.roleColor || '#1A1A1A';
+        }
         if (isGold) return '#E9C766'; // Softer champagne gold for professional role
         if (isPlatinum) return '#E2E8F0'; // Refined clean silver for professional role
         if (isMetal) return '#E2E8F0';
@@ -335,6 +434,10 @@ export default function CardCanvas({
       };
 
       const getTaglineFill = (x, y, textW, textH, fallbackColor) => {
+        if (isWhite) {
+          if (isGoldText) return '#996515';
+          return colors.taglineColor || '#475569';
+        }
         if (isGold) return '#C5A059'; // Muted warm gold, understated
         if (isPlatinum) return '#94A3B8'; // Muted cool silver, understated
         if (isMetal) return '#94A3B8';
@@ -537,12 +640,14 @@ export default function CardCanvas({
           borderRadius: '16px',
           overflow: 'hidden',
           position: 'relative',
-          backgroundImage: `url(${editionInfo.bgImage})`,
+          backgroundImage: isWhite ? 'none' : (editionInfo.bgImage ? `url(${editionInfo.bgImage})` : 'none'),
           backgroundSize: 'cover',
           backgroundPosition: 'center',
-          backgroundColor: editionInfo.cardBg,
-          border: editionInfo.border,
-          boxShadow: edition === 'gold'
+          backgroundColor: isWhite ? '#FFFFFF' : editionInfo.cardBg,
+          border: isWhite ? '1px solid rgba(0, 0, 0, 0.12)' : editionInfo.border,
+          boxShadow: isWhite
+            ? '0 14px 40px -10px rgba(0, 0, 0, 0.18), 0 0 0 1px rgba(0, 0, 0, 0.08)'
+            : edition === 'gold'
             ? 'inset 0 0 0 1px rgba(255, 240, 166, 0.08), 0 14px 40px -10px rgba(0, 0, 0, 0.85), 0 0 20px rgba(201, 151, 44, 0.12)'
             : edition === 'metal'
             ? 'inset 0 0 0 1px rgba(226, 232, 240, 0.08), 0 14px 40px -10px rgba(0, 0, 0, 0.9), 0 0 20px rgba(148, 163, 184, 0.12)'
@@ -557,7 +662,9 @@ export default function CardCanvas({
           style={{
             position: 'absolute',
             inset: 0,
-            background: edition === 'purple'
+            background: isWhite
+              ? 'radial-gradient(circle at 80% 20%, rgba(255, 255, 255, 0.8), transparent 60%)'
+              : edition === 'purple'
               ? 'radial-gradient(circle at 80% 20%, rgba(168, 85, 247, 0.18), transparent 50%)'
               : edition === 'gold'
               ? 'linear-gradient(135deg, rgba(255, 240, 166, 0.04) 0%, transparent 40%, rgba(201, 151, 44, 0.03) 100%), radial-gradient(circle at 85% 15%, rgba(233, 199, 102, 0.08) 0%, transparent 45%)'
@@ -742,11 +849,11 @@ export default function CardCanvas({
                   }}
                 >
                   <img
-                    src={isGold ? "/assets/flocard-logo-gold.png" : isPlatinum ? "/assets/flocard-logo-platinum.png" : "/assets/flocard-logo-white.png"}
+                    src={getCardLogoSrc()}
                     alt="FLOCARD"
                     style={{ width: '100%', height: 'auto', display: 'block', objectFit: 'contain' }}
                     onError={(e) => {
-                      e.target.src = '/assets/flocard-logo-white.png';
+                      e.target.src = isWhite ? '/assets/flocard-logo-dark.png' : '/assets/flocard-logo-white.png';
                     }}
                   />
                   <span
@@ -1039,11 +1146,11 @@ export default function CardCanvas({
                   }}
                 >
                   <img
-                    src={isGold ? "/assets/flocard-logo-gold.png" : isPlatinum ? "/assets/flocard-logo-platinum.png" : "/assets/flocard-logo-white.png"}
+                    src={getCardLogoSrc()}
                     alt="FLOCARD"
                     style={{ width: '100%', height: 'auto', display: 'block', objectFit: 'contain' }}
                     onError={(e) => {
-                      e.target.src = '/assets/flocard-logo-white.png';
+                      e.target.src = isWhite ? '/assets/flocard-logo-dark.png' : '/assets/flocard-logo-white.png';
                     }}
                   />
                   <span

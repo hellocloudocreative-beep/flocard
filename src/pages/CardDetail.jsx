@@ -14,21 +14,24 @@ export default function CardDetail({ editionKey = 'purple' }) {
   const isGold = editionKey === 'gold';
   const isPlatinum = editionKey === 'platinum';
   const isPurple = editionKey === 'purple';
+  const isWhite = editionKey === 'white';
 
-  const accentColor = isGold ? '#E9C766' : isPlatinum ? '#CBD5E1' : isMetal ? '#CBD5E1' : '#A855F7';
+  const accentColor = isWhite ? '#CBD5E1' : isGold ? '#E9C766' : isPlatinum ? '#CBD5E1' : isMetal ? '#CBD5E1' : '#A855F7';
 
   const formattedPrice = formatCurrencyINR(product.price);
   const formattedCompare = product.comparePrice && product.comparePrice > product.price
     ? formatCurrencyINR(product.comparePrice)
     : null;
 
-  const ctaText = isGold
-    ? 'Customize Gold Card'
-    : isPlatinum
-      ? 'Customize Platinum Card'
-      : isMetal
-        ? 'Customize Metal Card'
-        : 'Customize Purple Card';
+  const ctaText = isWhite
+    ? 'Customize Pure White Card'
+    : isGold
+      ? 'Customize Gold Card'
+      : isPlatinum
+        ? 'Customize Platinum Card'
+        : isMetal
+          ? 'Customize Metal Card'
+          : 'Customize Purple Card';
 
   const includedFeatures = product.features || [
     'NFC-enabled card, when included in configured product.',

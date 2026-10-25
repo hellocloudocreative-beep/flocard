@@ -285,8 +285,28 @@ export default function CustomerProfilesTab({ profiles = [], customer, onSavePro
                       {profile.role || 'Executive'} {profile.company ? `at ${profile.company}` : ''}
                     </div>
 
-                    <div style={{ fontSize: '0.78rem', color: 'var(--accent-purple)', marginTop: '4px', fontFamily: 'monospace' }}>
-                      flocard.in/p/{profile.slug}
+                    <div
+                      onClick={() => handleCopyLink(profile.slug)}
+                      title="Click to copy profile URL"
+                      style={{
+                        fontSize: '0.78rem',
+                        color: copiedSlug === profile.slug ? '#10B981' : 'var(--accent-purple)',
+                        marginTop: '4px',
+                        fontFamily: 'monospace',
+                        cursor: 'pointer',
+                        display: 'inline-flex',
+                        alignItems: 'center',
+                        gap: '5px'
+                      }}
+                    >
+                      <span>flocard.in/p/{profile.slug}</span>
+                      {copiedSlug === profile.slug ? (
+                        <span style={{ fontSize: '0.7rem', color: '#10B981', display: 'inline-flex', alignItems: 'center', gap: '2px', fontWeight: 700 }}>
+                          <Check size={11} /> Copied!
+                        </span>
+                      ) : (
+                        <Copy size={11} style={{ opacity: 0.7 }} />
+                      )}
                     </div>
                   </div>
                 </div>

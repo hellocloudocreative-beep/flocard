@@ -39,6 +39,7 @@ import {
   Sparkles,
   Info,
   Check,
+  Copy,
   X
 } from 'lucide-react';
 import { useData } from '../../../context/DataContext';
@@ -84,6 +85,7 @@ export default function AdminSalesManager({ defaultTab = 'overview', initialOrde
   // Selected Order for Transaction View / Invoice
   const [selectedTransactionOrder, setSelectedTransactionOrder] = useState(null);
   const [invoiceModalOrder, setInvoiceModalOrder] = useState(null);
+  const [copiedOrderSlug, setCopiedOrderSlug] = useState(null);
 
   // Product Drilldown Report State
   const [drilldownProduct, setDrilldownProduct] = useState(null);
@@ -1464,15 +1466,28 @@ export default function AdminSalesManager({ defaultTab = 'overview', initialOrde
                         </td>
                         <td className="py-3.5 px-4">
                           {profileUrl ? (
-                            <a
-                              href={profileUrl}
-                              target="_blank"
-                              rel="noreferrer"
-                              className="inline-flex items-center gap-1.5 text-xs text-purple-400 hover:text-purple-300 font-mono"
+                            <button
+                              type="button"
+                              onClick={() => {
+                                const url = `https://flocard.in/p/${order.profileSlug}`;
+                                if (navigator.clipboard) {
+                                  navigator.clipboard.writeText(url);
+                                  setCopiedOrderSlug(order.profileSlug);
+                                  setTimeout(() => setCopiedOrderSlug(null), 2000);
+                                }
+                              }}
+                              title="Click to copy digital profile link"
+                              className="inline-flex items-center gap-1.5 text-xs text-purple-400 hover:text-purple-300 font-mono bg-transparent border-0 cursor-pointer p-0"
                             >
-                              <span>{order.profileSlug}.flocard.in</span>
-                              <ExternalLink className="w-3 h-3" />
-                            </a>
+                              <span>flocard.in/p/{order.profileSlug}</span>
+                              {copiedOrderSlug === order.profileSlug ? (
+                                <span className="text-[10px] text-emerald-400 font-bold inline-flex items-center gap-0.5">
+                                  <Check className="w-3 h-3" /> Copied!
+                                </span>
+                              ) : (
+                                <Copy className="w-3 h-3 opacity-70" />
+                              )}
+                            </button>
                           ) : (
                             <span className="text-zinc-500 text-[11px]">Pending delivery</span>
                           )}

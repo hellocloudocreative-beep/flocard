@@ -10,7 +10,27 @@ import { jsPDF } from 'jspdf';
  * Exports a double-sided print-ready PDF containing Front and Back card artwork
  * with standard bleed area, trim marks, and print metadata.
  */
-export async function exportCardPDF({ frontCanvas, backCanvas, designName = 'FLOCARD-Design', edition = 'Purple' }) {
+export async function exportCardPDF(arg1 = {}, arg2 = null, arg3 = null, arg4 = null) {
+  // Support both object call: exportCardPDF({ frontCanvas, backCanvas, designName, edition })
+  // and positional call: exportCardPDF(frontCanvasOrConfig, backCanvasOrConfig, edition, designName)
+  let frontCanvas = null;
+  let backCanvas = null;
+  let designName = 'FLOCARD-Design';
+  let edition = 'Purple';
+
+  if (arg1 && (arg1.frontCanvas || arg1.backCanvas || arg1.designName || typeof arg1.edition === 'string')) {
+    frontCanvas = arg1.frontCanvas || null;
+    backCanvas = arg1.backCanvas || null;
+    designName = arg1.designName || 'FLOCARD-Design';
+    edition = arg1.edition || 'Purple';
+  } else {
+    // Positional call
+    if (arg1 && typeof arg1.toDataURL === 'function') frontCanvas = arg1;
+    if (arg2 && typeof arg2.toDataURL === 'function') backCanvas = arg2;
+    if (typeof arg3 === 'string') edition = arg3;
+    if (typeof arg4 === 'string') designName = arg4;
+  }
+
   // CR80 Card Dimensions in millimeters
   const cardWidth = 85.6;
   const cardHeight = 54.0;
@@ -26,18 +46,19 @@ export async function exportCardPDF({ frontCanvas, backCanvas, designName = 'FLO
   });
 
   // Page 1: Front
-  if (frontCanvas) {
+  if (frontCanvas && typeof frontCanvas.toDataURL === 'function') {
     const frontData = frontCanvas.toDataURL('image/png', 1.0);
     // Fill full bleed area
     doc.addImage(frontData, 'PNG', 0, 0, pageWidth, pageHeight, '', 'FAST');
-    
     // Add trim mark guides in margins
     drawCropMarks(doc, bleed, cardWidth, cardHeight);
   }
 
   // Page 2: Back
-  if (backCanvas) {
-    doc.addPage([pageWidth, pageHeight], 'landscape');
+  if (backCanvas && typeof backCanvas.toDataURL === 'function') {
+    if (frontCanvas) {
+      doc.addPage([pageWidth, pageHeight], 'landscape');
+    }
     const backData = backCanvas.toDataURL('image/png', 1.0);
     doc.addImage(backData, 'PNG', 0, 0, pageWidth, pageHeight, '', 'FAST');
     drawCropMarks(doc, bleed, cardWidth, cardHeight);

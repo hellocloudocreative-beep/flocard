@@ -34,7 +34,9 @@ import {
   Upload,
   Image,
   RotateCw,
-  Trash2
+  Trash2,
+  UserCheck,
+  Users
 } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 import { useData } from '../../context/DataContext';
@@ -42,14 +44,16 @@ import { useTheme } from '../../context/ThemeContext';
 import { ORDER_STAGES, EXCEPTION_STAGES, getOrderStageInfo, normalizeOrderStatus, StorageEngine } from '../../lib/storage';
 import { EDITIONS } from '../../lib/constants';
 import Card3DPreview from '../../components/Card3DPreview';
+import CustomerCardPreview from '../../components/CustomerCardPreview';
 import { uploadImage } from '../../lib/uploadImage';
+import { queueWhatsAppNotification, getWhatsAppOutbox, retryWhatsAppMessage } from '../../lib/whatsapp';
 
 export default function AdminOrderManager({ initialOrderId = null }) {
   const { user } = useAuth();
   const themeContext = useTheme();
-  // Admin orders manager ALWAYS uses obsidian dark theme
-  const isLight = false;
-  const isDark = true;
+  // Admin orders manager defaults to dark mode, supports explicit light toggle
+  const isDark = themeContext ? themeContext.isDark : true;
+  const isLight = !isDark;
 
   const cardBg = isLight ? '#FFFFFF' : '#100B19';
   const cardBorder = isLight ? '#E8E3EF' : '#2A1D3B';
@@ -76,6 +80,9 @@ export default function AdminOrderManager({ initialOrderId = null }) {
   const [isAddOrderModalOpen, setIsAddOrderModalOpen] = useState(false);
   const [addOrderError, setAddOrderError] = useState('');
   const [addOrderSuccess, setAddOrderSuccess] = useState('');
+  const [selectedCustomerId, setSelectedCustomerId] = useState(null);
+  const [customerSearchQuery, setCustomerSearchQuery] = useState('');
+  const [isCustomerSearchOpen, setIsCustomerSearchOpen] = useState(false);
 
   // Add Order Form State
   const [newOrderForm, setNewOrderForm] = useState({
@@ -95,6 +102,61 @@ export default function AdminOrderManager({ initialOrderId = null }) {
     notes: ''
   });
 
+  const handleOpenAddOrderModal = () => {
+    setAddOrderError('');
+    setAddOrderSuccess('');
+    setSelectedCustomerId(null);
+    setCustomerSearchQuery('');
+    setIsCustomerSearchOpen(false);
+    setNewOrderForm({
+      source: 'whatsapp',
+      customerName: '',
+      customerEmail: '',
+      customerPhone: '',
+      company: '',
+      role: '',
+      tagline: 'One Tap Every Connection',
+      customerLogo: '',
+      edition: 'purple',
+      templateType: 'standard',
+      totalAmount: EDITIONS.purple?.price || 1899,
+      status: 'design_submitted',
+      shippingAddress: '',
+      notes: ''
+    });
+    setIsAddOrderModalOpen(true);
+  };
+
+  const handleSelectCustomer = (c) => {
+    setSelectedCustomerId(c.id);
+    setCustomerSearchQuery('');
+    setIsCustomerSearchOpen(false);
+    setNewOrderForm(prev => ({
+      ...prev,
+      customerName: c.name || '',
+      customerPhone: c.phone || '',
+      customerEmail: c.email || '',
+      company: c.company || '',
+      role: c.role || '',
+      customerLogo: c.logoUrl || c.avatar || prev.customerLogo
+    }));
+  };
+
+  const handleClearCustomerSelection = () => {
+    setSelectedCustomerId(null);
+    setCustomerSearchQuery('');
+    setIsCustomerSearchOpen(false);
+    setNewOrderForm(prev => ({
+      ...prev,
+      customerName: '',
+      customerPhone: '',
+      customerEmail: '',
+      company: '',
+      role: '',
+      customerLogo: ''
+    }));
+  };
+
   const [previewSide, setPreviewSide] = useState('front');
   const [isUploadingLogo, setIsUploadingLogo] = useState(false);
   const orderLogoInputRef = useRef(null);
@@ -109,6 +171,13 @@ export default function AdminOrderManager({ initialOrderId = null }) {
       return;
     }
 
+    const tempPreview = URL.createObjectURL(file);
+    setNewOrderForm(prev => ({
+      ...prev,
+      customerLogo: tempPreview,
+      templateType: 'customer_logo'
+    }));
+
     try {
       setIsUploadingLogo(true);
       setAddOrderError('');
@@ -122,7 +191,7 @@ export default function AdminOrderManager({ initialOrderId = null }) {
       }
     } catch (err) {
       console.error('[AdminOrderManager] Logo upload failed:', err);
-      setAddOrderError('Failed to upload logo. Please try another image.');
+      // Even if upload failed, keep preview from base64/objectUrl
     } finally {
       setIsUploadingLogo(false);
       if (e.target) e.target.value = '';
@@ -157,23 +226,28 @@ export default function AdminOrderManager({ initialOrderId = null }) {
     setAddOrderError('');
     setAddOrderSuccess('');
 
-    if (!newOrderForm.customerName.trim()) {
+    const clientName = newOrderForm.customerName.trim();
+    if (!clientName) {
       setAddOrderError('Customer name is required.');
       return;
     }
 
+    const clientPhone = newOrderForm.customerPhone.trim();
+    if (newOrderForm.source === 'whatsapp' && !clientPhone) {
+      setAddOrderError('Customer WhatsApp phone number is required for WhatsApp orders.');
+      return;
+    }
+
+    const clientEmail = newOrderForm.customerEmail.trim();
     const orderRef = `FLC-ORD-${Math.floor(1000 + Math.random() * 9000)}`;
-    const clientName = newOrderForm.customerName.trim();
-    const clientEmail = newOrderForm.customerEmail.trim() || `${clientName.toLowerCase().replace(/[^a-z0-9]/g, '') || 'client'}@example.com`;
-    const clientPhone = newOrderForm.customerPhone.trim() || '+91 97782 78552';
-    const customerId = `cust_${Date.now()}`;
+    const customerId = selectedCustomerId || (clientEmail ? `cust_${clientEmail.replace(/[^a-zA-Z0-9]/g, '_')}` : `cust_${Date.now()}`);
 
     // Auto-register customer if not existing
     if (saveCustomer) {
       saveCustomer({
         id: customerId,
         name: clientName,
-        email: clientEmail,
+        email: clientEmail || `${clientName.toLowerCase().replace(/[^a-z0-9]/g, '') || 'client'}@example.com`,
         phone: clientPhone,
         company: newOrderForm.company.trim(),
         role: newOrderForm.role.trim() || 'Client',
@@ -189,35 +263,65 @@ export default function AdminOrderManager({ initialOrderId = null }) {
 
     // Persist design record so customer & admin can view full artwork
     const designId = `des_${Date.now()}`;
-    if (StorageEngine?.saveDesign) {
-      StorageEngine.saveDesign({
-        id: designId,
-        orderId: orderRef,
-        customerId,
-        customerName: clientName,
-        edition: newOrderForm.edition,
-        templateType: newOrderForm.templateType,
-        config: {
-          front: {
-            name: clientName,
-            role: newOrderForm.role.trim() || 'Executive',
-            company: newOrderForm.company.trim() || 'FLOCARD Enterprise',
-            tagline: newOrderForm.tagline.trim() || 'One Tap Every Connection',
-            customLogo: newOrderForm.customerLogo || null
-          },
-          back: {
-            qrColor: newOrderForm.edition === 'gold' ? '#D4AF37' : '#FFFFFF'
-          },
-          customerLogo: {
-            url: newOrderForm.customerLogo || null,
-            size: 40,
-            showCircleBadge: true
-          }
+    const logoConfig = newOrderForm.customerLogo ? {
+      url: newOrderForm.customerLogo,
+      size: 100,
+      posX: 0,
+      posY: 0,
+      showCircleBadge: true
+    } : null;
+
+    const flocardLogoConfig = {
+      size: 100,
+      position: newOrderForm.templateType === 'customer_logo' ? 'bottom-right' : 'top-left'
+    };
+
+    const designRecord = {
+      id: designId,
+      orderId: orderRef,
+      customerId,
+      customerName: clientName,
+      edition: newOrderForm.edition,
+      templateType: newOrderForm.templateType,
+      front: {
+        name: clientName,
+        role: newOrderForm.role.trim() || '',
+        company: newOrderForm.company.trim() || '',
+        tagline: newOrderForm.tagline.trim() || '',
+        customLogo: newOrderForm.customerLogo || null,
+        fontSize: 'medium',
+        alignment: 'left',
+        fontFamily: 'Space Grotesk'
+      },
+      back: {
+        qrColor: newOrderForm.edition === 'gold' ? '#D4AF37' : '#FFFFFF',
+        qrUrl: `https://flocard.in/p/${clientName.toLowerCase().replace(/[^a-z0-9]/g, '') || 'client'}`
+      },
+      customColors: {},
+      customerLogo: logoConfig,
+      flocardLogo: flocardLogoConfig,
+      config: {
+        front: {
+          name: clientName,
+          role: newOrderForm.role.trim() || '',
+          company: newOrderForm.company.trim() || '',
+          tagline: newOrderForm.tagline.trim() || '',
+          customLogo: newOrderForm.customerLogo || null
         },
-        status: 'approved',
-        createdAt: new Date().toISOString(),
-        updatedAt: new Date().toISOString()
-      });
+        back: {
+          qrColor: newOrderForm.edition === 'gold' ? '#D4AF37' : '#FFFFFF'
+        },
+        customColors: {},
+        customerLogo: logoConfig,
+        flocardLogo: flocardLogoConfig
+      },
+      status: 'approved',
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString()
+    };
+
+    if (StorageEngine?.saveDesign) {
+      StorageEngine.saveDesign(designRecord);
     }
 
     const orderObj = {
@@ -229,15 +333,20 @@ export default function AdminOrderManager({ initialOrderId = null }) {
       customerEmail: clientEmail,
       customerPhone: clientPhone,
       company: newOrderForm.company.trim(),
-      role: newOrderForm.role.trim() || 'Executive',
-      tagline: newOrderForm.tagline.trim() || 'One Tap Every Connection',
-      customerLogo: newOrderForm.customerLogo || null,
+      role: newOrderForm.role.trim(),
+      tagline: newOrderForm.tagline.trim(),
+      customerLogo: logoConfig,
+      flocardLogo: flocardLogoConfig,
       designId,
+      design: designRecord, // Frozen snapshot of submitted artwork
+      frontConfig: designRecord.front,
+      backConfig: designRecord.back,
+      customColors: {},
       edition: newOrderForm.edition,
       templateType: newOrderForm.templateType,
       totalAmount: finalAmount,
       status: normalizeOrderStatus(newOrderForm.status || 'design_submitted'),
-      shippingAddress: newOrderForm.shippingAddress.trim() || 'Standard Delivery',
+      shippingAddress: newOrderForm.shippingAddress.trim(),
       notes: newOrderForm.notes.trim(),
       approvalNotes: newOrderForm.notes.trim() || `Booked via ${newOrderForm.source === 'whatsapp' ? 'WhatsApp Direct' : 'Website'}`,
       orderDate: new Date().toISOString(),
@@ -246,6 +355,13 @@ export default function AdminOrderManager({ initialOrderId = null }) {
     };
 
     saveOrder(orderObj);
+
+    // Automatically queue WhatsApp Order Confirmation
+    if (orderObj.customerPhone) {
+      queueWhatsAppNotification(orderObj, 'order_confirmed').catch(err => {
+        console.error('[WhatsApp] Notification queue error:', err);
+      });
+    }
 
     // Initial audit log history
     if (StorageEngine?.addOrderStatusHistoryEntry) {
@@ -265,6 +381,8 @@ export default function AdminOrderManager({ initialOrderId = null }) {
 
     setAddOrderSuccess(`Order ${orderRef} created successfully from ${newOrderForm.source === 'whatsapp' ? 'WhatsApp' : 'Website'}!`);
     setTimeout(() => {
+      setIsAddOrderModalOpen(false);
+      setAddOrderSuccess('');
       setIsAddOrderModalOpen(false);
       setAddOrderSuccess('');
       setNewOrderForm({
@@ -380,6 +498,28 @@ export default function AdminOrderManager({ initialOrderId = null }) {
         actorUser: user
       });
 
+      // Automated WhatsApp status notification trigger
+      const statusToEventMap = {
+        order_confirmed: 'order_confirmed',
+        artwork_approved: 'design_approved',
+        manufacturing_started: 'manufacturing_started',
+        quality_inspection: 'quality_inspection',
+        dispatched: 'dispatched',
+        delivered: 'delivered',
+        revision_required: 'design_approval_requested'
+      };
+      const eventType = statusToEventMap[targetStatus];
+      if (eventType && selectedOrder) {
+        queueWhatsAppNotification({
+          ...selectedOrder,
+          carrierName: carrierName.trim() || selectedOrder.carrierName,
+          trackingNumber: trackingNumber.trim() || selectedOrder.trackingNumber,
+          trackingUrl: trackingUrl.trim() || selectedOrder.trackingUrl
+        }, eventType).catch(err => {
+          console.error('[WhatsApp] Failed to queue status transition notification:', err);
+        });
+      }
+
       setActionSuccess(`Order status successfully updated to "${getOrderStageInfo(targetStatus).label}".`);
       setTimeout(() => {
         setIsUpdateModalOpen(false);
@@ -486,7 +626,7 @@ export default function AdminOrderManager({ initialOrderId = null }) {
               {/* Add Order Button */}
               <button
                 type="button"
-                onClick={() => setIsAddOrderModalOpen(true)}
+                onClick={handleOpenAddOrderModal}
                 style={{
                   display: 'inline-flex',
                   alignItems: 'center',
@@ -951,6 +1091,11 @@ export default function AdminOrderManager({ initialOrderId = null }) {
               >
                 <X size={20} />
               </button>
+            </div>
+
+            {/* Live Customer Designed Card Preview */}
+            <div style={{ marginBottom: '16px' }}>
+              <CustomerCardPreview order={selectedOrder} isLight={isLight} />
             </div>
 
             <form onSubmit={handleStatusChangePrecheck} style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
@@ -1435,6 +1580,184 @@ export default function AdminOrderManager({ initialOrderId = null }) {
                   )}
                 </div>
 
+                {/* Explicit Existing Customer Search & Selection */}
+                <div style={{ padding: '12px', borderRadius: '10px', background: isLight ? '#F9F8FC' : 'rgba(255,255,255,0.03)', border: `1px solid ${cardBorder}` }}>
+                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '8px' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '0.76rem', fontWeight: 700, color: textPrimary }}>
+                      <Users size={14} color="#7038F8" />
+                      <span>Existing Customer Lookup (Optional)</span>
+                    </div>
+                    {selectedCustomerId && (
+                      <button
+                        type="button"
+                        onClick={handleClearCustomerSelection}
+                        style={{
+                          background: 'none',
+                          border: 'none',
+                          color: '#EF4444',
+                          fontSize: '0.72rem',
+                          fontWeight: 600,
+                          cursor: 'pointer',
+                          padding: 0
+                        }}
+                      >
+                        Clear / Reset Details
+                      </button>
+                    )}
+                  </div>
+
+                  {selectedCustomerId ? (
+                    <div style={{
+                      padding: '8px 12px',
+                      borderRadius: '8px',
+                      background: isLight ? '#F5F3FF' : 'rgba(112, 56, 248, 0.15)',
+                      border: '1px solid #7038F8',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'space-between'
+                    }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                        <UserCheck size={16} color="#7038F8" />
+                        <div>
+                          <div style={{ fontSize: '0.78rem', fontWeight: 700, color: textPrimary }}>{newOrderForm.customerName}</div>
+                          <div style={{ fontSize: '0.7rem', color: textSecondary }}>{newOrderForm.customerPhone || newOrderForm.customerEmail || 'Saved Customer'}</div>
+                        </div>
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() => { setSelectedCustomerId(null); setIsCustomerSearchOpen(true); }}
+                        style={{
+                          padding: '3px 8px',
+                          borderRadius: '6px',
+                          border: '1px solid #7038F8',
+                          background: 'transparent',
+                          color: '#7038F8',
+                          fontSize: '0.7rem',
+                          fontWeight: 600,
+                          cursor: 'pointer'
+                        }}
+                      >
+                        Change
+                      </button>
+                    </div>
+                  ) : (
+                    <div style={{ position: 'relative' }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                        <div style={{ position: 'relative', flex: 1 }}>
+                          <Search size={13} style={{ position: 'absolute', left: '10px', top: '50%', transform: 'translateY(-50%)', color: textSecondary }} />
+                          <input
+                            type="text"
+                            autoComplete="off"
+                            placeholder="Search existing customers by name, phone, or email..."
+                            value={customerSearchQuery}
+                            onFocus={() => setIsCustomerSearchOpen(true)}
+                            onChange={(e) => {
+                              setCustomerSearchQuery(e.target.value);
+                              setIsCustomerSearchOpen(true);
+                            }}
+                            style={{
+                              width: '100%',
+                              padding: '8px 12px 8px 30px',
+                              borderRadius: '8px',
+                              border: `1px solid ${cardBorder}`,
+                              background: elevatedBg,
+                              color: textPrimary,
+                              fontSize: '0.78rem',
+                              outline: 'none',
+                              boxSizing: 'border-box'
+                            }}
+                          />
+                        </div>
+                        {isCustomerSearchOpen && (
+                          <button
+                            type="button"
+                            onClick={() => setIsCustomerSearchOpen(false)}
+                            style={{
+                              padding: '8px 12px',
+                              borderRadius: '8px',
+                              border: `1px solid ${cardBorder}`,
+                              background: elevatedBg,
+                              color: textSecondary,
+                              fontSize: '0.74rem',
+                              cursor: 'pointer'
+                            }}
+                          >
+                            Close
+                          </button>
+                        )}
+                      </div>
+
+                      {/* Dropdown Results */}
+                      {isCustomerSearchOpen && (
+                        <div
+                          style={{
+                            position: 'absolute',
+                            top: '100%',
+                            left: 0,
+                            right: 0,
+                            marginTop: '4px',
+                            maxHeight: '180px',
+                            overflowY: 'auto',
+                            backgroundColor: elevatedBg,
+                            border: `1px solid ${cardBorder}`,
+                            borderRadius: '8px',
+                            boxShadow: '0 8px 24px rgba(0,0,0,0.4)',
+                            zIndex: 50
+                          }}
+                        >
+                          {customers.filter(c => {
+                            if (!customerSearchQuery.trim()) return true;
+                            const q = customerSearchQuery.toLowerCase();
+                            return (
+                              (c.name && c.name.toLowerCase().includes(q)) ||
+                              (c.phone && c.phone.includes(q)) ||
+                              (c.email && c.email.toLowerCase().includes(q)) ||
+                              (c.company && c.company.toLowerCase().includes(q))
+                            );
+                          }).length === 0 ? (
+                            <div style={{ padding: '10px', fontSize: '0.76rem', color: textSecondary, textAlign: 'center' }}>
+                              No matching existing customers found.
+                            </div>
+                          ) : (
+                            customers.filter(c => {
+                              if (!customerSearchQuery.trim()) return true;
+                              const q = customerSearchQuery.toLowerCase();
+                              return (
+                                (c.name && c.name.toLowerCase().includes(q)) ||
+                                (c.phone && c.phone.includes(q)) ||
+                                (c.email && c.email.toLowerCase().includes(q)) ||
+                                (c.company && c.company.toLowerCase().includes(q))
+                              );
+                            }).slice(0, 8).map(c => (
+                              <div
+                                key={c.id || c.email}
+                                onClick={() => handleSelectCustomer(c)}
+                                style={{
+                                  padding: '8px 12px',
+                                  cursor: 'pointer',
+                                  borderBottom: `1px solid ${cardBorder}`,
+                                  display: 'flex',
+                                  justifyContent: 'space-between',
+                                  alignItems: 'center',
+                                  transition: 'background 0.1s ease'
+                                }}
+                                onMouseEnter={(e) => e.currentTarget.style.backgroundColor = isLight ? '#F3EEFF' : 'rgba(112, 56, 248, 0.2)'}
+                                onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'transparent'}
+                              >
+                                <div>
+                                  <div style={{ fontSize: '0.78rem', fontWeight: 600, color: textPrimary }}>{c.name}</div>
+                                  <div style={{ fontSize: '0.7rem', color: textSecondary }}>{c.phone || c.email} {c.company ? `• ${c.company}` : ''}</div>
+                                </div>
+                                <span style={{ fontSize: '0.68rem', color: '#7038F8', fontWeight: 600 }}>Select</span>
+                              </div>
+                            ))
+                          )}
+                        </div>
+                      )}
+                    </div>
+                  )}
+                </div>
+
                 {/* Customer Identity Fields */}
                 <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 200px), 1fr))', gap: '10px' }}>
                   <div>
@@ -1444,6 +1767,7 @@ export default function AdminOrderManager({ initialOrderId = null }) {
                     <input
                       type="text"
                       required
+                      autoComplete="off"
                       placeholder="e.g. Rahul Sharma"
                       value={newOrderForm.customerName}
                       onChange={(e) => setNewOrderForm({ ...newOrderForm, customerName: e.target.value })}
@@ -1453,10 +1777,11 @@ export default function AdminOrderManager({ initialOrderId = null }) {
 
                   <div>
                     <label style={{ display: 'block', fontSize: '0.74rem', fontWeight: 600, color: textSecondary, marginBottom: '4px' }}>
-                      WhatsApp / Phone *
+                      WhatsApp / Phone {newOrderForm.source === 'whatsapp' ? '*' : ''}
                     </label>
                     <input
                       type="text"
+                      autoComplete="off"
                       placeholder="+91 98765 43210"
                       value={newOrderForm.customerPhone}
                       onChange={(e) => setNewOrderForm({ ...newOrderForm, customerPhone: e.target.value })}

@@ -27,6 +27,7 @@ import { useAuth } from '../../context/AuthContext';
 import { useData } from '../../context/DataContext';
 import { ORDER_STAGES, EXCEPTION_STAGES, getOrderStageInfo, normalizeOrderStatus } from '../../lib/storage';
 import { EDITIONS, BRAND } from '../../lib/constants';
+import CustomerCardPreview from '../../components/CustomerCardPreview';
 
 export default function CustomerOrderDetail({ orderId, onBack }) {
   const { user } = useAuth();
@@ -393,6 +394,15 @@ export default function CustomerOrderDetail({ orderId, onBack }) {
             <Package size={16} color="var(--accent-purple)" />
             <span>Card Specification & Artwork</span>
           </h3>
+
+          <div style={{ marginBottom: '20px' }}>
+            <CustomerCardPreview
+              order={order}
+              designId={order.designId}
+              edition={order.edition}
+              interactive={true}
+            />
+          </div>
 
           <div style={{ display: 'flex', flexDirection: 'column', gap: '12px', fontSize: '0.82rem' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', borderBottom: '1px solid var(--border-color)', paddingBottom: '8px' }}>

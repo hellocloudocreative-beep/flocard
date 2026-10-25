@@ -3,7 +3,7 @@
    Displays real database metrics, active cards, orders in progress, and honest empty states.
    ========================================================================== */
 
-import React from 'react';
+import React, { useState } from 'react';
 import {
   Layers,
   Radio,
@@ -14,7 +14,9 @@ import {
   Sparkles,
   ExternalLink,
   CheckCircle2,
-  AlertCircle
+  AlertCircle,
+  Copy,
+  Check
 } from 'lucide-react';
 import { EDITIONS } from '../../lib/constants';
 import { getOrderStageInfo } from '../../lib/storage';
@@ -36,6 +38,7 @@ export default function CustomerOverviewTab({
   const ordersInProgress = orders.filter(o => o.status !== 'delivered' && o.status !== 'cancelled').length;
 
   const primaryProfile = profiles[0] || null;
+  const [copiedPrimary, setCopiedPrimary] = useState(false);
   const recentOrder = orders[0] || null;
 
   return (
@@ -98,7 +101,38 @@ export default function CustomerOverviewTab({
             </h1>
             <p style={{ margin: 0, fontSize: '0.84rem', color: 'var(--text-secondary)' }}>
               {primaryProfile ? (
-                <>Managing digital identity at <strong style={{ color: 'var(--accent-purple)' }}>flocard.in/p/{primaryProfile.slug}</strong></>
+                <>
+                  Managing digital identity at{' '}
+                  <button
+                    type="button"
+                    onClick={() => {
+                      const url = `https://flocard.in/p/${primaryProfile.slug}`;
+                      if (navigator.clipboard) {
+                        navigator.clipboard.writeText(url);
+                        setCopiedPrimary(true);
+                        setTimeout(() => setCopiedPrimary(false), 2000);
+                      }
+                    }}
+                    title="Click to copy digital identity link"
+                    style={{
+                      background: 'none',
+                      border: 'none',
+                      padding: 0,
+                      cursor: 'pointer',
+                      display: 'inline-flex',
+                      alignItems: 'center',
+                      gap: '4px',
+                      color: copiedPrimary ? '#10B981' : 'var(--accent-purple)',
+                      fontWeight: 700,
+                      fontSize: '0.84rem',
+                      fontFamily: 'inherit'
+                    }}
+                  >
+                    <span>flocard.in/p/{primaryProfile.slug}</span>
+                    {copiedPrimary ? <Check size={12} color="#10B981" /> : <Copy size={12} style={{ opacity: 0.7 }} />}
+                    {copiedPrimary && <span style={{ fontSize: '0.72rem' }}>Copied!</span>}
+                  </button>
+                </>
               ) : (
                 'Manage your smart business cards, digital profiles, and live orders.'
               )}

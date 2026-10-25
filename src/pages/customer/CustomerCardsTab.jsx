@@ -21,7 +21,8 @@ import {
   XCircle,
   Package,
   X,
-  Check
+  Check,
+  Copy
 } from 'lucide-react';
 import QRCode from 'qrcode';
 import { EDITIONS } from '../../lib/constants';
@@ -76,7 +77,7 @@ export default function CustomerCardsTab({
       : `https://flocard.in/t/${card.cardCode}`;
     if (navigator.clipboard) {
       navigator.clipboard.writeText(url);
-      setCopiedLink(true);
+      setCopiedLink(card.cardCode || true);
       setTimeout(() => setCopiedLink(false), 2000);
     }
   };
@@ -198,9 +199,48 @@ export default function CustomerCardsTab({
                   <div style={{ fontSize: '0.76rem', color: 'var(--text-secondary)', marginTop: '2px' }}>
                     Microchip: <strong>{card.chipType || 'NXP NTAG216 (888 Bytes)'}</strong>
                   </div>
+
+                  {/* Disabled Card Explanation (Customer Spec 7) */}
+                  {(card.status === 'disabled' || card.status === 'revoked') && (
+                    <div
+                      style={{
+                        marginTop: '8px',
+                        padding: '8px 10px',
+                        borderRadius: '8px',
+                        backgroundColor: 'rgba(239, 68, 68, 0.08)',
+                        border: '1px solid rgba(239, 68, 68, 0.25)',
+                        fontSize: '0.73rem',
+                        color: '#F87171',
+                        lineHeight: 1.4
+                      }}
+                    >
+                      <strong>Card Paused:</strong> Contactless NFC tap redirection is temporarily disabled. Your digital profile and companion QR codes remain active and unchanged.
+                    </div>
+                  )}
+
                   {card.profileSlug && (
-                    <div style={{ fontSize: '0.76rem', color: 'var(--accent-purple)', marginTop: '4px' }}>
-                      Profile Destination: <strong>flocard.in/p/{card.profileSlug}</strong>
+                    <div
+                      onClick={() => handleCopyCardLink(card)}
+                      title="Click to copy destination URL"
+                      style={{
+                        fontSize: '0.76rem',
+                        color: copiedLink === card.cardCode ? '#10B981' : 'var(--accent-purple)',
+                        marginTop: '6px',
+                        cursor: 'pointer',
+                        display: 'inline-flex',
+                        alignItems: 'center',
+                        gap: '5px',
+                        transition: 'color 0.15s ease'
+                      }}
+                    >
+                      <span>Profile Destination: <strong>flocard.in/p/{card.profileSlug}</strong></span>
+                      {copiedLink === card.cardCode ? (
+                        <span style={{ fontSize: '0.7rem', color: '#10B981', display: 'inline-flex', alignItems: 'center', gap: '2px', fontWeight: 700 }}>
+                          <Check size={11} /> Copied!
+                        </span>
+                      ) : (
+                        <Copy size={11} style={{ opacity: 0.7 }} />
+                      )}
                     </div>
                   )}
                 </div>

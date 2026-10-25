@@ -41,6 +41,7 @@ import {
   Eye,
   Plus,
   Check,
+  Copy,
   X,
   ExternalLink,
   Download,
@@ -62,7 +63,10 @@ import {
   Sun,
   Moon,
   Receipt,
-  TrendingUp
+  TrendingUp,
+  QrCode,
+  Activity,
+  RefreshCw
 } from 'lucide-react';
 import { useData } from '../../context/DataContext';
 import { useAuth } from '../../context/AuthContext';
@@ -81,13 +85,30 @@ import MorphButton from '../../components/spectrum/MorphButton';
 import AdminOrderManager from './AdminOrderManager';
 import AdminSalesManager from './sales/AdminSalesManager';
 import AdminLogin from '../auth/AdminLogin';
+import CustomerCardPreview from '../../components/CustomerCardPreview';
+import AdminCardDesignStudio from './design/AdminCardDesignStudio';
+import OwnerActivityFeed from './activity/OwnerActivityFeed';
+import StaffPermissionsManager from './staff/StaffPermissionsManager';
+import AdminQrManager from './qr/AdminQrManager';
+import {
+  getWhatsAppConfig,
+  saveWhatsAppConfig,
+  getWhatsAppOutbox,
+  retryWhatsAppMessage,
+  testWhatsAppConnection
+} from '../../lib/whatsapp';
+import {
+  updateCardActivationStatus,
+  canManageCardStatus,
+  verifyActivationRequirements
+} from '../../lib/cardService';
 
 export default function AdminDashboard({ initialTab = 'overview', initialOrderId = null }) {
-  const { user, isOwner, isAdmin, logout, switchPersona } = useAuth();
+  const { user, isOwner, isAdmin, isSales, isDesigner, isProduction, isAccounts, hasPermission, canAccessTab, logout, switchPersona } = useAuth();
   const themeContext = useTheme();
-  // Admin dashboard ALWAYS uses dark theme regardless of site-wide toggle
-  const isDark = true;
-  const isLight = false;
+  // Admin dashboard defaults to dark mode, supports explicit light toggle
+  const isDark = themeContext ? themeContext.isDark : true;
+  const isLight = !isDark;
   const toggleTheme = themeContext ? themeContext.toggleTheme : () => {};
 
   const {
@@ -126,7 +147,8 @@ export default function AdminDashboard({ initialTab = 'overview', initialOrderId
     demoConfig,
     saveDemoConfig,
     resetDemoConfig,
-    resetAllData
+    resetAllData,
+    refreshAll
   } = useData();
 
   // Navigation & UI State
@@ -167,6 +189,15 @@ export default function AdminDashboard({ initialTab = 'overview', initialOrderId
   const [productSaveSuccess, setProductSaveSuccess] = useState('');
   const [newFeatureText, setNewFeatureText] = useState('');
 
+  // NFC Card Enable/Disable & Status Management State
+  const [cardStatusFilter, setCardStatusFilter] = useState('all'); // 'all' | 'active' | 'disabled' | 'pending'
+  const [cardSearchQuery, setCardSearchQuery] = useState('');
+  const [cardActionConfirm, setCardActionConfirm] = useState(null); // { card, targetStatus, message, reason, isSubmitting }
+  const [cardDetailsModal, setCardDetailsModal] = useState(null); // Selected card for detailed inspection & history
+  const [cardToast, setCardToast] = useState(null); // { type: 'success' | 'error', message: string }
+  const [bulkSelectedCards, setBulkSelectedCards] = useState([]);
+  const [bulkActionConfirm, setBulkActionConfirm] = useState(null);
+
   // Form States
   const [newCustForm, setNewCustForm] = useState({ name: '', email: '', phone: '', company: '' });
   const [newProfForm, setNewProfForm] = useState({ name: '', slug: '', role: '', company: '', theme: 'purple' });
@@ -192,7 +223,98 @@ export default function AdminDashboard({ initialTab = 'overview', initialOrderId
   const [uploadingDemoImage, setUploadingDemoImage] = useState(false);
   const [isUploadingAvatar, setIsUploadingAvatar] = useState(false);
   const [isUploadingLogo, setIsUploadingLogo] = useState(false);
-  const [isUploadingWorkImages, setIsUploadingWorkImages] = useState(false);
+  const [copiedSlug, setCopiedSlug] = useState(null);
+
+  // WhatsApp Business Integration State
+  const [waConfig, setWaConfig] = useState(() => getWhatsAppConfig());
+  const [waPhoneNumberId, setWaPhoneNumberId] = useState(waConfig.phoneNumberId || '');
+  const [waAccessToken, setWaAccessToken] = useState(waConfig.accessToken || '');
+  const [waBusinessAccountId, setWaBusinessAccountId] = useState(waConfig.businessAccountId || '');
+  const [waSenderPhone, setWaSenderPhone] = useState(waConfig.senderPhoneNumber || '+91 97782 78552');
+  const [waShowToken, setWaShowToken] = useState(false);
+  const [waSaveMsg, setWaSaveMsg] = useState('');
+  const [waTesting, setWaTesting] = useState(false);
+  const [waTestResult, setWaTestResult] = useState(null);
+  const [waOutbox, setWaOutbox] = useState(() => getWhatsAppOutbox());
+  const [waRetryingId, setWaRetryingId] = useState(null);
+
+  const handleSaveWhatsAppConfig = (e) => {
+    e.preventDefault();
+    setWaSaveMsg('');
+    const res = saveWhatsAppConfig({
+      phoneNumberId: waPhoneNumberId.trim(),
+      accessToken: waAccessToken.trim(),
+      businessAccountId: waBusinessAccountId.trim(),
+      senderPhoneNumber: waSenderPhone.trim(),
+      provider: 'meta_cloud_api'
+    });
+    if (res.success) {
+      setWaConfig(getWhatsAppConfig());
+      setWaSaveMsg('Meta WhatsApp Cloud API credentials saved successfully.');
+      setTimeout(() => setWaSaveMsg(''), 3500);
+    }
+  };
+
+  const handleTestWhatsAppConnection = async () => {
+    setWaTesting(true);
+    setWaTestResult(null);
+    const result = await testWhatsAppConnection(waSenderPhone || '919778278552');
+    setWaTesting(false);
+    setWaTestResult(result);
+    setWaOutbox(getWhatsAppOutbox());
+  };
+
+  const handleRetryWhatsAppMessage = async (msgId) => {
+    setWaRetryingId(msgId);
+    await retryWhatsAppMessage(msgId);
+    setWaOutbox(getWhatsAppOutbox());
+    setWaRetryingId(null);
+  };
+
+  const refreshWhatsAppOutbox = () => {
+    setWaOutbox(getWhatsAppOutbox());
+  };
+
+  const handleCopySlug = (slug, e) => {
+    if (e) {
+      e.preventDefault();
+      e.stopPropagation();
+    }
+    if (!slug) return;
+    const url = `https://flocard.in/p/${slug}`;
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+      navigator.clipboard.writeText(url).then(() => {
+        setCopiedSlug(slug);
+        setTimeout(() => setCopiedSlug(null), 2000);
+      }).catch(() => {
+        const textArea = document.createElement('textarea');
+        textArea.value = url;
+        document.body.appendChild(textArea);
+        textArea.select();
+        try {
+          document.execCommand('copy');
+          setCopiedSlug(slug);
+          setTimeout(() => setCopiedSlug(null), 2000);
+        } catch (err) {
+          console.error('Failed to copy', err);
+        }
+        document.body.removeChild(textArea);
+      });
+    } else {
+      const textArea = document.createElement('textarea');
+      textArea.value = url;
+      document.body.appendChild(textArea);
+      textArea.select();
+      try {
+        document.execCommand('copy');
+        setCopiedSlug(slug);
+        setTimeout(() => setCopiedSlug(null), 2000);
+      } catch (err) {
+        console.error('Failed to copy', err);
+      }
+      document.body.removeChild(textArea);
+    }
+  };
 
   const avatarInputRef = useRef(null);
   const logoInputRef = useRef(null);
@@ -221,6 +343,8 @@ export default function AdminDashboard({ initialTab = 'overview', initialOrderId
   const handleDemoImageUpload = async (e) => {
     const file = e.target.files?.[0];
     if (!file) return;
+    const tempPreview = URL.createObjectURL(file);
+    setDemoForm(prev => ({ ...prev, avatar: tempPreview, logo: tempPreview }));
     setUploadingDemoImage(true);
     setDemoSaveError('');
     try {
@@ -232,6 +356,7 @@ export default function AdminDashboard({ initialTab = 'overview', initialOrderId
         setDemoSaveError('Failed to process image upload.');
       }
     } catch (err) {
+      console.error('[AdminDashboard] Demo logo upload error:', err);
       setDemoSaveError(err.message || 'Error uploading image');
     } finally {
       setUploadingDemoImage(false);
@@ -242,6 +367,8 @@ export default function AdminDashboard({ initialTab = 'overview', initialOrderId
   const handleProfileAvatarUpload = async (e) => {
     const file = e.target.files?.[0];
     if (!file) return;
+    const tempPreview = URL.createObjectURL(file);
+    setEditingProfile(prev => ({ ...prev, avatar: tempPreview }));
     try {
       setIsUploadingAvatar(true);
       const url = await uploadImage(file, 'avatar', editingProfile?.id || 'admin_profile');
@@ -249,7 +376,7 @@ export default function AdminDashboard({ initialTab = 'overview', initialOrderId
         setEditingProfile(prev => ({ ...prev, avatar: url }));
       }
     } catch (err) {
-      console.error('Avatar upload failed:', err);
+      console.error('[AdminDashboard] Avatar upload failed:', err);
     } finally {
       setIsUploadingAvatar(false);
       if (e.target) e.target.value = '';
@@ -259,6 +386,8 @@ export default function AdminDashboard({ initialTab = 'overview', initialOrderId
   const handleProfileLogoUpload = async (e) => {
     const file = e.target.files?.[0];
     if (!file) return;
+    const tempPreview = URL.createObjectURL(file);
+    setEditingProfile(prev => ({ ...prev, logo: tempPreview }));
     try {
       setIsUploadingLogo(true);
       const url = await uploadImage(file, 'logo', editingProfile?.id || 'admin_profile');
@@ -266,7 +395,7 @@ export default function AdminDashboard({ initialTab = 'overview', initialOrderId
         setEditingProfile(prev => ({ ...prev, logo: url }));
       }
     } catch (err) {
-      console.error('Logo upload failed:', err);
+      console.error('[AdminDashboard] Logo upload failed:', err);
     } finally {
       setIsUploadingLogo(false);
       if (e.target) e.target.value = '';
@@ -280,18 +409,29 @@ export default function AdminDashboard({ initialTab = 'overview', initialOrderId
       setIsUploadingWorkImages(true);
       const newItems = [];
       for (const file of files) {
-        const url = await uploadImage(file, 'portfolio', editingProfile?.id || 'admin_profile');
-        if (url) {
-          const rawTitle = file.name.replace(/\.[^/.]+$/, '').replace(/[-_]/g, ' ');
-          const title = rawTitle.charAt(0).toUpperCase() + rawTitle.slice(1);
-          newItems.push({
-            id: `port_${Date.now()}_${Math.random().toString(36).substring(7)}`,
-            title: title || 'New Work Showcase',
-            category: 'Work Showcase',
-            desc: 'Client project deliverables and visual showcase.',
-            image: url
-          });
-        }
+        const tempPreview = URL.createObjectURL(file);
+        const rawTitle = file.name.replace(/\.[^/.]+$/, '').replace(/[-_]/g, ' ');
+        const title = rawTitle.charAt(0).toUpperCase() + rawTitle.slice(1);
+        const itemObj = {
+          id: `port_${Date.now()}_${Math.random().toString(36).substring(7)}`,
+          title: title || 'New Work Showcase',
+          category: 'Work Showcase',
+          desc: 'Client project deliverables and visual showcase.',
+          image: tempPreview
+        };
+        newItems.push(itemObj);
+
+        // Upload in background and update with permanent URL
+        uploadImage(file, 'portfolio', editingProfile?.id || 'admin_profile').then(url => {
+          if (url) {
+            setEditingProfile(prev => ({
+              ...prev,
+              portfolio: (prev.portfolio || []).map(p => p.id === itemObj.id ? { ...p, image: url } : p)
+            }));
+          }
+        }).catch(err => {
+          console.warn('[AdminDashboard] Work image background upload error:', err);
+        });
       }
       if (newItems.length > 0) {
         setEditingProfile(prev => ({
@@ -300,7 +440,7 @@ export default function AdminDashboard({ initialTab = 'overview', initialOrderId
         }));
       }
     } catch (err) {
-      console.error('Work image upload failed:', err);
+      console.error('[AdminDashboard] Work image upload failed:', err);
     } finally {
       setIsUploadingWorkImages(false);
       if (e.target) e.target.value = '';
@@ -372,22 +512,29 @@ export default function AdminDashboard({ initialTab = 'overview', initialOrderId
   }, [customers, profiles, cards, designs, orders]);
 
   // Sidebar Items
-  const navItems = [
+  const allNavItems = [
     { id: 'overview', label: 'Dashboard', icon: LayoutDashboard },
+    { id: 'orders', label: 'Orders & Fulfillment', icon: Package, badge: stats.pendingOrders > 0 ? stats.pendingOrders : (orders.length > 0 ? orders.length : null) },
+    { id: 'studio', label: 'Card Design Studio', icon: Sparkles, badge: 'Studio' },
+    { id: 'designs', label: 'Customer Designs', icon: Palette, badge: stats.pendingApprovals > 0 ? stats.pendingApprovals : null },
+    { id: 'qr', label: 'Smart QR Companion', icon: QrCode, badge: 'Smart' },
     { id: 'sales', label: 'Sales & Ledger', icon: Receipt, badge: 'New' },
     { id: 'product-sales', label: 'Product Sales', icon: TrendingUp },
     { id: 'customers', label: 'Customers', icon: Users, badge: customers.length },
     { id: 'profiles', label: 'Digital Profiles', icon: FileText, badge: profiles.length },
-    { id: 'designs', label: 'Card Designs', icon: Palette, badge: stats.pendingApprovals > 0 ? stats.pendingApprovals : null },
-    { id: 'orders', label: 'Orders', icon: Package, badge: stats.pendingOrders > 0 ? stats.pendingOrders : (orders.length > 0 ? orders.length : null) },
     { id: 'cards', label: 'NFC Cards', icon: Radio, badge: cards.length },
     { id: 'pricing', label: 'Products & Pricing', icon: Tag, badge: products?.length || 3 },
     { id: 'templates', label: 'Card Templates', icon: Layers },
     { id: 'analytics', label: 'Analytics', icon: BarChart3 },
-    { id: 'admin-access', label: 'Admin Access', icon: ShieldCheck, ownerOnly: true },
-    { id: 'audit-logs', label: 'Audit Logs', icon: ClipboardList },
+    { id: 'admin-access', label: 'Staff & Permissions', icon: ShieldCheck, ownerOnly: true },
+    { id: 'audit-logs', label: 'Owner Activity Feed', icon: Activity, ownerOnly: true },
     { id: 'settings', label: 'Settings', icon: Settings }
   ];
+
+  const navItems = allNavItems.filter((item) => {
+    if (item.ownerOnly && !isOwner) return false;
+    return canAccessTab ? canAccessTab(item.id) : true;
+  });
 
   // Global search filtering across relevant items
   const filteredData = useMemo(() => {
@@ -508,7 +655,7 @@ export default function AdminDashboard({ initialTab = 'overview', initialOrderId
       email: newAdminForm.email,
       name: newAdminForm.name || newAdminForm.email.split('@')[0],
       role: newAdminForm.role,
-      grantedBy: user?.email || 'akhil@flocard.in'
+      grantedBy: user?.email || 'admin@flocard.in'
     });
     setInviteAdminModal(false);
     setNewAdminForm({ email: '', name: '', role: 'admin' });
@@ -534,11 +681,11 @@ export default function AdminDashboard({ initialTab = 'overview', initialOrderId
     e.preventDefault();
     if (!editingProfile) return;
     const saved = saveProfile(editingProfile);
-    const targetSlug = saved?.slug || editingProfile.slug || 'akhil';
+    const targetSlug = saved?.slug || editingProfile.slug || 'alex';
     setEditingProfile(null);
     setFulfillmentToast({
       title: 'Digital Profile Saved',
-      message: `Profile changes saved! Live at flocard.in/p/${targetSlug}`,
+      message: `Profile changes saved! Live at flocard.in/${targetSlug}`,
       type: 'success'
     });
     setTimeout(() => setFulfillmentToast(null), 5000);
@@ -551,18 +698,162 @@ export default function AdminDashboard({ initialTab = 'overview', initialOrderId
     }
   };
 
+  // Handle Trigger Card Status Change (Confirmation Dialog Flow)
+  const triggerCardStatusChange = (card, targetStatus) => {
+    // Check permission
+    if (!canManageCardStatus(user)) {
+      setCardToast({
+        type: 'error',
+        message: 'Permission denied: Only the verified owner can change card activation status.'
+      });
+      setTimeout(() => setCardToast(null), 4500);
+      return;
+    }
+
+    // Check activation prerequisites if activating
+    if (targetStatus === 'active') {
+      const check = verifyActivationRequirements(card);
+      if (!check.valid) {
+        setCardToast({
+          type: 'error',
+          message: check.reason
+        });
+        setTimeout(() => setCardToast(null), 4500);
+        return;
+      }
+    }
+
+    let defaultMsg = '';
+    if (targetStatus === 'disabled') {
+      defaultMsg = 'Disabling this card will prevent its NFC link from opening the assigned profile. Continue?';
+    } else if (targetStatus === 'active') {
+      defaultMsg = 'This card will be able to open its assigned profile again. Continue?';
+    } else {
+      defaultMsg = `Set status of card ${card.cardCode} to ${targetStatus}?`;
+    }
+
+    setCardActionConfirm({
+      card,
+      targetStatus,
+      message: defaultMsg,
+      reason: '',
+      isSubmitting: false
+    });
+  };
+
+  const executeCardStatusChange = async () => {
+    if (!cardActionConfirm || !cardActionConfirm.card) return;
+    const { card, targetStatus, reason } = cardActionConfirm;
+
+    setCardActionConfirm(prev => ({ ...prev, isSubmitting: true }));
+
+    const result = await updateCardActivationStatus({
+      cardId: card.id || card.cardCode,
+      newStatus: targetStatus,
+      reason: reason || (targetStatus === 'disabled' ? 'Admin disabled card' : 'Admin activated card'),
+      actorUser: user || { role: 'owner', name: 'Owner' }
+    });
+
+    setCardActionConfirm(null);
+
+    if (result.success) {
+      if (typeof refreshAll === 'function') {
+        refreshAll();
+      }
+      setCardToast({
+        type: 'success',
+        message: targetStatus === 'disabled'
+          ? `Card ${card.cardCode} successfully disabled. Public NFC redirect paused.`
+          : `Card ${card.cardCode} successfully enabled and linked to @${card.profileSlug}.`
+      });
+      if (cardDetailsModal && (cardDetailsModal.id === card.id || cardDetailsModal.cardCode === card.cardCode)) {
+        setCardDetailsModal(result.card);
+      }
+    } else {
+      setCardToast({
+        type: 'error',
+        message: result.error || 'Failed to update card status in database.'
+      });
+    }
+
+    setTimeout(() => setCardToast(null), 5000);
+  };
+
+  // Handle Bulk Status Change
+  const triggerBulkStatusChange = (targetStatus) => {
+    if (!canManageCardStatus(user)) {
+      setCardToast({
+        type: 'error',
+        message: 'Permission denied: Only the verified owner can change card activation status.'
+      });
+      setTimeout(() => setCardToast(null), 4500);
+      return;
+    }
+    if (bulkSelectedCards.length === 0) return;
+
+    setBulkActionConfirm({
+      targetStatus,
+      count: bulkSelectedCards.length,
+      isSubmitting: false
+    });
+  };
+
+  const executeBulkStatusChange = async () => {
+    if (!bulkActionConfirm) return;
+    setBulkActionConfirm(prev => ({ ...prev, isSubmitting: true }));
+
+    let successCount = 0;
+    let failCount = 0;
+
+    for (const cardId of bulkSelectedCards) {
+      const matched = cards.find(c => c.id === cardId || c.cardCode === cardId);
+      if (!matched) continue;
+      const res = await updateCardActivationStatus({
+        cardId: matched.id,
+        newStatus: bulkActionConfirm.targetStatus,
+        reason: `Bulk ${bulkActionConfirm.targetStatus} operation`,
+        actorUser: user || { role: 'owner' }
+      });
+      if (res.success) successCount++;
+      else failCount++;
+    }
+
+    setBulkActionConfirm(null);
+    setBulkSelectedCards([]);
+    if (typeof refreshAll === 'function') {
+      refreshAll();
+    }
+
+    setCardToast({
+      type: successCount > 0 ? 'success' : 'error',
+      message: `Bulk update complete: ${successCount} updated successfully${failCount > 0 ? `, ${failCount} skipped/failed` : ''}.`
+    });
+    setTimeout(() => setCardToast(null), 5000);
+  };
+
   // Handle Edit/Save NFC Card
   const handleUpdateCard = (e) => {
     e.preventDefault();
     if (!editingCard) return;
     saveCard(editingCard);
     setEditingCard(null);
+    setCardToast({
+      type: 'success',
+      message: `Card ${editingCard.cardCode} details updated successfully.`
+    });
+    setTimeout(() => setCardToast(null), 4000);
   };
 
   const handleDeleteCard = (id) => {
     if (window.confirm('Are you sure you want to delete this NFC hardware record? The card tag will no longer resolve.')) {
       deleteCard(id);
       if (editingCard?.id === id) setEditingCard(null);
+      if (cardDetailsModal?.id === id) setCardDetailsModal(null);
+      setCardToast({
+        type: 'success',
+        message: 'NFC card record removed from inventory.'
+      });
+      setTimeout(() => setCardToast(null), 4000);
     }
   };
 
@@ -649,7 +940,7 @@ export default function AdminDashboard({ initialTab = 'overview', initialOrderId
       }
     }
 
-    const res = saveProduct(editingProduct, user?.role || 'admin', user?.email || 'akhil@flocard.in');
+    const res = saveProduct(editingProduct, user?.role || 'admin', user?.email || 'admin@flocard.in');
     if (res && !res.success) {
       setProductSaveError(res.error || 'Failed to save product pricing.');
       return;
@@ -1057,23 +1348,26 @@ export default function AdminDashboard({ initialTab = 'overview', initialOrderId
                 }}
               >
                 {activeTab === 'overview' && 'Dashboard'}
+                {activeTab === 'studio' && 'Admin Card Design Studio'}
                 {activeTab === 'sales' && 'Sales Management & Accounting Ledger'}
                 {activeTab === 'product-sales' && 'Product-wise Sales Tracking'}
                 {activeTab === 'customers' && 'Customers'}
                 {activeTab === 'profiles' && 'Digital Profiles'}
-                {activeTab === 'designs' && 'Card Designs'}
+                {activeTab === 'designs' && 'Customer Card Designs'}
                 {activeTab === 'orders' && 'Orders & Fulfillment'}
                 {activeTab === 'cards' && 'NFC Cards'}
                 {activeTab === 'pricing' && 'Card Products & Pricing'}
                 {activeTab === 'templates' && 'Card Templates'}
                 {activeTab === 'demo' && 'Demo Showcase Settings'}
                 {activeTab === 'analytics' && 'Analytics'}
-                {activeTab === 'admin-access' && 'Admin Access'}
-                {activeTab === 'audit-logs' && 'Audit Logs'}
+                {activeTab === 'qr' && 'Smart QR Companion & Preview Studio'}
+                {activeTab === 'admin-access' && 'Staff Roles & Permissions Governance'}
+                {activeTab === 'audit-logs' && 'Owner-Only Live Activity Feed'}
                 {activeTab === 'settings' && 'Settings'}
               </h1>
               <p className="admin-page-subtitle" style={{ margin: '2px 0 0', fontSize: '0.84rem', color: isDark ? '#9B90AD' : '#777184' }}>
                 {activeTab === 'overview' && "Welcome back! Here's what's happening with FLOCARD."}
+                {activeTab === 'studio' && 'Dedicated 3-panel professional design workspace for creating, editing, and publishing NFC card designs.'}
                 {activeTab === 'sales' && 'Accounting-grade sales ledger, double-entry balances, tax invoices, and payment tracking.'}
                 {activeTab === 'product-sales' && 'Track revenue, discounts, refunds, units sold, and inventory across every FLOCARD edition.'}
                 {activeTab === 'customers' && 'Manage authenticated customer accounts and enterprise partners.'}
@@ -1085,8 +1379,9 @@ export default function AdminDashboard({ initialTab = 'overview', initialOrderId
                 {activeTab === 'templates' && 'Manage Standard FLOCARD (Without Customer Logo) and Customer Logo (With Customer Logo) brand templates.'}
                 {activeTab === 'demo' && 'Customize default demo name, role, tagline, company, and brand logo across Homepage and demo card previews.'}
                 {activeTab === 'analytics' && 'Real-time contactless tap metrics and telemetry logs.'}
-                {activeTab === 'admin-access' && 'Owner-governed administrator invitations and security roles.'}
-                {activeTab === 'audit-logs' && 'Immutable system audit trail of all operations and administrative changes.'}
+                {activeTab === 'qr' && 'High-resolution PNG, vector SVG, and multi-format mockup placement preview.'}
+                {activeTab === 'admin-access' && 'Owner-governed staff administration across Owner, Sales, Designer, Production, and Accounts.'}
+                {activeTab === 'audit-logs' && 'Strictly owner-only real-time audit ledger, timeline filters, and before-and-after diffs.'}
                 {activeTab === 'settings' && 'Database synchronization, studio backdrop, and system settings.'}
               </p>
             </div>
@@ -1297,7 +1592,7 @@ export default function AdminDashboard({ initialTab = 'overview', initialOrderId
 
                 <div className="admin-user-details" style={{ textAlign: 'left', lineHeight: 1.2 }}>
                   <div style={{ fontSize: '0.82rem', fontWeight: 700, color: isDark ? '#FFFFFF' : '#191522', whiteSpace: 'nowrap' }}>
-                    {user?.name || 'Akhil Anvar'}
+                    {user?.name || 'Administrator'}
                   </div>
                   <div style={{ fontSize: '0.7rem', color: isDark ? '#9B90AD' : '#777184', whiteSpace: 'nowrap' }}>
                     {isOwner ? 'Owner' : 'Administrator'}
@@ -1323,12 +1618,53 @@ export default function AdminDashboard({ initialTab = 'overview', initialOrderId
                   }}
                 >
                   <div style={{ padding: '8px 12px', borderBottom: isDark ? '1px solid #261A3B' : '1px solid #F2ECFF' }}>
-                    <div style={{ fontSize: '0.82rem', fontWeight: 600, color: isDark ? '#FFFFFF' : '#191522' }}>{user?.email || 'akhil@flocard.in'}</div>
-                    <div style={{ fontSize: '0.72rem', color: '#6B00FF', fontWeight: 600 }}>{isOwner ? 'Platform Owner' : 'Administrator'}</div>
+                    <div style={{ fontSize: '0.82rem', fontWeight: 600, color: isDark ? '#FFFFFF' : '#191522' }}>{user?.email || 'admin@flocard.in'}</div>
+                    <div style={{ fontSize: '0.72rem', color: '#6B00FF', fontWeight: 600, textTransform: 'capitalize' }}>
+                      {user?.role ? `${user.role} Desk` : (isOwner ? 'Platform Owner' : 'Administrator')}
+                    </div>
+                  </div>
+
+                  {/* QA & Security Role Switcher */}
+                  <div style={{ padding: '8px 12px', borderBottom: isDark ? '1px solid #261A3B' : '1px solid #F2ECFF' }}>
+                    <div style={{ fontSize: '0.68rem', fontWeight: 700, color: '#A855F7', textTransform: 'uppercase', marginBottom: '6px' }}>
+                      Role Access Switcher:
+                    </div>
+                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '4px' }}>
+                      {[
+                        { role: 'owner', label: 'Owner' },
+                        { role: 'sales', label: 'Sales' },
+                        { role: 'designer', label: 'Designer' },
+                        { role: 'production', label: 'Production' },
+                        { role: 'accounts', label: 'Accounts' }
+                      ].map((p) => (
+                        <button
+                          key={p.role}
+                          type="button"
+                          onClick={() => {
+                            switchPersona(p.role);
+                            setUserDropdownOpen(false);
+                            setActiveTab('overview');
+                          }}
+                          style={{
+                            background: user?.role === p.role ? '#6B00FF' : (isDark ? '#1C122C' : '#F4EFFC'),
+                            border: 'none',
+                            color: user?.role === p.role ? '#FFFFFF' : (isDark ? '#C4B5FD' : '#6B00FF'),
+                            fontSize: '0.72rem',
+                            fontWeight: 600,
+                            padding: '4px 6px',
+                            borderRadius: '6px',
+                            cursor: 'pointer',
+                            textAlign: 'center'
+                          }}
+                        >
+                          {p.label}
+                        </button>
+                      ))}
+                    </div>
                   </div>
 
                   <a
-                    href="/p/akhil"
+                    href="/alex"
                     target="_blank"
                     rel="noreferrer"
                     style={{
@@ -2612,9 +2948,35 @@ export default function AdminDashboard({ initialTab = 'overview', initialOrderId
                         </td>
                         <td style={{ padding: '12px', color: 'var(--adm-text-secondary)' }}>{p.role} at {p.company}</td>
                         <td style={{ padding: '12px' }}>
-                          <a href={`/p/${p.slug}`} target="_blank" rel="noreferrer" style={{ color: '#6B00FF', textDecoration: 'none', fontWeight: 600 }}>
-                            flocard.in/p/{p.slug}
-                          </a>
+                          <button
+                            type="button"
+                            onClick={(e) => handleCopySlug(p.slug, e)}
+                            title="Click to copy public URL"
+                            style={{
+                              background: copiedSlug === p.slug ? 'rgba(16, 185, 129, 0.12)' : 'none',
+                              border: copiedSlug === p.slug ? '1px solid rgba(16, 185, 129, 0.3)' : '1px solid transparent',
+                              borderRadius: '6px',
+                              padding: '4px 8px',
+                              color: copiedSlug === p.slug ? '#10B981' : '#6B00FF',
+                              fontFamily: 'monospace',
+                              fontWeight: 600,
+                              cursor: 'pointer',
+                              display: 'inline-flex',
+                              alignItems: 'center',
+                              gap: '6px',
+                              transition: 'all 0.15s ease',
+                              fontSize: '0.82rem'
+                            }}
+                          >
+                            <span>flocard.in/p/{p.slug}</span>
+                            {copiedSlug === p.slug ? (
+                              <span style={{ fontSize: '0.72rem', color: '#10B981', display: 'inline-flex', alignItems: 'center', gap: '3px', fontWeight: 700 }}>
+                                <Check size={12} /> Copied!
+                              </span>
+                            ) : (
+                              <Copy size={13} style={{ opacity: 0.6 }} />
+                            )}
+                          </button>
                         </td>
                         <td style={{ padding: '12px' }}>
                           <span style={{ textTransform: 'capitalize', fontSize: '0.76rem', fontWeight: 600, color: p.theme === 'gold' ? '#D4AF37' : p.theme === 'platinum' ? '#94A3B8' : '#6B00FF' }}>
@@ -2758,12 +3120,27 @@ export default function AdminDashboard({ initialTab = 'overview', initialOrderId
                         </span>
                       </div>
 
-                      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '8px 12px', borderRadius: '8px', backgroundColor: 'var(--adm-search-bg)' }}>
-                        <div style={{ fontSize: '0.74rem', color: '#6B00FF', fontWeight: 600, fontFamily: 'monospace' }}>
-                          flocard.in/p/{p.slug}
+                      <div
+                        onClick={(e) => handleCopySlug(p.slug, e)}
+                        title="Click to copy public URL"
+                        style={{
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'space-between',
+                          padding: '8px 12px',
+                          borderRadius: '8px',
+                          backgroundColor: copiedSlug === p.slug ? 'rgba(16, 185, 129, 0.12)' : 'var(--adm-search-bg)',
+                          border: copiedSlug === p.slug ? '1px solid rgba(16, 185, 129, 0.3)' : '1px solid transparent',
+                          cursor: 'pointer',
+                          transition: 'all 0.15s ease'
+                        }}
+                      >
+                        <div style={{ fontSize: '0.74rem', color: copiedSlug === p.slug ? '#10B981' : '#6B00FF', fontWeight: 600, fontFamily: 'monospace', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                          <span>flocard.in/p/{p.slug}</span>
+                          {copiedSlug === p.slug ? <Check size={12} /> : <Copy size={12} style={{ opacity: 0.6 }} />}
                         </div>
-                        <span style={{ textTransform: 'capitalize', fontSize: '0.72rem', fontWeight: 700, color: p.theme === 'gold' ? '#D4AF37' : p.theme === 'platinum' ? '#94A3B8' : '#6B00FF' }}>
-                          {p.theme || 'purple'}
+                        <span style={{ textTransform: 'capitalize', fontSize: '0.72rem', fontWeight: 700, color: copiedSlug === p.slug ? '#10B981' : (p.theme === 'gold' ? '#D4AF37' : p.theme === 'platinum' ? '#94A3B8' : '#6B00FF') }}>
+                          {copiedSlug === p.slug ? 'Copied!' : (p.theme || 'purple')}
                         </span>
                       </div>
 
@@ -2833,6 +3210,13 @@ export default function AdminDashboard({ initialTab = 'overview', initialOrderId
                 )}
               </div>
             </div>
+          )}
+
+          {/* ====================================================================
+              VIEW: DEDICATED ADMIN CARD DESIGN STUDIO (Module 2)
+              ==================================================================== */}
+          {activeTab === 'studio' && (
+            <AdminCardDesignStudio />
           )}
 
           {/* ====================================================================
@@ -3302,284 +3686,739 @@ export default function AdminDashboard({ initialTab = 'overview', initialOrderId
           )}
 
           {/* ====================================================================
-              VIEW: NFC CARDS INVENTORY
+              VIEW: NFC CARDS INVENTORY & ACTIVATION MANAGEMENT
               ==================================================================== */}
-          {activeTab === 'cards' && (
-            <div style={{ backgroundColor: 'var(--adm-card-bg)', borderRadius: '16px', border: 'var(--adm-card-border)', padding: '24px' }}>
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px', flexWrap: 'wrap', gap: '12px' }}>
-                <div>
-                  <h3 style={{ margin: 0, fontSize: '1.1rem', fontWeight: 700, color: 'var(--adm-text-primary)' }}>NFC Card Hardware Inventory</h3>
-                  <p style={{ margin: '2px 0 0', fontSize: '0.8rem', color: 'var(--adm-text-secondary)' }}>Encoded NTAG216 hardware chips with permanent redirect routes & assignments.</p>
+          {activeTab === 'cards' && (() => {
+            // Filter and search computation
+            const filteredCards = cards.filter((c) => {
+              // Status filter
+              const rawStatus = (c.status || 'in_stock').toLowerCase();
+              const isCardActive = rawStatus === 'active';
+              const isCardDisabled = rawStatus === 'disabled' || rawStatus === 'revoked' || rawStatus === 'suspended';
+              const isCardPending = rawStatus === 'pending' || rawStatus === 'in_stock' || rawStatus === 'assigned';
+
+              if (cardStatusFilter === 'active' && !isCardActive) return false;
+              if (cardStatusFilter === 'disabled' && !isCardDisabled) return false;
+              if (cardStatusFilter === 'pending' && !isCardPending) return false;
+
+              // Search query filter (card ID, customer name/email, profile slug, order reference)
+              if (cardSearchQuery.trim()) {
+                const q = cardSearchQuery.toLowerCase().trim();
+                const matchCode = (c.cardCode || '').toLowerCase().includes(q);
+                const matchCust = (c.customerName || '').toLowerCase().includes(q) || (c.customerEmail || '').toLowerCase().includes(q);
+                const matchSlug = (c.profileSlug || '').toLowerCase().includes(q);
+                const matchOrder = (c.orderId || c.orderReference || '').toLowerCase().includes(q);
+                const matchBatch = (c.batch || '').toLowerCase().includes(q);
+                return matchCode || matchCust || matchSlug || matchOrder || matchBatch;
+              }
+              return true;
+            });
+
+            const activeCount = cards.filter(c => (c.status || '').toLowerCase() === 'active').length;
+            const disabledCount = cards.filter(c => ['disabled', 'revoked', 'suspended'].includes((c.status || '').toLowerCase())).length;
+            const pendingCount = cards.filter(c => ['pending', 'in_stock', 'assigned'].includes((c.status || '').toLowerCase())).length;
+
+            return (
+              <div style={{ backgroundColor: 'var(--adm-card-bg)', borderRadius: '16px', border: 'var(--adm-card-border)', padding: '24px' }}>
+                {/* Header & Main Controls */}
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '20px', flexWrap: 'wrap', gap: '14px' }}>
+                  <div>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                      <h3 style={{ margin: 0, fontSize: '1.2rem', fontWeight: 800, color: 'var(--adm-text-primary)' }}>
+                        NFC Card Hardware & Activation Engine
+                      </h3>
+                      <span
+                        style={{
+                          fontSize: '0.72rem',
+                          fontWeight: 700,
+                          padding: '3px 8px',
+                          borderRadius: '9999px',
+                          backgroundColor: '#6B00FF1A',
+                          color: '#6B00FF',
+                          border: '1px solid #6B00FF33'
+                        }}
+                      >
+                        {cards.length} Total Registered
+                      </span>
+                    </div>
+                    <p style={{ margin: '4px 0 0', fontSize: '0.82rem', color: 'var(--adm-text-secondary)' }}>
+                      Authoritative server-side NFC tap activation, contactless redirect control, and hardware inventory.
+                    </p>
+                  </div>
+
+                  <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
+                    <button
+                      type="button"
+                      onClick={() => setAssignCardModal(true)}
+                      style={{
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: '6px',
+                        padding: '9px 16px',
+                        borderRadius: '10px',
+                        border: 'none',
+                        backgroundColor: '#6B00FF',
+                        color: '#FFFFFF',
+                        fontWeight: 600,
+                        fontSize: '0.84rem',
+                        cursor: 'pointer',
+                        boxShadow: '0 4px 12px rgba(107, 0, 255, 0.3)'
+                      }}
+                    >
+                      <Plus size={16} />
+                      <span>Encode & Assign Card</span>
+                    </button>
+                  </div>
                 </div>
-                <button
-                  type="button"
-                  onClick={() => setAssignCardModal(true)}
+
+                {/* Filter Tabs & Search Bar */}
+                <div
                   style={{
                     display: 'flex',
+                    justifyContent: 'space-between',
                     alignItems: 'center',
-                    gap: '6px',
-                    padding: '8px 16px',
-                    borderRadius: '10px',
-                    border: 'none',
-                    backgroundColor: '#6B00FF',
-                    color: '#FFFFFF',
-                    fontWeight: 600,
-                    fontSize: '0.84rem',
-                    cursor: 'pointer'
+                    marginBottom: '18px',
+                    flexWrap: 'wrap',
+                    gap: '12px',
+                    paddingBottom: '16px',
+                    borderBottom: 'var(--adm-divider)'
                   }}
                 >
-                  <Plus size={16} />
-                  <span>Encode & Assign Card</span>
-                </button>
-              </div>
-
-              {/* Desktop Table View */}
-              <div className="admin-desktop-table" style={{ overflowX: 'auto' }}>
-                <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left', fontSize: '0.84rem' }}>
-                  <thead>
-                    <tr style={{ borderBottom: 'var(--adm-divider)', color: 'var(--adm-text-secondary)', fontSize: '0.74rem', textTransform: 'uppercase' }}>
-                      <th style={{ padding: '10px 12px' }}>Card ID</th>
-                      <th style={{ padding: '10px 12px' }}>Customer</th>
-                      <th style={{ padding: '10px 12px' }}>Assigned Profile</th>
-                      <th style={{ padding: '10px 12px' }}>Edition</th>
-                      <th style={{ padding: '10px 12px' }}>Tap Count</th>
-                      <th style={{ padding: '10px 12px' }}>Status</th>
-                      <th style={{ padding: '10px 12px' }}>Redirect</th>
-                      <th style={{ padding: '10px 12px', textAlign: 'center' }}>Actions</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {cards.length === 0 ? (
-                      <tr>
-                        <td colSpan={8} style={{ padding: '48px 12px', textAlign: 'center', color: 'var(--adm-text-secondary)' }}>
-                          <CreditCard size={32} color="#C4B5FD" style={{ margin: '0 auto 8px', display: 'block' }} />
-                          <div style={{ fontWeight: 600, color: 'var(--adm-text-primary)', marginBottom: '4px' }}>No NFC cards registered</div>
-                          <div style={{ fontSize: '0.78rem' }}>Click &quot;Encode &amp; Assign Card&quot; to link your first physical NFC card.</div>
-                        </td>
-                      </tr>
-                    ) : (
-                      cards.map((c) => (
-                      <tr key={c.id} style={{ borderBottom: 'var(--adm-divider)' }}>
-                        <td style={{ padding: '12px', fontFamily: 'monospace', fontWeight: 700, color: 'var(--adm-text-primary)' }}>{c.cardCode}</td>
-                        <td style={{ padding: '12px', fontWeight: 600 }}>{c.customerName || 'In Stock'}</td>
-                        <td style={{ padding: '12px', color: 'var(--adm-text-secondary)' }}>{c.profileSlug ? `@${c.profileSlug}` : '—'}</td>
-                        <td style={{ padding: '12px', textTransform: 'capitalize' }}>{c.edition}</td>
-                        <td style={{ padding: '12px', fontWeight: 700, color: '#6B00FF' }}>{c.tapCount || 0}</td>
-                        <td style={{ padding: '12px' }}>
+                  {/* Status Filter Pills */}
+                  <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap' }}>
+                    {[
+                      { key: 'all', label: 'All Cards', count: cards.length },
+                      { key: 'active', label: 'Active', count: activeCount, color: '#10B981' },
+                      { key: 'disabled', label: 'Disabled', count: disabledCount, color: '#EF4444' },
+                      { key: 'pending', label: 'Pending', count: pendingCount, color: '#F59E0B' }
+                    ].map((tab) => {
+                      const isSelected = cardStatusFilter === tab.key;
+                      return (
+                        <button
+                          key={tab.key}
+                          type="button"
+                          onClick={() => setCardStatusFilter(tab.key)}
+                          style={{
+                            display: 'inline-flex',
+                            alignItems: 'center',
+                            gap: '6px',
+                            padding: '6px 12px',
+                            borderRadius: '8px',
+                            border: isSelected ? '1px solid #6B00FF' : 'var(--adm-card-border)',
+                            backgroundColor: isSelected ? '#6B00FF1F' : 'var(--adm-search-bg)',
+                            color: isSelected ? '#6B00FF' : 'var(--adm-text-secondary)',
+                            fontWeight: isSelected ? 700 : 500,
+                            fontSize: '0.8rem',
+                            cursor: 'pointer',
+                            transition: 'all 0.15s ease'
+                          }}
+                        >
+                          <span>{tab.label}</span>
                           <span
                             style={{
                               fontSize: '0.72rem',
-                              padding: '2px 8px',
+                              padding: '1px 6px',
                               borderRadius: '9999px',
-                              backgroundColor: c.status === 'active' ? '#EEFAF5' : c.status === 'suspended' ? '#FEF2F2' : '#F1F5F9',
-                              color: c.status === 'active' ? '#16A36A' : c.status === 'suspended' ? '#DC4545' : '#64748B',
-                              fontWeight: 600,
-                              textTransform: 'capitalize'
+                              backgroundColor: isSelected ? '#6B00FF' : 'rgba(255,255,255,0.08)',
+                              color: isSelected ? '#FFFFFF' : 'inherit'
                             }}
                           >
-                            ● {c.status}
+                            {tab.count}
                           </span>
-                        </td>
-                        <td style={{ padding: '12px' }}>
-                          <a
-                            href={`/t/${c.cardCode}`}
-                            target="_blank"
-                            rel="noreferrer"
-                            style={{
-                              display: 'inline-flex',
-                              alignItems: 'center',
-                              gap: '4px',
-                              padding: '4px 10px',
-                              borderRadius: '6px',
-                              backgroundColor: '#F3EEFF',
-                              color: '#6B00FF',
-                              textDecoration: 'none',
-                              fontSize: '0.76rem',
-                              fontWeight: 600
+                        </button>
+                      );
+                    })}
+                  </div>
+
+                  {/* Search Input */}
+                  <div style={{ position: 'relative', minWidth: '280px', flex: '1', maxWidth: '400px' }}>
+                    <Search size={15} color="var(--adm-text-secondary)" style={{ position: 'absolute', left: '12px', top: '50%', transform: 'translateY(-50%)' }} />
+                    <input
+                      type="text"
+                      value={cardSearchQuery}
+                      onChange={(e) => setCardSearchQuery(e.target.value)}
+                      placeholder="Search by card ID, customer, slug, or order..."
+                      style={{
+                        width: '100%',
+                        padding: '8px 12px 8px 34px',
+                        borderRadius: '8px',
+                        border: 'var(--adm-card-border)',
+                        backgroundColor: 'var(--adm-search-bg)',
+                        color: 'var(--adm-text-primary)',
+                        fontSize: '0.82rem'
+                      }}
+                    />
+                    {cardSearchQuery && (
+                      <button
+                        type="button"
+                        onClick={() => setCardSearchQuery('')}
+                        style={{
+                          position: 'absolute',
+                          right: '8px',
+                          top: '50%',
+                          transform: 'translateY(-50%)',
+                          background: 'none',
+                          border: 'none',
+                          color: 'var(--adm-text-secondary)',
+                          cursor: 'pointer',
+                          padding: '4px'
+                        }}
+                      >
+                        <X size={14} />
+                      </button>
+                    )}
+                  </div>
+                </div>
+
+                {/* Bulk Actions Banner (Shown when 1 or more cards selected) */}
+                {bulkSelectedCards.length > 0 && (
+                  <div
+                    style={{
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'space-between',
+                      padding: '10px 16px',
+                      borderRadius: '10px',
+                      backgroundColor: '#6B00FF14',
+                      border: '1px solid #6B00FF40',
+                      marginBottom: '16px',
+                      gap: '12px',
+                      flexWrap: 'wrap'
+                    }}
+                  >
+                    <div style={{ fontSize: '0.82rem', color: 'var(--adm-text-primary)', fontWeight: 600 }}>
+                      <span style={{ color: '#6B00FF', fontWeight: 800 }}>{bulkSelectedCards.length}</span> cards selected
+                    </div>
+                    <div style={{ display: 'flex', gap: '8px' }}>
+                      <button
+                        type="button"
+                        onClick={() => triggerBulkStatusChange('active')}
+                        style={{
+                          padding: '5px 12px',
+                          borderRadius: '6px',
+                          border: '1px solid #10B98144',
+                          backgroundColor: '#10B9811A',
+                          color: '#10B981',
+                          fontSize: '0.78rem',
+                          fontWeight: 700,
+                          cursor: 'pointer'
+                        }}
+                      >
+                        Enable Selected
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => triggerBulkStatusChange('disabled')}
+                        style={{
+                          padding: '5px 12px',
+                          borderRadius: '6px',
+                          border: '1px solid #EF444444',
+                          backgroundColor: '#EF44441A',
+                          color: '#EF4444',
+                          fontSize: '0.78rem',
+                          fontWeight: 700,
+                          cursor: 'pointer'
+                        }}
+                      >
+                        Disable Selected
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setBulkSelectedCards([])}
+                        style={{
+                          padding: '5px 10px',
+                          borderRadius: '6px',
+                          border: 'var(--adm-card-border)',
+                          background: 'none',
+                          color: 'var(--adm-text-secondary)',
+                          fontSize: '0.76rem',
+                          cursor: 'pointer'
+                        }}
+                      >
+                        Clear
+                      </button>
+                    </div>
+                  </div>
+                )}
+
+                {/* Desktop Table View */}
+                <div className="admin-desktop-table" style={{ overflowX: 'auto' }}>
+                  <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left', fontSize: '0.84rem' }}>
+                    <thead>
+                      <tr style={{ borderBottom: 'var(--adm-divider)', color: 'var(--adm-text-secondary)', fontSize: '0.74rem', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
+                        <th style={{ padding: '10px 8px', width: '32px' }}>
+                          <input
+                            type="checkbox"
+                            checked={filteredCards.length > 0 && bulkSelectedCards.length === filteredCards.length}
+                            onChange={(e) => {
+                              if (e.target.checked) {
+                                setBulkSelectedCards(filteredCards.map(c => c.id || c.cardCode));
+                              } else {
+                                setBulkSelectedCards([]);
+                              }
                             }}
-                          >
-                            <span>/t/{c.cardCode}</span>
-                            <ExternalLink size={12} />
-                          </a>
-                        </td>
-                        <td style={{ padding: '12px', textAlign: 'center' }}>
-                          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px' }}>
+                          />
+                        </th>
+                        <th style={{ padding: '10px 12px' }}>NFC Card Identifier</th>
+                        <th style={{ padding: '10px 12px' }}>Customer Assignment</th>
+                        <th style={{ padding: '10px 12px' }}>Linked Digital Profile</th>
+                        <th style={{ padding: '10px 12px' }}>Finish / Edition</th>
+                        <th style={{ padding: '10px 12px' }}>Status</th>
+                        <th style={{ padding: '10px 12px' }}>Last Status Change</th>
+                        <th style={{ padding: '10px 12px' }}>Taps</th>
+                        <th style={{ padding: '10px 12px', textAlign: 'center' }}>Activation Control</th>
+                        <th style={{ padding: '10px 12px', textAlign: 'center' }}>Inspect</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {filteredCards.length === 0 ? (
+                        <tr>
+                          <td colSpan={10} style={{ padding: '48px 12px', textAlign: 'center', color: 'var(--adm-text-secondary)' }}>
+                            <CreditCard size={36} color="#C4B5FD" style={{ margin: '0 auto 10px', display: 'block', opacity: 0.7 }} />
+                            <div style={{ fontWeight: 700, color: 'var(--adm-text-primary)', marginBottom: '4px' }}>
+                              {cardSearchQuery || cardStatusFilter !== 'all' ? 'No cards match the active filters' : 'No NFC hardware cards registered'}
+                            </div>
+                            <div style={{ fontSize: '0.78rem' }}>
+                              {cardSearchQuery || cardStatusFilter !== 'all' ? 'Try adjusting your search query or switching tabs.' : 'Click "Encode & Assign Card" to register your first NFC card.'}
+                            </div>
+                          </td>
+                        </tr>
+                      ) : (
+                        filteredCards.map((c) => {
+                          const rawStatus = (c.status || 'in_stock').toLowerCase();
+                          const isActive = rawStatus === 'active';
+                          const isDisabled = rawStatus === 'disabled' || rawStatus === 'revoked' || rawStatus === 'suspended';
+                          const isPending = rawStatus === 'pending' || rawStatus === 'in_stock' || rawStatus === 'assigned';
+                          const isSelected = bulkSelectedCards.includes(c.id || c.cardCode);
+
+                          const statusBadgeColor = isActive
+                            ? { bg: '#10B98118', border: '#10B98133', text: '#10B981', label: 'Active' }
+                            : isDisabled
+                            ? { bg: '#EF444418', border: '#EF444433', text: '#EF4444', label: 'Disabled' }
+                            : { bg: '#F59E0B18', border: '#F59E0B33', text: '#F59E0B', label: 'Pending' };
+
+                          const reqCheck = verifyActivationRequirements(c);
+
+                          return (
+                            <tr
+                              key={c.id || c.cardCode}
+                              style={{
+                                borderBottom: 'var(--adm-divider)',
+                                backgroundColor: isSelected ? '#6B00FF0A' : 'transparent',
+                                transition: 'background-color 0.15s ease'
+                              }}
+                            >
+                              <td style={{ padding: '12px 8px' }}>
+                                <input
+                                  type="checkbox"
+                                  checked={isSelected}
+                                  onChange={(e) => {
+                                    if (e.target.checked) {
+                                      setBulkSelectedCards(prev => [...prev, c.id || c.cardCode]);
+                                    } else {
+                                      setBulkSelectedCards(prev => prev.filter(id => id !== (c.id || c.cardCode)));
+                                    }
+                                  }}
+                                />
+                              </td>
+
+                              {/* Card Identifier */}
+                              <td style={{ padding: '12px' }}>
+                                <div style={{ fontFamily: 'monospace', fontWeight: 800, color: 'var(--adm-text-primary)', fontSize: '0.88rem' }}>
+                                  {c.cardCode}
+                                </div>
+                                <div style={{ fontSize: '0.72rem', color: 'var(--adm-text-secondary)', marginTop: '2px' }}>
+                                  {c.cardName || `Batch ${c.batch || '2026'}`}
+                                </div>
+                              </td>
+
+                              {/* Assigned Customer */}
+                              <td style={{ padding: '12px' }}>
+                                <div style={{ fontWeight: 600, color: 'var(--adm-text-primary)' }}>
+                                  {c.customerName || (c.customerId ? 'Customer' : 'Unassigned / In Stock')}
+                                </div>
+                                {c.customerEmail && (
+                                  <div style={{ fontSize: '0.72rem', color: 'var(--adm-text-secondary)' }}>
+                                    {c.customerEmail}
+                                  </div>
+                                )}
+                              </td>
+
+                              {/* Linked Digital Profile */}
+                              <td style={{ padding: '12px' }}>
+                                {c.profileSlug ? (
+                                  <div style={{ display: 'inline-flex', alignItems: 'center', gap: '6px' }}>
+                                    <span style={{ fontWeight: 700, color: 'var(--accent-purple, #A855F7)' }}>
+                                      @{c.profileSlug}
+                                    </span>
+                                    <a
+                                      href={`/${c.profileSlug}`}
+                                      target="_blank"
+                                      rel="noreferrer"
+                                      title="Open Digital Profile"
+                                      style={{ color: 'var(--adm-text-secondary)', display: 'inline-flex', opacity: 0.7 }}
+                                    >
+                                      <ExternalLink size={12} />
+                                    </a>
+                                  </div>
+                                ) : (
+                                  <span style={{ color: '#F59E0B', fontSize: '0.76rem', fontWeight: 600 }}>
+                                    Unlinked (No Profile)
+                                  </span>
+                                )}
+                              </td>
+
+                              {/* Edition */}
+                              <td style={{ padding: '12px' }}>
+                                <span
+                                  style={{
+                                    fontSize: '0.74rem',
+                                    fontWeight: 700,
+                                    textTransform: 'capitalize',
+                                    color: c.edition === 'white' ? '#FFFFFF' : c.edition === 'gold' ? '#D4AF37' : '#C4B5FD',
+                                    backgroundColor: c.edition === 'white' ? 'rgba(255,255,255,0.1)' : 'transparent',
+                                    padding: c.edition === 'white' ? '2px 8px' : '0',
+                                    borderRadius: '6px'
+                                  }}
+                                >
+                                  {c.edition || 'Purple'}
+                                </span>
+                              </td>
+
+                              {/* Status Badge */}
+                              <td style={{ padding: '12px' }}>
+                                <span
+                                  style={{
+                                    display: 'inline-flex',
+                                    alignItems: 'center',
+                                    gap: '5px',
+                                    fontSize: '0.74rem',
+                                    padding: '3px 9px',
+                                    borderRadius: '9999px',
+                                    backgroundColor: statusBadgeColor.bg,
+                                    border: `1px solid ${statusBadgeColor.border}`,
+                                    color: statusBadgeColor.text,
+                                    fontWeight: 700
+                                  }}
+                                >
+                                  <span style={{ width: '6px', height: '6px', borderRadius: '50%', backgroundColor: 'currentColor' }} />
+                                  <span>{statusBadgeColor.label}</span>
+                                </span>
+                              </td>
+
+                              {/* Last Status Change Timestamp */}
+                              <td style={{ padding: '12px', fontSize: '0.74rem', color: 'var(--adm-text-secondary)' }}>
+                                {c.statusChangedAt ? new Date(c.statusChangedAt).toLocaleString('en-IN', {
+                                  month: 'short',
+                                  day: 'numeric',
+                                  hour: '2-digit',
+                                  minute: '2-digit'
+                                }) : (c.registeredAt ? new Date(c.registeredAt).toLocaleDateString() : '—')}
+                              </td>
+
+                              {/* Taps */}
+                              <td style={{ padding: '12px', fontWeight: 800, color: '#6B00FF' }}>
+                                {c.tapCount || 0}
+                              </td>
+
+                              {/* Dynamic Action Button (Spec Requirement 1) */}
+                              <td style={{ padding: '12px', textAlign: 'center' }}>
+                                {isActive && (
+                                  <button
+                                    type="button"
+                                    onClick={() => triggerCardStatusChange(c, 'disabled')}
+                                    style={{
+                                      display: 'inline-flex',
+                                      alignItems: 'center',
+                                      gap: '5px',
+                                      padding: '5px 12px',
+                                      borderRadius: '8px',
+                                      border: '1px solid #EF444444',
+                                      backgroundColor: '#EF444414',
+                                      color: '#EF4444',
+                                      fontSize: '0.76rem',
+                                      fontWeight: 700,
+                                      cursor: 'pointer',
+                                      transition: 'all 0.15s ease'
+                                    }}
+                                  >
+                                    <ShieldAlert size={12} />
+                                    <span>Disable Card</span>
+                                  </button>
+                                )}
+
+                                {isDisabled && (
+                                  <button
+                                    type="button"
+                                    onClick={() => triggerCardStatusChange(c, 'active')}
+                                    style={{
+                                      display: 'inline-flex',
+                                      alignItems: 'center',
+                                      gap: '5px',
+                                      padding: '5px 12px',
+                                      borderRadius: '8px',
+                                      border: '1px solid #10B98144',
+                                      backgroundColor: '#10B98114',
+                                      color: '#10B981',
+                                      fontSize: '0.76rem',
+                                      fontWeight: 700,
+                                      cursor: 'pointer',
+                                      transition: 'all 0.15s ease'
+                                    }}
+                                  >
+                                    <CheckCircle2 size={12} />
+                                    <span>Enable Card</span>
+                                  </button>
+                                )}
+
+                                {isPending && (
+                                  <button
+                                    type="button"
+                                    onClick={() => triggerCardStatusChange(c, 'active')}
+                                    disabled={!reqCheck.valid}
+                                    title={reqCheck.valid ? 'Satisfies requirements: activate card' : reqCheck.reason}
+                                    style={{
+                                      display: 'inline-flex',
+                                      alignItems: 'center',
+                                      gap: '5px',
+                                      padding: '5px 12px',
+                                      borderRadius: '8px',
+                                      border: reqCheck.valid ? '1px solid #6B00FF55' : '1px solid rgba(255,255,255,0.1)',
+                                      backgroundColor: reqCheck.valid ? '#6B00FF22' : 'rgba(255,255,255,0.04)',
+                                      color: reqCheck.valid ? '#6B00FF' : 'var(--adm-text-secondary)',
+                                      fontSize: '0.76rem',
+                                      fontWeight: 700,
+                                      cursor: reqCheck.valid ? 'pointer' : 'not-allowed',
+                                      opacity: reqCheck.valid ? 1 : 0.6,
+                                      transition: 'all 0.15s ease'
+                                    }}
+                                  >
+                                    <Zap size={12} />
+                                    <span>Activate Card</span>
+                                  </button>
+                                )}
+                              </td>
+
+                              {/* Details / Edit Inspection */}
+                              <td style={{ padding: '12px', textAlign: 'center' }}>
+                                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px' }}>
+                                  <button
+                                    type="button"
+                                    onClick={() => setCardDetailsModal(c)}
+                                    title="View Full Details & Status History"
+                                    style={{
+                                      display: 'inline-flex',
+                                      alignItems: 'center',
+                                      padding: '5px 8px',
+                                      borderRadius: '8px',
+                                      border: 'var(--adm-card-border)',
+                                      backgroundColor: 'var(--adm-card-bg)',
+                                      color: 'var(--adm-text-secondary)',
+                                      cursor: 'pointer'
+                                    }}
+                                  >
+                                    <Eye size={13} />
+                                  </button>
+                                  <button
+                                    type="button"
+                                    onClick={() => setEditingCard(c)}
+                                    title="Edit NFC Card Assignment"
+                                    style={{
+                                      display: 'inline-flex',
+                                      alignItems: 'center',
+                                      padding: '5px 8px',
+                                      borderRadius: '8px',
+                                      border: 'var(--adm-card-border)',
+                                      backgroundColor: 'var(--adm-card-bg)',
+                                      color: '#6B00FF',
+                                      cursor: 'pointer'
+                                    }}
+                                  >
+                                    <Edit2 size={13} />
+                                  </button>
+                                  <button
+                                    type="button"
+                                    onClick={() => handleDeleteCard(c.id || c.cardCode)}
+                                    title="Delete Card Hardware Record"
+                                    style={{
+                                      display: 'inline-flex',
+                                      alignItems: 'center',
+                                      padding: '5px 8px',
+                                      borderRadius: '8px',
+                                      border: '1px solid #FEE2E2',
+                                      backgroundColor: '#FEF2F2',
+                                      color: '#DC4545',
+                                      cursor: 'pointer'
+                                    }}
+                                  >
+                                    <Trash2 size={13} />
+                                  </button>
+                                </div>
+                              </td>
+                            </tr>
+                          );
+                        })
+                      )}
+                    </tbody>
+                  </table>
+                </div>
+
+                {/* Mobile Card View (Zero Horizontal Scrolling) */}
+                <div className="admin-mobile-cards" style={{ display: 'none' }}>
+                  {filteredCards.length === 0 ? (
+                    <div style={{ padding: '36px 12px', textAlign: 'center', color: 'var(--adm-text-secondary)' }}>
+                      <CreditCard size={32} color="#C4B5FD" style={{ margin: '0 auto 8px', display: 'block' }} />
+                      <div style={{ fontWeight: 600, color: 'var(--adm-text-primary)', marginBottom: '4px' }}>No NFC cards match</div>
+                    </div>
+                  ) : (
+                    filteredCards.map((c) => {
+                      const rawStatus = (c.status || 'in_stock').toLowerCase();
+                      const isActive = rawStatus === 'active';
+                      const isDisabled = rawStatus === 'disabled' || rawStatus === 'revoked' || rawStatus === 'suspended';
+                      const isPending = rawStatus === 'pending' || rawStatus === 'in_stock' || rawStatus === 'assigned';
+                      const reqCheck = verifyActivationRequirements(c);
+
+                      return (
+                        <div
+                          key={c.id || c.cardCode}
+                          style={{
+                            backgroundColor: 'var(--adm-card-bg)',
+                            border: 'var(--adm-card-border)',
+                            borderRadius: '14px',
+                            padding: '16px',
+                            boxShadow: 'var(--adm-card-shadow)',
+                            display: 'flex',
+                            flexDirection: 'column',
+                            gap: '12px'
+                          }}
+                        >
+                          <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: '8px' }}>
+                            <div>
+                              <div style={{ fontFamily: 'monospace', fontWeight: 800, color: 'var(--adm-text-primary)', fontSize: '0.96rem' }}>
+                                {c.cardCode}
+                              </div>
+                              <div style={{ fontSize: '0.74rem', color: 'var(--adm-text-secondary)', marginTop: '2px' }}>
+                                {c.customerName || 'In Stock'} {c.profileSlug ? `(@${c.profileSlug})` : ''}
+                              </div>
+                            </div>
+                            <span
+                              style={{
+                                fontSize: '0.72rem',
+                                padding: '3px 8px',
+                                borderRadius: '9999px',
+                                backgroundColor: isActive ? '#10B98118' : isDisabled ? '#EF444418' : '#F59E0B18',
+                                color: isActive ? '#10B981' : isDisabled ? '#EF4444' : '#F59E0B',
+                                border: `1px solid ${isActive ? '#10B98133' : isDisabled ? '#EF444433' : '#F59E0B33'}`,
+                                fontWeight: 700,
+                                textTransform: 'capitalize',
+                                flexShrink: 0
+                              }}
+                            >
+                              ● {isActive ? 'Active' : isDisabled ? 'Disabled' : 'Pending'}
+                            </span>
+                          </div>
+
+                          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '8px', padding: '10px 12px', borderRadius: '10px', backgroundColor: 'var(--adm-search-bg)' }}>
+                            <div>
+                              <div style={{ fontSize: '0.68rem', color: 'var(--adm-text-secondary)', textTransform: 'uppercase', fontWeight: 600 }}>Edition</div>
+                              <div style={{ fontSize: '0.78rem', color: 'var(--adm-text-primary)', fontWeight: 700, marginTop: '2px', textTransform: 'capitalize' }}>
+                                {c.edition || 'Purple'}
+                              </div>
+                            </div>
+                            <div>
+                              <div style={{ fontSize: '0.68rem', color: 'var(--adm-text-secondary)', textTransform: 'uppercase', fontWeight: 600 }}>NFC Taps</div>
+                              <div style={{ fontSize: '0.78rem', color: '#6B00FF', fontWeight: 800, marginTop: '2px' }}>
+                                {c.tapCount || 0} taps
+                              </div>
+                            </div>
+                          </div>
+
+                          {/* Dynamic Action Button on Mobile */}
+                          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px' }}>
+                            {isActive && (
+                              <button
+                                type="button"
+                                onClick={() => triggerCardStatusChange(c, 'disabled')}
+                                style={{
+                                  padding: '8px 12px',
+                                  borderRadius: '8px',
+                                  border: '1px solid #EF444444',
+                                  backgroundColor: '#EF444414',
+                                  color: '#EF4444',
+                                  fontSize: '0.78rem',
+                                  fontWeight: 700,
+                                  cursor: 'pointer'
+                                }}
+                              >
+                                Disable Card
+                              </button>
+                            )}
+
+                            {isDisabled && (
+                              <button
+                                type="button"
+                                onClick={() => triggerCardStatusChange(c, 'active')}
+                                style={{
+                                  padding: '8px 12px',
+                                  borderRadius: '8px',
+                                  border: '1px solid #10B98144',
+                                  backgroundColor: '#10B98114',
+                                  color: '#10B981',
+                                  fontSize: '0.78rem',
+                                  fontWeight: 700,
+                                  cursor: 'pointer'
+                                }}
+                              >
+                                Enable Card
+                              </button>
+                            )}
+
+                            {isPending && (
+                              <button
+                                type="button"
+                                onClick={() => triggerCardStatusChange(c, 'active')}
+                                disabled={!reqCheck.valid}
+                                style={{
+                                  padding: '8px 12px',
+                                  borderRadius: '8px',
+                                  border: reqCheck.valid ? '1px solid #6B00FF55' : '1px solid rgba(255,255,255,0.1)',
+                                  backgroundColor: reqCheck.valid ? '#6B00FF22' : 'rgba(255,255,255,0.04)',
+                                  color: reqCheck.valid ? '#6B00FF' : 'var(--adm-text-secondary)',
+                                  fontSize: '0.78rem',
+                                  fontWeight: 700,
+                                  cursor: reqCheck.valid ? 'pointer' : 'not-allowed',
+                                  opacity: reqCheck.valid ? 1 : 0.6
+                                }}
+                              >
+                                Activate Card
+                              </button>
+                            )}
+
                             <button
                               type="button"
-                              onClick={() => setEditingCard(c)}
-                              title="Edit NFC Card"
+                              onClick={() => setCardDetailsModal(c)}
                               style={{
-                                display: 'inline-flex',
-                                alignItems: 'center',
-                                gap: '4px',
-                                padding: '5px 10px',
+                                padding: '8px 12px',
                                 borderRadius: '8px',
                                 border: 'var(--adm-card-border)',
                                 backgroundColor: 'var(--adm-card-bg)',
-                                color: '#6B00FF',
-                                fontSize: '0.76rem',
+                                color: 'var(--adm-text-primary)',
+                                fontSize: '0.78rem',
                                 fontWeight: 600,
                                 cursor: 'pointer'
                               }}
                             >
-                              <Edit2 size={13} />
-                              <span>Edit</span>
-                            </button>
-                            <button
-                              type="button"
-                              onClick={() => handleDeleteCard(c.id)}
-                              title="Delete NFC Card"
-                              style={{
-                                display: 'inline-flex',
-                                alignItems: 'center',
-                                padding: '5px 8px',
-                                borderRadius: '8px',
-                                border: '1px solid #FEE2E2',
-                                backgroundColor: '#FEF2F2',
-                                color: '#DC4545',
-                                cursor: 'pointer'
-                              }}
-                            >
-                              <Trash2 size={13} />
+                              Inspect Details
                             </button>
                           </div>
-                        </td>
-                      </tr>
-                    ))
+                        </div>
+                      );
+                    })
                   )}
-                  </tbody>
-                </table>
+                </div>
               </div>
-
-              {/* Mobile Card View (Zero Horizontal Scrolling) */}
-              <div className="admin-mobile-cards" style={{ display: 'none' }}>
-                {cards.length === 0 ? (
-                  <div style={{ padding: '36px 12px', textAlign: 'center', color: 'var(--adm-text-secondary)' }}>
-                    <CreditCard size={32} color="#C4B5FD" style={{ margin: '0 auto 8px', display: 'block' }} />
-                    <div style={{ fontWeight: 600, color: 'var(--adm-text-primary)', marginBottom: '4px' }}>No NFC cards registered</div>
-                    <div style={{ fontSize: '0.78rem' }}>Click &quot;Encode &amp; Assign Card&quot; to link your first physical NFC card.</div>
-                  </div>
-                ) : (
-                  cards.map((c) => (
-                    <div
-                      key={c.id}
-                      style={{
-                        backgroundColor: 'var(--adm-card-bg)',
-                        border: 'var(--adm-card-border)',
-                        borderRadius: '14px',
-                        padding: '16px',
-                        boxShadow: 'var(--adm-card-shadow)',
-                        display: 'flex',
-                        flexDirection: 'column',
-                        gap: '12px'
-                      }}
-                    >
-                      <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: '8px' }}>
-                        <div>
-                          <div style={{ fontFamily: 'monospace', fontWeight: 800, color: 'var(--adm-text-primary)', fontSize: '0.96rem' }}>
-                            {c.cardCode}
-                          </div>
-                          <div style={{ fontSize: '0.74rem', color: 'var(--adm-text-secondary)', marginTop: '2px' }}>
-                            {c.customerName || 'In Stock'} {c.profileSlug ? `(@${c.profileSlug})` : ''}
-                          </div>
-                        </div>
-                        <span
-                          style={{
-                            fontSize: '0.72rem',
-                            padding: '3px 8px',
-                            borderRadius: '9999px',
-                            backgroundColor: c.status === 'active' ? '#EEFAF5' : c.status === 'suspended' ? '#FEF2F2' : '#F1F5F9',
-                            color: c.status === 'active' ? '#16A36A' : c.status === 'suspended' ? '#DC4545' : '#64748B',
-                            fontWeight: 700,
-                            textTransform: 'capitalize',
-                            flexShrink: 0
-                          }}
-                        >
-                          ● {c.status}
-                        </span>
-                      </div>
-
-                      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '8px', padding: '10px 12px', borderRadius: '10px', backgroundColor: 'var(--adm-search-bg)' }}>
-                        <div>
-                          <div style={{ fontSize: '0.68rem', color: 'var(--adm-text-secondary)', textTransform: 'uppercase', fontWeight: 600 }}>Edition</div>
-                          <div style={{ fontSize: '0.78rem', color: 'var(--adm-text-primary)', fontWeight: 700, marginTop: '2px', textTransform: 'capitalize' }}>
-                            {c.edition || 'Purple'}
-                          </div>
-                        </div>
-                        <div>
-                          <div style={{ fontSize: '0.68rem', color: 'var(--adm-text-secondary)', textTransform: 'uppercase', fontWeight: 600 }}>Taps Recorded</div>
-                          <div style={{ fontSize: '0.78rem', color: '#6B00FF', fontWeight: 800, marginTop: '2px' }}>
-                            {c.tapCount || 0} taps
-                          </div>
-                        </div>
-                      </div>
-
-                      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '8px 12px', borderRadius: '8px', backgroundColor: 'var(--adm-search-bg)' }}>
-                        <span style={{ fontSize: '0.7rem', color: 'var(--adm-text-secondary)' }}>NFC Route:</span>
-                        <a
-                          href={`/t/${c.cardCode}`}
-                          target="_blank"
-                          rel="noreferrer"
-                          style={{
-                            display: 'inline-flex',
-                            alignItems: 'center',
-                            gap: '4px',
-                            color: '#6B00FF',
-                            textDecoration: 'none',
-                            fontSize: '0.76rem',
-                            fontWeight: 700
-                          }}
-                        >
-                          <span>/t/{c.cardCode}</span>
-                          <ExternalLink size={12} />
-                        </a>
-                      </div>
-
-                      <div style={{ display: 'flex', gap: '8px' }}>
-                        <button
-                          type="button"
-                          onClick={() => setEditingCard(c)}
-                          style={{
-                            flex: 1,
-                            display: 'inline-flex',
-                            alignItems: 'center',
-                            justifyContent: 'center',
-                            gap: '6px',
-                            padding: '9px 12px',
-                            borderRadius: '8px',
-                            border: 'var(--adm-card-border)',
-                            backgroundColor: 'var(--adm-card-bg)',
-                            color: '#6B00FF',
-                            fontSize: '0.8rem',
-                            fontWeight: 700,
-                            cursor: 'pointer'
-                          }}
-                        >
-                          <Edit2 size={14} />
-                          <span>Edit Hardware</span>
-                        </button>
-                        <button
-                          type="button"
-                          onClick={() => handleDeleteCard(c.id)}
-                          style={{
-                            padding: '9px 14px',
-                            borderRadius: '8px',
-                            border: '1px solid #FEE2E2',
-                            backgroundColor: '#FEF2F2',
-                            color: '#DC4545',
-                            cursor: 'pointer'
-                          }}
-                          title="Delete NFC Card"
-                        >
-                          <Trash2 size={14} />
-                        </button>
-                      </div>
-                    </div>
-                  ))
-                )}
-              </div>
-            </div>
-          )}
+            );
+          })()}
 
           {/* ====================================================================
               VIEW: CARD PRODUCTS & PRICING
@@ -4170,7 +5009,7 @@ export default function AdminDashboard({ initialTab = 'overview', initialOrderId
                     {/* Name */}
                     <div>
                       <label style={{ display: 'block', fontSize: '0.78rem', fontWeight: 700, color: isDark ? '#E2E8F0' : '#334155', marginBottom: '6px' }}>
-                        Full Name (Replaces &quot;Akhil Anvar&quot;)
+                        Full Name (Live Demo Showcase)
                       </label>
                       <input
                         type="text"
@@ -4483,7 +5322,7 @@ export default function AdminDashboard({ initialTab = 'overview', initialOrderId
 
                 <div style={{ padding: '20px', borderRadius: '14px', backgroundColor: isDark ? 'rgba(37, 99, 235, 0.15)' : '#EEF6FF', border: isDark ? '1px solid rgba(59, 130, 246, 0.3)' : '1px solid #D6E7FF' }}>
                   <div style={{ fontSize: '0.8rem', color: isDark ? '#60A5FA' : '#2563EB', fontWeight: 600 }}>Most Tapped Card</div>
-                  <div style={{ fontSize: '1.2rem', fontWeight: 800, color: 'var(--adm-text-primary)', marginTop: '6px' }}>FC-0001240 (Akhil Anvar)</div>
+                  <div style={{ fontSize: '1.2rem', fontWeight: 800, color: 'var(--adm-text-primary)', marginTop: '6px' }}>FC-0001240 (Alex Morgan)</div>
                   <div style={{ fontSize: '0.74rem', color: isDark ? '#60A5FA' : '#2563EB', marginTop: '4px' }}>340 recorded taps</div>
                 </div>
               </div>
@@ -4491,168 +5330,428 @@ export default function AdminDashboard({ initialTab = 'overview', initialOrderId
           )}
 
           {/* ====================================================================
-              VIEW: OWNER-CONTROLLED ADMIN ACCESS (Owner Only)
+              VIEW: OWNER-CONTROLLED STAFF & PERMISSIONS (Owner Only)
               ==================================================================== */}
           {activeTab === 'admin-access' && isOwner && (
-            <div style={{ backgroundColor: 'var(--adm-card-bg)', borderRadius: '16px', border: 'var(--adm-card-border)', padding: '24px' }}>
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '24px' }}>
-                <div>
-                  <h3 style={{ margin: 0, fontSize: '1.1rem', fontWeight: 700, color: 'var(--adm-text-primary)' }}>
-                    Owner-Controlled Administrator Access
-                  </h3>
-                  <p style={{ margin: '2px 0 0', fontSize: '0.8rem', color: 'var(--adm-text-secondary)' }}>
-                    Only the platform owner can grant, revoke, or reassign administrator access privileges.
-                  </p>
-                </div>
-                <button
-                  type="button"
-                  onClick={() => setInviteAdminModal(true)}
-                  style={{
-                    display: 'flex',
-                    alignItems: 'center',
-                    gap: '6px',
-                    padding: '8px 16px',
-                    borderRadius: '10px',
-                    border: 'none',
-                    backgroundColor: '#6B00FF',
-                    color: '#FFFFFF',
-                    fontWeight: 600,
-                    fontSize: '0.84rem',
-                    cursor: 'pointer'
-                  }}
-                >
-                  <Plus size={16} />
-                  <span>Grant Admin Privileges</span>
-                </button>
-              </div>
-
-              {/* Spectrum UI Account Access Cards */}
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
-                {adminAccounts.map((account) => (
-                  <AccountAccessCard
-                    key={account.email}
-                    account={account}
-                    isCurrentUser={account.email.toLowerCase() === user?.email?.toLowerCase()}
-                    isOwner={isOwner}
-                    onRevoke={(email) => revokeAdminAccount(email, user?.email || 'akhil@flocard.in')}
-                  />
-                ))}
-              </div>
-            </div>
+            <StaffPermissionsManager />
           )}
 
           {/* ====================================================================
-              VIEW: AUDIT LOGS
+              VIEW: LIVE ACTIVITY FEED (Strict Owner Only)
               ==================================================================== */}
-          {activeTab === 'audit-logs' && (
-            <div style={{ backgroundColor: 'var(--adm-card-bg)', borderRadius: '16px', border: 'var(--adm-card-border)', padding: '24px' }}>
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
-                <div>
-                  <h3 style={{ margin: 0, fontSize: '1.1rem', fontWeight: 700, color: 'var(--adm-text-primary)' }}>Platform Audit Trail</h3>
-                  <p style={{ margin: '2px 0 0', fontSize: '0.8rem', color: 'var(--adm-text-secondary)' }}>Immutable operational events for regulatory and security traceability.</p>
-                </div>
-              </div>
+          {activeTab === 'audit-logs' && isOwner && (
+            <OwnerActivityFeed />
+          )}
 
-              <div style={{ overflowX: 'auto' }}>
-                <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left', fontSize: '0.84rem' }}>
-                  <thead>
-                    <tr style={{ borderBottom: 'var(--adm-divider)', color: 'var(--adm-text-secondary)', fontSize: '0.74rem', textTransform: 'uppercase' }}>
-                      <th style={{ padding: '10px 12px' }}>Type</th>
-                      <th style={{ padding: '10px 12px' }}>Event Description</th>
-                      <th style={{ padding: '10px 12px' }}>Actor</th>
-                      <th style={{ padding: '10px 12px' }}>Timestamp</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {auditLogs.length === 0 ? (
-                      <tr>
-                        <td colSpan={4} style={{ padding: '36px 12px', textAlign: 'center', color: 'var(--adm-text-secondary)' }}>
-                          No operational audit logs recorded yet.
-                        </td>
-                      </tr>
-                    ) : (
-                      auditLogs.map((log) => (
-                        <tr key={log.id} style={{ borderBottom: 'var(--adm-divider)' }}>
-                          <td style={{ padding: '12px' }}>
-                            <span style={{ fontSize: '0.74rem', fontWeight: 600, padding: '3px 8px', borderRadius: '6px', backgroundColor: '#F3EEFF', color: '#6B00FF' }}>
-                              {log.type}
-                            </span>
-                          </td>
-                          <td style={{ padding: '12px', fontWeight: 500, color: 'var(--adm-text-primary)' }}>{log.details}</td>
-                          <td style={{ padding: '12px', fontWeight: 600 }}>{log.userName}</td>
-                          <td style={{ padding: '12px', color: 'var(--adm-text-secondary)', fontSize: '0.78rem' }}>{log.timeAgo}</td>
-                        </tr>
-                      ))
-                    )}
-                  </tbody>
-                </table>
+          {/* ====================================================================
+              VIEW: SMART QR COMPANION & PREVIEW STUDIO
+              ==================================================================== */}
+          {activeTab === 'qr' && (
+            <AdminQrManager />
+          )}
+
+          {/* Unauthorized Gate for Owner-Only Tabs */}
+          {(activeTab === 'admin-access' || activeTab === 'audit-logs') && !isOwner && (
+            <div
+              style={{
+                backgroundColor: 'var(--adm-card-bg)',
+                borderRadius: '16px',
+                border: '1px solid #EF444433',
+                padding: '48px 24px',
+                textAlign: 'center',
+                maxWidth: '600px',
+                margin: '40px auto'
+              }}
+            >
+              <div style={{ color: '#EF4444', fontWeight: 700, fontSize: '1.2rem', marginBottom: '8px' }}>
+                Access Restricted: Platform Owner Only
               </div>
+              <p style={{ color: 'var(--adm-text-secondary)', fontSize: '0.88rem', margin: 0, lineHeight: 1.5 }}>
+                Staff members are strictly prohibited from inspecting audit logs or modifying administrative access.
+              </p>
             </div>
           )}
 
           {/* ====================================================================
-              VIEW: SETTINGS
+              VIEW: SETTINGS & INTEGRATIONS
               ==================================================================== */}
           {activeTab === 'settings' && (
-            <div style={{ backgroundColor: 'var(--adm-card-bg)', borderRadius: '16px', border: 'var(--adm-card-border)', padding: '24px' }}>
-              <div style={{ marginBottom: '24px' }}>
-                <h3 style={{ margin: 0, fontSize: '1.1rem', fontWeight: 700, color: 'var(--adm-text-primary)' }}>Platform Configuration & Environment</h3>
-                <p style={{ margin: '2px 0 0', fontSize: '0.8rem', color: 'var(--adm-text-secondary)' }}>Telemetry connections and system persistence settings.</p>
-              </div>
-
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
-                {/* Database Telemetry Status */}
-                <div style={{ padding: '18px 20px', borderRadius: '12px', border: 'var(--adm-card-border)', backgroundColor: 'var(--adm-search-bg)' }}>
-                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-                    <div>
-                      <div style={{ fontWeight: 600, color: 'var(--adm-text-primary)', fontSize: '0.92rem' }}>Storage Engine Mode</div>
-                      <div style={{ color: 'var(--adm-text-secondary)', fontSize: '0.8rem', marginTop: '2px' }}>{dbStatus.mode}</div>
-                    </div>
-                    <span style={{ fontSize: '0.74rem', padding: '4px 10px', borderRadius: '9999px', backgroundColor: '#EEFAF5', color: '#16A36A', fontWeight: 700 }}>
-                      ● Operational
-                    </span>
-                  </div>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '28px' }}>
+              
+              {/* Card 1: Platform Configuration & Environment */}
+              <div style={{ backgroundColor: 'var(--adm-card-bg)', borderRadius: '16px', border: 'var(--adm-card-border)', padding: '24px' }}>
+                <div style={{ marginBottom: '24px' }}>
+                  <h3 style={{ margin: 0, fontSize: '1.1rem', fontWeight: 700, color: 'var(--adm-text-primary)' }}>Platform Configuration & Environment</h3>
+                  <p style={{ margin: '2px 0 0', fontSize: '0.8rem', color: 'var(--adm-text-secondary)' }}>Telemetry connections, 3D backdrop, and system persistence settings.</p>
                 </div>
 
-                {/* Studio Background Setting */}
-                <div style={{ padding: '18px 20px', borderRadius: '12px', border: 'var(--adm-card-border)', backgroundColor: 'var(--adm-search-bg)' }}>
-                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-                    <div>
-                      <div style={{ fontWeight: 600, color: 'var(--adm-text-primary)', fontSize: '0.92rem' }}>Global Studio 3D Environment</div>
-                      <div style={{ color: 'var(--adm-text-secondary)', fontSize: '0.8rem', marginTop: '2px' }}>Current: {studioBackground}</div>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
+                  {/* Database Telemetry Status */}
+                  <div style={{ padding: '18px 20px', borderRadius: '12px', border: 'var(--adm-card-border)', backgroundColor: 'var(--adm-search-bg)' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                      <div>
+                        <div style={{ fontWeight: 600, color: 'var(--adm-text-primary)', fontSize: '0.92rem' }}>Storage Engine Mode</div>
+                        <div style={{ color: 'var(--adm-text-secondary)', fontSize: '0.8rem', marginTop: '2px' }}>{dbStatus.mode}</div>
+                      </div>
+                      <span style={{ fontSize: '0.74rem', padding: '4px 10px', borderRadius: '9999px', backgroundColor: '#EEFAF5', color: '#16A36A', fontWeight: 700 }}>
+                        ● Operational
+                      </span>
                     </div>
-                    {isOwner && (
+                  </div>
+
+                  {/* Studio Background Setting */}
+                  <div style={{ padding: '18px 20px', borderRadius: '12px', border: 'var(--adm-card-border)', backgroundColor: 'var(--adm-search-bg)' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                      <div>
+                        <div style={{ fontWeight: 600, color: 'var(--adm-text-primary)', fontSize: '0.92rem' }}>Global Studio 3D Environment</div>
+                        <div style={{ color: 'var(--adm-text-secondary)', fontSize: '0.8rem', marginTop: '2px' }}>Current: {studioBackground}</div>
+                      </div>
+                      {isOwner && (
+                        <button
+                          type="button"
+                          onClick={() => resetStudioBg('admin')}
+                          style={{ padding: '6px 14px', borderRadius: '8px', border: 'var(--adm-card-border)', backgroundColor: 'var(--adm-card-bg)', color: 'var(--adm-text-primary)', fontSize: '0.78rem', fontWeight: 600, cursor: 'pointer' }}
+                        >
+                          Reset to Default
+                        </button>
+                      )}
+                    </div>
+                  </div>
+
+                  {/* Factory Demo Reset with Spectrum HoldToConfirm */}
+                  <div style={{ padding: '18px 20px', borderRadius: '12px', border: '1px solid #FCA5A5', backgroundColor: '#FEF2F2' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '14px' }}>
+                      <div>
+                        <div style={{ fontWeight: 700, color: '#DC4545', fontSize: '0.92rem' }}>Reset Demo Records</div>
+                        <div style={{ color: 'var(--adm-text-secondary)', fontSize: '0.78rem', marginTop: '2px' }}>
+                          Press and hold to wipe local custom modifications and re-initialize factory records.
+                        </div>
+                      </div>
+                      <HoldToConfirm
+                        variant="danger"
+                        holdDuration={1800}
+                        confirmText="Reset Done"
+                        onConfirm={resetAllData}
+                      >
+                        Hold to Reset Factory Records
+                      </HoldToConfirm>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              {/* Card 2: Meta WhatsApp Business API Cloud Integration */}
+              <div style={{ backgroundColor: 'var(--adm-card-bg)', borderRadius: '16px', border: 'var(--adm-card-border)', padding: '24px' }}>
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '20px', flexWrap: 'wrap', gap: '12px' }}>
+                  <div>
+                    <h3 style={{ margin: 0, fontSize: '1.1rem', fontWeight: 700, color: 'var(--adm-text-primary)', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                      <span>Meta WhatsApp Business Cloud API Integration</span>
+                    </h3>
+                    <p style={{ margin: '2px 0 0', fontSize: '0.8rem', color: 'var(--adm-text-secondary)' }}>
+                      Connect official WhatsApp Cloud API (Graph API v19.0) for automated customer milestone notifications.
+                    </p>
+                  </div>
+
+                  <span
+                    style={{
+                      fontSize: '0.74rem',
+                      padding: '4px 12px',
+                      borderRadius: '9999px',
+                      fontWeight: 700,
+                      backgroundColor: waConfig.isConfigured ? 'rgba(16, 185, 129, 0.15)' : 'rgba(245, 158, 11, 0.15)',
+                      color: waConfig.isConfigured ? '#10B981' : '#F59E0B',
+                      border: `1px solid ${waConfig.isConfigured ? '#10B98144' : '#F59E0B44'}`
+                    }}
+                  >
+                    {waConfig.isConfigured ? '● Cloud API Connected' : '○ Setup Required'}
+                  </span>
+                </div>
+
+                {waSaveMsg && (
+                  <div style={{ padding: '12px 16px', borderRadius: '10px', backgroundColor: 'rgba(16, 185, 129, 0.12)', border: '1px solid #10B98155', color: '#10B981', fontSize: '0.84rem', marginBottom: '20px' }}>
+                    {waSaveMsg}
+                  </div>
+                )}
+
+                {waTestResult && (
+                  <div
+                    style={{
+                      padding: '12px 16px',
+                      borderRadius: '10px',
+                      backgroundColor: waTestResult.success ? 'rgba(16, 185, 129, 0.12)' : 'rgba(239, 68, 68, 0.12)',
+                      border: `1px solid ${waTestResult.success ? '#10B98155' : '#EF444455'}`,
+                      color: waTestResult.success ? '#10B981' : '#EF4444',
+                      fontSize: '0.84rem',
+                      marginBottom: '20px'
+                    }}
+                  >
+                    {waTestResult.success
+                      ? `WhatsApp Connection Verified! Test Message ID: ${waTestResult.messageId}`
+                      : `WhatsApp Test Failed: ${waTestResult.error}`}
+                  </div>
+                )}
+
+                <form onSubmit={handleSaveWhatsAppConfig} style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: '16px' }}>
+                  <div>
+                    <label style={{ display: 'block', fontSize: '0.78rem', fontWeight: 600, color: 'var(--adm-text-secondary)', marginBottom: '6px' }}>
+                      Phone Number ID
+                    </label>
+                    <input
+                      type="text"
+                      value={waPhoneNumberId}
+                      onChange={(e) => setWaPhoneNumberId(e.target.value)}
+                      placeholder="e.g. 109847291847192"
+                      style={{
+                        width: '100%',
+                        padding: '10px 14px',
+                        borderRadius: '10px',
+                        border: 'var(--adm-card-border)',
+                        backgroundColor: 'var(--adm-search-bg)',
+                        color: 'var(--adm-text-primary)',
+                        fontSize: '0.86rem',
+                        outline: 'none'
+                      }}
+                    />
+                  </div>
+
+                  <div>
+                    <label style={{ display: 'block', fontSize: '0.78rem', fontWeight: 600, color: 'var(--adm-text-secondary)', marginBottom: '6px' }}>
+                      Business Account ID (WABA ID)
+                    </label>
+                    <input
+                      type="text"
+                      value={waBusinessAccountId}
+                      onChange={(e) => setWaBusinessAccountId(e.target.value)}
+                      placeholder="e.g. 294810398104812"
+                      style={{
+                        width: '100%',
+                        padding: '10px 14px',
+                        borderRadius: '10px',
+                        border: 'var(--adm-card-border)',
+                        backgroundColor: 'var(--adm-search-bg)',
+                        color: 'var(--adm-text-primary)',
+                        fontSize: '0.86rem',
+                        outline: 'none'
+                      }}
+                    />
+                  </div>
+
+                  <div style={{ gridColumn: '1 / -1' }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '6px' }}>
+                      <label style={{ fontSize: '0.78rem', fontWeight: 600, color: 'var(--adm-text-secondary)' }}>
+                        System User Access Token
+                      </label>
                       <button
                         type="button"
-                        onClick={() => resetStudioBg('admin')}
-                        style={{ padding: '6px 14px', borderRadius: '8px', border: 'var(--adm-card-border)', backgroundColor: 'var(--adm-card-bg)', color: 'var(--adm-text-primary)', fontSize: '0.78rem', fontWeight: 600, cursor: 'pointer' }}
+                        onClick={() => setWaShowToken(!waShowToken)}
+                        style={{ background: 'none', border: 'none', color: 'var(--adm-accent-purple)', fontSize: '0.74rem', cursor: 'pointer' }}
                       >
-                        Reset to Default
+                        {waShowToken ? 'Hide Token' : 'Show Token'}
                       </button>
-                    )}
+                    </div>
+                    <input
+                      type={waShowToken ? 'text' : 'password'}
+                      value={waAccessToken}
+                      onChange={(e) => setWaAccessToken(e.target.value)}
+                      placeholder="EAAG... (Meta Cloud API Permanent System User Token)"
+                      style={{
+                        width: '100%',
+                        padding: '10px 14px',
+                        borderRadius: '10px',
+                        border: 'var(--adm-card-border)',
+                        backgroundColor: 'var(--adm-search-bg)',
+                        color: 'var(--adm-text-primary)',
+                        fontSize: '0.86rem',
+                        outline: 'none',
+                        fontFamily: waShowToken ? 'monospace' : 'inherit'
+                      }}
+                    />
+                    <div style={{ fontSize: '0.72rem', color: 'var(--adm-text-secondary)', marginTop: '4px' }}>
+                      Stored securely in browser memory/localStorage with zero server exposure.
+                    </div>
                   </div>
+
+                  <div>
+                    <label style={{ display: 'block', fontSize: '0.78rem', fontWeight: 600, color: 'var(--adm-text-secondary)', marginBottom: '6px' }}>
+                      Official Sender Phone / Test Recipient
+                    </label>
+                    <input
+                      type="text"
+                      value={waSenderPhone}
+                      onChange={(e) => setWaSenderPhone(e.target.value)}
+                      placeholder="+91 97782 78552"
+                      style={{
+                        width: '100%',
+                        padding: '10px 14px',
+                        borderRadius: '10px',
+                        border: 'var(--adm-card-border)',
+                        backgroundColor: 'var(--adm-search-bg)',
+                        color: 'var(--adm-text-primary)',
+                        fontSize: '0.86rem',
+                        outline: 'none'
+                      }}
+                    />
+                  </div>
+
+                  <div style={{ gridColumn: '1 / -1', display: 'flex', gap: '12px', alignItems: 'center', marginTop: '10px', flexWrap: 'wrap' }}>
+                    <button
+                      type="submit"
+                      style={{
+                        padding: '10px 22px',
+                        borderRadius: '10px',
+                        border: 'none',
+                        backgroundColor: 'var(--adm-accent-purple)',
+                        color: '#FFFFFF',
+                        fontSize: '0.86rem',
+                        fontWeight: 700,
+                        cursor: 'pointer'
+                      }}
+                    >
+                      Save WhatsApp Configuration
+                    </button>
+
+                    <button
+                      type="button"
+                      disabled={waTesting}
+                      onClick={handleTestWhatsAppConnection}
+                      style={{
+                        padding: '10px 20px',
+                        borderRadius: '10px',
+                        border: 'var(--adm-card-border)',
+                        backgroundColor: 'var(--adm-search-bg)',
+                        color: 'var(--adm-text-primary)',
+                        fontSize: '0.86rem',
+                        fontWeight: 600,
+                        cursor: waTesting ? 'wait' : 'pointer'
+                      }}
+                    >
+                      {waTesting ? 'Testing Connection...' : 'Send Test Notification'}
+                    </button>
+                  </div>
+                </form>
+              </div>
+
+              {/* Card 3: WhatsApp Outbox Telemetry & Dispatch Monitor */}
+              <div style={{ backgroundColor: 'var(--adm-card-bg)', borderRadius: '16px', border: 'var(--adm-card-border)', padding: '24px' }}>
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '20px', flexWrap: 'wrap', gap: '12px' }}>
+                  <div>
+                    <h3 style={{ margin: 0, fontSize: '1.1rem', fontWeight: 700, color: 'var(--adm-text-primary)' }}>
+                      Automated WhatsApp Outbox Telemetry
+                    </h3>
+                    <p style={{ margin: '2px 0 0', fontSize: '0.8rem', color: 'var(--adm-text-secondary)' }}>
+                      Transparent transactional queue tracking customer order confirmations, proof reviews, and delivery alerts.
+                    </p>
+                  </div>
+
+                  <button
+                    type="button"
+                    onClick={refreshWhatsAppOutbox}
+                    style={{
+                      padding: '6px 14px',
+                      borderRadius: '8px',
+                      border: 'var(--adm-card-border)',
+                      backgroundColor: 'var(--adm-search-bg)',
+                      color: 'var(--adm-text-primary)',
+                      fontSize: '0.78rem',
+                      fontWeight: 600,
+                      cursor: 'pointer'
+                    }}
+                  >
+                    Refresh Outbox
+                  </button>
                 </div>
 
-                {/* Factory Demo Reset with Spectrum HoldToConfirm */}
-                <div style={{ padding: '18px 20px', borderRadius: '12px', border: '1px solid #FCA5A5', backgroundColor: '#FEF2F2' }}>
-                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '14px' }}>
-                    <div>
-                      <div style={{ fontWeight: 700, color: '#DC4545', fontSize: '0.92rem' }}>Reset Demo Records</div>
-                      <div style={{ color: 'var(--adm-text-secondary)', fontSize: '0.78rem', marginTop: '2px' }}>
-                        Press and hold to wipe local custom modifications and re-initialize factory records.
-                      </div>
-                    </div>
-                    <HoldToConfirm
-                      variant="danger"
-                      holdDuration={1800}
-                      confirmText="Reset Done"
-                      onConfirm={resetAllData}
-                    >
-                      Hold to Reset Factory Records
-                    </HoldToConfirm>
-                  </div>
+                <div style={{ overflowX: 'auto' }}>
+                  <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.82rem', textAlign: 'left' }}>
+                    <thead>
+                      <tr style={{ borderBottom: 'var(--adm-card-border)', color: 'var(--adm-text-secondary)' }}>
+                        <th style={{ padding: '10px 12px', fontWeight: 600 }}>Recipient & Order</th>
+                        <th style={{ padding: '10px 12px', fontWeight: 600 }}>Milestone Event</th>
+                        <th style={{ padding: '10px 12px', fontWeight: 600 }}>Status</th>
+                        <th style={{ padding: '10px 12px', fontWeight: 600 }}>Details / Message ID</th>
+                        <th style={{ padding: '10px 12px', fontWeight: 600 }}>Timestamp</th>
+                        <th style={{ padding: '10px 12px', fontWeight: 600, textAlign: 'right' }}>Action</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {waOutbox.length === 0 ? (
+                        <tr>
+                          <td colSpan={6} style={{ padding: '32px 12px', textAlign: 'center', color: 'var(--adm-text-secondary)', fontStyle: 'italic' }}>
+                            Outbox is clear. New order bookings or milestone updates will automatically record telemetry here.
+                          </td>
+                        </tr>
+                      ) : (
+                        waOutbox.slice(0, 50).map((msg) => (
+                          <tr key={msg.id} style={{ borderBottom: 'var(--adm-card-border)' }}>
+                            <td style={{ padding: '12px' }}>
+                              <div style={{ fontWeight: 700, color: 'var(--adm-text-primary)' }}>{msg.recipientName || 'Client'}</div>
+                              <div style={{ fontSize: '0.74rem', color: 'var(--adm-text-secondary)', fontFamily: 'monospace' }}>
+                                {msg.recipientPhone} · {msg.orderReference}
+                              </div>
+                            </td>
+                            <td style={{ padding: '12px' }}>
+                              <span style={{ textTransform: 'capitalize', fontWeight: 600, color: 'var(--adm-text-primary)' }}>
+                                {msg.eventType?.replace(/_/g, ' ')}
+                              </span>
+                            </td>
+                            <td style={{ padding: '12px' }}>
+                              <span
+                                style={{
+                                  fontSize: '0.72rem',
+                                  padding: '3px 8px',
+                                  borderRadius: '9999px',
+                                  fontWeight: 700,
+                                  textTransform: 'uppercase',
+                                  backgroundColor:
+                                    msg.status === 'sent' ? 'rgba(16, 185, 129, 0.15)' :
+                                    msg.status === 'delivered' ? 'rgba(59, 130, 246, 0.15)' :
+                                    msg.status === 'failed' ? 'rgba(239, 68, 68, 0.15)' :
+                                    msg.status === 'queued' ? 'rgba(168, 85, 247, 0.15)' : 'rgba(245, 158, 11, 0.15)',
+                                  color:
+                                    msg.status === 'sent' ? '#10B981' :
+                                    msg.status === 'delivered' ? '#3B82F6' :
+                                    msg.status === 'failed' ? '#EF4444' :
+                                    msg.status === 'queued' ? '#A855F7' : '#F59E0B'
+                                }}
+                              >
+                                {msg.status?.replace(/_/g, ' ')}
+                              </span>
+                            </td>
+                            <td style={{ padding: '12px', maxWidth: '240px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', color: 'var(--adm-text-secondary)', fontSize: '0.76rem' }}>
+                              {msg.providerMessageId || msg.errorDetails || msg.messageBody}
+                            </td>
+                            <td style={{ padding: '12px', color: 'var(--adm-text-secondary)', fontSize: '0.74rem' }}>
+                              {msg.createdAt ? new Date(msg.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : 'Recent'}
+                            </td>
+                            <td style={{ padding: '12px', textAlign: 'right' }}>
+                              {['failed', 'not_configured', 'queued'].includes(msg.status) && (
+                                <button
+                                  type="button"
+                                  disabled={waRetryingId === msg.id}
+                                  onClick={() => handleRetryWhatsAppMessage(msg.id)}
+                                  style={{
+                                    padding: '4px 10px',
+                                    borderRadius: '6px',
+                                    border: 'var(--adm-card-border)',
+                                    backgroundColor: 'var(--adm-card-bg)',
+                                    color: 'var(--adm-text-primary)',
+                                    fontSize: '0.72rem',
+                                    fontWeight: 600,
+                                    cursor: waRetryingId === msg.id ? 'wait' : 'pointer'
+                                  }}
+                                >
+                                  {waRetryingId === msg.id ? 'Retrying...' : 'Retry'}
+                                </button>
+                              )}
+                            </td>
+                          </tr>
+                        ))
+                      )}
+                    </tbody>
+                  </table>
                 </div>
               </div>
+
             </div>
           )}
         </div>
@@ -4710,12 +5809,16 @@ export default function AdminDashboard({ initialTab = 'overview', initialOrderId
               </button>
             </div>
 
-            {/* 3D Card Preview */}
-            <div style={{ margin: '20px 0', display: 'flex', justifyContent: 'center' }}>
-              <Card3DPreview
-                front={reviewModalDesign.front}
-                back={reviewModalDesign.back}
-                editionKey={reviewModalDesign.edition}
+            {/* Unified Customer Card Preview */}
+            <div style={{ margin: '20px 0', display: 'flex', justifyContent: 'center', width: '100%' }}>
+              <CustomerCardPreview
+                design={reviewModalDesign}
+                order={reviewModalDesign.orderReference || reviewModalDesign.orderId ? reviewModalDesign : null}
+                fallbackDesigns={designs}
+                width={500}
+                showControls={true}
+                showExport={true}
+                isLight={!isDark}
               />
             </div>
 
@@ -5119,7 +6222,27 @@ export default function AdminDashboard({ initialTab = 'overview', initialOrderId
               <div>
                 <h3 style={{ margin: 0, fontSize: '1.2rem', fontWeight: 800, color: 'var(--adm-text-primary)' }}>Edit Digital Profile</h3>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginTop: '2px' }}>
-                  <span style={{ fontSize: '0.78rem', color: 'var(--adm-text-secondary)' }}>flocard.in/p/{editingProfile.slug}</span>
+                  <button
+                    type="button"
+                    onClick={(e) => handleCopySlug(editingProfile.slug, e)}
+                    title="Click to copy public URL"
+                    style={{
+                      background: 'none',
+                      border: 'none',
+                      padding: 0,
+                      fontSize: '0.78rem',
+                      color: copiedSlug === editingProfile.slug ? '#10B981' : 'var(--adm-text-secondary)',
+                      cursor: 'pointer',
+                      display: 'inline-flex',
+                      alignItems: 'center',
+                      gap: '4px',
+                      fontFamily: 'monospace'
+                    }}
+                  >
+                    <span>flocard.in/p/{editingProfile.slug}</span>
+                    {copiedSlug === editingProfile.slug ? <Check size={12} color="#10B981" /> : <Copy size={12} style={{ opacity: 0.6 }} />}
+                    {copiedSlug === editingProfile.slug && <span style={{ fontSize: '0.7rem', fontWeight: 700 }}>Copied!</span>}
+                  </button>
                   <a
                     href={`/p/${editingProfile.slug}`}
                     target="_blank"
@@ -5551,6 +6674,8 @@ export default function AdminDashboard({ initialTab = 'overview', initialOrderId
                     <option value="purple">Purple Edition</option>
                     <option value="gold">Gold Edition</option>
                     <option value="platinum">Platinum Edition</option>
+                    <option value="metal">Metal Edition</option>
+                    <option value="white">Pure White Edition</option>
                   </select>
                 </div>
                 <div>
@@ -5560,9 +6685,10 @@ export default function AdminDashboard({ initialTab = 'overview', initialOrderId
                     onChange={(e) => setEditingCard({ ...editingCard, status: e.target.value })}
                     style={{ width: '100%', padding: '9px 12px', borderRadius: '8px', border: 'var(--adm-card-border)', fontSize: '0.84rem' }}
                   >
-                    <option value="active">Active (Tappable)</option>
-                    <option value="suspended">Suspended (Redirect Disabled)</option>
-                    <option value="unassigned">Unassigned / In Stock</option>
+                    <option value="active">Active (Tappable & Redirects)</option>
+                    <option value="disabled">Disabled (Shows Inactive Screen)</option>
+                    <option value="pending">Pending (Awaiting Profile/QC)</option>
+                    <option value="in_stock">In Stock / Unprogrammed</option>
                   </select>
                 </div>
               </div>
@@ -5608,6 +6734,418 @@ export default function AdminDashboard({ initialTab = 'overview', initialOrderId
               </div>
             </form>
           </div>
+        </div>
+      )}
+
+      {/* ====================================================================
+          MODAL: CARD ACTIVATION / DEACTIVATION CONFIRMATION DIALOG (Spec Requirement 1)
+          ==================================================================== */}
+      {cardActionConfirm && (
+        <div style={{ position: 'fixed', inset: 0, backgroundColor: 'rgba(8, 6, 13, 0.88)', backdropFilter: 'blur(6px)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1100, padding: '20px' }}>
+          <div style={{ backgroundColor: 'var(--adm-card-bg)', borderRadius: '20px', width: '100%', maxWidth: '460px', padding: '28px', border: cardActionConfirm.targetStatus === 'disabled' ? '1px solid rgba(239, 68, 68, 0.4)' : '1px solid rgba(107, 0, 255, 0.4)', boxShadow: '0 20px 60px rgba(0,0,0,0.6)' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '16px' }}>
+              <div
+                style={{
+                  width: '44px',
+                  height: '44px',
+                  borderRadius: '50%',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  backgroundColor: cardActionConfirm.targetStatus === 'disabled' ? 'rgba(239, 68, 68, 0.15)' : 'rgba(16, 185, 129, 0.15)',
+                  color: cardActionConfirm.targetStatus === 'disabled' ? '#EF4444' : '#10B981'
+                }}
+              >
+                {cardActionConfirm.targetStatus === 'disabled' ? <ShieldAlert size={24} /> : <CheckCircle2 size={24} />}
+              </div>
+              <div>
+                <h3 style={{ margin: 0, fontSize: '1.15rem', fontWeight: 800, color: 'var(--adm-text-primary)' }}>
+                  {cardActionConfirm.targetStatus === 'disabled' ? 'Confirm Card Deactivation' : 'Confirm Card Activation'}
+                </h3>
+                <div style={{ fontSize: '0.78rem', color: 'var(--adm-text-secondary)', fontFamily: 'monospace' }}>
+                  {cardActionConfirm.card?.cardCode}
+                </div>
+              </div>
+            </div>
+
+            <p style={{ fontSize: '0.88rem', color: 'var(--adm-text-primary)', lineHeight: 1.5, margin: '0 0 16px' }}>
+              {cardActionConfirm.message}
+            </p>
+
+            <div style={{ marginBottom: '18px' }}>
+              <label style={{ display: 'block', fontSize: '0.75rem', fontWeight: 600, color: 'var(--adm-text-secondary)', marginBottom: '4px' }}>
+                Optional Change Reason (Logged in Owner Audit Trail)
+              </label>
+              <input
+                type="text"
+                placeholder="e.g. Lost card reported / Customer requested pause"
+                value={cardActionConfirm.reason || ''}
+                onChange={(e) => setCardActionConfirm({ ...cardActionConfirm, reason: e.target.value })}
+                style={{
+                  width: '100%',
+                  padding: '8px 12px',
+                  borderRadius: '8px',
+                  border: 'var(--adm-card-border)',
+                  backgroundColor: 'var(--adm-search-bg)',
+                  color: 'var(--adm-text-primary)',
+                  fontSize: '0.8rem'
+                }}
+              />
+            </div>
+
+            <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '10px' }}>
+              <button
+                type="button"
+                disabled={cardActionConfirm.isSubmitting}
+                onClick={() => setCardActionConfirm(null)}
+                style={{
+                  padding: '9px 16px',
+                  borderRadius: '8px',
+                  border: 'var(--adm-card-border)',
+                  background: 'none',
+                  color: 'var(--adm-text-secondary)',
+                  fontSize: '0.82rem',
+                  fontWeight: 600,
+                  cursor: 'pointer'
+                }}
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                disabled={cardActionConfirm.isSubmitting}
+                onClick={executeCardStatusChange}
+                style={{
+                  padding: '9px 20px',
+                  borderRadius: '8px',
+                  border: 'none',
+                  backgroundColor: cardActionConfirm.targetStatus === 'disabled' ? '#EF4444' : '#10B981',
+                  color: '#FFFFFF',
+                  fontWeight: 700,
+                  fontSize: '0.82rem',
+                  cursor: cardActionConfirm.isSubmitting ? 'not-allowed' : 'pointer',
+                  opacity: cardActionConfirm.isSubmitting ? 0.7 : 1,
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  gap: '6px'
+                }}
+              >
+                {cardActionConfirm.isSubmitting && <RefreshCw size={13} className="animate-spin" />}
+                <span>
+                  {cardActionConfirm.targetStatus === 'disabled' ? 'Yes, Disable Card' : 'Yes, Enable Card'}
+                </span>
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ====================================================================
+          MODAL: BULK ACTIVATION CONFIRMATION DIALOG
+          ==================================================================== */}
+      {bulkActionConfirm && (
+        <div style={{ position: 'fixed', inset: 0, backgroundColor: 'rgba(8, 6, 13, 0.88)', backdropFilter: 'blur(6px)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1100, padding: '20px' }}>
+          <div style={{ backgroundColor: 'var(--adm-card-bg)', borderRadius: '20px', width: '100%', maxWidth: '440px', padding: '28px', border: 'var(--adm-card-border)' }}>
+            <h3 style={{ margin: '0 0 12px', fontSize: '1.15rem', fontWeight: 800, color: 'var(--adm-text-primary)' }}>
+              Confirm Bulk {bulkActionConfirm.targetStatus === 'active' ? 'Enable' : 'Disable'}
+            </h3>
+            <p style={{ fontSize: '0.86rem', color: 'var(--adm-text-secondary)', lineHeight: 1.5, margin: '0 0 20px' }}>
+              Are you sure you want to transition <strong>{bulkActionConfirm.count}</strong> cards to status <strong>{bulkActionConfirm.targetStatus}</strong>? Each card will be updated and recorded in the owner audit feed.
+            </p>
+            <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '10px' }}>
+              <button
+                type="button"
+                onClick={() => setBulkActionConfirm(null)}
+                style={{ padding: '8px 16px', borderRadius: '8px', border: 'var(--adm-card-border)', background: 'none' }}
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                onClick={executeBulkStatusChange}
+                style={{
+                  padding: '8px 20px',
+                  borderRadius: '8px',
+                  border: 'none',
+                  backgroundColor: bulkActionConfirm.targetStatus === 'active' ? '#10B981' : '#EF4444',
+                  color: '#FFFFFF',
+                  fontWeight: 700
+                }}
+              >
+                Confirm Bulk Action
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ====================================================================
+          MODAL: NFC CARD DETAILS & STATUS AUDIT HISTORY INSPECTOR
+          ==================================================================== */}
+      {cardDetailsModal && (
+        <div style={{ position: 'fixed', inset: 0, backgroundColor: 'rgba(8, 6, 13, 0.88)', backdropFilter: 'blur(6px)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1050, padding: '20px' }}>
+          <div style={{ backgroundColor: 'var(--adm-card-bg)', borderRadius: '20px', width: '100%', maxWidth: '580px', padding: '28px', border: 'var(--adm-card-border)', maxHeight: '90vh', overflowY: 'auto' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '20px' }}>
+              <div>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                  <h3 style={{ margin: 0, fontSize: '1.25rem', fontWeight: 800, color: 'var(--adm-text-primary)' }}>
+                    NFC Card Details
+                  </h3>
+                  <span
+                    style={{
+                      fontSize: '0.74rem',
+                      fontWeight: 700,
+                      padding: '3px 8px',
+                      borderRadius: '9999px',
+                      backgroundColor: cardDetailsModal.status === 'active' ? '#10B98118' : '#EF444418',
+                      color: cardDetailsModal.status === 'active' ? '#10B981' : '#EF4444',
+                      border: `1px solid ${cardDetailsModal.status === 'active' ? '#10B98133' : '#EF444433'}`
+                    }}
+                  >
+                    ● {cardDetailsModal.status}
+                  </span>
+                </div>
+                <div style={{ fontFamily: 'monospace', fontSize: '0.88rem', color: 'var(--accent-purple, #A855F7)', marginTop: '2px', fontWeight: 700 }}>
+                  {cardDetailsModal.cardCode}
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => setCardDetailsModal(null)}
+                style={{ background: 'none', border: 'none', color: 'var(--adm-text-secondary)', cursor: 'pointer', padding: '4px' }}
+              >
+                <X size={20} />
+              </button>
+            </div>
+
+            {/* Hardware & Assignment Grid */}
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px', marginBottom: '20px' }}>
+              <div style={{ padding: '12px', borderRadius: '10px', backgroundColor: 'var(--adm-search-bg)' }}>
+                <div style={{ fontSize: '0.7rem', color: 'var(--adm-text-secondary)', textTransform: 'uppercase', fontWeight: 700 }}>Assigned Customer</div>
+                <div style={{ fontSize: '0.84rem', color: 'var(--adm-text-primary)', fontWeight: 700, marginTop: '2px' }}>
+                  {cardDetailsModal.customerName || 'In Stock / Unassigned'}
+                </div>
+                {cardDetailsModal.customerEmail && (
+                  <div style={{ fontSize: '0.74rem', color: 'var(--adm-text-secondary)' }}>
+                    {cardDetailsModal.customerEmail}
+                  </div>
+                )}
+              </div>
+
+              <div style={{ padding: '12px', borderRadius: '10px', backgroundColor: 'var(--adm-search-bg)' }}>
+                <div style={{ fontSize: '0.7rem', color: 'var(--adm-text-secondary)', textTransform: 'uppercase', fontWeight: 700 }}>Linked Profile</div>
+                <div style={{ fontSize: '0.84rem', color: 'var(--adm-text-primary)', fontWeight: 700, marginTop: '2px' }}>
+                  {cardDetailsModal.profileSlug ? `@${cardDetailsModal.profileSlug}` : 'None (Unassigned)'}
+                </div>
+                {cardDetailsModal.profileSlug && (
+                  <a
+                    href={`/${cardDetailsModal.profileSlug}`}
+                    target="_blank"
+                    rel="noreferrer"
+                    style={{ fontSize: '0.74rem', color: 'var(--accent-purple, #A855F7)', textDecoration: 'none', display: 'inline-flex', alignItems: 'center', gap: '3px' }}
+                  >
+                    <span>flocard.in/{cardDetailsModal.profileSlug}</span>
+                    <ExternalLink size={10} />
+                  </a>
+                )}
+              </div>
+
+              <div style={{ padding: '12px', borderRadius: '10px', backgroundColor: 'var(--adm-search-bg)' }}>
+                <div style={{ fontSize: '0.7rem', color: 'var(--adm-text-secondary)', textTransform: 'uppercase', fontWeight: 700 }}>Card Edition</div>
+                <div style={{ fontSize: '0.84rem', color: 'var(--adm-text-primary)', fontWeight: 700, marginTop: '2px', textTransform: 'capitalize' }}>
+                  {cardDetailsModal.edition || 'Purple'}
+                </div>
+              </div>
+
+              <div style={{ padding: '12px', borderRadius: '10px', backgroundColor: 'var(--adm-search-bg)' }}>
+                <div style={{ fontSize: '0.7rem', color: 'var(--adm-text-secondary)', textTransform: 'uppercase', fontWeight: 700 }}>Hardware Chip</div>
+                <div style={{ fontSize: '0.84rem', color: 'var(--adm-text-primary)', fontWeight: 700, marginTop: '2px' }}>
+                  {cardDetailsModal.chipType || 'NXP NTAG216 (888 Bytes)'}
+                </div>
+              </div>
+
+              <div style={{ padding: '12px', borderRadius: '10px', backgroundColor: 'var(--adm-search-bg)' }}>
+                <div style={{ fontSize: '0.7rem', color: 'var(--adm-text-secondary)', textTransform: 'uppercase', fontWeight: 700 }}>Verified Taps</div>
+                <div style={{ fontSize: '0.84rem', color: '#6B00FF', fontWeight: 800, marginTop: '2px' }}>
+                  {cardDetailsModal.tapCount || 0}
+                </div>
+              </div>
+
+              <div style={{ padding: '12px', borderRadius: '10px', backgroundColor: 'var(--adm-search-bg)' }}>
+                <div style={{ fontSize: '0.7rem', color: 'var(--adm-text-secondary)', textTransform: 'uppercase', fontWeight: 700 }}>Last Status Change</div>
+                <div style={{ fontSize: '0.84rem', color: 'var(--adm-text-primary)', fontWeight: 600, marginTop: '2px' }}>
+                  {cardDetailsModal.statusChangedAt ? new Date(cardDetailsModal.statusChangedAt).toLocaleString() : '—'}
+                </div>
+              </div>
+            </div>
+
+            {/* Server-Side Redirect Notice (Spec Requirement 3) */}
+            <div
+              style={{
+                padding: '12px 14px',
+                borderRadius: '10px',
+                backgroundColor: 'rgba(107, 0, 255, 0.08)',
+                border: '1px solid rgba(107, 0, 255, 0.25)',
+                marginBottom: '20px',
+                fontSize: '0.78rem',
+                color: 'var(--adm-text-primary)',
+                lineHeight: 1.5
+              }}
+            >
+              <strong>Server-Side Redirect Control:</strong> This physical chip is programmed to permanent redirect route <code>/t/{cardDetailsModal.cardCode}</code>. Enabling or disabling this card changes the server redirect target without requiring physical NFC chip rewrites.
+            </div>
+
+            {/* Immutable Activation History Log (Spec Requirement 6) */}
+            <div style={{ marginBottom: '20px' }}>
+              <h4 style={{ fontSize: '0.88rem', fontWeight: 700, color: 'var(--adm-text-primary)', margin: '0 0 10px' }}>
+                Activation & Status Change History
+              </h4>
+              {(!cardDetailsModal.activationHistory || cardDetailsModal.activationHistory.length === 0) ? (
+                <div style={{ fontSize: '0.78rem', color: 'var(--adm-text-secondary)', padding: '12px', borderRadius: '8px', backgroundColor: 'var(--adm-search-bg)', textAlign: 'center' }}>
+                  No historical status changes recorded yet for this card.
+                </div>
+              ) : (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', maxHeight: '180px', overflowY: 'auto' }}>
+                  {cardDetailsModal.activationHistory.map((item, idx) => (
+                    <div
+                      key={item.id || idx}
+                      style={{
+                        padding: '10px 12px',
+                        borderRadius: '8px',
+                        backgroundColor: 'var(--adm-search-bg)',
+                        border: 'var(--adm-card-border)',
+                        display: 'flex',
+                        justifyContent: 'space-between',
+                        alignItems: 'center',
+                        fontSize: '0.76rem'
+                      }}
+                    >
+                      <div>
+                        <div>
+                          <strong style={{ color: 'var(--adm-text-primary)' }}>{item.previousStatus} → {item.newStatus}</strong>
+                          <span style={{ color: 'var(--adm-text-secondary)', marginLeft: '6px' }}>by {item.actorName || 'Owner'}</span>
+                        </div>
+                        {item.reason && (
+                          <div style={{ color: 'var(--adm-text-secondary)', marginTop: '2px', fontStyle: 'italic' }}>
+                            {item.reason}
+                          </div>
+                        )}
+                      </div>
+                      <div style={{ color: 'var(--adm-text-secondary)', fontSize: '0.72rem' }}>
+                        {new Date(item.timestamp).toLocaleDateString()}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+
+            {/* Quick Action Footer */}
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', paddingTop: '16px', borderTop: 'var(--adm-divider)' }}>
+              <div>
+                <a
+                  href={`/t/${cardDetailsModal.cardCode}`}
+                  target="_blank"
+                  rel="noreferrer"
+                  style={{
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    gap: '4px',
+                    color: '#6B00FF',
+                    textDecoration: 'none',
+                    fontSize: '0.8rem',
+                    fontWeight: 700
+                  }}
+                >
+                  <span>Test NFC Link (/t/{cardDetailsModal.cardCode})</span>
+                  <ExternalLink size={12} />
+                </a>
+              </div>
+              <div style={{ display: 'flex', gap: '8px' }}>
+                {cardDetailsModal.status === 'active' ? (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      triggerCardStatusChange(cardDetailsModal, 'disabled');
+                    }}
+                    style={{
+                      padding: '8px 16px',
+                      borderRadius: '8px',
+                      border: '1px solid #EF444444',
+                      backgroundColor: '#EF444414',
+                      color: '#EF4444',
+                      fontWeight: 700,
+                      fontSize: '0.8rem',
+                      cursor: 'pointer'
+                    }}
+                  >
+                    Disable Card
+                  </button>
+                ) : (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      triggerCardStatusChange(cardDetailsModal, 'active');
+                    }}
+                    style={{
+                      padding: '8px 16px',
+                      borderRadius: '8px',
+                      border: '1px solid #10B98144',
+                      backgroundColor: '#10B98114',
+                      color: '#10B981',
+                      fontWeight: 700,
+                      fontSize: '0.8rem',
+                      cursor: 'pointer'
+                    }}
+                  >
+                    Enable Card
+                  </button>
+                )}
+                <button
+                  type="button"
+                  onClick={() => setCardDetailsModal(null)}
+                  style={{ padding: '8px 16px', borderRadius: '8px', border: 'var(--adm-card-border)', background: 'none', fontSize: '0.8rem', cursor: 'pointer' }}
+                >
+                  Close
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Floating Card Management Toast (Spec Requirement 1) */}
+      {cardToast && (
+        <div
+          style={{
+            position: 'fixed',
+            bottom: '24px',
+            right: '24px',
+            zIndex: 2000,
+            display: 'flex',
+            alignItems: 'center',
+            gap: '10px',
+            padding: '12px 18px',
+            borderRadius: '12px',
+            backgroundColor: cardToast.type === 'success' ? '#064E3B' : '#7F1D1D',
+            color: '#FFFFFF',
+            border: `1px solid ${cardToast.type === 'success' ? '#10B981' : '#EF4444'}`,
+            boxShadow: '0 10px 30px rgba(0,0,0,0.5)',
+            fontSize: '0.84rem',
+            fontWeight: 600,
+            maxWidth: '420px',
+            animation: 'fadeIn 0.2s ease-out'
+          }}
+        >
+          {cardToast.type === 'success' ? <CheckCircle2 size={18} color="#10B981" /> : <AlertCircle size={18} color="#EF4444" />}
+          <span style={{ flex: 1 }}>{cardToast.message}</span>
+          <button
+            type="button"
+            onClick={() => setCardToast(null)}
+            style={{ background: 'none', border: 'none', color: '#FFFFFF', cursor: 'pointer', padding: '2px', opacity: 0.7 }}
+          >
+            <X size={15} />
+          </button>
         </div>
       )}
 

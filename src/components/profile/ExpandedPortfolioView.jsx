@@ -34,7 +34,9 @@ import {
   LinkedinIcon,
   InstagramIcon,
   TwitterIcon,
-  GithubIcon
+  GithubIcon,
+  YoutubeIcon,
+  FacebookIcon
 } from '../SocialIcons';
 import ProfileAvatar from './ProfileAvatar';
 import { resolveProfileLinks, DynamicLinkIcon } from '../../lib/socialLinkResolver';
@@ -42,7 +44,7 @@ import { downloadVCard } from '../../lib/vcard';
 
 export default function ExpandedPortfolioView({
   profile = {},
-  onCollapse,
+  onCollapse = () => {},
   isLight = false,
   reducedMotion = false
 }) {
@@ -52,20 +54,32 @@ export default function ExpandedPortfolioView({
   const [copiedLink, setCopiedLink] = useState(false);
   const [showQrModal, setShowQrModal] = useState(false);
 
-  // Accessible Escape key to collapse
+  // Responsive columns for MagicBento: 1 col on mobile (< 600px), 2 on tablet (< 850px), 3 on desktop
+  const [bentoColumns, setBentoColumns] = useState(() => {
+    if (typeof window !== 'undefined') {
+      if (window.innerWidth < 600) return 1;
+      if (window.innerWidth < 850) return 2;
+    }
+    return 3;
+  });
+
   useEffect(() => {
-    const handleKeyDown = (e) => {
-      if (e.key === 'Escape' && onCollapse) {
-        onCollapse();
+    const handleResize = () => {
+      if (typeof window !== 'undefined') {
+        if (window.innerWidth < 600) setBentoColumns(1);
+        else if (window.innerWidth < 850) setBentoColumns(2);
+        else setBentoColumns(3);
       }
     };
-    window.addEventListener('keydown', handleKeyDown);
-    return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [onCollapse]);
+    handleResize();
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
+  }, []);
 
   const bentoItems = useMemo(() => {
     if (!p.portfolio || p.portfolio.length === 0) return [];
     const visuals = ['analytics', 'dashboard', 'collaboration', 'automation', 'integration', 'security'];
+    const isSingleCol = bentoColumns === 1;
     return p.portfolio.map((item, idx) => ({
       id: item?.id || `bento-${idx}`,
       title: item?.title || '',
@@ -73,11 +87,11 @@ export default function ExpandedPortfolioView({
       label: item?.category || 'Featured Work',
       image: item?.image,
       visual: item?.image ? undefined : visuals[idx % visuals.length],
-      colSpan: idx === 0 ? 2 : 1,
-      rowSpan: idx === 0 ? 2 : 1,
+      colSpan: (isSingleCol || idx !== 0) ? 1 : 2,
+      rowSpan: (isSingleCol || idx !== 0) ? 1 : 2,
       onClick: () => setSelectedProject(item)
     }));
-  }, [p.portfolio]);
+  }, [p.portfolio, bentoColumns]);
 
   const [activeFinish, setActiveFinish] = useState('purple');
 
@@ -181,26 +195,63 @@ export default function ExpandedPortfolioView({
     finishPortraitBgs[profile?.edition] ||
     finishPortraitBgs.purple;
 
+  // Contact details formatting
+  const displayPhone = profile?.phone || '+91 80736 55571';
+  const cleanPhone = displayPhone.replace(/[^0-9+]/g, '');
+  const rawWhatsapp = profile?.whatsapp || profile?.phone || '918073655571';
+  const cleanWhatsapp = String(rawWhatsapp).replace(/[^0-9]/g, '');
+  const displayEmail = profile?.email || 'contact@flocard.in';
+  
+  const displayAddress = profile?.address || profile?.location || '2nd Floor, Archierio Experience Center, 668, 8th Main Rd, above Shivam Sanitary Ware, 7th Sector, HSR Layout, Bengaluru, Karnataka 560102';
+  
+  const displayWeb = profile?.website
+    ? profile.website.replace(/^https?:\/\//, '').replace(/\/$/, '')
+    : 'vertucardz.com';
+  const webHref = profile?.website
+    ? (profile.website.startsWith('http') ? profile.website : `https://${profile.website}`)
+    : 'https://flocard.in';
+
+  const resolvedLinks = useMemo(() => {
+    return resolveProfileLinks(profile);
+  }, [profile]);
+
+  // Social & Web links for the floating dark glass pill capsule
+  const socialCapsuleLinks = useMemo(() => {
+    const list = resolvedLinks.filter(l => l.platform !== 'phone' && l.platform !== 'whatsapp' && l.platform !== 'email');
+    if (list.length > 0) return list;
+    return [
+      { id: 'def_yt', platform: 'youtube', label: 'YouTube', href: 'https://youtube.com', isExternal: true },
+      { id: 'def_ig', platform: 'instagram', label: 'Instagram', href: 'https://instagram.com', isExternal: true },
+      { id: 'def_li', platform: 'linkedin', label: 'LinkedIn', href: 'https://linkedin.com', isExternal: true },
+      { id: 'def_fb', platform: 'facebook', label: 'Facebook', href: 'https://facebook.com', isExternal: true },
+      { id: 'def_web', platform: 'website', label: 'Website', href: webHref, isExternal: true }
+    ];
+  }, [resolvedLinks, webHref]);
   return (
     <div
+      className="flocard-profile-full-view"
       style={{
         width: '100%',
-        maxWidth: '900px',
+        maxWidth: '1360px',
         position: 'relative',
         zIndex: 10,
         display: 'flex',
         flexDirection: 'column',
-        alignItems: 'center'
+        alignItems: 'center',
+        margin: '0 auto',
+        boxSizing: 'border-box'
       }}
     >
       <motion.div
         layoutId="flocard-profile-card-surface"
+        initial={{ opacity: 0, y: 16 }}
+        animate={{ opacity: 1, y: 0 }}
         transition={transitionConfig}
-        className="flocard-expanded-portfolio-card"
+        className="flocard-expanded-portfolio-card flocard-profile-full-card"
         style={{
           width: '100%',
-          maxWidth: '900px',
-          borderRadius: '24px',
+          maxWidth: '100%',
+          borderRadius: '28px',
           border: `1.5px solid ${accentColor}45`,
           boxShadow: glowShadow,
           backgroundColor: '#0C0816',
@@ -209,291 +260,429 @@ export default function ExpandedPortfolioView({
           backgroundPosition: 'center',
           position: 'relative',
           overflow: 'hidden',
-          zIndex: 1
+          zIndex: 1,
+          boxSizing: 'border-box'
         }}
       >
         <div
+          className="flocard-profile-card-inner"
           style={{
             position: 'relative',
             zIndex: 3,
-            padding: '28px 24px 38px',
+            padding: '28px 20px 32px',
             width: '100%',
             boxSizing: 'border-box',
             display: 'flex',
-            flexDirection: 'column'
+            flexDirection: 'column',
+            alignItems: 'center'
           }}
         >
-      {/* Ambient Cream Overlay */}
-      <div
-        style={{
-          position: 'absolute',
-          top: '-60px',
-          right: '-60px',
-          width: '380px',
-          height: '380px',
-          borderRadius: '50%',
-          background: `radial-gradient(circle, ${creamHighlight}12 0%, ${accentColor}08 50%, transparent 70%)`,
-          pointerEvents: 'none',
-          zIndex: 1
-        }}
-      />
-
-      {/* Top Bar with Brand & Back/Collapse Control */}
-      <motion.div
-        initial={reducedMotion ? false : { opacity: 0, y: -6 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.25, delay: 0.08 }}
-        style={{
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'space-between',
-          marginBottom: '28px',
-          paddingBottom: '16px',
-          borderBottom: '1px solid rgba(255, 255, 255, 0.08)',
-          position: 'relative',
-          zIndex: 2,
-          flexWrap: 'wrap',
-          gap: '12px'
-        }}
-      >
-        {/* Brand Lockup (Single clean brand logo, matching navbar without duplicate text) */}
-        <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-          <img
-            src={isLight ? '/assets/logo-dark.png' : '/assets/logo-light.png'}
-            alt="FLOCARD"
-            style={{ height: '24px', width: 'auto', display: 'block', objectFit: 'contain' }}
-            onError={(e) => {
-              e.target.style.display = 'none';
-              if (e.target.nextSibling) e.target.nextSibling.style.display = 'inline-block';
-            }}
-          />
-          <span
+          {/* Ambient Cream Glow */}
+          <div
             style={{
-              fontFamily: "var(--font-heading, 'Sora', sans-serif)",
-              fontWeight: 800,
-              fontSize: '1.05rem',
-              letterSpacing: '0.04em',
-              color: '#FFFFFF',
-              display: 'none'
-            }}
-          >
-            FLOCARD<sup style={{ fontSize: '0.52rem', marginLeft: '2px', color: '#D5C9E5' }}>®</sup>
-          </span>
-        </div>
-
-        {/* Right Actions: Collapse Control & QR Code */}
-        <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-          {/* Back/Collapse to Card Button */}
-          <button
-            type="button"
-            onClick={onCollapse}
-            aria-label="Collapse back to compact card"
-            style={{
-              display: 'inline-flex',
-              alignItems: 'center',
-              gap: '6px',
-              padding: '8px 16px',
-              borderRadius: '9999px',
-              background: 'rgba(255, 255, 255, 0.1)',
-              border: `1px solid ${accentColor}50`,
-              color: '#FFFFFF',
-              fontSize: '0.82rem',
-              fontWeight: 600,
-              cursor: 'pointer',
-              transition: 'all 0.2s ease',
-              boxShadow: '0 4px 15px rgba(0,0,0,0.3)'
-            }}
-            onMouseEnter={(e) => {
-              e.currentTarget.style.backgroundColor = 'rgba(255, 255, 255, 0.18)';
-              e.currentTarget.style.borderColor = accentColor;
-            }}
-            onMouseLeave={(e) => {
-              e.currentTarget.style.backgroundColor = 'rgba(255, 255, 255, 0.1)';
-              e.currentTarget.style.borderColor = `${accentColor}50`;
-            }}
-          >
-            <ArrowLeft size={15} />
-            <span>Collapse to Card</span>
-            <span
-              style={{
-                fontSize: '0.62rem',
-                padding: '2px 5px',
-                borderRadius: '4px',
-                backgroundColor: 'rgba(255, 255, 255, 0.15)',
-                color: '#D5C9E5',
-                marginLeft: '4px'
-              }}
-            >
-              Esc
-            </span>
-          </button>
-
-          {/* Quick QR & Share Icons */}
-          <button
-            type="button"
-            onClick={handleShare}
-            title={copiedLink ? "Link copied!" : "Share Profile"}
-            style={{
-              width: '36px',
-              height: '36px',
+              position: 'absolute',
+              top: '-60px',
+              right: '-60px',
+              width: '320px',
+              height: '320px',
               borderRadius: '50%',
-              background: 'rgba(255, 255, 255, 0.08)',
-              border: '1px solid rgba(255, 255, 255, 0.14)',
-              color: copiedLink ? '#10B981' : '#FFFFFF',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              cursor: 'pointer'
+              background: `radial-gradient(circle, ${creamHighlight}12 0%, ${accentColor}08 50%, transparent 70%)`,
+              pointerEvents: 'none',
+              zIndex: 1
             }}
-          >
-            {copiedLink ? <Check size={16} /> : <Share2 size={16} />}
-          </button>
-        </div>
-      </motion.div>
-
-      {/* Expanded Hero Lockup (Shared Photo, Name, Role) */}
-      <div
-        style={{
-          display: 'flex',
-          alignItems: 'flex-start',
-          gap: '24px',
-          marginBottom: '28px',
-          position: 'relative',
-          zIndex: 2,
-          flexWrap: 'wrap'
-        }}
-      >
-        {/* Shared Photo via ProfileAvatar */}
-        <div style={{ position: 'relative', flexShrink: 0 }}>
-          <ProfileAvatar
-            profile={profile}
-            size={isCircle ? 124 : 118}
-            glowColor={glowColor}
-            accentColor={accentColor}
-            isCircle={isCircle}
-            transitionConfig={transitionConfig}
           />
 
-          {profile.isVerified !== false && (
-            <div
-              style={{
-                position: 'absolute',
-                bottom: isCircle ? '4px' : '-2px',
-                right: isCircle ? '4px' : '-2px',
-                width: '28px',
-                height: '28px',
-                borderRadius: '50%',
-                backgroundColor: glowColor,
-                border: '2.5px solid #0B0813',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                color: '#FFFFFF',
-                boxShadow: `0 3px 10px ${glowColor}80`
-              }}
-              title="Verified FLOCARD NFC Profile"
+          {/* Responsive Two-Column Layout (Desktop ≥992px: 2 columns; Mobile: 1 column) */}
+          <div className="flocard-profile-two-column">
+            {/* Left Column: Brand, Avatar, Identity, Direct Contact, Social Capsule, NFC Badge, CTAs */}
+            <motion.div
+              className="flocard-profile-left-col"
+              initial={reducedMotion ? {} : { opacity: 0, x: -16 }}
+              animate={reducedMotion ? {} : { opacity: 1, x: 0 }}
+              transition={reducedMotion ? {} : { duration: 0.4, ease: 'easeOut' }}
             >
-              <Check size={14} strokeWidth={3.2} />
-            </div>
-          )}
-        </div>
-
-        {/* Hero Identity Text */}
-        <div style={{ flex: 1, minWidth: '240px' }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap', marginBottom: '6px' }}>
-            <motion.h1
-              layoutId="flocard-shared-profile-name"
-              transition={transitionConfig}
-              style={{
-                fontFamily: "var(--font-heading, 'Sora', sans-serif)",
-                fontSize: '1.85rem',
-                fontWeight: 800,
-                color: '#FFFFFF',
-                letterSpacing: '-0.02em',
-                lineHeight: 1.2,
-                margin: 0
-              }}
-            >
-              {profile.name}
-            </motion.h1>
-
+              {/* 1. Studio / Brand Logo & Name Header (Top of card, centered) */}
+              <div
+            style={{
+              display: 'flex',
+              flexDirection: 'column',
+              alignItems: 'center',
+              marginBottom: '18px',
+              textAlign: 'center',
+              position: 'relative',
+              zIndex: 2
+            }}
+          >
+            {profile.logo ? (
+              <img
+                src={profile.logo}
+                alt={profile.company || 'Company Logo'}
+                style={{
+                  maxHeight: '44px',
+                  maxWidth: '220px',
+                  objectFit: 'contain',
+                  display: 'block',
+                  marginBottom: '6px'
+                }}
+              />
+            ) : (
+              <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '4px' }}>
+                <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke={accentColor} strokeWidth="1.8">
+                  <polygon points="12 2 2 7 12 12 22 7 12 2" />
+                  <polyline points="2 17 12 22 22 17" />
+                  <polyline points="2 12 12 17 22 12" />
+                </svg>
+                <span
+                  style={{
+                    fontFamily: "var(--font-heading, 'Sora', sans-serif)",
+                    fontWeight: 800,
+                    fontSize: '0.96rem',
+                    letterSpacing: '0.12em',
+                    color: '#FFFFFF',
+                    textTransform: 'uppercase'
+                  }}
+                >
+                  {profile.company || 'ARCHIERIO'}
+                </span>
+              </div>
+            )}
             <span
               style={{
-                display: 'inline-flex',
-                alignItems: 'center',
-                gap: '4px',
-                padding: '3px 9px',
-                borderRadius: '9999px',
-                backgroundColor: 'rgba(16, 185, 129, 0.15)',
-                border: '1px solid rgba(16, 185, 129, 0.35)',
-                color: '#10B981',
-                fontSize: '0.72rem',
-                fontWeight: 700
+                fontSize: '0.68rem',
+                letterSpacing: '0.14em',
+                color: '#D5C9E5',
+                textTransform: 'uppercase',
+                opacity: 0.85,
+                fontWeight: 600
               }}
             >
-              <Sparkles size={11} />
-              <span>Verified Identity</span>
+              {profile.tagline || (profile.company ? 'DESIGN STUDIO' : 'DIGITAL IDENTITY')}
             </span>
           </div>
 
-          <motion.div
-            layoutId="profile-card-role"
-            transition={transitionConfig}
+          {/* 2. Centered Circular Avatar */}
+          <div style={{ position: 'relative', marginBottom: '14px', zIndex: 2 }}>
+            <ProfileAvatar
+              profile={profile}
+              size={124}
+              glowColor={glowColor}
+              accentColor={accentColor}
+              isCircle={true}
+              transitionConfig={transitionConfig}
+            />
+            {profile.isVerified !== false && (
+              <div
+                style={{
+                  position: 'absolute',
+                  bottom: '4px',
+                  right: '4px',
+                  width: '28px',
+                  height: '28px',
+                  borderRadius: '50%',
+                  backgroundColor: glowColor,
+                  border: '2.5px solid #0B0813',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  color: '#FFFFFF',
+                  boxShadow: `0 3px 10px ${glowColor}80`
+                }}
+                title="Verified FLOCARD Profile"
+              >
+                <Check size={14} strokeWidth={3.2} />
+              </div>
+            )}
+          </div>
+
+          {/* 3. Name & Role (Centered) */}
+          <h1
             style={{
-              fontSize: '1.05rem',
-              fontWeight: 600,
+              fontFamily: "var(--font-heading, 'Sora', sans-serif)",
+              fontSize: 'clamp(1.35rem, 5vw, 1.8rem)',
+              fontWeight: 800,
+              letterSpacing: '0.04em',
+              textTransform: 'uppercase',
               color: '#FFFFFF',
-              marginBottom: '6px'
+              margin: '0 0 4px',
+              textAlign: 'center',
+              lineHeight: 1.2,
+              position: 'relative',
+              zIndex: 2
+            }}
+          >
+            {profile.name}
+          </h1>
+
+          <div
+            style={{
+              fontSize: 'clamp(0.92rem, 3vw, 1.05rem)',
+              fontWeight: 600,
+              color: '#D5C9E5',
+              textAlign: 'center',
+              marginBottom: '16px',
+              position: 'relative',
+              zIndex: 2
             }}
           >
             {profile.role}
-          </motion.div>
+          </div>
 
-          <motion.div
-            layoutId="profile-card-company"
-            transition={transitionConfig}
+          {/* 4. Contact Number Header & Clickable Link */}
+          <div style={{ textAlign: 'center', marginBottom: '16px', position: 'relative', zIndex: 2 }}>
+            <div
+              style={{
+                fontSize: '0.82rem',
+                fontWeight: 700,
+                color: '#E2D9F3',
+                textTransform: 'uppercase',
+                letterSpacing: '0.05em',
+                marginBottom: '3px'
+              }}
+            >
+              Contact Number:
+            </div>
+            <a
+              href={`tel:${cleanPhone}`}
+              style={{
+                fontSize: '1.05rem',
+                fontWeight: 700,
+                color: '#60A5FA',
+                textDecoration: 'underline',
+                letterSpacing: '0.02em',
+                display: 'inline-block'
+              }}
+            >
+              {displayPhone}
+            </a>
+          </div>
+
+          {/* 5. Direct Round Action Buttons (Call, WhatsApp, Email) */}
+          <div
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              gap: '14px',
+              marginBottom: '18px',
+              position: 'relative',
+              zIndex: 2
+            }}
+          >
+            {/* Call */}
+            <a
+              href={`tel:${cleanPhone}`}
+              title="Call Phone"
+              aria-label="Call"
+              style={{
+                width: '46px',
+                height: '46px',
+                borderRadius: '50%',
+                backgroundColor: 'rgba(255, 255, 255, 0.14)',
+                border: '1.5px solid rgba(255, 255, 255, 0.45)',
+                color: '#FFFFFF',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                textDecoration: 'none',
+                boxShadow: '0 4px 14px rgba(0,0,0,0.3)',
+                transition: 'transform 0.18s ease'
+              }}
+              onMouseEnter={e => e.currentTarget.style.transform = 'scale(1.08)'}
+              onMouseLeave={e => e.currentTarget.style.transform = 'scale(1)'}
+            >
+              <PhoneIcon size={20} color="#FFFFFF" />
+            </a>
+
+            {/* WhatsApp */}
+            <a
+              href={`https://wa.me/${cleanWhatsapp}`}
+              target="_blank"
+              rel="noopener noreferrer"
+              title="Message on WhatsApp"
+              aria-label="WhatsApp"
+              style={{
+                width: '46px',
+                height: '46px',
+                borderRadius: '50%',
+                backgroundColor: 'rgba(255, 255, 255, 0.14)',
+                border: '1.5px solid rgba(255, 255, 255, 0.45)',
+                color: '#FFFFFF',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                textDecoration: 'none',
+                boxShadow: '0 4px 14px rgba(0,0,0,0.3)',
+                transition: 'transform 0.18s ease'
+              }}
+              onMouseEnter={e => e.currentTarget.style.transform = 'scale(1.08)'}
+              onMouseLeave={e => e.currentTarget.style.transform = 'scale(1)'}
+            >
+              <WhatsappIcon size={20} color="#FFFFFF" />
+            </a>
+
+            {/* Email */}
+            {profile.email && (
+              <a
+                href={`mailto:${profile.email}`}
+                title="Send Email"
+                aria-label="Email"
+                style={{
+                  width: '46px',
+                  height: '46px',
+                  borderRadius: '50%',
+                  backgroundColor: 'rgba(255, 255, 255, 0.14)',
+                  border: '1.5px solid rgba(255, 255, 255, 0.45)',
+                  color: '#FFFFFF',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  textDecoration: 'none',
+                  boxShadow: '0 4px 14px rgba(0,0,0,0.3)',
+                  transition: 'transform 0.18s ease'
+                }}
+                onMouseEnter={e => e.currentTarget.style.transform = 'scale(1.08)'}
+                onMouseLeave={e => e.currentTarget.style.transform = 'scale(1)'}
+              >
+                <MailIcon size={20} color="#FFFFFF" />
+              </a>
+            )}
+          </div>
+
+          {/* 6. Floating Dark Glass Pill Capsule with Social Icons */}
+          <div
             style={{
               display: 'inline-flex',
               alignItems: 'center',
-              gap: '6px',
-              fontSize: '0.84rem',
-              fontWeight: 600,
-              color: '#D5C9E5',
-              letterSpacing: '0.04em',
-              textTransform: 'uppercase',
-              marginBottom: '10px'
+              justifyContent: 'center',
+              gap: '10px',
+              padding: '8px 16px',
+              borderRadius: '9999px',
+              backgroundColor: 'rgba(18, 12, 28, 0.82)',
+              border: '1.5px solid rgba(255, 255, 255, 0.18)',
+              boxShadow: `0 8px 30px rgba(0, 0, 0, 0.45), 0 0 20px ${glowColor}18`,
+              backdropFilter: 'blur(20px)',
+              marginBottom: '18px',
+              maxWidth: '100%',
+              flexWrap: 'wrap',
+              boxSizing: 'border-box',
+              position: 'relative',
+              zIndex: 2
             }}
           >
-            <span>{profile.company}</span>
-            {profile.location && (
-              <>
-                <span style={{ opacity: 0.4 }}>•</span>
-                <span style={{ opacity: 0.85, textTransform: 'none' }}>{profile.location}</span>
-              </>
-            )}
-          </motion.div>
+            {socialCapsuleLinks.map((link) => (
+              <a
+                key={link.id || link.platform}
+                href={link.href}
+                target={link.isExternal ? '_blank' : undefined}
+                rel={link.isExternal ? 'noopener noreferrer' : undefined}
+                title={link.title || link.label}
+                aria-label={link.label}
+                style={{
+                  width: '36px',
+                  height: '36px',
+                  borderRadius: '50%',
+                  backgroundColor: '#FFFFFF',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  color: '#0C0816',
+                  textDecoration: 'none',
+                  boxShadow: '0 4px 12px rgba(0,0,0,0.3)',
+                  transition: 'transform 0.16s ease',
+                  flexShrink: 0
+                }}
+                onMouseEnter={e => e.currentTarget.style.transform = 'scale(1.12)'}
+                onMouseLeave={e => e.currentTarget.style.transform = 'scale(1)'}
+              >
+                <DynamicLinkIcon link={link} size={18} color="#0C0816" />
+              </a>
+            ))}
+          </div>
 
-          {profile.bio && (
-            <p
+          {/* 7. Experience Center / Address Block */}
+          <div
+            style={{
+              textAlign: 'center',
+              marginBottom: '14px',
+              maxWidth: '440px',
+              width: '100%',
+              padding: '0 8px',
+              boxSizing: 'border-box',
+              position: 'relative',
+              zIndex: 2
+            }}
+          >
+            <div
               style={{
-                fontSize: '0.9rem',
-                color: '#D5C9E5',
-                lineHeight: 1.55,
-                margin: '6px 0 16px',
-                opacity: 0.95
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: '6px',
+                fontSize: '0.84rem',
+                fontWeight: 700,
+                color: '#FFFFFF',
+                marginBottom: '6px'
               }}
             >
-              {profile.bio}
+              <MapPin size={15} color={accentColor} />
+              <span>Experience Center:</span>
+            </div>
+            <p
+              style={{
+                fontSize: '0.82rem',
+                color: '#D5C9E5',
+                lineHeight: 1.55,
+                margin: 0,
+                overflowWrap: 'anywhere',
+                opacity: 0.92
+              }}
+            >
+              {displayAddress}
             </p>
-          )}
+          </div>
 
-          {/* Master Action Buttons: White Save Contact Pill + Dark Share Pill */}
-          <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap', alignItems: 'center' }}>
+          {/* 8. Direct Website / Domain Link */}
+          <a
+            href={webHref}
+            target="_blank"
+            rel="noopener noreferrer"
+            style={{
+              display: 'block',
+              textAlign: 'center',
+              color: '#D5C9E5',
+              fontSize: '0.88rem',
+              fontWeight: 600,
+              textDecoration: 'none',
+              letterSpacing: '0.04em',
+              marginBottom: '22px',
+              position: 'relative',
+              zIndex: 2
+            }}
+            onMouseEnter={e => e.currentTarget.style.color = '#FFFFFF'}
+            onMouseLeave={e => e.currentTarget.style.color = '#D5C9E5'}
+          >
+            {displayWeb}
+          </a>
+
+          {/* 9. Master Action Buttons: Save Contact vCard & Share Profile */}
+          <div
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              gap: '12px',
+              flexWrap: 'wrap',
+              width: '100%',
+              marginBottom: '28px',
+              boxSizing: 'border-box',
+              position: 'relative',
+              zIndex: 2
+            }}
+          >
             <button
               type="button"
               onClick={() => downloadVCard(profile)}
               style={{
-                padding: '10px 22px',
+                padding: '11px 24px',
                 borderRadius: '9999px',
                 backgroundColor: '#FFFFFF',
                 color: '#130B22',
@@ -505,10 +694,10 @@ export default function ExpandedPortfolioView({
                 gap: '8px',
                 cursor: 'pointer',
                 boxShadow: '0 6px 20px rgba(255,255,255,0.25)',
-                transition: 'transform 0.2s ease'
+                transition: 'transform 0.18s ease'
               }}
-              onMouseEnter={(e) => e.currentTarget.style.transform = 'scale(1.02)'}
-              onMouseLeave={(e) => e.currentTarget.style.transform = 'scale(1)'}
+              onMouseEnter={e => e.currentTarget.style.transform = 'scale(1.02)'}
+              onMouseLeave={e => e.currentTarget.style.transform = 'scale(1)'}
             >
               <Download size={16} />
               <span>Save Contact (vCard)</span>
@@ -518,150 +707,36 @@ export default function ExpandedPortfolioView({
               type="button"
               onClick={handleShare}
               style={{
-                padding: '10px 20px',
+                padding: '11px 22px',
                 borderRadius: '9999px',
                 backgroundColor: 'rgba(255, 255, 255, 0.08)',
                 color: '#FFFFFF',
-                border: '1px solid rgba(255, 255, 255, 0.18)',
+                border: '1px solid rgba(255, 255, 255, 0.2)',
                 fontWeight: 600,
                 fontSize: '0.86rem',
                 display: 'inline-flex',
                 alignItems: 'center',
                 gap: '8px',
                 cursor: 'pointer',
-                transition: 'all 0.2s ease'
+                transition: 'all 0.18s ease'
               }}
-              onMouseEnter={(e) => e.currentTarget.style.borderColor = accentColor}
-              onMouseLeave={(e) => e.currentTarget.style.borderColor = 'rgba(255, 255, 255, 0.18)'}
+              onMouseEnter={e => e.currentTarget.style.borderColor = accentColor}
+              onMouseLeave={e => e.currentTarget.style.borderColor = 'rgba(255, 255, 255, 0.2)'}
             >
               {copiedLink ? <Check size={16} color="#10B981" /> : <Share2 size={16} />}
               <span>{copiedLink ? 'Link Copied!' : 'Share Profile'}</span>
             </button>
           </div>
-        </div>
-      </div>
+        </motion.div>
 
-      {/* Staggered Expanded Content */}
-      <motion.div
-        initial={reducedMotion ? false : { opacity: 0, y: 16 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.35, delay: 0.12 }}
-        style={{ position: 'relative', zIndex: 2 }}
-      >
-        {/* Contact Icons Bar — Direct Connect (More visible & bigger) */}
-        <div
-          style={{
-            display: 'flex',
-            alignItems: 'center',
-            gap: '16px',
-            padding: '18px 24px',
-            backgroundColor: isLight ? 'rgba(255, 255, 255, 0.94)' : 'rgba(18, 12, 28, 0.88)',
-            border: isLight ? '1px solid rgba(0, 0, 0, 0.12)' : `1.5px solid ${accentColor}45`,
-            borderRadius: '22px',
-            marginBottom: '32px',
-            flexWrap: 'wrap',
-            boxShadow: `0 8px 32px rgba(0, 0, 0, 0.4), 0 0 24px ${glowColor}22`,
-            backdropFilter: 'blur(20px)'
-          }}
-        >
-          <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-            <Zap size={18} color={accentColor} fill={accentColor} />
-            <span
-              style={{
-                fontSize: '0.86rem',
-                color: isLight ? '#18181b' : '#FFFFFF',
-                fontWeight: 700,
-                textTransform: 'uppercase',
-                letterSpacing: '0.8px'
-              }}
+        {/* Right Column: Staggered Content Tabs (Portfolio, About, Services, Experience, Contact) */}
+        <motion.div
+          className="flocard-profile-right-col"
+              initial={reducedMotion ? {} : { opacity: 0, x: 16 }}
+              animate={reducedMotion ? {} : { opacity: 1, x: 0 }}
+              transition={reducedMotion ? {} : { duration: 0.45, delay: 0.08, ease: 'easeOut' }}
+              style={{ width: '100%', position: 'relative', zIndex: 2 }}
             >
-              Direct Connect:
-            </span>
-          </div>
-
-          {(() => {
-            const resolvedLinks = resolveProfileLinks(profile);
-            if (!resolvedLinks.length) return null;
-
-            return (
-              <div
-                style={{
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: 'clamp(8px, 1.8vw, 14px)',
-                  flexWrap: 'nowrap',
-                  overflowX: 'auto',
-                  padding: '4px 2px 8px',
-                  scrollbarWidth: 'none',
-                  msOverflowStyle: 'none',
-                  width: '100%'
-                }}
-              >
-                {resolvedLinks.map(action => (
-                  <div
-                    key={action.id}
-                    style={{
-                      display: 'flex',
-                      flexDirection: 'column',
-                      alignItems: 'center',
-                      gap: '5px',
-                      flexShrink: 0
-                    }}
-                  >
-                    <a
-                      href={action.href}
-                      target={action.isExternal ? '_blank' : undefined}
-                      rel={action.isExternal ? 'noopener noreferrer' : undefined}
-                      title={action.title}
-                      aria-label={action.label}
-                      style={{
-                        width: '46px',
-                        height: '46px',
-                        borderRadius: '50%',
-                        backgroundColor: '#FFFFFF',
-                        border: '1px solid rgba(255, 255, 255, 0.4)',
-                        boxShadow: '0 6px 18px rgba(0, 0, 0, 0.4), 0 2px 4px rgba(0, 0, 0, 0.2)',
-                        display: 'flex',
-                        alignItems: 'center',
-                        justifyContent: 'center',
-                        color: '#0C0816',
-                        textDecoration: 'none',
-                        cursor: 'pointer',
-                        transition: 'transform 0.18s cubic-bezier(0.16, 1, 0.3, 1), box-shadow 0.18s cubic-bezier(0.16, 1, 0.3, 1)',
-                        flexShrink: 0
-                      }}
-                      onMouseEnter={e => {
-                        e.currentTarget.style.transform = 'translateY(-3px) scale(1.08)';
-                        e.currentTarget.style.boxShadow = `0 10px 24px rgba(0, 0, 0, 0.55), 0 0 0 1.5px ${accentColor}`;
-                      }}
-                      onMouseLeave={e => {
-                        e.currentTarget.style.transform = 'translateY(0) scale(1)';
-                        e.currentTarget.style.boxShadow = '0 6px 18px rgba(0, 0, 0, 0.4), 0 2px 4px rgba(0, 0, 0, 0.2)';
-                      }}
-                    >
-                      <DynamicLinkIcon link={action} size={22} color="#0C0816" />
-                    </a>
-                    <span
-                      style={{
-                        fontSize: '0.7rem',
-                        fontWeight: 600,
-                        color: isLight ? '#3f3f46' : 'rgba(255, 255, 255, 0.9)',
-                        letterSpacing: '0.01em',
-                        textAlign: 'center',
-                        maxWidth: '56px',
-                        whiteSpace: 'nowrap',
-                        overflow: 'hidden',
-                        textOverflow: 'ellipsis'
-                      }}
-                    >
-                      {action.label}
-                    </span>
-                  </div>
-                ))}
-              </div>
-            );
-          })()}
-        </div>
 
         {/* Section Tabs */}
         {tabs.length > 1 && (
@@ -729,9 +804,9 @@ export default function ExpandedPortfolioView({
             ) : (
               <div style={{ width: '100%' }}>
                 <MagicBento
-                  columns={3}
-                  rowHeight={210}
-                  gap={14}
+                  columns={bentoColumns}
+                  rowHeight={bentoColumns === 1 ? 170 : 210}
+                  gap={bentoColumns === 1 ? 10 : 14}
                   radius={20}
                   theme={isLight ? 'light' : 'dark'}
                   glowColor={accentColor}
@@ -907,36 +982,16 @@ export default function ExpandedPortfolioView({
           </div>
         )}
 
-        {/* Bottom Collapse Banner */}
-        <div style={{ textAlign: 'center', marginTop: '36px', paddingTop: '20px', borderTop: '1px solid rgba(255, 255, 255, 0.08)' }}>
-          <button
-            type="button"
-            onClick={onCollapse}
-            style={{
-              display: 'inline-flex',
-              alignItems: 'center',
-              gap: '8px',
-              padding: '10px 24px',
-              borderRadius: '9999px',
-              backgroundColor: 'rgba(255, 255, 255, 0.08)',
-              border: `1px solid ${accentColor}40`,
-              color: '#FFFFFF',
-              fontSize: '0.84rem',
-              fontWeight: 600,
-              cursor: 'pointer',
-              transition: 'all 0.2s'
-            }}
-          >
-            <ArrowLeft size={15} />
-            <span>Collapse Back to Profile Card</span>
-          </button>
-          <div style={{ fontSize: '0.72rem', color: '#D5C9E5', opacity: 0.6, marginTop: '8px' }}>
+        {/* Signature Divider */}
+        <div style={{ textAlign: 'center', marginTop: '28px', paddingTop: '18px', borderTop: '1px solid rgba(255, 255, 255, 0.08)' }}>
+          <div style={{ fontSize: '0.74rem', color: '#D5C9E5', opacity: 0.7 }}>
             Verified FLOCARD Digital Identity • One Tap Every Connection
           </div>
         </div>
+            </motion.div>
+          </div>
+        </div>
       </motion.div>
-    </div>
-  </motion.div>
 
   {/* Project Lightbox Modal */}
       {selectedProject && (

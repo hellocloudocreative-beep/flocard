@@ -6,19 +6,20 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import { supabase, isSupabaseConfigured } from '../lib/supabase';
 import { StorageEngine } from '../lib/storage';
+import { hasPermission as evaluatePermission, canAccessTab as evaluateTabAccess, ROLES } from '../lib/permissions';
 
 const AuthContext = createContext();
 
 const ROOT_OWNER = {
   id: 'cust_flocard',
   email: 'flocard@flocard.in',
-  name: 'FLOCARD Owner',
+  name: 'FLOCARDS Administrator',
   role: 'owner',
-  avatar: '/assets/akhil.jpg',
+  avatar: null,
   profileSlug: 'flocard'
 };
 
-const OWNER_EMAILS = ['flocard', 'flocard@flocard.in', 'hello.flocard@gmail.com', 'akhil@flocard.in'];
+const OWNER_EMAILS = ['flocard', 'flocard@flocard.in', 'hello.flocard@gmail.com', 'admin@flocard.in'];
 
 export function AuthProvider({ children }) {
   const [user, setUser] = useState(() => {
@@ -316,7 +317,43 @@ export function AuthProvider({ children }) {
 
   const switchPersona = (role) => {
     if (role === 'owner') setUser(ROOT_OWNER);
-    else if (role === 'admin') {
+    else if (role === 'sales') {
+      setUser({
+        id: 'staff_sales_01',
+        email: 'sales@flocard.in',
+        name: 'FLOCARDS Sales Desk',
+        role: 'sales',
+        company: 'FLOCARDS Direct Sales',
+        avatar: null
+      });
+    } else if (role === 'designer') {
+      setUser({
+        id: 'staff_designer_01',
+        email: 'designer@flocard.in',
+        name: 'Studio Design Lead',
+        role: 'designer',
+        company: 'FLOCARDS Creative',
+        avatar: null
+      });
+    } else if (role === 'production') {
+      setUser({
+        id: 'staff_prod_01',
+        email: 'production@flocard.in',
+        name: 'NFC Manufacturing Desk',
+        role: 'production',
+        company: 'FLOCARDS Lab',
+        avatar: null
+      });
+    } else if (role === 'accounts') {
+      setUser({
+        id: 'staff_accounts_01',
+        email: 'accounts@flocard.in',
+        name: 'Finance & Tax Desk',
+        role: 'accounts',
+        company: 'FLOCARDS Finance',
+        avatar: null
+      });
+    } else if (role === 'admin') {
       const accounts = StorageEngine.getAdminAccounts();
       const adminAcc = accounts.find(a => a.role === 'admin') || {
         email: 'admin@flocard.in',
@@ -330,14 +367,28 @@ export function AuthProvider({ children }) {
   };
 
   const isOwner = user?.role === 'owner' || OWNER_EMAILS.includes(user?.email?.toLowerCase());
-  const isAdmin = isOwner || user?.role === 'admin' || (user?.email && StorageEngine.isEmailAuthorizedAdmin(user.email));
+  const isSales = user?.role === 'sales';
+  const isDesigner = user?.role === 'designer';
+  const isProduction = user?.role === 'production';
+  const isAccounts = user?.role === 'accounts';
+  const isAdmin = isOwner || ['admin', 'sales', 'designer', 'production', 'accounts'].includes(user?.role) || (user?.email && StorageEngine.isEmailAuthorizedAdmin(user.email));
+
+  const checkPermission = (permId) => evaluatePermission(user, permId);
+  const checkTabAccess = (tabId) => evaluateTabAccess(user, tabId);
 
   return (
     <AuthContext.Provider value={{
       user,
+      role: user?.role || (isOwner ? 'owner' : (isAdmin ? 'admin' : 'customer')),
       isAdmin,
       isOwner,
+      isSales,
+      isDesigner,
+      isProduction,
+      isAccounts,
       isCustomer: Boolean(user),
+      hasPermission: checkPermission,
+      canAccessTab: checkTabAccess,
       login,
       loginCustomer,
       registerCustomer,

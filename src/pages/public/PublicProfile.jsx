@@ -8,16 +8,14 @@
    ========================================================================== */
 
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
-import { AnimatePresence } from 'motion/react';
 import { useData } from '../../context/DataContext';
 import { useTheme } from '../../context/ThemeContext';
-import CompactProfileCard from '../../components/profile/CompactProfileCard';
 import ExpandedPortfolioView from '../../components/profile/ExpandedPortfolioView';
 import CardNav from '../../components/CardNav/CardNav';
 import { downloadVCard } from '../../lib/vcard';
 import { INITIAL_PROFILES } from '../../lib/storage';
 
-export default function PublicProfile({ slug = 'akhil' }) {
+export default function PublicProfile({ slug = 'alex' }) {
   const { getProfileBySlug, profiles } = useData();
   const { isLight: visitorIsLight } = useTheme();
 
@@ -29,7 +27,7 @@ export default function PublicProfile({ slug = 'akhil' }) {
     return (getProfileBySlug && getProfileBySlug(cleanSlug)) ||
       list.find(p => p && p.slug && p.slug.trim().toLowerCase() === cleanSlug) ||
       initialList.find(p => p && p.slug && p.slug.trim().toLowerCase() === cleanSlug) ||
-      (cleanSlug === 'akhil' ? (list.find(p => p && p.id === 'prof_akhil_001') || initialList[0] || list[0]) : null) ||
+      ((cleanSlug === 'alex' || cleanSlug === 'akhil') ? (list.find(p => p && (p.id === 'prof_alex_001' || p.slug === 'alex')) || initialList[0] || list[0]) : null) ||
       list[0] ||
       initialList[0];
   }, [getProfileBySlug, profiles, slug]);
@@ -48,80 +46,6 @@ export default function PublicProfile({ slug = 'akhil' }) {
       return () => mediaQuery.removeEventListener('change', listener);
     }
   }, []);
-
-  // Determine initial view state from URL query and profile openingPreference
-  const computeInitialExpanded = useCallback(() => {
-    if (typeof window === 'undefined') return false;
-    const params = new URLSearchParams(window.location.search);
-    const viewParam = params.get('view');
-
-    if (viewParam === 'full') return true;
-    if (viewParam === 'compact') return false;
-
-    // Default based on saved opening preference
-    if (profile?.openingPreference === 'full') return true;
-    return false; // Default to compact expandable card
-  }, [profile]);
-
-  const [isExpanded, setIsExpanded] = useState(computeInitialExpanded);
-
-  // Sync state if slug/profile changes
-  useEffect(() => {
-    setIsExpanded(computeInitialExpanded());
-  }, [slug, computeInitialExpanded]);
-
-  // Sync URL search query with expansion state & handle browser Back/Forward
-  const handleExpand = useCallback(() => {
-    if (profile?.openingPreference === 'compact_only') {
-      return; // Customer locked profile to compact only
-    }
-
-    setIsExpanded(true);
-
-    if (typeof window !== 'undefined') {
-      const currentUrl = new URL(window.location.href);
-      currentUrl.searchParams.set('view', 'full');
-      window.history.pushState({ view: 'full', slug }, '', currentUrl.toString());
-    }
-  }, [profile, slug]);
-
-  const handleCollapse = useCallback(() => {
-    setIsExpanded(false);
-
-    if (typeof window !== 'undefined') {
-      const currentUrl = new URL(window.location.href);
-      currentUrl.searchParams.delete('view');
-      window.history.pushState({ view: 'compact', slug }, '', currentUrl.toString());
-    }
-  }, [slug]);
-
-  // Listen to browser Back / Forward (popstate)
-  useEffect(() => {
-    const handlePopState = () => {
-      const params = new URLSearchParams(window.location.search);
-      const viewParam = params.get('view');
-      if (viewParam === 'full') {
-        setIsExpanded(true);
-      } else {
-        setIsExpanded(false);
-      }
-    };
-
-    window.addEventListener('popstate', handlePopState);
-    return () => window.removeEventListener('popstate', handlePopState);
-  }, []);
-
-  // Listen to Escape key to collapse when expanded
-  useEffect(() => {
-    const handleKeyDown = (e) => {
-      if (e.key === 'Escape' && isExpanded) {
-        handleCollapse();
-      }
-    };
-
-    window.addEventListener('keydown', handleKeyDown);
-    return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [isExpanded, handleCollapse]);
 
   // Profile not found fallback
   if (!profile) {
@@ -186,13 +110,26 @@ export default function PublicProfile({ slug = 'akhil' }) {
           ? '/assets/cardbg-metal-portrait.png'
           : '/assets/cardbg-purple-portrait.png';
 
+  const handleShare = () => {
+    const url = typeof window !== 'undefined' ? window.location.href : `https://flocard.in/p/${profile.slug}`;
+    if (navigator.share) {
+      navigator.share({
+        title: `${profile.name} — FLOCARD Digital Identity`,
+        text: `Connect with ${profile.name} (${profile.role} at ${profile.company})`,
+        url
+      }).catch(() => {});
+    } else {
+      navigator.clipboard.writeText(url);
+    }
+  };
+
   const navItems = useMemo(() => [
     {
       label: 'Profile',
       description: `${profile?.name || 'Identity'} • ${profile?.role || 'Executive'}`,
       links: [
-        { label: isExpanded ? 'Collapse to Card' : 'Expand Profile', onClick: isExpanded ? handleCollapse : handleExpand },
-        { label: 'Save Contact vCard', onClick: () => downloadVCard(profile) }
+        { label: 'Save Contact vCard', onClick: () => downloadVCard(profile) },
+        { label: 'Share Profile', onClick: handleShare }
       ]
     },
     {
@@ -211,22 +148,24 @@ export default function PublicProfile({ slug = 'akhil' }) {
         { label: 'Create Card', href: '/designer' }
       ]
     }
-  ], [profile, isExpanded, handleCollapse, handleExpand]);
+  ], [profile]);
 
   return (
     <div
       className={`public-profile-root ${isLight ? 'is-light' : ''}`}
       style={{
         minHeight: '100vh',
+        width: '100%',
+        maxWidth: '100vw',
         background: isLight ? '#F8F7FC' : '#08060D',
         display: 'flex',
         flexDirection: 'column',
         alignItems: 'center',
-        justifyContent: 'center',
-        padding: isExpanded ? '24px 16px 80px' : '24px 16px',
+        justifyContent: 'flex-start',
+        padding: '20px 14px 60px',
         position: 'relative',
         overflowX: 'hidden',
-        transition: 'padding 0.5s ease'
+        boxSizing: 'border-box'
       }}
     >
       {/* Authentic Portrait Card Artwork Backdrop for Profile Background */}
@@ -246,7 +185,7 @@ export default function PublicProfile({ slug = 'akhil' }) {
         }}
       />
 
-      {/* Subtle Oversized Background Watermark Logo (FLOCARD Brand Logo Mark) */}
+      {/* Subtle Oversized Background Watermark Logo */}
       <div
         aria-hidden="true"
         style={{
@@ -255,7 +194,7 @@ export default function PublicProfile({ slug = 'akhil' }) {
           left: '50%',
           transform: 'translate(-50%, -50%)',
           width: 'clamp(280px, 55vw, 680px)',
-          maxWidth: '680px',
+          maxWidth: '100vw',
           display: 'flex',
           alignItems: 'center',
           justifyContent: 'center',
@@ -285,36 +224,17 @@ export default function PublicProfile({ slug = 'akhil' }) {
           top: 0,
           left: '50%',
           transform: 'translateX(-50%)',
-          width: isExpanded ? '100vw' : '840px',
-          height: isExpanded ? '100vh' : '520px',
-          background: isExpanded
-            ? `radial-gradient(ellipse 90% 60% at 50% 0%, ${glowColor}35 0%, ${accentColor}18 35%, transparent 75%), radial-gradient(circle 800px at 50% 85%, ${metalTint}15 0%, transparent 70%)`
-            : `radial-gradient(ellipse at 50% -10%, ${glowColor}40 0%, ${accentColor}18 45%, transparent 70%)`,
+          width: '100vw',
+          maxWidth: '100%',
+          height: '100vh',
+          background: `radial-gradient(ellipse 90% 60% at 50% 0%, ${glowColor}35 0%, ${accentColor}18 35%, transparent 75%), radial-gradient(circle 800px at 50% 85%, ${metalTint}15 0%, transparent 70%)`,
           pointerEvents: 'none',
-          zIndex: 1,
-          transition: 'all 0.6s ease'
+          zIndex: 1
         }}
       />
 
-      {/* Atmospheric Sheen Sweep when Expanded */}
-      {isExpanded && (
-        <div
-          aria-hidden="true"
-          style={{
-            position: 'fixed',
-            inset: 0,
-            background: `radial-gradient(ellipse 120% 40% at 50% 0%, ${metalTint}20 0%, transparent 60%)`,
-            pointerEvents: 'none',
-            zIndex: 1,
-            mixBlendMode: 'screen',
-            opacity: isLight ? 0.35 : 0.7,
-            animation: 'fadeIn 0.6s ease forwards'
-          }}
-        />
-      )}
-
       {/* Top Floating CardNav */}
-      <div style={{ width: '100%', maxWidth: '780px', marginBottom: '20px', position: 'relative', zIndex: 40 }}>
+      <div style={{ width: '100%', maxWidth: '1360px', marginBottom: '24px', position: 'relative', zIndex: 40, boxSizing: 'border-box' }}>
         <CardNav
           logo={
             <img
@@ -340,41 +260,29 @@ export default function PublicProfile({ slug = 'akhil' }) {
         />
       </div>
 
-      {/* Shared-Element Morphing Container via Motion */}
+      {/* Direct Full-Screen Profile Presentation */}
       <div
         style={{
           width: '100%',
+          maxWidth: '100%',
           display: 'flex',
           justifyContent: 'center',
           position: 'relative',
-          zIndex: 10
+          zIndex: 10,
+          boxSizing: 'border-box'
         }}
       >
-        <AnimatePresence initial={false}>
-          {!isExpanded ? (
-            <CompactProfileCard
-              key="compact-card"
-              profile={profile}
-              onExpand={handleExpand}
-              isLight={isLight}
-              reducedMotion={reducedMotion}
-            />
-          ) : (
-            <ExpandedPortfolioView
-              key="expanded-portfolio"
-              profile={profile}
-              onCollapse={handleCollapse}
-              isLight={isLight}
-              reducedMotion={reducedMotion}
-            />
-          )}
-        </AnimatePresence>
+        <ExpandedPortfolioView
+          profile={profile}
+          isLight={isLight}
+          reducedMotion={reducedMotion}
+        />
       </div>
 
       {/* Global Minimal Footer */}
       <footer
         style={{
-          marginTop: isExpanded ? '40px' : '24px',
+          marginTop: '36px',
           textAlign: 'center',
           color: '#82758F',
           fontSize: '0.74rem',

@@ -5,22 +5,35 @@
 
 import { createClient } from '@supabase/supabase-js';
 
-const supabaseUrl = import.meta.env.VITE_SUPABASE_URL || '';
-const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY || '';
-const supabaseServiceKey = import.meta.env.VITE_SUPABASE_SERVICE_KEY || '';
+const env = (typeof import.meta !== 'undefined' && import.meta.env) || (typeof process !== 'undefined' && process.env) || {};
+const supabaseUrl = env.VITE_SUPABASE_URL || '';
+const supabaseAnonKey = env.VITE_SUPABASE_ANON_KEY || '';
+const supabaseServiceKey = env.VITE_SUPABASE_SERVICE_KEY || '';
 
 export const isSupabaseConfigured = Boolean(supabaseUrl && supabaseAnonKey);
 
-// Anon client — used for Auth and public data reads
+// Anon client — used for Auth and customer session management
 export const supabase = isSupabaseConfigured
-  ? createClient(supabaseUrl, supabaseAnonKey)
+  ? createClient(supabaseUrl, supabaseAnonKey, {
+      auth: {
+        storageKey: 'flocard-supabase-auth',
+        persistSession: true,
+        autoRefreshToken: true,
+        detectSessionInUrl: true
+      }
+    })
   : null;
 
-// Service-role client — used ONLY for server-side operations like storage uploads
-// Never expose this key to end users; it bypasses RLS
+// Service-role client — used ONLY for administrative operations like storage uploads
+// Explicitly isolated with a non-persisting memory store to avoid GoTrueClient collisions
 export const supabaseAdmin = (supabaseUrl && supabaseServiceKey)
   ? createClient(supabaseUrl, supabaseServiceKey, {
-      auth: { autoRefreshToken: false, persistSession: false }
+      auth: {
+        storageKey: 'flocard-supabase-admin-service',
+        autoRefreshToken: false,
+        persistSession: false,
+        detectSessionInUrl: false
+      }
     })
   : null;
 

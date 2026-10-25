@@ -59,14 +59,14 @@ export default function About() {
 
         {/* Founder note */}
         <div className="glass-panel" style={{ padding: '48px 36px', maxWidth: '840px', margin: '0 auto', textAlign: 'center' }}>
-          <div style={{ width: '80px', height: '80px', borderRadius: '50%', padding: '2px', background: 'linear-gradient(135deg, var(--primary-purple), var(--deep-violet))', margin: '0 auto 18px' }}>
-            <img src="/assets/akhil.jpg" alt="Akhil Anvar" style={{ width: '100%', height: '100%', borderRadius: '50%', objectFit: 'cover' }} />
+          <div style={{ width: '80px', height: '80px', borderRadius: '50%', padding: '2px', background: 'linear-gradient(135deg, var(--primary-purple), var(--deep-violet))', margin: '0 auto 18px', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#fff', fontSize: '1.4rem', fontWeight: 700 }}>
+            <span style={{ background: 'var(--primary-purple)', width: '100%', height: '100%', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>FLC</span>
           </div>
           <blockquote style={{ fontSize: '1.15rem', color: 'var(--text-primary)', fontStyle: 'italic', lineHeight: 1.6, marginBottom: '20px' }}>
             &ldquo;Networking shouldn&apos;t feel like handing someone a scrap of paper that will end up in the laundry. It should feel like a moment of true impact—effortless, memorable, and instant.&rdquo;
           </blockquote>
-          <div style={{ fontWeight: 700, color: 'var(--primary-purple)' }}>Akhil Anvar</div>
-          <div style={{ fontSize: '0.82rem', color: 'var(--text-muted)' }}>Founder & CEO, FLOCARD Technologies</div>
+          <div style={{ fontWeight: 700, color: 'var(--primary-purple)' }}>FLOCARDS Leadership Team</div>
+          <div style={{ fontSize: '0.82rem', color: 'var(--text-muted)' }}>Connected Identity Systems, FLOCARDS Technologies</div>
         </div>
       </div>
     </div>

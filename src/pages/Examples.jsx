@@ -9,7 +9,7 @@ import { useData } from '../context/DataContext';
 
 export default function Examples() {
   const { profiles } = useData();
-  const [selectedSlug, setSelectedSlug] = useState('akhil');
+  const [selectedSlug, setSelectedSlug] = useState('alex');
 
   const selectedProfile = profiles.find(p => p.slug === selectedSlug) || profiles[0];
 
@@ -52,7 +52,7 @@ export default function Examples() {
               }}
             >
               <img
-                src={p.avatar || '/assets/akhil.jpg'}
+                src={p.avatar || 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=400&auto=format&fit=crop&q=80'}
                 alt={p.name}
                 style={{ width: '28px', height: '28px', borderRadius: '50%', objectFit: 'cover' }}
               />
@@ -94,7 +94,7 @@ export default function Examples() {
 
             <div style={{ display: 'flex', gap: '16px', flexWrap: 'wrap' }}>
               <a
-                href={`/p/${selectedProfile.slug}`}
+                href={`/${selectedProfile.slug}`}
                 target="_blank"
                 rel="noreferrer"
                 className="btn btn-primary btn-lg"

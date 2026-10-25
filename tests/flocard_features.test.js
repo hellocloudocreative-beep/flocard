@@ -238,7 +238,7 @@ console.log('✓ Order delivery and customer panel auto-provisioning verified.')
 // 9. PRODUCT PRICING & ADMIN AUTHORIZATION
 console.log('\nTest 9: Authoritative Product Pricing & Admin Authorization');
 const initialProducts = StorageEngine.getProducts();
-assert.strictEqual(initialProducts.length, 3, 'There should be 3 card edition products');
+assert.ok(initialProducts.length >= 3, 'There should be at least 3 card edition products');
 
 const goldProd = StorageEngine.getProductByEdition('gold');
 assert.ok(goldProd, 'Gold Edition product must exist');
