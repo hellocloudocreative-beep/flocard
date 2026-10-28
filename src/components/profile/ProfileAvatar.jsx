@@ -15,12 +15,18 @@ export default function ProfileAvatar({
   size = 108,
   glowColor = '#C9972C',
   accentColor = '#E9C766',
-  isCircle = true,
+  isCircle: propIsCircle = true,
   className = '',
   style = {},
   transitionConfig
 }) {
   const [imgError, setImgError] = useState(false);
+
+  // Respect profile.photoShape if specified, otherwise fallback to prop
+  const isCircle = profile?.photoShape ? profile.photoShape === 'circle' : propIsCircle;
+  const avatarPosX = typeof profile?.avatarPosX === 'number' ? profile.avatarPosX : 50;
+  const avatarPosY = typeof profile?.avatarPosY === 'number' ? profile.avatarPosY : 50;
+  const avatarZoom = typeof profile?.avatarZoom === 'number' ? profile.avatarZoom : 100;
 
   // Never fallback to demo picture if profile has no picture!
   // If profile has an avatar or logo, use that. Otherwise, use the gold FLOCARD badge.
@@ -67,8 +73,11 @@ export default function ProfileAvatar({
             height: '100%',
             borderRadius: innerRadius,
             objectFit: 'cover',
-            objectPosition: 'center',
-            display: 'block'
+            objectPosition: `${avatarPosX}% ${avatarPosY}%`,
+            transform: `scale(${avatarZoom / 100})`,
+            transformOrigin: `${avatarPosX}% ${avatarPosY}%`,
+            display: 'block',
+            transition: 'transform 0.15s ease, object-position 0.15s ease'
           }}
           loading="eager"
         />

@@ -107,8 +107,9 @@ export default function OrderSummaryPrintModal({
       setErrorMessage('Please enter your full name for recipient delivery.');
       return;
     }
-    if (!cleanPhone || cleanPhone.length < 8) {
-      setErrorMessage('Please enter a valid WhatsApp contact number (required for order confirmation).');
+    // Phone number is optional: only validate length if user enters one
+    if (customerPhone.trim() && cleanPhone.length < 8) {
+      setErrorMessage('Please enter a valid phone number (at least 8 digits) or leave it empty.');
       return;
     }
     if (!trimmedEmail || !trimmedEmail.includes('@')) {
@@ -539,6 +540,9 @@ export default function OrderSummaryPrintModal({
                       <div style={{ fontSize: '0.76rem', color: isLight ? '#64748B' : '#94A3B8' }}>
                         {templateDetails.name} • High-Frequency NFC Chip
                       </div>
+                      <div style={{ marginTop: '6px', fontSize: '0.7rem', color: (customerLogo?.url || frontConfig?.customLogo) ? '#10B981' : (isLight ? '#64748B' : '#94A3B8') }}>
+                        {(customerLogo?.url || frontConfig?.customLogo) ? '✓ Custom Logo Attached' : '✓ Typographic Design (No Logo Required)'}
+                      </div>
                     </div>
                   </div>
 
@@ -684,14 +688,13 @@ export default function OrderSummaryPrintModal({
                     <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
                       <div>
                         <label style={{ fontSize: '0.74rem', fontWeight: 600, color: isLight ? '#64748B' : '#94A3B8', display: 'block', marginBottom: '4px' }}>
-                          WhatsApp Number *
+                          Phone / WhatsApp (Optional)
                         </label>
                         <input
                           type="tel"
-                          required
                           value={customerPhone}
                           onChange={e => setCustomerPhone(e.target.value)}
-                          placeholder="+91 97782 78552"
+                          placeholder="+91 98765 43210 (Optional)"
                           className="form-input"
                           style={{ width: '100%' }}
                         />

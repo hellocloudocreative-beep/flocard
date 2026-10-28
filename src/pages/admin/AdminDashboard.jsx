@@ -111,7 +111,22 @@ import {
 } from '../../lib/cardService';
 
 export default function AdminDashboard({ initialTab = 'overview', initialOrderId = null }) {
-  const { user, isOwner, isAdmin, isSales, isDesigner, isProduction, isAccounts, hasPermission, canAccessTab, logout, switchPersona } = useAuth();
+  const {
+    user,
+    isOwner,
+    isAdmin,
+    isSales,
+    isDesigner,
+    isProduction,
+    isAccounts,
+    hasPermission,
+    canAccessTab,
+    logout,
+    switchPersona,
+    updateAdminProfile,
+    updateAdminPassword,
+    updateAdminEmail
+  } = useAuth();
   const themeContext = useTheme();
   // Admin dashboard defaults to dark mode, supports explicit light toggle
   const isDark = themeContext ? themeContext.isDark : true;
@@ -232,7 +247,88 @@ export default function AdminDashboard({ initialTab = 'overview', initialOrderId
   const [uploadingDemoImage, setUploadingDemoImage] = useState(false);
   const [isUploadingAvatar, setIsUploadingAvatar] = useState(false);
   const [isUploadingLogo, setIsUploadingLogo] = useState(false);
+  const [isUploadingWorkImages, setIsUploadingWorkImages] = useState(false);
   const [copiedSlug, setCopiedSlug] = useState(null);
+
+  // Admin Personal Profile & Security State
+  const [adminDisplayName, setAdminDisplayName] = useState(user?.name || '');
+  const [adminAvatar, setAdminAvatar] = useState(user?.avatar || '');
+  const [isUploadingAdminAvatar, setIsUploadingAdminAvatar] = useState(false);
+  const [adminNewPassword, setAdminNewPassword] = useState('');
+  const [adminConfirmPassword, setAdminConfirmPassword] = useState('');
+  const [adminProfileMsg, setAdminProfileMsg] = useState(null);
+  const [adminSecurityMsg, setAdminSecurityMsg] = useState(null);
+  const adminAvatarInputRef = useRef(null);
+
+  useEffect(() => {
+    if (user?.name) setAdminDisplayName(user.name);
+    if (user?.avatar) setAdminAvatar(user.avatar);
+  }, [user]);
+
+  const handleSaveAdminProfile = async (e) => {
+    e.preventDefault();
+    setAdminProfileMsg(null);
+    if (!adminDisplayName.trim()) {
+      setAdminProfileMsg({ type: 'error', text: 'Display name cannot be empty.' });
+      return;
+    }
+    const res = await updateAdminProfile({ name: adminDisplayName.trim(), avatar: adminAvatar });
+    if (res.success) {
+      setAdminProfileMsg({ type: 'success', text: 'Admin profile updated successfully!' });
+      setTimeout(() => setAdminProfileMsg(null), 4000);
+    } else {
+      setAdminProfileMsg({ type: 'error', text: res.error || 'Failed to update admin profile.' });
+    }
+  };
+
+  const handleAdminAvatarUpload = async (e) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    if (!file.type.startsWith('image/')) {
+      setAdminProfileMsg({ type: 'error', text: 'Please select an image file (PNG, JPG, WebP).' });
+      return;
+    }
+    if (file.size > 5 * 1024 * 1024) {
+      setAdminProfileMsg({ type: 'error', text: 'Avatar file size must be less than 5MB.' });
+      return;
+    }
+    setIsUploadingAdminAvatar(true);
+    setAdminProfileMsg(null);
+    try {
+      const url = await uploadImage(file, 'avatar', user?.id || 'admin_user');
+      setAdminAvatar(url);
+      await updateAdminProfile({ avatar: url });
+      setAdminProfileMsg({ type: 'success', text: 'Admin profile picture updated!' });
+      setTimeout(() => setAdminProfileMsg(null), 4000);
+    } catch (err) {
+      setAdminProfileMsg({ type: 'error', text: err.message || 'Avatar upload failed.' });
+    } finally {
+      setIsUploadingAdminAvatar(false);
+      e.target.value = '';
+    }
+  };
+
+  const handleAdminPasswordUpdate = async (e) => {
+    e.preventDefault();
+    setAdminSecurityMsg(null);
+    if (!adminNewPassword || adminNewPassword.length < 6) {
+      setAdminSecurityMsg({ type: 'error', text: 'New password must be at least 6 characters.' });
+      return;
+    }
+    if (adminNewPassword !== adminConfirmPassword) {
+      setAdminSecurityMsg({ type: 'error', text: 'Passwords do not match.' });
+      return;
+    }
+    const res = await updateAdminPassword(adminNewPassword);
+    if (res.success) {
+      setAdminSecurityMsg({ type: 'success', text: 'Admin password updated successfully!' });
+      setAdminNewPassword('');
+      setAdminConfirmPassword('');
+      setTimeout(() => setAdminSecurityMsg(null), 4000);
+    } else {
+      setAdminSecurityMsg({ type: 'error', text: res.error || 'Failed to update password.' });
+    }
+  };
 
   // WhatsApp Business Integration State
   const [waConfig, setWaConfig] = useState(() => getWhatsAppConfig());
@@ -688,8 +784,24 @@ export default function AdminDashboard({ initialTab = 'overview', initialOrderId
   const handleUpdateCustomer = (e) => {
     e.preventDefault();
     if (!editingCustomer) return;
-    saveCustomer(editingCustomer);
-    setEditingCustomer(null);
+    try {
+      saveCustomer(editingCustomer);
+      setEditingCustomer(null);
+      setFulfillmentToast({
+        title: 'Customer Updated',
+        message: `Customer record for ${editingCustomer.name || editingCustomer.email} updated.`,
+        type: 'success'
+      });
+      setTimeout(() => setFulfillmentToast(null), 4000);
+    } catch (err) {
+      console.error('Failed to update customer:', err);
+      setFulfillmentToast({
+        title: 'Update Error',
+        message: err.message || 'Could not update customer.',
+        type: 'error'
+      });
+      setTimeout(() => setFulfillmentToast(null), 5000);
+    }
   };
 
   const handleDeleteCustomer = (id) => {
@@ -866,13 +978,22 @@ export default function AdminDashboard({ initialTab = 'overview', initialOrderId
   const handleUpdateCard = (e) => {
     e.preventDefault();
     if (!editingCard) return;
-    saveCard(editingCard);
-    setEditingCard(null);
-    setCardToast({
-      type: 'success',
-      message: `Card ${editingCard.cardCode} details updated successfully.`
-    });
-    setTimeout(() => setCardToast(null), 4000);
+    try {
+      saveCard(editingCard);
+      setEditingCard(null);
+      setCardToast({
+        type: 'success',
+        message: `Card ${editingCard.cardCode} details updated successfully.`
+      });
+      setTimeout(() => setCardToast(null), 4000);
+    } catch (err) {
+      console.error('Failed to update NFC card:', err);
+      setCardToast({
+        type: 'error',
+        message: err.message || 'Could not update card record.'
+      });
+      setTimeout(() => setCardToast(null), 5000);
+    }
   };
 
   const handleDeleteCard = (id) => {
@@ -5740,10 +5861,180 @@ export default function AdminDashboard({ initialTab = 'overview', initialOrderId
           {activeTab === 'settings' && (
             <div style={{ display: 'flex', flexDirection: 'column', gap: '28px' }}>
               
+              {/* Card 0: Personal Administrator Profile & Security */}
+              <div style={{ backgroundColor: 'var(--adm-card-bg)', borderRadius: '16px', border: 'var(--adm-card-border)', padding: '24px' }}>
+                <div style={{ marginBottom: '20px', display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap', gap: '10px' }}>
+                  <div>
+                    <h3 style={{ margin: 0, fontSize: '1.1rem', fontWeight: 700, color: 'var(--adm-text-primary)', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                      <User size={18} color="#6B00FF" />
+                      <span>Administrator Profile &amp; Account Settings</span>
+                    </h3>
+                    <p style={{ margin: '3px 0 0', fontSize: '0.8rem', color: 'var(--adm-text-secondary)' }}>
+                      Personal administrator display identity, avatar, credentials, and preferences. These settings belong strictly to your administrator session and never alter customer records.
+                    </p>
+                  </div>
+                  <span style={{ fontSize: '0.74rem', padding: '4px 12px', borderRadius: '9999px', backgroundColor: isOwner ? 'rgba(107, 0, 255, 0.15)' : 'rgba(59, 130, 246, 0.15)', color: isOwner ? '#8B5CF6' : '#3B82F6', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.04em' }}>
+                    {isOwner ? '👑 Owner / Super Admin' : `🛡️ Admin (${user?.role || 'Staff'})`}
+                  </span>
+                </div>
+
+                {adminProfileMsg && (
+                  <div style={{ padding: '10px 14px', borderRadius: '8px', marginBottom: '16px', fontSize: '0.82rem', fontWeight: 600, backgroundColor: adminProfileMsg.type === 'success' ? 'rgba(16, 185, 129, 0.12)' : 'rgba(239, 68, 68, 0.12)', color: adminProfileMsg.type === 'success' ? '#10B981' : '#EF4444', border: adminProfileMsg.type === 'success' ? '1px solid rgba(16, 185, 129, 0.3)' : '1px solid rgba(239, 68, 68, 0.3)' }}>
+                    {adminProfileMsg.text}
+                  </div>
+                )}
+
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: '20px' }}>
+                  {/* Left Column: Identity & Avatar */}
+                  <form onSubmit={handleSaveAdminProfile} style={{ display: 'flex', flexDirection: 'column', gap: '16px', padding: '18px', borderRadius: '12px', border: 'var(--adm-card-border)', backgroundColor: 'var(--adm-search-bg)' }}>
+                    <div style={{ fontSize: '0.86rem', fontWeight: 700, color: 'var(--adm-text-primary)' }}>Personal Display Identity</div>
+
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '18px' }}>
+                      <div style={{ width: '68px', height: '68px', borderRadius: '50%', backgroundColor: '#6B00FF', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#FFFFFF', fontWeight: 800, fontSize: '1.2rem', overflow: 'hidden', border: '2px solid rgba(107, 0, 255, 0.4)', flexShrink: 0 }}>
+                        {adminAvatar ? (
+                          <img src={adminAvatar} alt="Admin avatar" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                        ) : (
+                          <span>{(adminDisplayName || user?.name || 'A').charAt(0).toUpperCase()}</span>
+                        )}
+                      </div>
+
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                        <input
+                          type="file"
+                          ref={adminAvatarInputRef}
+                          style={{ display: 'none' }}
+                          accept="image/*"
+                          onChange={handleAdminAvatarUpload}
+                        />
+                        <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
+                          <button
+                            type="button"
+                            disabled={isUploadingAdminAvatar}
+                            onClick={() => adminAvatarInputRef.current?.click()}
+                            style={{ padding: '6px 12px', borderRadius: '6px', backgroundColor: '#6B00FF', color: '#FFFFFF', border: 'none', fontSize: '0.76rem', fontWeight: 600, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '5px' }}
+                          >
+                            <Upload size={12} />
+                            <span>{isUploadingAdminAvatar ? 'Uploading...' : 'Upload Avatar'}</span>
+                          </button>
+                          {adminAvatar && (
+                            <button
+                              type="button"
+                              onClick={async () => {
+                                setAdminAvatar('');
+                                await updateAdminProfile({ avatar: '' });
+                                setAdminProfileMsg({ type: 'success', text: 'Avatar removed.' });
+                                setTimeout(() => setAdminProfileMsg(null), 3000);
+                              }}
+                              style={{ padding: '6px 10px', borderRadius: '6px', backgroundColor: 'transparent', color: '#EF4444', border: '1px solid rgba(239, 68, 68, 0.3)', fontSize: '0.76rem', fontWeight: 600, cursor: 'pointer' }}
+                            >
+                              Remove
+                            </button>
+                          )}
+                        </div>
+                        <span style={{ fontSize: '0.7rem', color: 'var(--adm-text-secondary)' }}>JPG, PNG or WebP ≤ 5MB</span>
+                      </div>
+                    </div>
+
+                    <div>
+                      <label style={{ display: 'block', fontSize: '0.78rem', fontWeight: 600, color: 'var(--adm-text-secondary)', marginBottom: '4px' }}>
+                        Display Name
+                      </label>
+                      <input
+                        type="text"
+                        value={adminDisplayName}
+                        onChange={(e) => setAdminDisplayName(e.target.value)}
+                        placeholder="Admin Display Name"
+                        style={{ width: '100%', padding: '8px 12px', borderRadius: '8px', border: 'var(--adm-card-border)', backgroundColor: 'var(--adm-card-bg)', color: 'var(--adm-text-primary)', fontSize: '0.84rem' }}
+                      />
+                    </div>
+
+                    <div>
+                      <label style={{ display: 'block', fontSize: '0.78rem', fontWeight: 600, color: 'var(--adm-text-secondary)', marginBottom: '4px' }}>
+                        Admin Email
+                      </label>
+                      <input
+                        type="email"
+                        disabled
+                        value={user?.email || 'admin@flocard.in'}
+                        style={{ width: '100%', padding: '8px 12px', borderRadius: '8px', border: 'var(--adm-card-border)', backgroundColor: 'rgba(255, 255, 255, 0.04)', color: 'var(--adm-text-secondary)', fontSize: '0.84rem', cursor: 'not-allowed' }}
+                      />
+                    </div>
+
+                    <button
+                      type="submit"
+                      style={{ padding: '8px 16px', borderRadius: '8px', backgroundColor: '#6B00FF', color: '#FFFFFF', border: 'none', fontSize: '0.82rem', fontWeight: 700, cursor: 'pointer', alignSelf: 'flex-start' }}
+                    >
+                      Save Profile Changes
+                    </button>
+                  </form>
+
+                  {/* Right Column: Password & Theme Preferences */}
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+                    <form onSubmit={handleAdminPasswordUpdate} style={{ display: 'flex', flexDirection: 'column', gap: '14px', padding: '18px', borderRadius: '12px', border: 'var(--adm-card-border)', backgroundColor: 'var(--adm-search-bg)' }}>
+                      <div style={{ fontSize: '0.86rem', fontWeight: 700, color: 'var(--adm-text-primary)' }}>Admin Password &amp; Security</div>
+
+                      {adminSecurityMsg && (
+                        <div style={{ padding: '8px 12px', borderRadius: '6px', fontSize: '0.78rem', fontWeight: 600, backgroundColor: adminSecurityMsg.type === 'success' ? 'rgba(16, 185, 129, 0.12)' : 'rgba(239, 68, 68, 0.12)', color: adminSecurityMsg.type === 'success' ? '#10B981' : '#EF4444' }}>
+                          {adminSecurityMsg.text}
+                        </div>
+                      )}
+
+                      <div>
+                        <label style={{ display: 'block', fontSize: '0.78rem', fontWeight: 600, color: 'var(--adm-text-secondary)', marginBottom: '4px' }}>
+                          New Password
+                        </label>
+                        <input
+                          type="password"
+                          value={adminNewPassword}
+                          onChange={(e) => setAdminNewPassword(e.target.value)}
+                          placeholder="Min 6 characters"
+                          style={{ width: '100%', padding: '8px 12px', borderRadius: '8px', border: 'var(--adm-card-border)', backgroundColor: 'var(--adm-card-bg)', color: 'var(--adm-text-primary)', fontSize: '0.84rem' }}
+                        />
+                      </div>
+
+                      <div>
+                        <label style={{ display: 'block', fontSize: '0.78rem', fontWeight: 600, color: 'var(--adm-text-secondary)', marginBottom: '4px' }}>
+                          Confirm New Password
+                        </label>
+                        <input
+                          type="password"
+                          value={adminConfirmPassword}
+                          onChange={(e) => setAdminConfirmPassword(e.target.value)}
+                          placeholder="Repeat new password"
+                          style={{ width: '100%', padding: '8px 12px', borderRadius: '8px', border: 'var(--adm-card-border)', backgroundColor: 'var(--adm-card-bg)', color: 'var(--adm-text-primary)', fontSize: '0.84rem' }}
+                        />
+                      </div>
+
+                      <button
+                        type="submit"
+                        style={{ padding: '8px 16px', borderRadius: '8px', backgroundColor: 'var(--adm-card-bg)', border: '1px solid #6B00FF', color: 'var(--adm-text-primary)', fontSize: '0.82rem', fontWeight: 600, cursor: 'pointer', alignSelf: 'flex-start' }}
+                      >
+                        Update Password
+                      </button>
+                    </form>
+
+                    {/* Dashboard Preferences */}
+                    <div style={{ padding: '16px 18px', borderRadius: '12px', border: 'var(--adm-card-border)', backgroundColor: 'var(--adm-search-bg)', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                      <div>
+                        <div style={{ fontSize: '0.84rem', fontWeight: 700, color: 'var(--adm-text-primary)' }}>Dashboard Theme</div>
+                        <div style={{ fontSize: '0.76rem', color: 'var(--adm-text-secondary)', marginTop: '2px' }}>Current: {isDark ? 'Dark Mode' : 'Light Mode'}</div>
+                      </div>
+                      <button
+                        type="button"
+                        onClick={toggleTheme}
+                        style={{ padding: '6px 14px', borderRadius: '8px', border: 'var(--adm-card-border)', backgroundColor: 'var(--adm-card-bg)', color: 'var(--adm-text-primary)', fontSize: '0.78rem', fontWeight: 600, cursor: 'pointer' }}
+                      >
+                        Switch to {isDark ? 'Light' : 'Dark'}
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
               {/* Card 1: Platform Configuration & Environment */}
               <div style={{ backgroundColor: 'var(--adm-card-bg)', borderRadius: '16px', border: 'var(--adm-card-border)', padding: '24px' }}>
                 <div style={{ marginBottom: '24px' }}>
-                  <h3 style={{ margin: 0, fontSize: '1.1rem', fontWeight: 700, color: 'var(--adm-text-primary)' }}>Platform Configuration & Environment</h3>
+                  <h3 style={{ margin: 0, fontSize: '1.1rem', fontWeight: 700, color: 'var(--adm-text-primary)' }}>Platform Configuration &amp; Environment</h3>
                   <p style={{ margin: '2px 0 0', fontSize: '0.8rem', color: 'var(--adm-text-secondary)' }}>Telemetry connections, 3D backdrop, and system persistence settings.</p>
                 </div>
 
@@ -5780,23 +6071,29 @@ export default function AdminDashboard({ initialTab = 'overview', initialOrderId
                     </div>
                   </div>
 
-                  {/* Factory Demo Reset with Spectrum HoldToConfirm */}
-                  <div style={{ padding: '18px 20px', borderRadius: '12px', border: '1px solid #FCA5A5', backgroundColor: '#FEF2F2' }}>
+                  {/* Factory Demo Reset with Spectrum HoldToConfirm (Locked in Production) */}
+                  <div style={{ padding: '18px 20px', borderRadius: '12px', border: isSupabaseConfigured ? '1px solid rgba(16, 185, 129, 0.3)' : '1px solid #FCA5A5', backgroundColor: isSupabaseConfigured ? 'rgba(16, 185, 129, 0.05)' : '#FEF2F2' }}>
                     <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '14px' }}>
                       <div>
-                        <div style={{ fontWeight: 700, color: '#DC4545', fontSize: '0.92rem' }}>Reset Demo Records</div>
+                        <div style={{ fontWeight: 700, color: isSupabaseConfigured ? '#10B981' : '#DC4545', fontSize: '0.92rem' }}>
+                          {isSupabaseConfigured ? 'Production Database Protection Active' : 'Reset Demo Records'}
+                        </div>
                         <div style={{ color: 'var(--adm-text-secondary)', fontSize: '0.78rem', marginTop: '2px' }}>
-                          Press and hold to wipe local custom modifications and re-initialize factory records.
+                          {isSupabaseConfigured
+                            ? 'The live Supabase cloud database is active. Factory resets are permanently locked to safeguard live customer accounts and records.'
+                            : 'Press and hold to wipe local custom modifications and re-initialize factory records.'}
                         </div>
                       </div>
-                      <HoldToConfirm
-                        variant="danger"
-                        holdDuration={1800}
-                        confirmText="Reset Done"
-                        onConfirm={resetAllData}
-                      >
-                        Hold to Reset Factory Records
-                      </HoldToConfirm>
+                      {!isSupabaseConfigured && (
+                        <HoldToConfirm
+                          variant="danger"
+                          holdDuration={1800}
+                          confirmText="Reset Done"
+                          onConfirm={resetAllData}
+                        >
+                          Hold to Reset Factory Records
+                        </HoldToConfirm>
+                      )}
                     </div>
                   </div>
                 </div>
@@ -6879,12 +7176,12 @@ export default function AdminDashboard({ initialTab = 'overview', initialOrderId
                 </div>
 
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', maxHeight: '180px', overflowY: 'auto' }}>
-                  {(editingProfile.portfolio || []).length === 0 ? (
+                  {(editingProfile.portfolio || []).filter(p => p && !p._isBannerConfig).length === 0 ? (
                     <div style={{ fontSize: '0.76rem', color: '#9CA3AF', fontStyle: 'italic', padding: '8px 0' }}>
                       No work images added yet. Click &quot;Add Work Image&quot; to upload project images.
                     </div>
                   ) : (
-                    (editingProfile.portfolio || []).map((portItem, portIdx) => (
+                    (editingProfile.portfolio || []).filter(p => p && !p._isBannerConfig).map((portItem, portIdx) => (
                       <div key={portItem.id || portIdx} style={{ display: 'flex', alignItems: 'center', gap: '10px', padding: '8px 10px', borderRadius: '8px', background: isDark ? 'rgba(255, 255, 255, 0.03)' : '#F9F8FC', border: 'var(--adm-card-border)' }}>
                         <div style={{ width: '44px', height: '44px', minWidth: '44px', borderRadius: '6px', background: isDark ? 'rgba(255, 255, 255, 0.06)' : '#E8E3EF', overflow: 'hidden' }}>
                           {portItem.image ? (
@@ -6898,9 +7195,10 @@ export default function AdminDashboard({ initialTab = 'overview', initialOrderId
                             type="text"
                             value={portItem.title || ''}
                             onChange={(e) => {
-                              const nextPort = [...(editingProfile.portfolio || [])];
-                              nextPort[portIdx] = { ...nextPort[portIdx], title: e.target.value };
-                              setEditingProfile({ ...editingProfile, portfolio: nextPort });
+                              const bannerCfg = (editingProfile.portfolio || []).find(p => p && p._isBannerConfig);
+                              const clean = (editingProfile.portfolio || []).filter(p => p && !p._isBannerConfig);
+                              clean[portIdx] = { ...clean[portIdx], title: e.target.value };
+                              setEditingProfile({ ...editingProfile, portfolio: bannerCfg ? [bannerCfg, ...clean] : clean });
                             }}
                             placeholder="Project Title"
                             style={{ width: '100%', padding: '4px 6px', fontSize: '0.78rem', fontWeight: 600, border: 'var(--adm-card-border)', borderRadius: '4px', marginBottom: '4px' }}
@@ -6909,9 +7207,10 @@ export default function AdminDashboard({ initialTab = 'overview', initialOrderId
                             type="text"
                             value={portItem.category || ''}
                             onChange={(e) => {
-                              const nextPort = [...(editingProfile.portfolio || [])];
-                              nextPort[portIdx] = { ...nextPort[portIdx], category: e.target.value };
-                              setEditingProfile({ ...editingProfile, portfolio: nextPort });
+                              const bannerCfg = (editingProfile.portfolio || []).find(p => p && p._isBannerConfig);
+                              const clean = (editingProfile.portfolio || []).filter(p => p && !p._isBannerConfig);
+                              clean[portIdx] = { ...clean[portIdx], category: e.target.value };
+                              setEditingProfile({ ...editingProfile, portfolio: bannerCfg ? [bannerCfg, ...clean] : clean });
                             }}
                             placeholder="Category (e.g. Branding / Hardware)"
                             style={{ width: '100%', padding: '3px 6px', fontSize: '0.72rem', border: 'var(--adm-card-border)', borderRadius: '4px' }}
@@ -6920,8 +7219,9 @@ export default function AdminDashboard({ initialTab = 'overview', initialOrderId
                         <button
                           type="button"
                           onClick={() => {
-                            const nextPort = (editingProfile.portfolio || []).filter((_, i) => i !== portIdx);
-                            setEditingProfile({ ...editingProfile, portfolio: nextPort });
+                            const bannerCfg = (editingProfile.portfolio || []).find(p => p && p._isBannerConfig);
+                            const clean = (editingProfile.portfolio || []).filter(p => p && !p._isBannerConfig).filter((_, i) => i !== portIdx);
+                            setEditingProfile({ ...editingProfile, portfolio: bannerCfg ? [bannerCfg, ...clean] : clean });
                           }}
                           style={{ background: 'none', border: 'none', color: '#DC2626', cursor: 'pointer', padding: '4px' }}
                           title="Delete project"

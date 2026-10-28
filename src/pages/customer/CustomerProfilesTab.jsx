@@ -211,15 +211,100 @@ export default function CustomerProfilesTab({ profiles = [], customer, onSavePro
     });
   };
 
-  // Upload Avatar
+  // Drag state for Profile Picture (Avatar)
+  const [isDraggingAvatar, setIsDraggingAvatar] = useState(false);
+  const avatarDragStartRef = useRef({ x: 0, y: 0, initialPosX: 50, initialPosY: 50 });
+
+  const handleAvatarDragStart = (e) => {
+    setIsDraggingAvatar(true);
+    const clientX = e.touches ? e.touches[0].clientX : e.clientX;
+    const clientY = e.touches ? e.touches[0].clientY : e.clientY;
+    avatarDragStartRef.current = {
+      x: clientX,
+      y: clientY,
+      initialPosX: typeof formData.avatarPosX === 'number' ? formData.avatarPosX : 50,
+      initialPosY: typeof formData.avatarPosY === 'number' ? formData.avatarPosY : 50
+    };
+  };
+
+  const handleAvatarDragMove = (e) => {
+    if (!isDraggingAvatar) return;
+    const clientX = e.touches ? e.touches[0].clientX : e.clientX;
+    const clientY = e.touches ? e.touches[0].clientY : e.clientY;
+    const deltaX = clientX - avatarDragStartRef.current.x;
+    const deltaY = clientY - avatarDragStartRef.current.y;
+    const nextPosX = Math.max(0, Math.min(100, Math.round(avatarDragStartRef.current.initialPosX - deltaX * 0.4)));
+    const nextPosY = Math.max(0, Math.min(100, Math.round(avatarDragStartRef.current.initialPosY - deltaY * 0.4)));
+    setFormData(prev => ({ ...prev, avatarPosX: nextPosX, avatarPosY: nextPosY }));
+  };
+
+  const handleAvatarDragEnd = () => {
+    setIsDraggingAvatar(false);
+  };
+
+  // Drag state for Banner
+  const [isDraggingBanner, setIsDraggingBanner] = useState(false);
+  const bannerDragStartRef = useRef({ x: 0, y: 0, initialPosX: 50, initialPosY: 50 });
+
+  const handleBannerDragStart = (e) => {
+    setIsDraggingBanner(true);
+    const clientX = e.touches ? e.touches[0].clientX : e.clientX;
+    const clientY = e.touches ? e.touches[0].clientY : e.clientY;
+    bannerDragStartRef.current = {
+      x: clientX,
+      y: clientY,
+      initialPosX: typeof formData.banner?.positionX === 'number' ? formData.banner.positionX : 50,
+      initialPosY: typeof formData.banner?.positionY === 'number' ? formData.banner.positionY : 50
+    };
+  };
+
+  const handleBannerDragMove = (e) => {
+    if (!isDraggingBanner) return;
+    const clientX = e.touches ? e.touches[0].clientX : e.clientX;
+    const clientY = e.touches ? e.touches[0].clientY : e.clientY;
+    const deltaX = clientX - bannerDragStartRef.current.x;
+    const deltaY = clientY - bannerDragStartRef.current.y;
+    const nextPosX = Math.max(0, Math.min(100, Math.round(bannerDragStartRef.current.initialPosX - deltaX * 0.3)));
+    const nextPosY = Math.max(0, Math.min(100, Math.round(bannerDragStartRef.current.initialPosY - deltaY * 0.3)));
+    setFormData(prev => ({
+      ...prev,
+      banner: { ...(prev.banner || {}), positionX: nextPosX, positionY: nextPosY }
+    }));
+  };
+
+  const handleBannerDragEnd = () => {
+    setIsDraggingBanner(false);
+  };
+
+  // Upload Avatar with Validation
   const handleAvatarUpload = async (e) => {
     const file = e.target.files?.[0];
     if (!file) return;
     setUploadError('');
+
+    if (!file.type.startsWith('image/')) {
+      setUploadError('Invalid file type: Please select an image file (PNG, JPG, WebP, SVG).');
+      if (e.target) e.target.value = '';
+      return;
+    }
+
+    if (file.size > 8 * 1024 * 1024) {
+      setUploadError(`File too large (${(file.size / (1024 * 1024)).toFixed(1)}MB). Maximum allowed profile picture size is 8MB.`);
+      if (e.target) e.target.value = '';
+      return;
+    }
+
     setIsUploading(true);
     try {
       const url = await uploadImage(file, 'avatar', customer?.id || 'anon', formData);
-      setFormData(prev => ({ ...prev, avatar: url, avatarSizeBytes: file.size }));
+      setFormData(prev => ({
+        ...prev,
+        avatar: url,
+        avatarSizeBytes: file.size,
+        avatarZoom: 100,
+        avatarPosX: 50,
+        avatarPosY: 50
+      }));
     } catch (err) {
       setUploadError(err.message || 'Avatar upload failed.');
     } finally {
@@ -228,22 +313,42 @@ export default function CustomerProfilesTab({ profiles = [], customer, onSavePro
     }
   };
 
-  // Upload Banner
+  // Upload Banner with Validation
   const handleBannerUpload = async (e) => {
     const file = e.target.files?.[0];
     if (!file) return;
     setUploadError('');
+
+    const isVideo = file.type?.startsWith('video/') || /\.(mp4|webm)$/i.test(file.name || '');
+    const isImage = file.type?.startsWith('image/') || /\.(png|jpe?g|webp|gif|svg)$/i.test(file.name || '');
+
+    if (!isVideo && !isImage) {
+      setUploadError('Invalid format: Please upload an image (PNG, JPG, WebP) or video (MP4, WebM).');
+      if (e.target) e.target.value = '';
+      return;
+    }
+
+    const maxSize = isVideo ? 25 * 1024 * 1024 : 10 * 1024 * 1024;
+    if (file.size > maxSize) {
+      setUploadError(`File too large (${(file.size / (1024 * 1024)).toFixed(1)}MB). Maximum allowed is ${isVideo ? '25MB for video' : '10MB for image'}.`);
+      if (e.target) e.target.value = '';
+      return;
+    }
+
     setIsUploading(true);
     try {
-      const isVideo = file.type?.startsWith('video/') || /\.(mp4|webm)$/i.test(file.name || '');
       const url = await uploadImage(file, 'banner', customer?.id || 'anon', formData);
       setFormData(prev => ({
         ...prev,
         banner: {
           ...(prev.banner || {}),
           url,
+          enabled: true,
           type: isVideo ? 'video' : 'image',
-          sizeBytes: file.size
+          sizeBytes: file.size,
+          positionX: 50,
+          positionY: 50,
+          zoom: 100
         }
       }));
     } catch (err) {
@@ -779,134 +884,373 @@ export default function CustomerProfilesTab({ profiles = [], customer, onSavePro
 
                 {/* 2. PROFILE PICTURE */}
                 {editorSection === 'avatar' && (
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
-                    <h4 style={{ margin: '0 0 4px', fontSize: '1.05rem', fontWeight: 800 }}>2. Profile Picture</h4>
-                    <p style={{ margin: '0 0 12px', fontSize: '0.82rem', color: 'var(--text-secondary)' }}>
-                      High-resolution portrait picture that overlaps the cover banner.
-                    </p>
-
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '20px', flexWrap: 'wrap' }}>
-                      <img
-                        src={formData.avatar || 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=400&auto=format&fit=crop&q=80'}
-                        alt="Avatar Preview"
-                        style={{
-                          width: '100px',
-                          height: '100px',
-                          borderRadius: formData.photoShape === 'rounded_rect' ? '22px' : '50%',
-                          objectFit: 'cover',
-                          border: '3px solid var(--accent-purple)'
-                        }}
-                      />
-
-                      <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
-                        <input
-                          type="file"
-                          ref={avatarInputRef}
-                          style={{ display: 'none' }}
-                          accept="image/*"
-                          onChange={handleAvatarUpload}
-                        />
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap', gap: '8px' }}>
+                      <div>
+                        <h4 style={{ margin: '0 0 4px', fontSize: '1.05rem', fontWeight: 800 }}>2. Profile Picture (Avatar)</h4>
+                        <p style={{ margin: 0, fontSize: '0.82rem', color: 'var(--text-secondary)' }}>
+                          Click &amp; drag image inside the preview box to crop &amp; position. Adjust zoom with the slider below.
+                        </p>
+                      </div>
+                      {formData.avatar && (
                         <button
                           type="button"
-                          disabled={isUploading}
-                          onClick={() => avatarInputRef.current?.click()}
-                          className="btn btn-primary btn-sm"
-                          style={{ gap: '6px' }}
+                          onClick={() => setFormData(prev => ({ ...prev, avatar: '', avatarZoom: 100, avatarPosX: 50, avatarPosY: 50 }))}
+                          className="btn btn-sm"
+                          style={{ color: '#EF4444', border: '1px solid rgba(239, 68, 68, 0.3)', background: 'rgba(239, 68, 68, 0.08)', gap: '6px' }}
                         >
-                          <Upload size={14} />
-                          <span>{isUploading ? 'Uploading...' : 'Upload New Photo'}</span>
+                          <Trash2 size={13} />
+                          <span>Remove Photo</span>
                         </button>
+                      )}
+                    </div>
+
+                    {/* Interactive Draggable Avatar Preview & Controls Row */}
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '28px', flexWrap: 'wrap', background: 'rgba(255, 255, 255, 0.02)', padding: '20px', borderRadius: '16px', border: '1px solid var(--border-color)' }}>
+                      {/* Avatar Drag Box */}
+                      <div
+                        onMouseDown={handleAvatarDragStart}
+                        onMouseMove={handleAvatarDragMove}
+                        onMouseUp={handleAvatarDragEnd}
+                        onMouseLeave={handleAvatarDragEnd}
+                        onTouchStart={handleAvatarDragStart}
+                        onTouchMove={handleAvatarDragMove}
+                        onTouchEnd={handleAvatarDragEnd}
+                        style={{
+                          width: '160px',
+                          height: '160px',
+                          borderRadius: formData.photoShape === 'rounded_rect' ? '32px' : '50%',
+                          position: 'relative',
+                          overflow: 'hidden',
+                          border: '3px solid var(--accent-purple)',
+                          boxShadow: '0 8px 24px rgba(107, 0, 255, 0.25)',
+                          cursor: isDraggingAvatar ? 'grabbing' : 'grab',
+                          userSelect: 'none',
+                          flexShrink: 0,
+                          backgroundColor: '#130d24'
+                        }}
+                      >
+                        <img
+                          src={formData.avatar || 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=400&auto=format&fit=crop&q=80'}
+                          alt="Avatar Preview"
+                          style={{
+                            width: '100%',
+                            height: '100%',
+                            objectFit: 'cover',
+                            objectPosition: `${formData.avatarPosX ?? 50}% ${formData.avatarPosY ?? 50}%`,
+                            transform: `scale(${(formData.avatarZoom || 100) / 100})`,
+                            transformOrigin: `${formData.avatarPosX ?? 50}% ${formData.avatarPosY ?? 50}%`,
+                            pointerEvents: 'none',
+                            userSelect: 'none',
+                            transition: isDraggingAvatar ? 'none' : 'transform 0.15s ease, object-position 0.15s ease'
+                          }}
+                        />
+                        {/* Interactive Pill */}
+                        <div
+                          style={{
+                            position: 'absolute',
+                            bottom: '8px',
+                            left: '50%',
+                            transform: 'translateX(-50%)',
+                            background: 'rgba(0, 0, 0, 0.72)',
+                            backdropFilter: 'blur(6px)',
+                            color: '#FFFFFF',
+                            fontSize: '0.65rem',
+                            fontWeight: 700,
+                            padding: '3px 9px',
+                            borderRadius: '9999px',
+                            whiteSpace: 'nowrap',
+                            pointerEvents: 'none',
+                            letterSpacing: '0.02em'
+                          }}
+                        >
+                          {isDraggingAvatar ? 'Dragging...' : '✋ Drag image'}
+                        </div>
+                      </div>
+
+                      {/* Upload and Reset Actions */}
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: '12px', flex: 1, minWidth: '220px' }}>
+                        <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap' }}>
+                          <input
+                            type="file"
+                            ref={avatarInputRef}
+                            style={{ display: 'none' }}
+                            accept="image/*"
+                            onChange={handleAvatarUpload}
+                          />
+                          <button
+                            type="button"
+                            disabled={isUploading}
+                            onClick={() => avatarInputRef.current?.click()}
+                            className="btn btn-primary btn-sm"
+                            style={{ gap: '6px' }}
+                          >
+                            <Upload size={14} />
+                            <span>{isUploading ? 'Uploading...' : 'Upload New Photo'}</span>
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => setFormData(prev => ({ ...prev, avatarZoom: 100, avatarPosX: 50, avatarPosY: 50 }))}
+                            className="btn btn-outline btn-sm"
+                            style={{ gap: '6px' }}
+                          >
+                            <RefreshCw size={13} />
+                            <span>Reset Crop</span>
+                          </button>
+                        </div>
                         <span style={{ fontSize: '0.74rem', color: 'var(--text-muted)' }}>
-                          Recommended: Square image 400x400 or larger (PNG, JPG, WebP)
+                          Formats: JPG, PNG, WebP, SVG. Max file size: 8MB. Recommended min 400x400px.
                         </span>
+
+                        {/* Shape Toggle */}
+                        <div style={{ marginTop: '4px' }}>
+                          <span style={{ fontSize: '0.76rem', fontWeight: 700, color: 'var(--text-secondary)', display: 'block', marginBottom: '6px' }}>
+                            Avatar Frame Shape
+                          </span>
+                          <div style={{ display: 'flex', gap: '8px' }}>
+                            {[
+                              { id: 'circle', label: 'Circular (Classic)' },
+                              { id: 'rounded_rect', label: 'Rounded Square (Modern)' }
+                            ].map(shape => (
+                              <button
+                                key={shape.id}
+                                type="button"
+                                onClick={() => setFormData({ ...formData, photoShape: shape.id })}
+                                style={{
+                                  padding: '6px 14px',
+                                  borderRadius: '8px',
+                                  border: formData.photoShape === shape.id ? '2px solid var(--accent-purple)' : '1px solid var(--border-color)',
+                                  backgroundColor: formData.photoShape === shape.id ? 'var(--primary-purple)' : 'transparent',
+                                  color: formData.photoShape === shape.id ? '#FFFFFF' : 'var(--text-secondary)',
+                                  fontSize: '0.78rem',
+                                  fontWeight: 600,
+                                  cursor: 'pointer'
+                                }}
+                              >
+                                {shape.label}
+                              </button>
+                            ))}
+                          </div>
+                        </div>
                       </div>
                     </div>
 
-                    {/* Shape Toggle */}
-                    <div style={{ marginTop: '12px' }}>
-                      <label style={{ fontSize: '0.8rem', fontWeight: 600, display: 'block', marginBottom: '8px' }}>
-                        Photo Shape
-                      </label>
-                      <div style={{ display: 'flex', gap: '12px' }}>
-                        {[
-                          { id: 'circle', label: 'Circular Avatar (Classic)' },
-                          { id: 'rounded_rect', label: 'Rounded Square (Modern)' }
-                        ].map(shape => (
-                          <button
-                            key={shape.id}
-                            type="button"
-                            onClick={() => setFormData({ ...formData, photoShape: shape.id })}
-                            style={{
-                              padding: '10px 18px',
-                              borderRadius: '10px',
-                              border: formData.photoShape === shape.id ? '2px solid var(--accent-purple)' : '1px solid var(--border-color)',
-                              backgroundColor: formData.photoShape === shape.id ? 'var(--primary-purple)' : 'transparent',
-                              color: formData.photoShape === shape.id ? '#FFFFFF' : 'var(--text-secondary)',
-                              fontSize: '0.84rem',
-                              fontWeight: 600,
-                              cursor: 'pointer'
-                            }}
-                          >
-                            {shape.label}
-                          </button>
-                        ))}
+                    {/* Sliders for Zoom, Horizontal X, Vertical Y */}
+                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '14px', background: 'rgba(255, 255, 255, 0.02)', padding: '16px', borderRadius: '12px', border: '1px solid var(--border-color)' }}>
+                      <div>
+                        <label style={{ fontSize: '0.78rem', fontWeight: 600, display: 'flex', justifyContent: 'space-between', marginBottom: '6px' }}>
+                          <span>Zoom / Scale</span>
+                          <span style={{ color: 'var(--accent-purple)' }}>{formData.avatarZoom || 100}%</span>
+                        </label>
+                        <input
+                          type="range"
+                          min="60"
+                          max="200"
+                          step="1"
+                          value={formData.avatarZoom || 100}
+                          onChange={(e) => setFormData(prev => ({ ...prev, avatarZoom: Number(e.target.value) }))}
+                          style={{ width: '100%', accentColor: 'var(--accent-purple)' }}
+                        />
                       </div>
+
+                      <div>
+                        <label style={{ fontSize: '0.78rem', fontWeight: 600, display: 'flex', justifyContent: 'space-between', marginBottom: '6px' }}>
+                          <span>Horizontal Position (X)</span>
+                          <span style={{ color: 'var(--accent-purple)' }}>{formData.avatarPosX ?? 50}%</span>
+                        </label>
+                        <input
+                          type="range"
+                          min="0"
+                          max="100"
+                          value={formData.avatarPosX ?? 50}
+                          onChange={(e) => setFormData(prev => ({ ...prev, avatarPosX: Number(e.target.value) }))}
+                          style={{ width: '100%', accentColor: 'var(--accent-purple)' }}
+                        />
+                      </div>
+
+                      <div>
+                        <label style={{ fontSize: '0.78rem', fontWeight: 600, display: 'flex', justifyContent: 'space-between', marginBottom: '6px' }}>
+                          <span>Vertical Position (Y)</span>
+                          <span style={{ color: 'var(--accent-purple)' }}>{formData.avatarPosY ?? 50}%</span>
+                        </label>
+                        <input
+                          type="range"
+                          min="0"
+                          max="100"
+                          value={formData.avatarPosY ?? 50}
+                          onChange={(e) => setFormData(prev => ({ ...prev, avatarPosY: Number(e.target.value) }))}
+                          style={{ width: '100%', accentColor: 'var(--accent-purple)' }}
+                        />
+                      </div>
+                    </div>
+
+                    {/* Section Quick Save Bar */}
+                    <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '10px', paddingTop: '8px' }}>
+                      <button
+                        type="button"
+                        onClick={() => setEditingProfile(null)}
+                        className="btn btn-outline btn-sm"
+                      >
+                        Cancel
+                      </button>
+                      <button
+                        type="button"
+                        onClick={handleSave}
+                        className="btn btn-primary btn-sm"
+                        style={{ gap: '6px' }}
+                      >
+                        {saveSuccess ? <Check size={14} /> : <Save size={14} />}
+                        <span>{saveSuccess ? 'Saved successfully!' : 'Save Profile Picture'}</span>
+                      </button>
                     </div>
                   </div>
                 )}
 
                 {/* 3. BANNER AND APPEARANCE */}
                 {editorSection === 'banner' && (
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
-                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap', gap: '10px' }}>
                       <div>
-                        <h4 style={{ margin: '0 0 4px', fontSize: '1.05rem', fontWeight: 800 }}>3. Banner and Appearance</h4>
+                        <h4 style={{ margin: '0 0 4px', fontSize: '1.05rem', fontWeight: 800 }}>3. Cover Banner &amp; Appearance</h4>
                         <p style={{ margin: 0, fontSize: '0.82rem', color: 'var(--text-secondary)' }}>
-                          Facebook/Discord-style customizable cover banner at top of your digital profile.
+                          Customizable top banner. Drag the image inside the preview box to position horizontal and vertical alignment.
                         </p>
                       </div>
 
-                      {/* Banner Visibility Toggle */}
-                      <label style={{ display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer' }}>
-                        <input
-                          type="checkbox"
-                          checked={formData.banner?.enabled !== false}
-                          onChange={(e) => setFormData({
-                            ...formData,
-                            banner: { ...(formData.banner || {}), enabled: e.target.checked }
-                          })}
-                        />
-                        <span style={{ fontSize: '0.82rem', fontWeight: 700 }}>Enable Banner</span>
-                      </label>
-                    </div>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                        {/* Banner Visibility Toggle */}
+                        <label style={{ display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer', background: 'rgba(255,255,255,0.04)', padding: '6px 12px', borderRadius: '8px', border: '1px solid var(--border-color)' }}>
+                          <input
+                            type="checkbox"
+                            checked={formData.banner?.enabled !== false}
+                            onChange={(e) => setFormData({
+                              ...formData,
+                              banner: { ...(formData.banner || {}), enabled: e.target.checked }
+                            })}
+                          />
+                          <span style={{ fontSize: '0.82rem', fontWeight: 700 }}>Enable Banner</span>
+                        </label>
 
-                    {/* Banner Live Mini Preview */}
-                    <div style={{ width: '100%', borderRadius: '14px', overflow: 'hidden', border: '1px solid var(--border-color)' }}>
-                      <div
-                        style={{
-                          width: '100%',
-                          height: `${formData.banner?.height || 220}px`,
-                          maxHeight: '240px',
-                          backgroundColor: formData.banner?.solidColor || '#1a0b2e',
-                          backgroundImage: formData.banner?.type === 'image' && formData.banner?.url ? `url(${formData.banner.url})` : (formData.banner?.type === 'gradient' ? `linear-gradient(135deg, ${formData.banner.gradientStart || '#2e1065'}, ${formData.banner.gradientEnd || '#090514'})` : 'none'),
-                          backgroundSize: 'cover',
-                          backgroundPosition: `${formData.banner?.positionX ?? 50}% ${formData.banner?.positionY ?? 50}%`,
-                          transform: `scale(${(formData.banner?.zoom || 100) / 100})`,
-                          transformOrigin: 'center center',
-                          position: 'relative'
-                        }}
-                      >
-                        <div
-                          style={{
-                            position: 'absolute',
-                            inset: 0,
-                            background: `linear-gradient(to bottom, transparent 40%, rgba(8,6,13,${formData.banner?.overlayOpacity ?? 0.4}) 100%)`
-                          }}
-                        />
+                        {formData.banner?.url && (
+                          <button
+                            type="button"
+                            onClick={() => setFormData(prev => ({
+                              ...prev,
+                              banner: { ...(prev.banner || {}), url: '', enabled: false }
+                            }))}
+                            className="btn btn-sm"
+                            style={{ color: '#EF4444', border: '1px solid rgba(239, 68, 68, 0.3)', background: 'rgba(239, 68, 68, 0.08)', gap: '6px' }}
+                          >
+                            <Trash2 size={13} />
+                            <span>Remove Banner</span>
+                          </button>
+                        )}
                       </div>
                     </div>
 
-                    {/* Banner Type Tabs: Image vs Gradient vs Solid Color vs Video */}
+                    {/* Interactive Draggable Live Banner Preview */}
+                    <div
+                      onMouseDown={handleBannerDragStart}
+                      onMouseMove={handleBannerDragMove}
+                      onMouseUp={handleBannerDragEnd}
+                      onMouseLeave={handleBannerDragEnd}
+                      onTouchStart={handleBannerDragStart}
+                      onTouchMove={handleBannerDragMove}
+                      onTouchEnd={handleBannerDragEnd}
+                      style={{
+                        width: '100%',
+                        height: `${formData.banner?.height || 220}px`,
+                        borderRadius: '16px',
+                        overflow: 'hidden',
+                        border: '1px solid var(--border-color)',
+                        position: 'relative',
+                        backgroundColor: formData.banner?.solidColor || '#1a0b2e',
+                        cursor: (formData.banner?.type === 'image' || !formData.banner?.type || formData.banner?.type === 'video') ? (isDraggingBanner ? 'grabbing' : 'grab') : 'default',
+                        userSelect: 'none',
+                        boxShadow: '0 8px 30px rgba(0,0,0,0.35)'
+                      }}
+                    >
+                      {/* Image Banner */}
+                      {(formData.banner?.type === 'image' || !formData.banner?.type) && (
+                        <img
+                          src={formData.banner?.url || '/assets/hero-bg.jpg'}
+                          alt="Banner Preview"
+                          style={{
+                            width: '100%',
+                            height: '100%',
+                            objectFit: 'cover',
+                            objectPosition: `${formData.banner?.positionX ?? 50}% ${formData.banner?.positionY ?? 50}%`,
+                            transform: `scale(${(formData.banner?.zoom || 100) / 100})`,
+                            transformOrigin: `${formData.banner?.positionX ?? 50}% ${formData.banner?.positionY ?? 50}%`,
+                            pointerEvents: 'none',
+                            userSelect: 'none',
+                            transition: isDraggingBanner ? 'none' : 'transform 0.15s ease, object-position 0.15s ease'
+                          }}
+                        />
+                      )}
+
+                      {/* Video Banner */}
+                      {formData.banner?.type === 'video' && formData.banner?.url && (
+                        <video
+                          src={formData.banner.url}
+                          autoPlay
+                          loop
+                          muted
+                          playsInline
+                          style={{
+                            width: '100%',
+                            height: '100%',
+                            objectFit: 'cover',
+                            objectPosition: `${formData.banner?.positionX ?? 50}% ${formData.banner?.positionY ?? 50}%`,
+                            transform: `scale(${(formData.banner?.zoom || 100) / 100})`,
+                            pointerEvents: 'none'
+                          }}
+                        />
+                      )}
+
+                      {/* Gradient Banner */}
+                      {formData.banner?.type === 'gradient' && (
+                        <div
+                          style={{
+                            width: '100%',
+                            height: '100%',
+                            background: `linear-gradient(135deg, ${formData.banner?.gradientStart || '#2e1065'}, ${formData.banner?.gradientEnd || '#090514'})`
+                          }}
+                        />
+                      )}
+
+                      {/* Dark Gradient Overlay for readability */}
+                      <div
+                        style={{
+                          position: 'absolute',
+                          inset: 0,
+                          background: `linear-gradient(to bottom, transparent 35%, rgba(8,6,13,${formData.banner?.overlayOpacity ?? 0.4}) 100%)`,
+                          pointerEvents: 'none'
+                        }}
+                      />
+
+                      {/* Drag Hint Overlay Tag */}
+                      <div
+                        style={{
+                          position: 'absolute',
+                          top: '12px',
+                          right: '12px',
+                          background: 'rgba(0, 0, 0, 0.72)',
+                          backdropFilter: 'blur(6px)',
+                          color: '#FFFFFF',
+                          fontSize: '0.72rem',
+                          fontWeight: 700,
+                          padding: '4px 12px',
+                          borderRadius: '9999px',
+                          pointerEvents: 'none',
+                          letterSpacing: '0.02em'
+                        }}
+                      >
+                        {isDraggingBanner ? 'Dragging...' : '✋ Click & drag to reposition'}
+                      </div>
+                    </div>
+
+                    {/* Banner Style Type Tabs */}
                     <div>
                       <label style={{ fontSize: '0.8rem', fontWeight: 600, display: 'block', marginBottom: '8px' }}>
                         Banner Style Type
@@ -928,9 +1272,9 @@ export default function CustomerProfilesTab({ profiles = [], customer, onSavePro
                             style={{
                               padding: '8px 14px',
                               borderRadius: '8px',
-                              border: formData.banner?.type === t.id ? '2px solid var(--accent-purple)' : '1px solid var(--border-color)',
-                              backgroundColor: formData.banner?.type === t.id ? 'var(--primary-purple)' : 'transparent',
-                              color: formData.banner?.type === t.id ? '#FFFFFF' : 'var(--text-secondary)',
+                              border: (formData.banner?.type || 'image') === t.id ? '2px solid var(--accent-purple)' : '1px solid var(--border-color)',
+                              backgroundColor: (formData.banner?.type || 'image') === t.id ? 'var(--primary-purple)' : 'transparent',
+                              color: (formData.banner?.type || 'image') === t.id ? '#FFFFFF' : 'var(--text-secondary)',
                               fontSize: '0.8rem',
                               fontWeight: 600,
                               cursor: 'pointer'
@@ -942,8 +1286,8 @@ export default function CustomerProfilesTab({ profiles = [], customer, onSavePro
                       </div>
                     </div>
 
-                    {/* Upload Image/Video Action */}
-                    {(formData.banner?.type === 'image' || formData.banner?.type === 'video') && (
+                    {/* Upload Image/Video Actions */}
+                    {(formData.banner?.type === 'image' || !formData.banner?.type || formData.banner?.type === 'video') && (
                       <div style={{ display: 'flex', alignItems: 'center', gap: '12px', flexWrap: 'wrap' }}>
                         <input
                           type="file"
@@ -962,36 +1306,112 @@ export default function CustomerProfilesTab({ profiles = [], customer, onSavePro
                           <Upload size={14} />
                           <span>{isUploading ? 'Uploading...' : `Upload ${formData.banner?.type === 'video' ? 'Video' : 'Cover Image'}`}</span>
                         </button>
+                        <button
+                          type="button"
+                          onClick={() => setFormData(prev => ({
+                            ...prev,
+                            banner: { ...(prev.banner || {}), positionX: 50, positionY: 50, zoom: 100 }
+                          }))}
+                          className="btn btn-outline btn-sm"
+                          style={{ gap: '6px' }}
+                        >
+                          <RefreshCw size={13} />
+                          <span>Reset Alignment</span>
+                        </button>
                         <span style={{ fontSize: '0.74rem', color: 'var(--text-muted)' }}>
-                          Aspect Ratio ~3:1 (e.g. 1500x500px). Max 5MB (Image) or 15MB (Video).
+                          Aspect Ratio ~3:1 (e.g. 1500x500px). Max 10MB (Image) or 25MB (Video).
                         </span>
                       </div>
                     )}
 
-                    {/* Zoom, Position X & Y sliders */}
-                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '14px' }}>
+                    {/* Gradient color controls if gradient selected */}
+                    {formData.banner?.type === 'gradient' && (
+                      <div style={{ display: 'flex', gap: '16px', flexWrap: 'wrap' }}>
+                        <div>
+                          <label style={{ fontSize: '0.78rem', fontWeight: 600, display: 'block', marginBottom: '6px' }}>Gradient Start Color</label>
+                          <input
+                            type="color"
+                            value={formData.banner?.gradientStart || '#2e1065'}
+                            onChange={(e) => setFormData({
+                              ...formData,
+                              banner: { ...(formData.banner || {}), gradientStart: e.target.value }
+                            })}
+                            style={{ width: '60px', height: '36px', borderRadius: '6px', border: '1px solid var(--border-color)', cursor: 'pointer' }}
+                          />
+                        </div>
+                        <div>
+                          <label style={{ fontSize: '0.78rem', fontWeight: 600, display: 'block', marginBottom: '6px' }}>Gradient End Color</label>
+                          <input
+                            type="color"
+                            value={formData.banner?.gradientEnd || '#090514'}
+                            onChange={(e) => setFormData({
+                              ...formData,
+                              banner: { ...(formData.banner || {}), gradientEnd: e.target.value }
+                            })}
+                            style={{ width: '60px', height: '36px', borderRadius: '6px', border: '1px solid var(--border-color)', cursor: 'pointer' }}
+                          />
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Solid color control if solid color selected */}
+                    {formData.banner?.type === 'color' && (
                       <div>
-                        <label style={{ fontSize: '0.78rem', fontWeight: 600, display: 'flex', justifyContent: 'space-between' }}>
+                        <label style={{ fontSize: '0.78rem', fontWeight: 600, display: 'block', marginBottom: '6px' }}>Solid Background Color</label>
+                        <input
+                          type="color"
+                          value={formData.banner?.solidColor || '#1a0b2e'}
+                          onChange={(e) => setFormData({
+                            ...formData,
+                            banner: { ...(formData.banner || {}), solidColor: e.target.value }
+                          })}
+                          style={{ width: '60px', height: '36px', borderRadius: '6px', border: '1px solid var(--border-color)', cursor: 'pointer' }}
+                        />
+                      </div>
+                    )}
+
+                    {/* Sliders: Zoom, Horizontal X, Vertical Y, Height, Darkness */}
+                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '14px', background: 'rgba(255, 255, 255, 0.02)', padding: '16px', borderRadius: '12px', border: '1px solid var(--border-color)' }}>
+                      <div>
+                        <label style={{ fontSize: '0.78rem', fontWeight: 600, display: 'flex', justifyContent: 'space-between', marginBottom: '6px' }}>
                           <span>Zoom</span>
-                          <span>{formData.banner?.zoom || 100}%</span>
+                          <span style={{ color: 'var(--accent-purple)' }}>{formData.banner?.zoom || 100}%</span>
                         </label>
                         <input
                           type="range"
-                          min="80"
-                          max="150"
+                          min="60"
+                          max="200"
                           value={formData.banner?.zoom || 100}
                           onChange={(e) => setFormData({
                             ...formData,
                             banner: { ...(formData.banner || {}), zoom: Number(e.target.value) }
                           })}
-                          style={{ width: '100%' }}
+                          style={{ width: '100%', accentColor: 'var(--accent-purple)' }}
                         />
                       </div>
 
                       <div>
-                        <label style={{ fontSize: '0.78rem', fontWeight: 600, display: 'flex', justifyContent: 'space-between' }}>
+                        <label style={{ fontSize: '0.78rem', fontWeight: 600, display: 'flex', justifyContent: 'space-between', marginBottom: '6px' }}>
+                          <span>Horizontal Position (X)</span>
+                          <span style={{ color: 'var(--accent-purple)' }}>{formData.banner?.positionX ?? 50}%</span>
+                        </label>
+                        <input
+                          type="range"
+                          min="0"
+                          max="100"
+                          value={formData.banner?.positionX ?? 50}
+                          onChange={(e) => setFormData({
+                            ...formData,
+                            banner: { ...(formData.banner || {}), positionX: Number(e.target.value) }
+                          })}
+                          style={{ width: '100%', accentColor: 'var(--accent-purple)' }}
+                        />
+                      </div>
+
+                      <div>
+                        <label style={{ fontSize: '0.78rem', fontWeight: 600, display: 'flex', justifyContent: 'space-between', marginBottom: '6px' }}>
                           <span>Vertical Position (Y)</span>
-                          <span>{formData.banner?.positionY ?? 50}%</span>
+                          <span style={{ color: 'var(--accent-purple)' }}>{formData.banner?.positionY ?? 50}%</span>
                         </label>
                         <input
                           type="range"
@@ -1002,14 +1422,32 @@ export default function CustomerProfilesTab({ profiles = [], customer, onSavePro
                             ...formData,
                             banner: { ...(formData.banner || {}), positionY: Number(e.target.value) }
                           })}
-                          style={{ width: '100%' }}
+                          style={{ width: '100%', accentColor: 'var(--accent-purple)' }}
                         />
                       </div>
 
                       <div>
-                        <label style={{ fontSize: '0.78rem', fontWeight: 600, display: 'flex', justifyContent: 'space-between' }}>
+                        <label style={{ fontSize: '0.78rem', fontWeight: 600, display: 'flex', justifyContent: 'space-between', marginBottom: '6px' }}>
+                          <span>Banner Height</span>
+                          <span style={{ color: 'var(--accent-purple)' }}>{formData.banner?.height || 220}px</span>
+                        </label>
+                        <input
+                          type="range"
+                          min="140"
+                          max="320"
+                          value={formData.banner?.height || 220}
+                          onChange={(e) => setFormData({
+                            ...formData,
+                            banner: { ...(formData.banner || {}), height: Number(e.target.value) }
+                          })}
+                          style={{ width: '100%', accentColor: 'var(--accent-purple)' }}
+                        />
+                      </div>
+
+                      <div>
+                        <label style={{ fontSize: '0.78rem', fontWeight: 600, display: 'flex', justifyContent: 'space-between', marginBottom: '6px' }}>
                           <span>Overlay Darkness</span>
-                          <span>{Math.round((formData.banner?.overlayOpacity ?? 0.38) * 100)}%</span>
+                          <span style={{ color: 'var(--accent-purple)' }}>{Math.round((formData.banner?.overlayOpacity ?? 0.38) * 100)}%</span>
                         </label>
                         <input
                           type="range"
@@ -1020,9 +1458,29 @@ export default function CustomerProfilesTab({ profiles = [], customer, onSavePro
                             ...formData,
                             banner: { ...(formData.banner || {}), overlayOpacity: Number(e.target.value) / 100 }
                           })}
-                          style={{ width: '100%' }}
+                          style={{ width: '100%', accentColor: 'var(--accent-purple)' }}
                         />
                       </div>
+                    </div>
+
+                    {/* Section Quick Save Bar */}
+                    <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '10px', paddingTop: '8px' }}>
+                      <button
+                        type="button"
+                        onClick={() => setEditingProfile(null)}
+                        className="btn btn-outline btn-sm"
+                      >
+                        Cancel
+                      </button>
+                      <button
+                        type="button"
+                        onClick={handleSave}
+                        className="btn btn-primary btn-sm"
+                        style={{ gap: '6px' }}
+                      >
+                        {saveSuccess ? <Check size={14} /> : <Save size={14} />}
+                        <span>{saveSuccess ? 'Saved successfully!' : 'Save Banner'}</span>
+                      </button>
                     </div>
                   </div>
                 )}

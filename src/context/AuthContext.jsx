@@ -366,6 +366,76 @@ export function AuthProvider({ children }) {
     }
   };
 
+  // Update Admin Profile (name, avatar) strictly isolated to the admin's account
+  const updateAdminProfile = async ({ name, avatar }) => {
+    try {
+      if (isSupabaseConfigured && supabase) {
+        const updatePayload = { data: {} };
+        if (name) {
+          updatePayload.data.name = name;
+          updatePayload.data.full_name = name;
+        }
+        if (avatar !== undefined) {
+          updatePayload.data.avatar_url = avatar;
+        }
+        await supabase.auth.updateUser(updatePayload);
+      }
+      setUser(prev => {
+        if (!prev) return prev;
+        const updated = {
+          ...prev,
+          name: name || prev.name,
+          avatar: avatar !== undefined ? avatar : prev.avatar
+        };
+        localStorage.setItem('flocard_auth_user', JSON.stringify(updated));
+        return updated;
+      });
+      StorageEngine.addAuditLog('Admin Profile', `Admin profile updated for ${name || user?.name}`, user?.name || 'Administrator');
+      return { success: true };
+    } catch (err) {
+      console.error('Update admin profile error:', err);
+      return { success: false, error: err.message || 'Failed to update admin profile' };
+    }
+  };
+
+  // Update Admin Password
+  const updateAdminPassword = async (newPassword) => {
+    try {
+      if (!newPassword || newPassword.length < 6) {
+        return { success: false, error: 'Password must be at least 6 characters long.' };
+      }
+      if (isSupabaseConfigured && supabase) {
+        const { error } = await supabase.auth.updateUser({ password: newPassword });
+        if (error) throw error;
+      }
+      StorageEngine.addAuditLog('Admin Security', 'Admin password changed successfully', user?.name || 'Administrator');
+      return { success: true };
+    } catch (err) {
+      console.error('Update admin password error:', err);
+      return { success: false, error: err.message || 'Failed to update password' };
+    }
+  };
+
+  // Update Admin Email
+  const updateAdminEmail = async (newEmail) => {
+    try {
+      const cleanEmail = (newEmail || '').trim().toLowerCase();
+      if (!cleanEmail || !cleanEmail.includes('@')) {
+        return { success: false, error: 'Please enter a valid email address.' };
+      }
+      if (isSupabaseConfigured && supabase) {
+        const { error } = await supabase.auth.updateUser({ email: cleanEmail });
+        if (error) throw error;
+      }
+      setUser(prev => prev ? { ...prev, email: cleanEmail } : prev);
+      StorageEngine.addAuditLog('Admin Security', `Admin requested email change to ${cleanEmail}`, user?.name || 'Administrator');
+      return { success: true, message: 'Confirmation link sent to your new email address.' };
+    } catch (err) {
+      console.error('Update admin email error:', err);
+      return { success: false, error: err.message || 'Failed to update email' };
+    }
+  };
+
   const isOwner = user?.role === 'owner' || OWNER_EMAILS.includes(user?.email?.toLowerCase());
   const isSales = user?.role === 'sales';
   const isDesigner = user?.role === 'designer';
@@ -395,6 +465,9 @@ export function AuthProvider({ children }) {
       loginWithGoogle,
       logout,
       switchPersona,
+      updateAdminProfile,
+      updateAdminPassword,
+      updateAdminEmail,
       loading
     }}>
       {children}

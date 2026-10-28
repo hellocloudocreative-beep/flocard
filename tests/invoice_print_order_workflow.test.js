@@ -150,10 +150,20 @@ assert.throws(() => {
     cardConfig: { name: 'Test' },
     customerName: 'Valid Name',
     customerEmail: 'valid@example.com',
-    customerPhone: ''
+    customerPhone: '123'
   });
-}, /contact number/i, 'Must reject missing phone number');
-console.log('✓ Input validation rejects incomplete submissions');
+}, /contact number/i, 'Must reject invalid short phone number when provided');
+
+// Verify that order submission succeeds with empty/optional phone (Requirement 5)
+const orderWithoutPhone = StorageEngine.submitPrintOrder({
+  design: { id: `des_nophone_${Date.now()}`, name: 'Test No Phone Card' },
+  customerName: 'No Phone Customer',
+  customerEmail: 'nophone@example.com',
+  customerPhone: '',
+  shippingAddress: '123 Marine Drive, Kochi'
+});
+assert.strictEqual(orderWithoutPhone.customerPhone, '', 'Customer phone must be empty when omitted');
+console.log('✓ Input validation and optional phone number behavior verified');
 
 // --------------------------------------------------------------------------
 // TEST 3: WhatsApp Click-to-Chat Integration

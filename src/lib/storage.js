@@ -982,6 +982,77 @@ export const StorageEngine = {
     }
     return null;
   },
+  saveLocalProfiles: (profiles) => {
+    setLocal('profiles', profiles);
+  },
+  syncProfileToCloud: async (profile) => {
+    if (!profile) return;
+    try {
+      const { supabase, supabaseAdmin, isSupabaseConfigured } = await import('./supabase.js');
+      if (!isSupabaseConfigured) return;
+      const client = supabaseAdmin || supabase;
+      if (!client) return;
+
+      const cleanSlug = (profile.slug || '').trim().toLowerCase();
+      if (!cleanSlug) return;
+
+      const cleanPortfolio = Array.isArray(profile.portfolio)
+        ? [...profile.portfolio.filter(p => p && !p._isBannerConfig)]
+        : [];
+
+      if (profile.banner || profile.avatarZoom || profile.avatarPosX || profile.avatarPosY || profile.photoShape) {
+        cleanPortfolio.unshift({
+          id: '_flocard_banner_config',
+          _isBannerConfig: true,
+          banner: profile.banner || null,
+          avatarZoom: profile.avatarZoom,
+          avatarPosX: profile.avatarPosX,
+          avatarPosY: profile.avatarPosY,
+          photoShape: profile.photoShape
+        });
+      }
+
+      const payload = {
+        slug: cleanSlug,
+        name: profile.name || cleanSlug,
+        role: profile.role || '',
+        company: profile.company || '',
+        tagline: profile.tagline || '',
+        bio: profile.bio || '',
+        avatar_url: profile.avatar || profile.avatar_url || '',
+        theme: profile.theme || 'purple',
+        phone: profile.phone || '',
+        email: profile.email || '',
+        whatsapp: profile.whatsapp || '',
+        website: profile.website || '',
+        linkedin: profile.linkedin || '',
+        instagram: profile.instagram || '',
+        twitter: profile.twitter || '',
+        github: profile.github || '',
+        location: profile.location || '',
+        services: Array.isArray(profile.services) ? profile.services : [],
+        portfolio: cleanPortfolio,
+        vcard_enabled: profile.vcard_enabled !== false,
+        status: profile.status || 'active',
+        updated_at: new Date().toISOString()
+      };
+
+      const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+      if (profile.id && uuidRegex.test(profile.id)) {
+        payload.id = profile.id;
+      }
+      if (profile.user_id && uuidRegex.test(profile.user_id)) {
+        payload.user_id = profile.user_id;
+      }
+
+      const { error } = await client.from('profiles').upsert(payload, { onConflict: 'slug' });
+      if (error) {
+        console.warn('[StorageSync] Supabase profiles upsert note:', error.message);
+      }
+    } catch (err) {
+      console.warn('[StorageSync] Supabase profile sync error:', err.message);
+    }
+  },
   saveProfile: (profile) => {
     if (!profile) return null;
     const list = getLocal('profiles', INITIAL_PROFILES);
@@ -996,6 +1067,9 @@ export const StorageEngine = {
     }
     setLocal('profiles', list);
     StorageEngine.addAuditLog('Profile', `Profile updated for ${profile.name}`, 'You');
+
+    // Asynchronously synchronize with Supabase cloud
+    StorageEngine.syncProfileToCloud(saved);
 
     // Broadcast update across windows & reactive hooks
     if (typeof window !== 'undefined') {
@@ -1090,6 +1164,46 @@ export const StorageEngine = {
 
   // Cards
   getCards: () => getLocal('cards', INITIAL_CARDS),
+  saveLocalCards: (cards) => {
+    setLocal('cards', cards);
+  },
+  syncCardToCloud: async (card) => {
+    if (!card || !card.cardCode) return;
+    try {
+      const { supabase, supabaseAdmin, isSupabaseConfigured } = await import('./supabase.js');
+      if (!isSupabaseConfigured) return;
+      const client = supabaseAdmin || supabase;
+      if (!client) return;
+
+      const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+      const rawStatus = (card.status || 'in_stock').toLowerCase();
+      const dbStatus = rawStatus === 'disabled' ? 'revoked' : (rawStatus === 'pending' ? 'in_stock' : rawStatus);
+      const validEditions = ['purple', 'gold', 'platinum', 'custom', 'white', 'metal'];
+      const edition = validEditions.includes(card.edition) ? card.edition : 'purple';
+
+      const payload = {
+        card_code: card.cardCode,
+        chip_type: card.chipType || 'NXP NTAG216 (888 Bytes)',
+        batch: card.batch || 'Batch-A',
+        edition,
+        profile_slug: card.profileSlug ? card.profileSlug.trim() : null,
+        status: dbStatus,
+        tap_count: typeof card.tapCount === 'number' ? card.tapCount : 0,
+        updated_at: new Date().toISOString()
+      };
+
+      if (card.customerId && uuidRegex.test(card.customerId)) {
+        payload.customer_id = card.customerId;
+      }
+      if (card.id && uuidRegex.test(card.id)) {
+        payload.id = card.id;
+      }
+
+      await client.from('nfc_cards').upsert(payload, { onConflict: 'card_code' });
+    } catch (err) {
+      console.warn('[StorageSync] Supabase nfc_cards sync note:', err.message);
+    }
+  },
   getCardByCode: (code) => {
     const list = getLocal('cards', INITIAL_CARDS);
     return list.find(c => c.cardCode.toLowerCase() === code.toLowerCase()) || null;
@@ -1107,6 +1221,10 @@ export const StorageEngine = {
     }
     setLocal('cards', list);
     StorageEngine.addAuditLog('NFC Card', `Card updated: ${card.cardCode} (${card.status})`, 'You');
+
+    // Asynchronously synchronize with Supabase cloud
+    StorageEngine.syncCardToCloud(saved);
+
     if (typeof window !== 'undefined') {
       window.dispatchEvent(new CustomEvent('flocard_card_updated', { detail: { card: saved, list } }));
     }
@@ -1138,6 +1256,87 @@ export const StorageEngine = {
 
   // Designs
   getDesigns: () => getLocal('designs', INITIAL_DESIGNS),
+  saveLocalDesigns: (designs) => {
+    setLocal('designs', designs);
+  },
+  saveLocalOrders: (orders) => {
+    setLocal('orders', orders);
+  },
+  syncDesignToCloud: async (design) => {
+    if (!design) return;
+    try {
+      const { supabase, supabaseAdmin, isSupabaseConfigured } = await import('./supabase.js');
+      if (!isSupabaseConfigured) return;
+      const client = supabaseAdmin || supabase;
+      if (!client) return;
+
+      const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+      let cloudId = design.supabaseId;
+      if (!cloudId || !uuidRegex.test(cloudId)) {
+        if (design.id && uuidRegex.test(design.id)) {
+          cloudId = design.id;
+        } else if (typeof crypto !== 'undefined' && crypto.randomUUID) {
+          cloudId = crypto.randomUUID();
+        } else {
+          cloudId = 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, (c) => {
+            const r = (Math.random() * 16) | 0;
+            const v = c === 'x' ? r : (r & 0x3) | 0x8;
+            return v.toString(16);
+          });
+        }
+      }
+
+      const validEdition = ['purple', 'gold', 'platinum', 'custom'].includes(design.edition)
+        ? design.edition
+        : 'purple';
+      const validStatus = ['draft', 'submitted', 'approved', 'rejected'].includes(design.status)
+        ? design.status
+        : 'submitted';
+
+      const payload = {
+        id: cloudId,
+        title: design.title || `${design.customerName || 'Customer'}'s Card Design`,
+        edition: validEdition,
+        status: validStatus,
+        front_config: {
+          ...(design.front || {}),
+          _localId: design.id,
+          title: design.title || '',
+          customerName: design.customerName || design.front?.name || '',
+          customerEmail: design.customerEmail || '',
+          customerPhone: design.customerPhone || '',
+          company: design.company || design.front?.company || '',
+          templateType: design.templateType || 'standard',
+          customColors: design.customColors || {},
+          customerLogo: design.customerLogo || null,
+          flocardLogo: design.flocardLogo || null,
+          orderId: design.orderId || null,
+          printOrder: design.printOrder || null
+        },
+        back_config: design.back || {},
+        updated_at: new Date().toISOString()
+      };
+
+      if (design.customerId && uuidRegex.test(design.customerId)) {
+        payload.user_id = design.customerId;
+      }
+
+      await client.from('card_designs').upsert(payload, { onConflict: 'id' });
+
+      // Update local design with supabaseId if generated
+      if (design.supabaseId !== cloudId) {
+        design.supabaseId = cloudId;
+        const list = getLocal('designs', INITIAL_DESIGNS);
+        const idx = list.findIndex(d => d.id === design.id);
+        if (idx >= 0) {
+          list[idx].supabaseId = cloudId;
+          setLocal('designs', list);
+        }
+      }
+    } catch (err) {
+      console.warn('[StorageSync] Supabase card_designs sync note:', err.message);
+    }
+  },
   getDesignById: (id) => {
     const list = getLocal('designs', INITIAL_DESIGNS);
     return list.find(d => d.id === id) || null;
@@ -1160,6 +1359,8 @@ export const StorageEngine = {
     }
     setLocal('designs', list);
     StorageEngine.addAuditLog('Card Design', `Design saved: ${saved.title || saved.id}`, 'You');
+    // Asynchronously synchronize with Supabase cloud
+    StorageEngine.syncDesignToCloud(saved);
     return saved;
   },
   updateDesignStatus: (id, status, notes = '') => {
@@ -1170,6 +1371,7 @@ export const StorageEngine = {
       item.reviewNotes = notes;
       item.reviewedAt = new Date().toISOString();
       setLocal('designs', list);
+      StorageEngine.syncDesignToCloud(item);
       StorageEngine.addAuditLog(
         'Card Design',
         `Design ${item.id} ${status === 'approved' ? 'approved' : status === 'rejected' ? 'rejected' : 'status changed'} for ${item.customerName}`,
@@ -1440,8 +1642,9 @@ export const StorageEngine = {
     if (!customerName || customerName.length < 2) {
       throw new Error('Please enter customer full name.');
     }
-    if (!customerPhone || customerPhone.replace(/[^0-9]/g, '').length < 8) {
-      throw new Error('Please enter a valid WhatsApp contact number.');
+    // Phone number is optional: only validate length if provided
+    if (customerPhone && customerPhone.replace(/[^0-9]/g, '').length < 8) {
+      throw new Error('Please enter a valid contact number (at least 8 digits) or leave it empty.');
     }
     if (!customerEmail || !customerEmail.includes('@')) {
       throw new Error('Please enter a valid email address.');
@@ -1574,13 +1777,101 @@ export const StorageEngine = {
       setLocal('customers', customers);
     }
 
-    // Link design status back to order
+    // Link design status back to order and attach authoritative print order snapshot
     const designs = getLocal('designs', INITIAL_DESIGNS);
     const dItem = designs.find(d => d.id === design.id);
     if (dItem) {
       dItem.orderId = newOrder.id;
       dItem.status = 'submitted';
+      dItem.printOrder = newOrder;
       setLocal('designs', designs);
+      StorageEngine.syncDesignToCloud(dItem);
+    } else {
+      const orphanDesign = {
+        id: design.id || `des_${Date.now()}`,
+        title: design.title || `${customerName}'s Card Design`,
+        customerName,
+        customerEmail,
+        customerPhone,
+        company: newOrder.company,
+        edition,
+        templateType: design.templateType || 'standard',
+        front: design.front || {},
+        back: design.back || {},
+        status: 'submitted',
+        orderId: newOrder.id,
+        printOrder: newOrder
+      };
+      designs.unshift(orphanDesign);
+      setLocal('designs', designs);
+      StorageEngine.syncDesignToCloud(orphanDesign);
+    }
+
+    // 5. Automatic NFC Card Details to Digital Profile (Requirement 4)
+    const profiles = getLocal('profiles', INITIAL_PROFILES);
+    const existingProfile = profiles.find(p => 
+      (newOrder.customerId && p.userId === newOrder.customerId) ||
+      (customerEmail && p.email?.toLowerCase() === customerEmail) ||
+      (p.slug && p.slug.toLowerCase() === clientSlug)
+    );
+
+    if (!existingProfile) {
+      const prefilledProfile = {
+        id: `prof_${now}`,
+        userId: newOrder.customerId,
+        name: customerName,
+        slug: clientSlug,
+        role: design.front?.role || '',
+        company: newOrder.company || '',
+        tagline: design.front?.tagline || '',
+        bio: `${customerName} • ${design.front?.role || 'Professional'}${newOrder.company ? ` at ${newOrder.company}` : ''}. Connect via my FLOCARD.`,
+        avatar: logoUrl || '',
+        logo: logoUrl || '',
+        phone: customerPhone || '',
+        email: customerEmail || '',
+        whatsapp: customerPhone ? customerPhone.replace(/[^0-9]/g, '') : '',
+        location: shippingAddress || '',
+        website: design.front?.website || design.back?.website || '',
+        linkedin: design.back?.linkedin || '',
+        instagram: design.back?.instagram || '',
+        theme: edition || 'purple',
+        status: 'active',
+        viewsCount: 0,
+        saveCount: 0,
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString()
+      };
+      profiles.unshift(prefilledProfile);
+      setLocal('profiles', profiles);
+      StorageEngine.syncProfileToCloud(prefilledProfile);
+    } else {
+      // Profile already exists: Only prefill missing/blank fields so customized edits are preserved!
+      let updated = false;
+      if (!existingProfile.phone && customerPhone) {
+        existingProfile.phone = customerPhone;
+        updated = true;
+      }
+      if (!existingProfile.whatsapp && customerPhone) {
+        existingProfile.whatsapp = customerPhone.replace(/[^0-9]/g, '');
+        updated = true;
+      }
+      if (!existingProfile.company && newOrder.company) {
+        existingProfile.company = newOrder.company;
+        updated = true;
+      }
+      if (!existingProfile.role && design.front?.role) {
+        existingProfile.role = design.front.role;
+        updated = true;
+      }
+      if (!existingProfile.avatar && logoUrl) {
+        existingProfile.avatar = logoUrl;
+        updated = true;
+      }
+      if (updated) {
+        existingProfile.updatedAt = new Date().toISOString();
+        setLocal('profiles', profiles);
+        StorageEngine.syncProfileToCloud(existingProfile);
+      }
     }
 
     StorageEngine.addAuditLog(
@@ -1589,27 +1880,33 @@ export const StorageEngine = {
       customerName
     );
 
-    // Asynchronously synchronize with Supabase if online
+    // Asynchronously synchronize with Supabase orders table if available
     (async () => {
       try {
-        const { supabase } = await import('./supabase.js');
-        if (supabase) {
-          await supabase.from('orders').upsert({
-            id: newOrder.id,
-            order_reference: newOrder.orderReference,
-            customer_name: newOrder.customerName,
-            customer_email: newOrder.customerEmail,
-            customer_phone: newOrder.customerPhone,
-            company: newOrder.company,
-            status: newOrder.status,
-            shipping_address: newOrder.shippingAddress,
-            total_amount: newOrder.totalAmount,
-            created_at: newOrder.createdAt,
-            updated_at: newOrder.updatedAt
-          });
+        const { supabase, supabaseAdmin, isSupabaseConfigured } = await import('./supabase.js');
+        if (!isSupabaseConfigured) return;
+        const client = supabaseAdmin || supabase;
+        if (!client) return;
+
+        const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+        const orderRow = {
+          order_reference: newOrder.orderReference,
+          customer_name: newOrder.customerName,
+          customer_email: newOrder.customerEmail,
+          customer_phone: newOrder.customerPhone,
+          company: newOrder.company,
+          status: newOrder.status,
+          shipping_address: newOrder.shippingAddress,
+          total_amount: newOrder.totalAmount,
+          created_at: newOrder.createdAt,
+          updated_at: newOrder.updatedAt
+        };
+        if (uuidRegex.test(newOrder.id)) {
+          orderRow.id = newOrder.id;
         }
+        await client.from('orders').upsert(orderRow, { onConflict: 'order_reference' });
       } catch (err) {
-        console.warn('[Storage] Supabase order sync note:', err.message);
+        // Silently handled: print order already persisted and broadcast via card_designs
       }
     })();
 
@@ -1767,6 +2064,17 @@ export const StorageEngine = {
       actualActor?.name || 'Administrator'
     );
 
+    // Sync updated order status back to linked design in cloud
+    try {
+      const designs = getLocal('designs', INITIAL_DESIGNS);
+      const linkedDesign = designs.find(d => d.orderId === order.id || d.id === order.designId);
+      if (linkedDesign) {
+        linkedDesign.printOrder = { ...order };
+        setLocal('designs', designs);
+        StorageEngine.syncDesignToCloud(linkedDesign);
+      }
+    } catch (_) {}
+
     // 5. Emit browser event for immediate realtime timeline updates
     if (typeof window !== 'undefined') {
       window.dispatchEvent(new CustomEvent('flocard_order_updated', {
@@ -1852,19 +2160,19 @@ export const StorageEngine = {
       bio: `${order.customerName} is a ${order.role || 'Professional'} at ${order.company || 'FLOCARD Network'}. Connect directly via my NFC digital business card.`,
       avatar: order.customerLogo || null,
       logo: order.customerLogo || null,
-      phone: order.customerPhone || '+91 97782 78552',
+      phone: order.customerPhone || '',
       email: order.customerEmail || `${finalSlug}@flocard.in`,
-      whatsapp: (order.customerPhone || '919778278552').replace(/[^0-9]/g, ''),
-      location: 'Kochi, Kerala, India',
-      website: `https://${finalSlug}.flocard.in`,
+      whatsapp: order.customerPhone ? order.customerPhone.replace(/[^0-9]/g, '') : '',
+      location: order.shippingAddress || '',
+      website: order.frontConfig?.website || order.backConfig?.website || '',
       theme: order.edition || 'purple',
       status: 'active',
       viewsCount: 0,
       socialLinks: {
-        website: `https://${finalSlug}.flocard.in`,
-        linkedin: `https://linkedin.com/in/${finalSlug}`,
-        instagram: `https://instagram.com/${finalSlug}`,
-        whatsapp: order.customerPhone || '+91 97782 78552'
+        website: order.frontConfig?.website || '',
+        linkedin: order.backConfig?.linkedin || '',
+        instagram: order.backConfig?.instagram || '',
+        whatsapp: order.customerPhone ? order.customerPhone.replace(/[^0-9]/g, '') : ''
       },
       services: [
         { id: 's1', name: 'Strategic Consultation', desc: 'Direct corporate collaboration and identity integration.' },
@@ -2318,17 +2626,47 @@ export const StorageEngine = {
 
   // Customers
   getCustomers: () => getLocal('customers', INITIAL_CUSTOMERS),
+  saveLocalCustomers: (customers) => {
+    setLocal('customers', customers);
+  },
+  syncCustomerToCloud: async (cust) => {
+    if (!cust || !cust.email) return;
+    try {
+      const { supabaseAdmin, isSupabaseConfigured } = await import('./supabase.js');
+      if (!isSupabaseConfigured || !supabaseAdmin) return;
+
+      const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+      if (cust.id && uuidRegex.test(cust.id)) {
+        await supabaseAdmin.auth.admin.updateUserById(cust.id, {
+          user_metadata: {
+            name: cust.name,
+            company: cust.company,
+            phone: cust.phone,
+            role: cust.role || 'customer',
+            status: cust.status || 'active'
+          }
+        });
+      }
+    } catch (err) {
+      console.warn('[StorageSync] Supabase customer sync note:', err.message);
+    }
+  },
   saveCustomer: (cust) => {
     const list = getLocal('customers', INITIAL_CUSTOMERS);
     const index = list.findIndex(c => c.id === cust.id || c.email === cust.email);
+    let saved;
     if (index >= 0) {
       list[index] = { ...list[index], ...cust, updatedAt: new Date().toISOString() };
+      saved = list[index];
     } else {
-      list.unshift({ ...cust, id: cust.id || `cust_${Date.now()}`, joinedDate: new Date().toISOString().split('T')[0] });
+      saved = { ...cust, id: cust.id || `cust_${Date.now()}`, joinedDate: new Date().toISOString().split('T')[0] };
+      list.unshift(saved);
     }
     setLocal('customers', list);
     StorageEngine.addAuditLog('Customer', `Customer record saved: ${cust.name}`, 'You');
-    return cust;
+    // Asynchronously synchronize with Supabase cloud
+    StorageEngine.syncCustomerToCloud(saved);
+    return saved;
   },
   deleteCustomer: (id) => {
     const list = getLocal('customers', INITIAL_CUSTOMERS).filter(c => c.id !== id && c.email !== id);

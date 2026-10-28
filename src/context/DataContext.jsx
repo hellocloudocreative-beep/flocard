@@ -38,8 +38,304 @@ export function DataProvider({ children }) {
     setInvoiceSettings(StorageEngine.getInvoiceSettings());
   };
 
+  // Comprehensive cloud synchronization for all shared resources across all admin accounts & devices
+  const syncCloudData = async () => {
+    try {
+      const { supabase, supabaseAdmin, isSupabaseConfigured } = await import('../lib/supabase.js');
+      if (!isSupabaseConfigured) return;
+      const client = supabaseAdmin || supabase;
+      if (!client) return;
+
+      // 1. Synchronize Profiles from Supabase
+      try {
+        const { data: cloudProfiles, error: pErr } = await client
+          .from('profiles')
+          .select('*')
+          .order('created_at', { ascending: false });
+
+        if (!pErr && Array.isArray(cloudProfiles) && cloudProfiles.length > 0) {
+          const localProfiles = StorageEngine.getProfiles();
+          for (const cp of cloudProfiles) {
+            const rawPortfolio = Array.isArray(cp.portfolio) ? cp.portfolio : [];
+            const bannerEntry = rawPortfolio.find(x => x && x._isBannerConfig);
+            const banner = cp.banner || bannerEntry?.banner || null;
+            const cleanPortfolio = rawPortfolio.filter(x => !x || !x._isBannerConfig);
+            const avatarZoom = cp.avatar_zoom ?? bannerEntry?.avatarZoom ?? 100;
+            const avatarPosX = cp.avatar_pos_x ?? bannerEntry?.avatarPosX ?? 50;
+            const avatarPosY = cp.avatar_pos_y ?? bannerEntry?.avatarPosY ?? 50;
+            const photoShape = cp.photo_shape ?? bannerEntry?.photoShape ?? 'circle';
+
+            const mappedProfile = {
+              id: cp.id,
+              slug: cp.slug,
+              name: cp.name || cp.slug,
+              role: cp.role || '',
+              company: cp.company || '',
+              tagline: cp.tagline || '',
+              bio: cp.bio || '',
+              avatar: cp.avatar_url || '',
+              avatar_url: cp.avatar_url || '',
+              theme: cp.theme || 'purple',
+              phone: cp.phone || '',
+              email: cp.email || '',
+              whatsapp: cp.whatsapp || '',
+              website: cp.website || '',
+              linkedin: cp.linkedin || '',
+              instagram: cp.instagram || '',
+              twitter: cp.twitter || '',
+              github: cp.github || '',
+              location: cp.location || '',
+              services: Array.isArray(cp.services) ? cp.services : [],
+              portfolio: cleanPortfolio,
+              vcard_enabled: cp.vcard_enabled !== false,
+              status: cp.status || 'active',
+              views_count: cp.views_count || 0,
+              save_count: cp.save_count || 0,
+              banner: banner || { enabled: true, url: '/assets/hero-bg.jpg', zoom: 100, positionX: 50, positionY: 45 },
+              avatarZoom,
+              avatarPosX,
+              avatarPosY,
+              photoShape,
+              updatedAt: cp.updated_at || cp.created_at
+            };
+
+            const existIdx = localProfiles.findIndex(p => (p.slug && p.slug.toLowerCase() === cp.slug.toLowerCase()) || p.id === cp.id);
+            if (existIdx >= 0) {
+              localProfiles[existIdx] = { ...localProfiles[existIdx], ...mappedProfile };
+            } else {
+              localProfiles.push(mappedProfile);
+            }
+          }
+          StorageEngine.saveLocalProfiles(localProfiles);
+          setProfiles(localProfiles);
+        }
+      } catch (err) {
+        console.warn('[DataContext] Profiles cloud sync note:', err.message);
+      }
+
+      // 2. Synchronize NFC Hardware Cards from Supabase
+      try {
+        const { data: cloudCards, error: cErr } = await client
+          .from('nfc_cards')
+          .select('*')
+          .order('created_at', { ascending: false });
+
+        if (!cErr && Array.isArray(cloudCards) && cloudCards.length > 0) {
+          const localCards = StorageEngine.getCards();
+          for (const cc of cloudCards) {
+            const rawStatus = (cc.status || 'in_stock').toLowerCase();
+            const appStatus = rawStatus === 'revoked' ? 'disabled' : rawStatus;
+            const mappedCard = {
+              id: cc.id,
+              cardCode: cc.card_code,
+              cardName: `NFC Card ${cc.card_code}`,
+              chipType: cc.chip_type || 'NXP NTAG216 (888 Bytes)',
+              batch: cc.batch || 'Batch-A',
+              edition: cc.edition || 'purple',
+              customerId: cc.customer_id,
+              profileSlug: cc.profile_slug,
+              status: appStatus,
+              tapCount: cc.tap_count || 0,
+              lastTapped: cc.last_tapped_at,
+              updatedAt: cc.updated_at || cc.created_at
+            };
+            const existIdx = localCards.findIndex(c => c.cardCode === cc.card_code || c.id === cc.id);
+            if (existIdx >= 0) {
+              localCards[existIdx] = { ...localCards[existIdx], ...mappedCard };
+            } else {
+              localCards.push(mappedCard);
+            }
+          }
+          StorageEngine.saveLocalCards(localCards);
+          setCards(localCards);
+        }
+      } catch (err) {
+        console.warn('[DataContext] NFC Cards cloud sync note:', err.message);
+      }
+
+      // 3. Synchronize Customers from Supabase Auth
+      if (supabaseAdmin && supabaseAdmin.auth && supabaseAdmin.auth.admin) {
+        try {
+          const { data: userData, error: uErr } = await supabaseAdmin.auth.admin.listUsers();
+          if (!uErr && userData?.users?.length > 0) {
+            const localCusts = StorageEngine.getCustomers();
+            for (const u of userData.users) {
+              const mappedCust = {
+                id: u.id,
+                name: u.user_metadata?.name || u.user_metadata?.full_name || u.email.split('@')[0],
+                email: u.email,
+                phone: u.phone || u.user_metadata?.phone || '',
+                company: u.user_metadata?.company || '',
+                avatar: u.user_metadata?.avatar_url || u.user_metadata?.picture || '',
+                role: u.user_metadata?.role || (u.email.includes('flocard.in') ? 'owner' : 'customer'),
+                status: u.user_metadata?.status || 'active',
+                joinedDate: (u.created_at || '').split('T')[0] || new Date().toISOString().split('T')[0],
+                totalCards: 0,
+                totalDesigns: 0
+              };
+              const existIdx = localCusts.findIndex(c => c.email.toLowerCase() === u.email.toLowerCase() || c.id === u.id);
+              if (existIdx >= 0) {
+                localCusts[existIdx] = { ...localCusts[existIdx], ...mappedCust };
+              } else {
+                localCusts.unshift(mappedCust);
+              }
+            }
+            StorageEngine.saveLocalCustomers(localCusts);
+            setCustomers(localCusts);
+          }
+        } catch (err) {
+          console.warn('[DataContext] Customer cloud sync note:', err.message);
+        }
+      }
+
+      // 4. Synchronize Card Designs & Embedded Print Orders from Supabase
+      try {
+        const { data: cloudDesigns, error } = await client
+          .from('card_designs')
+          .select('*')
+          .order('created_at', { ascending: false });
+
+        if (!error && Array.isArray(cloudDesigns) && cloudDesigns.length > 0) {
+          const localDesigns = StorageEngine.getDesigns();
+          const localOrders = StorageEngine.getOrders();
+          let designsUpdated = false;
+          let ordersUpdated = false;
+
+          for (const cd of cloudDesigns) {
+            const fc = cd.front_config || {};
+            const localId = fc._localId || cd.id;
+
+            const mappedDesign = {
+              id: localId,
+              supabaseId: cd.id,
+              title: cd.title || fc.title || 'Card Design',
+              edition: cd.edition || 'purple',
+              templateType: fc.templateType || 'standard',
+              customerName: fc.customerName || fc.name || 'Valued Client',
+              customerEmail: fc.customerEmail || '',
+              customerPhone: fc.customerPhone || '',
+              company: fc.company || '',
+              front: fc,
+              back: cd.back_config || {},
+              customColors: fc.customColors || {},
+              customerLogo: fc.customerLogo || null,
+              flocardLogo: fc.flocardLogo || { size: 100, position: 'top-left' },
+              status: cd.status || 'submitted',
+              orderId: fc.orderId || fc.printOrder?.id || null,
+              submittedAt: cd.submitted_at || cd.created_at || 'Just now',
+              updatedAt: cd.updated_at || cd.created_at
+            };
+
+            const existDIdx = localDesigns.findIndex(d => d.id === localId || d.supabaseId === cd.id);
+            if (existDIdx >= 0) {
+              localDesigns[existDIdx] = { ...localDesigns[existDIdx], ...mappedDesign };
+            } else {
+              localDesigns.unshift(mappedDesign);
+              designsUpdated = true;
+            }
+
+            if (fc.printOrder) {
+              const po = fc.printOrder;
+              const existOIdx = localOrders.findIndex(o => o.id === po.id || o.orderReference === po.orderReference);
+              if (existOIdx < 0) {
+                localOrders.unshift(po);
+                ordersUpdated = true;
+              } else {
+                localOrders[existOIdx] = { ...localOrders[existOIdx], ...po };
+              }
+            }
+          }
+
+          if (designsUpdated) {
+            StorageEngine.saveLocalDesigns(localDesigns);
+            setDesigns(localDesigns);
+          }
+          if (ordersUpdated) {
+            StorageEngine.saveLocalOrders(localOrders);
+            setOrders(localOrders);
+          }
+        }
+      } catch (err) {
+        console.warn('[DataContext] Card designs cloud sync note:', err.message);
+      }
+
+      // 5. Check if native orders table exists and query it as well
+      try {
+        const { data: cloudOrders, error: ordErr } = await client
+          .from('orders')
+          .select('*')
+          .order('created_at', { ascending: false });
+        if (!ordErr && Array.isArray(cloudOrders) && cloudOrders.length > 0) {
+          const localOrders = StorageEngine.getOrders();
+          let changed = false;
+          for (const co of cloudOrders) {
+            const ordRef = co.order_reference || co.id;
+            const exist = localOrders.some(o => o.id === ordRef || o.orderReference === ordRef);
+            if (!exist) {
+              localOrders.unshift({
+                id: ordRef,
+                orderReference: ordRef,
+                customerName: co.customer_name,
+                customerEmail: co.customer_email,
+                customerPhone: co.customer_phone,
+                company: co.company,
+                status: co.status || 'new_order',
+                shippingAddress: co.shipping_address,
+                totalAmount: Number(co.total_amount) || 1899,
+                createdAt: co.created_at,
+                updatedAt: co.updated_at,
+                source: co.source || 'web_studio'
+              });
+              changed = true;
+            }
+          }
+          if (changed) {
+            StorageEngine.saveLocalOrders(localOrders);
+            setOrders(localOrders);
+          }
+        }
+      } catch (_) {}
+
+      refreshAll();
+    } catch (err) {
+      console.warn('[DataContext] Cloud sync error:', err.message);
+    }
+  };
+
   // Real-time synchronization listeners across browser windows, tabs, and local dispatches
   useEffect(() => {
+    // Initial cloud fetch on mount
+    syncCloudData();
+
+    // Supabase Realtime subscription for cross-device & cross-admin synchronization
+    let realtimeChannel = null;
+    (async () => {
+      try {
+        const { supabase, supabaseAdmin, isSupabaseConfigured } = await import('../lib/supabase.js');
+        if (!isSupabaseConfigured) return;
+        const client = supabaseAdmin || supabase;
+        if (!client) return;
+
+        realtimeChannel = client
+          .channel('cloud-admin-sync')
+          .on('postgres_changes', { event: '*', schema: 'public', table: 'profiles' }, () => {
+            syncCloudData();
+          })
+          .on('postgres_changes', { event: '*', schema: 'public', table: 'nfc_cards' }, () => {
+            syncCloudData();
+          })
+          .on('postgres_changes', { event: '*', schema: 'public', table: 'card_designs' }, () => {
+            syncCloudData();
+          })
+          .on('postgres_changes', { event: '*', schema: 'public', table: 'orders' }, () => {
+            syncCloudData();
+          })
+          .subscribe();
+      } catch (err) {
+        console.warn('[DataContext] Realtime subscribe error:', err);
+      }
+    })();
+
     const handleOrderUpdated = (e) => {
       refreshAll();
       if (e.detail) {
@@ -55,6 +351,7 @@ export function DataProvider({ children }) {
 
     const handleWindowFocus = () => {
       refreshAll();
+      syncCloudData();
     };
 
     window.addEventListener('flocard_order_updated', handleOrderUpdated);
@@ -70,6 +367,12 @@ export function DataProvider({ children }) {
     window.addEventListener('focus', handleWindowFocus);
 
     return () => {
+      if (realtimeChannel) {
+        import('../lib/supabase.js').then(({ supabase, supabaseAdmin }) => {
+          const client = supabaseAdmin || supabase;
+          if (client) client.removeChannel(realtimeChannel);
+        }).catch(() => {});
+      }
       window.removeEventListener('flocard_order_updated', handleOrderUpdated);
       window.removeEventListener('flocard_sales_updated', refreshAll);
       window.removeEventListener('flocard_invoice_settings_updated', refreshAll);
