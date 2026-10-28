@@ -15,6 +15,7 @@ import { EDITIONS, TEMPLATES, BRAND } from '../../../lib/constants';
 import { useData } from '../../../context/DataContext';
 import { uploadImage } from '../../../lib/uploadImage';
 import { queueWhatsAppNotification } from '../../../lib/whatsapp';
+import { removeLogoBackground } from '../../../lib/cardArtworkService';
 import {
   Layers,
   Type,
@@ -288,6 +289,7 @@ export default function AdminCardDesignStudio({ onAssignToOrder = null, initialD
     normalizeCustomerLogo(initialDesign?.customerLogo, initialDesign?.front?.customLogo)
   );
   const [isUploadingLogo, setIsUploadingLogo] = useState(false);
+  const [isRemovingBg, setIsRemovingBg] = useState(false);
   const logoInputRef = useRef(null);
 
   // Layer visibility & selection
@@ -537,6 +539,34 @@ export default function AdminCardDesignStudio({ onAssignToOrder = null, initialD
     setFrontConfig(prev => ({ ...prev, customLogo: null }));
     setTemplateType('standard');
     showToast('Client logo removed.');
+  };
+
+  // Remove Logo Background Action (Generates Transparent PNG)
+  const handleRemoveLogoBackground = async () => {
+    if (!customerLogo.url) return;
+    setIsRemovingBg(true);
+    showToast('Analyzing and removing logo background...', 'info');
+    try {
+      const result = await removeLogoBackground(customerLogo.url, {
+        tolerance: 38,
+        feather: 16,
+        forceOpaqueRemoval: true
+      });
+
+      if (result && result.dataUrl) {
+        pushHistory({ frontConfig, backConfig, customColors, customerLogo, edition, templateType });
+        setCustomerLogo(prev => ({ ...prev, url: result.dataUrl }));
+        setFrontConfig(prev => ({ ...prev, customLogo: result.dataUrl }));
+        showToast('✓ Logo background removed! Transparent PNG applied.');
+      } else {
+        showToast('Could not isolate background for this logo.', 'error');
+      }
+    } catch (err) {
+      console.error('Background removal error:', err);
+      showToast(err.message || 'Failed to remove logo background.', 'error');
+    } finally {
+      setIsRemovingBg(false);
+    }
   };
 
   // 1-Click WhatsApp Order Creation Action
@@ -1356,6 +1386,29 @@ export default function AdminCardDesignStudio({ onAssignToOrder = null, initialD
                     </div>
 
                     <div style={{ display: 'flex', gap: '6px', flexShrink: 0 }}>
+                      <button
+                        type="button"
+                        onClick={handleRemoveLogoBackground}
+                        disabled={isUploadingLogo || isRemovingBg}
+                        title="Remove white/solid background and convert to transparent PNG"
+                        style={{
+                          padding: '6px 10px',
+                          background: 'rgba(34, 197, 94, 0.2)',
+                          border: '1px solid rgba(34, 197, 94, 0.4)',
+                          borderRadius: '6px',
+                          fontSize: '0.72rem',
+                          color: '#4ADE80',
+                          fontWeight: 600,
+                          cursor: (isUploadingLogo || isRemovingBg) ? 'not-allowed' : 'pointer',
+                          display: 'flex',
+                          alignItems: 'center',
+                          gap: '4px'
+                        }}
+                      >
+                        <Sparkles size={13} />
+                        <span>{isRemovingBg ? 'Removing...' : 'Remove BG'}</span>
+                      </button>
+
                       <label style={{
                         padding: '6px 10px',
                         background: 'rgba(168, 85, 247, 0.2)',
@@ -1955,6 +2008,28 @@ export default function AdminCardDesignStudio({ onAssignToOrder = null, initialD
                       <span style={{ fontSize: '0.74rem', color: '#FFFFFF', fontWeight: 600, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>Active Logo</span>
                     </div>
                     <div style={{ display: 'flex', gap: '4px' }}>
+                      <button
+                        type="button"
+                        onClick={handleRemoveLogoBackground}
+                        disabled={isUploadingLogo || isRemovingBg}
+                        title="Remove background from logo"
+                        style={{
+                          padding: '4px 8px',
+                          background: 'rgba(34, 197, 94, 0.2)',
+                          border: '1px solid rgba(34, 197, 94, 0.4)',
+                          borderRadius: '6px',
+                          fontSize: '0.7rem',
+                          color: '#4ADE80',
+                          cursor: (isUploadingLogo || isRemovingBg) ? 'not-allowed' : 'pointer',
+                          display: 'flex',
+                          alignItems: 'center',
+                          gap: '4px',
+                          fontWeight: 600
+                        }}
+                      >
+                        <Sparkles size={11} />
+                        <span>{isRemovingBg ? '...' : 'Remove BG'}</span>
+                      </button>
                       <label style={{ padding: '4px 8px', background: 'rgba(168, 85, 247, 0.2)', border: '1px solid rgba(168, 85, 247, 0.4)', borderRadius: '6px', fontSize: '0.7rem', color: '#D8B4FE', cursor: isUploadingLogo ? 'not-allowed' : 'pointer' }}>
                         {isUploadingLogo ? '...' : 'Change'}
                         <input type="file" accept="image/png,image/jpeg,image/svg+xml,image/webp" onChange={handleLogoUpload} disabled={isUploadingLogo} style={{ display: 'none' }} />

@@ -608,44 +608,21 @@ export async function renderAuthoritativeCardCanvas(designOrOrder, side = 'front
   const fillW = withBleed ? canvasW : baseW;
   const fillH = withBleed ? canvasH : baseH;
 
+  // For prepress PDF downloads & print-ready artwork:
+  // Solid flat background matching text contrast (Solid Black or Solid White, NO gradients, NO web textures)
+  let solidBg = '#000000';
   if (customCardBg) {
-    ctx.fillStyle = customCardBg;
-    ctx.fillRect(0, 0, fillW, fillH);
+    solidBg = customCardBg;
   } else if (isWhite) {
-    ctx.fillStyle = '#FFFFFF';
-    ctx.fillRect(0, 0, fillW, fillH);
+    solidBg = '#FFFFFF';
   } else {
-    // Edition background gradient
-    const grad = ctx.createLinearGradient(0, 0, fillW, fillH);
-    if (edition === 'purple') {
-      grad.addColorStop(0, '#090510');
-      grad.addColorStop(0.5, '#1e0836');
-      grad.addColorStop(1, '#090510');
-    } else if (edition === 'gold') {
-      grad.addColorStop(0, '#0C0B0A');
-      grad.addColorStop(0.5, '#151310');
-      grad.addColorStop(1, '#090807');
-    } else if (edition === 'metal') {
-      grad.addColorStop(0, '#141518');
-      grad.addColorStop(0.5, '#24262B');
-      grad.addColorStop(1, '#111215');
-    } else {
-      grad.addColorStop(0, '#0a0d13');
-      grad.addColorStop(0.5, '#1a202c');
-      grad.addColorStop(1, '#0a0d13');
-    }
-    ctx.fillStyle = grad;
-    ctx.fillRect(0, 0, fillW, fillH);
+    const nColor = (customColors.nameColor || defaults.nameColor || '').toLowerCase();
+    const isDarkText = nColor === '#000000' || nColor === '#111111' || nColor === '#1a1a1a';
+    solidBg = isDarkText ? '#FFFFFF' : '#000000';
   }
 
-  // Load and draw background texture image if present
-  const bgTextureSrc = config.backgroundImage || editionInfo.bgImage;
-  if (bgTextureSrc && !isWhite && !customCardBg) {
-    const bgImg = await loadImageAsset(bgTextureSrc);
-    if (bgImg) {
-      ctx.drawImage(bgImg, 0, 0, fillW, fillH);
-    }
-  }
+  ctx.fillStyle = solidBg;
+  ctx.fillRect(0, 0, fillW, fillH);
   ctx.restore();
 
   // 2. Corner clipping (Only when exporting finished trimmed preview without bleed)

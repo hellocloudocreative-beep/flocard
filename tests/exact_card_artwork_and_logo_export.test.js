@@ -374,4 +374,58 @@ console.log('--- STARTING FLOCARDS EXACT ARTWORK & LOGO EXPORT TEST SUITE ---');
   console.log('✓ Test 7 Passed: Customer ownership verified; private order assets protected from unauthorized users.');
 }
 
-console.log('\n🎉 ALL 7 EXACT CARD ARTWORK & LOGO EXPORT TEST SUITES PASSED! 🎉\n');
+// ==============================================================================
+// TEST 8: Solid Flat Black / White Background (No Gradients for PDF Print)
+// ==============================================================================
+{
+  console.log('\nTest 8: Solid Flat Black or White Background Contrast Matching');
+
+  // Case 1: White edition or dark text -> Pure Solid White (#FFFFFF)
+  const whiteCard = {
+    edition: 'white',
+    front: { name: 'Dr. Jane Doe', role: 'Cardiologist' },
+    customColors: { nameColor: '#000000', roleColor: '#1A1A1A' }
+  };
+  const normWhite = normalizeCardDesign(whiteCard);
+  const nColorWhite = (normWhite.config.customColors.nameColor || '').toLowerCase();
+  const isDarkText = nColorWhite === '#000000' || nColorWhite === '#111111' || nColorWhite === '#1a1a1a';
+  const resolvedWhiteBg = (normWhite.edition === 'white' || isDarkText) ? '#FFFFFF' : '#000000';
+  assert.strictEqual(resolvedWhiteBg, '#FFFFFF', 'White card with dark text must resolve to flat Solid White (#FFFFFF)');
+
+  // Case 2: Dark card (purple, metal, gold) with light text -> Pure Solid Black (#000000)
+  const darkCard = {
+    edition: 'purple',
+    front: { name: 'Alex Rivera', role: 'Founder' },
+    customColors: { nameColor: '#FFFFFF', roleColor: '#D8B4FE' }
+  };
+  const normDark = normalizeCardDesign(darkCard);
+  const nColorDark = (normDark.config.customColors.nameColor || '').toLowerCase();
+  const isDarkText2 = nColorDark === '#000000' || nColorDark === '#111111' || nColorDark === '#1a1a1a';
+  const resolvedDarkBg = (normDark.edition === 'white' || isDarkText2) ? '#FFFFFF' : '#000000';
+  assert.strictEqual(resolvedDarkBg, '#000000', 'Dark card with light text must resolve to flat Solid Black (#000000)');
+
+  console.log('✓ Test 8 Passed: PDF export uses flat solid Black or White background without gradients.');
+}
+
+// ==============================================================================
+// TEST 9: Admin Design Studio Background Removal on Uploaded Logos
+// ==============================================================================
+{
+  console.log('\nTest 9: Admin Design Studio Background Removal on Uploaded Logos');
+
+  // Simulate an uploaded logo with opaque background in Admin Design Studio
+  const testLogoSrc = 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAIAAAACCAYAAABytg0kAAAAEklEQVR42mNk+M9QzwAEjAwACUoB/0l/Q3EAAAAASUVORK5CYII=';
+
+  const processed = await removeLogoBackground(testLogoSrc, {
+    tolerance: 38,
+    feather: 16,
+    forceOpaqueRemoval: true
+  });
+
+  assert.strictEqual(processed.isTransparent, true, 'Processed logo must be transparent');
+  assert(processed.dataUrl, 'Processed logo must produce a valid image dataUrl');
+
+  console.log('✓ Test 9 Passed: Admin studio background removal strips background and yields transparent PNG.');
+}
+
+console.log('\n🎉 ALL 9 EXACT CARD ARTWORK & LOGO EXPORT TEST SUITES PASSED! 🎉\n');

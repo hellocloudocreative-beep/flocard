@@ -349,41 +349,19 @@ export default function CardCanvas({
     ctx.roundRect(0, 0, exportW, exportH, cornerRadius);
     ctx.clip();
 
-    // 1. Draw base fallback gradient
-    const grad = ctx.createLinearGradient(0, 0, exportW, exportH);
+    // 1. Clean solid background matching text contrast (Solid Black or Solid White, NO gradients, NO web textures)
+    let solidBg = '#000000';
     if (edition === 'white') {
-      grad.addColorStop(0, '#FFFFFF');
-      grad.addColorStop(1, '#F8FAFC');
-    } else if (edition === 'purple') {
-      grad.addColorStop(0, '#090510');
-      grad.addColorStop(0.5, '#1e0836');
-      grad.addColorStop(1, '#090510');
-    } else if (edition === 'gold') {
-      grad.addColorStop(0, '#0C0B0A');
-      grad.addColorStop(0.5, '#151310');
-      grad.addColorStop(1, '#090807');
-    } else if (edition === 'metal') {
-      grad.addColorStop(0, '#141518');
-      grad.addColorStop(0.5, '#24262B');
-      grad.addColorStop(1, '#111215');
+      solidBg = '#FFFFFF';
     } else {
-      grad.addColorStop(0, '#0a0d13');
-      grad.addColorStop(0.5, '#1a202c');
-      grad.addColorStop(1, '#0a0d13');
+      const nColor = (colors.nameColor || '').toLowerCase();
+      const isDarkText = nColor === '#000000' || nColor === '#111111' || nColor === '#1a1a1a';
+      solidBg = isDarkText ? '#FFFFFF' : (customColors.cardBg || '#000000');
     }
-    ctx.fillStyle = grad;
+    ctx.fillStyle = solidBg;
     ctx.fillRect(0, 0, exportW, exportH);
 
-    // 2. Draw authentic texture background if available
-    const bgImg = new Image();
-    bgImg.src = editionInfo.bgImage;
-    bgImg.onload = () => {
-      ctx.drawImage(bgImg, 0, 0, exportW, exportH);
-      renderCanvasElements(ctx, exportW, exportH);
-    };
-    bgImg.onerror = () => {
-      renderCanvasElements(ctx, exportW, exportH);
-    };
+    renderCanvasElements(ctx, exportW, exportH);
 
     function renderCanvasElements(ctx, w, h) {
       // Edge stroke with restrained highlight

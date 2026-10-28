@@ -59,7 +59,8 @@ import {
   downloadCanvasPNG,
   downloadBothSides,
   createCombinedArtworkCanvas,
-  copyCanvasToClipboard
+  copyCanvasToClipboard,
+  removeLogoBackground
 } from '../lib/pdfExport';
 import { useData } from '../context/DataContext';
 import { useAuth } from '../context/AuthContext';
@@ -521,6 +522,25 @@ export default function Designer() {
     };
     reader.readAsDataURL(file);
     e.target.value = '';
+  };
+
+  const [isRemovingLogoBg, setIsRemovingLogoBg] = useState(false);
+  const handleRemoveLogoBg = async () => {
+    if (!customerLogo.url) return;
+    setIsRemovingLogoBg(true);
+    notify('Processing Logo', 'Removing background and converting to transparent PNG...');
+    try {
+      const res = await removeLogoBackground(customerLogo.url, { forceOpaqueRemoval: true });
+      if (res && res.dataUrl) {
+        setCustomerLogo(prev => ({ ...prev, url: res.dataUrl }));
+        setFrontConfig(prev => ({ ...prev, customLogo: res.dataUrl }));
+        notify('Background Removed', 'Transparent logo applied to card');
+      }
+    } catch (err) {
+      notify('Error', err.message || 'Failed to remove background');
+    } finally {
+      setIsRemovingLogoBg(false);
+    }
   };
 
   // Save design to account or submit for print
@@ -1532,16 +1552,40 @@ export default function Designer() {
                   {customerLogo.url && (
                     <div style={{ marginTop: '8px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                       <span style={{ fontSize: '0.7rem', color: '#22c55e' }}>✓ Logo placed</span>
-                      <button
-                        type="button"
-                        onClick={() => {
-                          setCustomerLogo(prev => ({ ...prev, url: null }));
-                          setFrontConfig(prev => ({ ...prev, customLogo: null }));
-                        }}
-                        style={{ background: 'none', border: 'none', color: '#ef4444', fontSize: '0.7rem', cursor: 'pointer' }}
-                      >
-                        Remove
-                      </button>
+                      <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
+                        <button
+                          type="button"
+                          onClick={handleRemoveLogoBg}
+                          disabled={isRemovingLogoBg}
+                          style={{
+                            background: 'rgba(34, 197, 94, 0.15)',
+                            border: '1px solid rgba(34, 197, 94, 0.35)',
+                            color: '#4ADE80',
+                            fontSize: '0.7rem',
+                            fontWeight: 600,
+                            padding: '2px 8px',
+                            borderRadius: '5px',
+                            cursor: isRemovingLogoBg ? 'wait' : 'pointer',
+                            display: 'inline-flex',
+                            alignItems: 'center',
+                            gap: '3px'
+                          }}
+                          title="Remove solid/white background from logo"
+                        >
+                          <Sparkles size={11} />
+                          <span>{isRemovingLogoBg ? '...' : 'Remove BG'}</span>
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setCustomerLogo(prev => ({ ...prev, url: null }));
+                            setFrontConfig(prev => ({ ...prev, customLogo: null }));
+                          }}
+                          style={{ background: 'none', border: 'none', color: '#ef4444', fontSize: '0.7rem', cursor: 'pointer' }}
+                        >
+                          Remove
+                        </button>
+                      </div>
                     </div>
                   )}
                 </div>
