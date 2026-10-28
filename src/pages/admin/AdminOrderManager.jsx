@@ -47,6 +47,7 @@ import { ORDER_STAGES, EXCEPTION_STAGES, getOrderStageInfo, normalizeOrderStatus
 import { EDITIONS } from '../../lib/constants';
 import Card3DPreview from '../../components/Card3DPreview';
 import CustomerCardPreview from '../../components/CustomerCardPreview';
+import OrderPrintDownloadsPanel from '../../components/admin/OrderPrintDownloadsPanel';
 import { uploadImage } from '../../lib/uploadImage';
 import { queueWhatsAppNotification, getWhatsAppOutbox, retryWhatsAppMessage } from '../../lib/whatsapp';
 
@@ -1229,6 +1230,9 @@ export default function AdminOrderManager({ initialOrderId = null }) {
             <div style={{ marginBottom: '16px' }}>
               <CustomerCardPreview order={selectedOrder} isLight={isLight} />
             </div>
+
+            {/* Authoritative Print-Ready Artwork & Transparent Logo Downloads */}
+            <OrderPrintDownloadsPanel order={selectedOrder} isLight={isLight} isAdmin={true} />
 
             {/* Order Financials & Shipping Details */}
             <div style={{ padding: '14px', borderRadius: '12px', backgroundColor: elevatedBg, border: `1px solid ${cardBorder}`, marginBottom: '16px' }}>

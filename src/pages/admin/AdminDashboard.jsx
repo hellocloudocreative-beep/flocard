@@ -92,6 +92,7 @@ import AdminInvoiceManager from './invoices/AdminInvoiceManager';
 import AdminSalesManager from './sales/AdminSalesManager';
 import AdminLogin from '../auth/AdminLogin';
 import CustomerCardPreview from '../../components/CustomerCardPreview';
+import OrderPrintDownloadsPanel from '../../components/admin/OrderPrintDownloadsPanel';
 import AdminCardDesignStudio from './design/AdminCardDesignStudio';
 import OwnerActivityFeed from './activity/OwnerActivityFeed';
 import StaffPermissionsManager from './staff/StaffPermissionsManager';
@@ -6547,6 +6548,13 @@ export default function AdminDashboard({ initialTab = 'overview', initialOrderId
               />
             </div>
 
+            {/* Authoritative Print Artwork & Transparent Logo Downloads */}
+            <OrderPrintDownloadsPanel
+              order={reviewModalDesign}
+              isLight={!isDark}
+              isAdmin={true}
+            />
+
             {/* Review Notes */}
             <div style={{ marginTop: '20px' }}>
               <label style={{ display: 'block', fontSize: '0.82rem', fontWeight: 600, color: 'var(--adm-text-primary)', marginBottom: '6px' }}>
@@ -6574,7 +6582,7 @@ export default function AdminDashboard({ initialTab = 'overview', initialOrderId
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: '24px', flexWrap: 'wrap', gap: '12px' }}>
               <button
                 type="button"
-                onClick={() => exportCardPDF(reviewModalDesign.front, reviewModalDesign.back, reviewModalDesign.edition)}
+                onClick={() => exportCardPDF(reviewModalDesign)}
                 style={{
                   display: 'flex',
                   alignItems: 'center',

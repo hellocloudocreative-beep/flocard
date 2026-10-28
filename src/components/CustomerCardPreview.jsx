@@ -13,141 +13,10 @@ import Card3DPreview from './Card3DPreview';
 import { Eye, RotateCw, AlertTriangle, CheckCircle2, QrCode, Type, Image as ImageIcon, Download, Printer } from 'lucide-react';
 import { EDITIONS } from '../lib/constants';
 import { useData } from '../context/DataContext';
-import { exportCardPDF, downloadBothSides } from '../lib/pdfExport';
+import { exportCardPDF, downloadBothSides, generateCardPrintPDF, renderAuthoritativeCardCanvas } from '../lib/pdfExport';
+import { normalizeCardDesign } from '../lib/cardArtworkService';
 
-/**
- * Normalizes any order, design, or raw config object into standard CardCanvas props.
- */
-export function normalizeCardDesign(source = {}, fallbackDesigns = []) {
-  if (!source) {
-    return {
-      edition: 'purple',
-      templateType: 'standard',
-      isLegacyFallback: true,
-      config: {
-        front: { name: 'Valued Client', role: 'Executive', tagline: 'One Tap Every Connection' },
-        back: { qrUrl: 'https://flocard.in/p/your-name' },
-        customColors: {},
-        customerLogo: null,
-        flocardLogo: { size: 100, position: 'top-left' }
-      }
-    };
-  }
-
-  // 1. Check embedded frozen design snapshot first (order.design)
-  // 2. Otherwise lookup fallbackDesigns by source.designId
-  let linkedDesign = null;
-  if (source.design && typeof source.design === 'object') {
-    linkedDesign = source.design;
-  } else if (source.designId && Array.isArray(fallbackDesigns)) {
-    linkedDesign = fallbackDesigns.find(d => d.id === source.designId);
-  }
-
-  const configSource = source.config || linkedDesign?.config || {};
-
-  const edition = (
-    source.edition ||
-    source.editionKey ||
-    linkedDesign?.edition ||
-    linkedDesign?.editionKey ||
-    'purple'
-  ).toLowerCase();
-
-  const customerLogoObj = (
-    source.customerLogo ||
-    configSource.customerLogo ||
-    linkedDesign?.customerLogo ||
-    source.frontConfig?.customLogo ||
-    source.front?.customLogo ||
-    linkedDesign?.front?.customLogo ||
-    null
-  );
-  const customerLogoUrl = typeof customerLogoObj === 'string' ? customerLogoObj : customerLogoObj?.url || null;
-
-  const templateType = (
-    source.templateType ||
-    configSource.templateType ||
-    linkedDesign?.templateType ||
-    (customerLogoUrl ? 'customer_logo' : 'standard')
-  );
-
-  const frontSource = source.frontConfig || source.front || configSource.front || linkedDesign?.front || {};
-  const backSource = source.backConfig || source.back || configSource.back || linkedDesign?.back || {};
-  const customColors = source.customColors || configSource.customColors || linkedDesign?.customColors || {};
-
-  // Check if this is an older legacy order with no custom artwork saved
-  const hasCustomArtwork = Boolean(
-    source.design ||
-    linkedDesign ||
-    source.frontConfig ||
-    source.front ||
-    configSource.front ||
-    customerLogoUrl ||
-    (customColors && Object.keys(customColors).length > 0)
-  );
-  const isLegacyFallback = !hasCustomArtwork;
-
-  const front = {
-    name: frontSource.name || source.customerName || linkedDesign?.customerName || (isLegacyFallback ? 'Legacy Order' : 'Valued Client'),
-    role: frontSource.role || source.role || (isLegacyFallback ? '' : 'Executive'),
-    company: frontSource.company || source.company || linkedDesign?.company || (isLegacyFallback ? '' : 'FLOCARD'),
-    details: frontSource.details || '',
-    tagline: frontSource.tagline || source.tagline || (isLegacyFallback ? '' : 'One Tap Every Connection'),
-    showTagline: frontSource.showTagline ?? true,
-    showNfc: frontSource.showNfc ?? (edition !== 'metal'),
-    nfcPosition: frontSource.nfcPosition || 'top-right',
-    fontSize: frontSource.fontSize || 'medium',
-    alignment: frontSource.alignment || 'left',
-    fontFamily: frontSource.fontFamily || 'Space Grotesk',
-    roleFontFamily: frontSource.roleFontFamily || 'Inter',
-    detailsFontFamily: frontSource.detailsFontFamily || 'Inter',
-    taglineFontFamily: frontSource.taglineFontFamily || 'Inter',
-    customLogo: customerLogoUrl
-  };
-
-  const back = {
-    qrUrl: backSource.qrUrl || (source.cardCode ? `https://flocard.in/t/${source.cardCode}` : source.profileSlug ? `https://flocard.in/p/${source.profileSlug}` : 'https://flocard.in/p/your-name'),
-    subtext: backSource.subtext || 'SCAN ME',
-    showNfcSpecs: backSource.showNfcSpecs ?? true,
-    specsText: backSource.specsText || 'NFC | PORTFOLIO | CONTACT | CONNECT',
-    brandUrl: backSource.brandUrl || 'flocard.in'
-  };
-
-  const customerLogo = typeof customerLogoObj === 'object' && customerLogoObj !== null
-    ? {
-        url: customerLogoUrl,
-        size: customerLogoObj.size ?? 100,
-        posX: customerLogoObj.posX ?? 0,
-        posY: customerLogoObj.posY ?? 0,
-        showCircleBadge: customerLogoObj.showCircleBadge ?? true
-      }
-    : {
-        url: customerLogoUrl,
-        size: 100,
-        posX: 0,
-        posY: 0,
-        showCircleBadge: true
-      };
-
-  const flocardLogo = source.flocardLogo || configSource.flocardLogo || linkedDesign?.flocardLogo || {
-    size: 100,
-    position: templateType === 'customer_logo' ? 'bottom-right' : 'top-left'
-  };
-
-  return {
-    edition,
-    templateType,
-    isLegacyFallback,
-    config: {
-      front,
-      back,
-      customColors,
-      customerLogo,
-      flocardLogo,
-      templateType
-    }
-  };
-}
+export { normalizeCardDesign };
 
 export default function CustomerCardPreview({
   order = null,
@@ -187,15 +56,25 @@ export default function CustomerCardPreview({
   const handleExportPDF = async () => {
     setIsExporting(true);
     try {
-      await exportCardPDF({
-        frontCanvas: frontCanvasRef.current,
-        backCanvas: backCanvasRef.current,
-        designName: config.front?.name ? `${config.front.name}-FLOCARD` : 'FLOCARD-Card',
-        edition: editionName
+      // Authoritative prepress export: generates directly from design data with CR80 dimensions & bleed
+      await generateCardPrintPDF(design || order, {
+        mode: 'dual',
+        withBleed: true,
+        download: true
       });
     } catch (e) {
       console.error('PDF export error:', e);
-      alert('Unable to generate PDF. Please ensure all card assets are loaded.');
+      // Fallback to canvas reference if available
+      try {
+        await exportCardPDF({
+          frontCanvas: frontCanvasRef.current,
+          backCanvas: backCanvasRef.current,
+          designName: config.front?.name ? `${config.front.name}-FLOCARD` : 'FLOCARD-Card',
+          edition: editionName
+        });
+      } catch (errFallback) {
+        alert('Unable to generate PDF. Please ensure all card assets are loaded.');
+      }
     } finally {
       setIsExporting(false);
     }
@@ -204,9 +83,18 @@ export default function CustomerCardPreview({
   const handleDownloadArtwork = async () => {
     setIsExporting(true);
     try {
+      let front = frontCanvasRef.current;
+      let back = backCanvasRef.current;
+      if (!front || typeof front.toDataURL !== 'function') {
+        front = await renderAuthoritativeCardCanvas(design || order, 'front', { withBleed: false });
+      }
+      if (!back || typeof back.toDataURL !== 'function') {
+        back = await renderAuthoritativeCardCanvas(design || order, 'back', { withBleed: false });
+      }
+
       await downloadBothSides({
-        frontCanvas: frontCanvasRef.current,
-        backCanvas: backCanvasRef.current,
+        frontCanvas: front,
+        backCanvas: back,
         designName: config.front?.name ? `${config.front.name}-FLOCARD` : 'FLOCARD-Card',
         editionName
       });

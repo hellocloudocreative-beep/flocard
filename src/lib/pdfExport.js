@@ -5,12 +5,52 @@
    ========================================================================== */
 
 import { jsPDF } from 'jspdf';
+import {
+  generateCardPrintPDF,
+  renderAuthoritativeCardCanvas,
+  generateIsolatedLogoAsset,
+  removeLogoBackground,
+  downloadArtworkFile,
+  CARD_DIMENSIONS_MM,
+  PRINT_DPI,
+  BASE_ARTWORK_PIXELS
+} from './cardArtworkService';
+
+// Re-export prepress and artwork engine utilities
+export {
+  generateCardPrintPDF,
+  renderAuthoritativeCardCanvas,
+  generateIsolatedLogoAsset,
+  removeLogoBackground,
+  downloadArtworkFile,
+  CARD_DIMENSIONS_MM,
+  PRINT_DPI,
+  BASE_ARTWORK_PIXELS
+};
 
 /**
  * Exports a double-sided print-ready PDF containing Front and Back card artwork
  * with standard bleed area, trim marks, and print metadata.
+ * Seamlessly accepts:
+ * 1. Object with canvases: { frontCanvas, backCanvas, designName, edition }
+ * 2. Positional canvases: exportCardPDF(frontCanvas, backCanvas, edition, designName)
+ * 3. Authoritative design/order record: exportCardPDF(orderOrDesign)
  */
 export async function exportCardPDF(arg1 = {}, arg2 = null, arg3 = null, arg4 = null) {
+  // If arg1 is an order/design record with no toDataURL canvas
+  const isDirectCanvas = arg1 && typeof arg1.toDataURL === 'function';
+  const hasCanvasProps = arg1 && (
+    (arg1.frontCanvas && typeof arg1.frontCanvas.toDataURL === 'function') ||
+    (arg1.backCanvas && typeof arg1.backCanvas.toDataURL === 'function')
+  );
+
+  if (!isDirectCanvas && !hasCanvasProps && arg1 && typeof arg1 === 'object') {
+    // Check if this is an order or design object (e.g. from review modal or admin order list)
+    if (arg1.front || arg1.back || arg1.frontConfig || arg1.orderReference || arg1.edition || arg1.designId || arg1.design) {
+      return generateCardPrintPDF(arg1, { withBleed: true, download: true });
+    }
+  }
+
   // Support both object call: exportCardPDF({ frontCanvas, backCanvas, designName, edition })
   // and positional call: exportCardPDF(frontCanvasOrConfig, backCanvasOrConfig, edition, designName)
   let frontCanvas = null;
@@ -29,6 +69,11 @@ export async function exportCardPDF(arg1 = {}, arg2 = null, arg3 = null, arg4 = 
     if (arg2 && typeof arg2.toDataURL === 'function') backCanvas = arg2;
     if (typeof arg3 === 'string') edition = arg3;
     if (typeof arg4 === 'string') designName = arg4;
+  }
+
+  // If canvases are still missing, try rendering them from config
+  if (!frontCanvas && !backCanvas && arg1) {
+    return generateCardPrintPDF(arg1, { withBleed: true, download: true });
   }
 
   // CR80 Card Dimensions in millimeters
