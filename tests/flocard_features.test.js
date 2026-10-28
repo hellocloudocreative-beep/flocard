@@ -23,15 +23,15 @@ console.log('--- STARTING FLOCARD INTEGRATION TESTS ---\n');
 
 // 1. ORDER STAGE NORMALIZATION & TRANSITIONS
 console.log('Test 1: Order Stage Normalization & Metadata');
-assert.strictEqual(normalizeOrderStatus('pending'), 'design_submitted');
-assert.strictEqual(normalizeOrderStatus('processing'), 'artwork_approved');
-assert.strictEqual(normalizeOrderStatus('printing'), 'manufacturing_started');
+assert.strictEqual(normalizeOrderStatus('pending'), 'new_order');
+assert.strictEqual(normalizeOrderStatus('processing'), 'design_review');
+assert.strictEqual(normalizeOrderStatus('printing'), 'manufacturing');
 assert.strictEqual(normalizeOrderStatus('shipped'), 'dispatched');
 assert.strictEqual(normalizeOrderStatus('delivered'), 'delivered');
 
-const stageInfo = getOrderStageInfo('manufacturing_started');
-assert.strictEqual(stageInfo.label, 'Manufacturing Started');
-assert.strictEqual(stageInfo.step, 3);
+const stageInfo = getOrderStageInfo('manufacturing');
+assert.strictEqual(stageInfo.label, 'Manufacturing');
+assert.strictEqual(stageInfo.step, 6);
 console.log('✓ Order stages and normalization verified.');
 
 // 2. MOCK USERS FOR SECURITY TESTING
@@ -64,7 +64,7 @@ const newOrder = {
   customerId: customerA.id,
   customerName: customerA.name,
   customerEmail: customerA.email,
-  status: 'design_submitted',
+  status: 'new_order',
   edition: 'purple',
   quantity: 1,
   total: 99
@@ -89,7 +89,7 @@ console.log('✓ Customer data isolation confirmed: Customer B cannot access Cus
 console.log('\nTest 3: Admin Controlled Status Transition & Internal Note Protection');
 const updateResult = StorageEngine.updateOrderStatus(
   'ord_test_9999',
-  'artwork_approved',
+  'design_review',
   {
     publicMessage: 'Your artwork has been inspected and approved by FLOCARD design team.',
     internalNote: 'CONFIDENTIAL: Customer requested matte gold foil border test run.',
@@ -98,11 +98,11 @@ const updateResult = StorageEngine.updateOrderStatus(
 );
 
 assert.strictEqual(updateResult.success, true);
-assert.strictEqual(updateResult.order.status, 'artwork_approved');
+assert.strictEqual(updateResult.order.status, 'design_review');
 
 // Inspect what Customer A receives vs Admin
 const custAOrderView = StorageEngine.getOrderById('ord_test_9999', customerA);
-assert.strictEqual(custAOrderView.status, 'artwork_approved');
+assert.strictEqual(custAOrderView.status, 'design_review');
 assert.ok(custAOrderView.internalNotes === undefined, 'Customer A MUST NOT receive internal notes');
 
 const adminOrderView = StorageEngine.getOrderById('ord_test_9999', adminUser);
@@ -119,8 +119,8 @@ console.log('\nTest 4: Immutable Audit Trail');
 const history = StorageEngine.getOrderHistory('ord_test_9999', customerA);
 assert.ok(history.length >= 1, 'History must contain status transitions');
 const latestEvent = history[history.length - 1];
-assert.strictEqual(latestEvent.previousStatus, 'design_submitted');
-assert.strictEqual(latestEvent.newStatus, 'artwork_approved');
+assert.strictEqual(latestEvent.previousStatus, 'new_order');
+assert.strictEqual(latestEvent.newStatus, 'design_review');
 assert.strictEqual(latestEvent.publicMessage, 'Your artwork has been inspected and approved by FLOCARD design team.');
 assert.strictEqual(latestEvent.actorUserId, adminUser.id);
 console.log('✓ Immutable audit history verified.');
@@ -131,7 +131,7 @@ const custANotifs = StorageEngine.getNotifications(customerA);
 assert.ok(custANotifs.length >= 1, 'Customer A should have received a notification');
 const orderNotif = custANotifs.find(n => n.orderId === 'ord_test_9999');
 assert.ok(orderNotif, 'Notification must link to order 9999');
-assert.strictEqual(orderNotif.status, 'artwork_approved');
+assert.strictEqual(orderNotif.status, 'design_review');
 assert.strictEqual(orderNotif.readAt, null);
 
 // Customer B must NOT see Customer A's notification
@@ -194,7 +194,7 @@ const submittedOrder = StorageEngine.createOrderFromDesign(
 );
 
 assert.ok(submittedOrder, 'Order should be created from design');
-assert.strictEqual(submittedOrder.status, 'design_submitted');
+assert.strictEqual(submittedOrder.status, 'new_order');
 assert.strictEqual(submittedOrder.customerId, customerA.id);
 
 // Admin should immediately see the order in admin queue

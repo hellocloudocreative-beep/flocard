@@ -1,6 +1,6 @@
 /* ==========================================================================
    FLOCARD CUSTOMER DASHBOARD — OVERVIEW TAB
-   Displays real database metrics, active cards, orders in progress, and honest empty states.
+   Displays real database metrics, active cards, orders in progress, appointments, and honest empty states.
    ========================================================================== */
 
 import React, { useState } from 'react';
@@ -10,6 +10,8 @@ import {
   FileText,
   Package,
   Clock,
+  Calendar,
+  Mail,
   ArrowRight,
   Sparkles,
   ExternalLink,
@@ -26,6 +28,7 @@ export default function CustomerOverviewTab({
   cards = [],
   profiles = [],
   orders = [],
+  appointments = [],
   designs = [],
   onNavigateTab,
   onViewOrder
@@ -36,6 +39,9 @@ export default function CustomerOverviewTab({
   const pendingCards = cards.filter(c => c.status !== 'active' && c.status !== 'revoked').length;
   const totalProfiles = profiles.length;
   const ordersInProgress = orders.filter(o => o.status !== 'delivered' && o.status !== 'cancelled').length;
+  const totalAppointments = appointments.length;
+  const confirmedAppointments = appointments.filter(a => a.status === 'confirmed').length;
+  const pendingAppointments = appointments.filter(a => a.status === 'pending').length;
 
   const primaryProfile = profiles[0] || null;
   const [copiedPrimary, setCopiedPrimary] = useState(false);
@@ -96,9 +102,30 @@ export default function CustomerOverviewTab({
             <div style={{ fontSize: '0.72rem', textTransform: 'uppercase', letterSpacing: '0.05em', color: 'var(--accent-purple)', fontWeight: 700 }}>
               FLOCARD MEMBER ACCOUNT
             </div>
-            <h1 style={{ fontSize: '1.6rem', color: 'var(--text-primary)', margin: '4px 0', fontWeight: 800 }}>
-              Welcome back, {customer?.name || 'Member'}
-            </h1>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '10px', flexWrap: 'wrap', margin: '4px 0' }}>
+              <h1 style={{ fontSize: '1.6rem', color: 'var(--text-primary)', margin: 0, fontWeight: 800 }}>
+                Welcome back, {customer?.name || 'Member'}
+              </h1>
+              {customer?.email && (
+                <div
+                  style={{
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    gap: '5px',
+                    padding: '3px 10px',
+                    borderRadius: '9999px',
+                    backgroundColor: 'rgba(107, 0, 255, 0.12)',
+                    border: '1px solid rgba(168, 85, 247, 0.3)',
+                    color: 'var(--accent-purple)',
+                    fontSize: '0.74rem',
+                    fontWeight: 600
+                  }}
+                >
+                  <Mail size={12} />
+                  <span>{customer.email}</span>
+                </div>
+              )}
+            </div>
             <p style={{ margin: 0, fontSize: '0.84rem', color: 'var(--text-secondary)' }}>
               {primaryProfile ? (
                 <>
@@ -148,6 +175,15 @@ export default function CustomerOverviewTab({
               <ExternalLink size={13} />
             </a>
           )}
+          <button
+            type="button"
+            onClick={() => onNavigateTab('appointments')}
+            className="btn btn-outline btn-sm"
+            style={{ gap: '6px' }}
+          >
+            <Calendar size={13} />
+            <span>Bookings ({appointments.length})</span>
+          </button>
           <a href="/designer" className="btn btn-primary btn-sm" style={{ gap: '6px' }}>
             <Sparkles size={14} />
             <span>Customize New Card</span>
@@ -232,6 +268,169 @@ export default function CustomerOverviewTab({
             Fulfillment Pipeline
           </div>
         </div>
+
+        {/* Metric 6: Appointments */}
+        <div
+          className="glass-panel"
+          onClick={() => onNavigateTab && onNavigateTab('appointments')}
+          style={{
+            padding: '20px',
+            borderRadius: '14px',
+            backgroundColor: 'var(--card-surface)',
+            border: '1px solid var(--border-color)',
+            cursor: 'pointer',
+            transition: 'border-color 0.15s ease'
+          }}
+        >
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
+            <span style={{ fontSize: '0.74rem', textTransform: 'uppercase', fontWeight: 600, color: 'var(--text-muted)' }}>Appointments</span>
+            <Calendar size={16} color="var(--accent-purple)" />
+          </div>
+          <div style={{ fontSize: '1.9rem', fontWeight: 800, color: 'var(--text-primary)', fontFamily: 'var(--font-display)' }}>
+            {totalAppointments}
+          </div>
+          <div style={{ fontSize: '0.74rem', color: 'var(--text-muted)', marginTop: '4px' }}>
+            {confirmedAppointments} Confirmed • {pendingAppointments} Pending
+          </div>
+        </div>
+      </div>
+
+      {/* Upcoming Client Appointments Section */}
+      <div
+        className="glass-panel"
+        style={{
+          padding: '24px',
+          backgroundColor: 'var(--card-surface)',
+          borderRadius: '16px',
+          border: '1px solid var(--border-color)',
+          display: 'flex',
+          flexDirection: 'column'
+        }}
+      >
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px', flexWrap: 'wrap', gap: '10px' }}>
+          <div>
+            <h3 style={{ margin: 0, fontSize: '1.05rem', color: 'var(--text-primary)', fontWeight: 700, display: 'flex', alignItems: 'center', gap: '8px' }}>
+              <Calendar size={16} color="var(--accent-purple)" />
+              <span>Upcoming Client Appointments</span>
+            </h3>
+            <p style={{ margin: '3px 0 0', fontSize: '0.76rem', color: 'var(--text-secondary)' }}>
+              Client bookings scheduled through your public FLOCARD profile links.
+            </p>
+          </div>
+          {appointments.length > 0 && (
+            <button
+              type="button"
+              onClick={() => onNavigateTab('appointments')}
+              className="btn btn-outline btn-xs"
+              style={{ fontSize: '0.74rem' }}
+            >
+              <span>Manage All ({appointments.length})</span>
+              <ArrowRight size={12} />
+            </button>
+          )}
+        </div>
+
+        {appointments.length > 0 ? (
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(min(100%, 280px), 1fr))', gap: '12px' }}>
+            {appointments.slice(0, 4).map((appt) => {
+              const isConfirmed = appt.status === 'confirmed';
+              const isPending = appt.status === 'pending';
+              return (
+                <div
+                  key={appt.id}
+                  style={{
+                    padding: '14px 16px',
+                    borderRadius: '12px',
+                    backgroundColor: 'var(--elevated-surface)',
+                    border: '1px solid var(--border-color)',
+                    display: 'flex',
+                    flexDirection: 'column',
+                    gap: '8px'
+                  }}
+                >
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                    <span style={{ fontSize: '0.76rem', fontWeight: 700, fontFamily: 'monospace', color: 'var(--accent-purple)' }}>
+                      #{appt.referenceCode || appt.id?.slice(0, 8)}
+                    </span>
+                    <span
+                      style={{
+                        fontSize: '0.68rem',
+                        fontWeight: 700,
+                        padding: '2px 8px',
+                        borderRadius: '9999px',
+                        backgroundColor: isConfirmed ? 'rgba(16, 185, 129, 0.15)' : isPending ? 'rgba(245, 158, 11, 0.15)' : 'rgba(239, 68, 68, 0.15)',
+                        color: isConfirmed ? '#10B981' : isPending ? '#F59E0B' : '#EF4444'
+                      }}
+                    >
+                      ● {appt.status.toUpperCase()}
+                    </span>
+                  </div>
+
+                  <div>
+                    <div style={{ fontSize: '0.86rem', fontWeight: 700, color: 'var(--text-primary)' }}>
+                      {appt.clientName || 'Anonymous Client'}
+                    </div>
+                    {appt.clientEmail && (
+                      <div style={{ fontSize: '0.74rem', color: 'var(--text-muted)' }}>
+                        {appt.clientEmail}
+                      </div>
+                    )}
+                  </div>
+
+                  <div style={{ fontSize: '0.78rem', color: 'var(--text-secondary)', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                    <Clock size={12} color="var(--accent-purple)" />
+                    <span>
+                      {appt.appointmentDate ? new Date(appt.appointmentDate).toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' }) : 'Flexible date'} at {appt.appointmentTime || '10:00 AM'}
+                    </span>
+                  </div>
+
+                  {appt.serviceName && (
+                    <div style={{ fontSize: '0.74rem', color: 'var(--accent-purple)', fontWeight: 600 }}>
+                      Service: {appt.serviceName}
+                    </div>
+                  )}
+
+                  <button
+                    type="button"
+                    onClick={() => onNavigateTab('appointments')}
+                    style={{
+                      marginTop: '4px',
+                      background: 'none',
+                      border: 'none',
+                      color: 'var(--accent-purple)',
+                      fontSize: '0.74rem',
+                      fontWeight: 700,
+                      cursor: 'pointer',
+                      display: 'inline-flex',
+                      alignItems: 'center',
+                      gap: '4px',
+                      padding: 0
+                    }}
+                  >
+                    <span>Review booking</span>
+                    <ArrowRight size={11} />
+                  </button>
+                </div>
+              );
+            })}
+          </div>
+        ) : (
+          <div style={{ padding: '28px 12px', textAlign: 'center', color: 'var(--text-secondary)' }}>
+            <Calendar size={28} color="var(--border-color)" style={{ marginBottom: '8px' }} />
+            <div style={{ fontWeight: 600, color: 'var(--text-primary)', marginBottom: '4px', fontSize: '0.88rem' }}>
+              No client appointments scheduled yet.
+            </div>
+            <p style={{ fontSize: '0.76rem', color: 'var(--text-muted)', maxWidth: '340px', margin: '0 auto 12px' }}>
+              Share your FLOCARD profile link or NFC card. Clients can schedule appointments directly from your public page.
+            </p>
+            {primaryProfile && (
+              <a href={`/p/${primaryProfile.slug}`} target="_blank" rel="noreferrer" className="btn btn-outline btn-xs" style={{ gap: '4px' }}>
+                <span>Preview Your Booking Calendar</span>
+                <ExternalLink size={11} />
+              </a>
+            )}
+          </div>
+        )}
       </div>
 
       {/* Two Column Section: Live Order Status & Active Cards */}

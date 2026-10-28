@@ -26,21 +26,26 @@ import {
   Menu,
   ChevronRight,
   Clock,
+  Calendar,
   User as UserIcon,
-  QrCode
+  QrCode,
+  Receipt
 } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 import { useTheme } from '../../context/ThemeContext';
 import { useData } from '../../context/DataContext';
+import { StorageEngine } from '../../lib/storage';
 
 import CustomerOverviewTab from './CustomerOverviewTab';
 import CustomerCardsTab from './CustomerCardsTab';
 import CustomerProfilesTab from './CustomerProfilesTab';
+import CustomerAppointmentsTab from './CustomerAppointmentsTab';
 import CustomerAnalyticsTab from './CustomerAnalyticsTab';
 import CustomerOrdersTab from './CustomerOrdersTab';
 import CustomerOrderDetail from './CustomerOrderDetail';
 import CustomerSettingsTab from './CustomerSettingsTab';
 import CustomerQrCompanion from '../../components/customer/CustomerQrCompanion';
+import CustomerInvoiceTab from './CustomerInvoiceTab';
 
 export default function CustomerDashboard({ initialTab = 'overview', initialOrderId = null }) {
   const { user, logout, isCustomer } = useAuth();
@@ -122,6 +127,34 @@ export default function CustomerDashboard({ initialTab = 'overview', initialOrde
     );
   }, [user, orders, lastOrderUpdate]);
 
+  const [appointmentsVersion, setAppointmentsVersion] = useState(0);
+
+  useEffect(() => {
+    const onApptChange = () => setAppointmentsVersion(v => v + 1);
+    window.addEventListener('flocard_appointment_updated', onApptChange);
+    window.addEventListener('storage', onApptChange);
+    return () => {
+      window.removeEventListener('flocard_appointment_updated', onApptChange);
+      window.removeEventListener('storage', onApptChange);
+    };
+  }, []);
+
+  const customerAppointments = useMemo(() => {
+    if (!user) return [];
+    const uEmail = (user.email || '').toLowerCase().trim();
+    const userProfileSlugs = (customerProfiles.length > 0 ? customerProfiles : profiles).map(p => (p.slug || '').toLowerCase().trim());
+    try {
+      const allAppts = StorageEngine.getAppointments();
+      return allAppts.filter(a => {
+        const slugMatch = a.profileSlug && userProfileSlugs.includes(a.profileSlug.toLowerCase().trim());
+        const emailMatch = a.customerEmail && a.customerEmail.toLowerCase().trim() === uEmail;
+        return slugMatch || emailMatch;
+      });
+    } catch (_) {
+      return [];
+    }
+  }, [user, customerProfiles, profiles, appointmentsVersion]);
+
   const unreadNotificationsCount = notificationsList.filter(n => !n.readAt).length;
 
   // If customer is not authenticated, show elegant sign-in gate
@@ -170,9 +203,11 @@ export default function CustomerDashboard({ initialTab = 'overview', initialOrde
     { key: 'overview', label: 'Overview', icon: LayoutDashboard },
     { key: 'cards', label: 'My Cards', icon: Radio, count: customerCards.length },
     { key: 'profiles', label: 'Profiles', icon: FileText, count: customerProfiles.length },
+    { key: 'appointments', label: 'Appointments', icon: Calendar, count: customerAppointments.length },
     { key: 'qr', label: 'Smart QR Companion', icon: QrCode },
     { key: 'analytics', label: 'Analytics', icon: BarChart2 },
     { key: 'orders', label: 'Orders & Tracking', icon: Package, count: customerOrders.length },
+    { key: 'invoices', label: 'Invoices', icon: Receipt },
     { key: 'settings', label: 'Settings', icon: Settings }
   ];
 
@@ -220,7 +255,7 @@ export default function CustomerDashboard({ initialTab = 'overview', initialOrde
         minHeight: '100vh',
         backgroundColor: 'var(--bg-main)',
         color: 'var(--text-primary)',
-        paddingTop: 'var(--header-height)'
+        paddingTop: 0
       }}
     >
       {/* DESKTOP REFINED SIDEBAR */}
@@ -233,8 +268,8 @@ export default function CustomerDashboard({ initialTab = 'overview', initialOrde
           display: 'flex',
           flexDirection: 'column',
           position: 'sticky',
-          top: 'var(--header-height)',
-          height: 'calc(100vh - var(--header-height))',
+          top: 0,
+          height: '100vh',
           padding: '24px 16px',
           flexShrink: 0,
           zIndex: 40
@@ -390,7 +425,7 @@ export default function CustomerDashboard({ initialTab = 'overview', initialOrde
             alignItems: 'center',
             justifyContent: 'space-between',
             position: 'sticky',
-            top: 'var(--header-height)',
+            top: 0,
             zIndex: 30,
             backdropFilter: 'blur(12px)'
           }}
@@ -585,6 +620,7 @@ export default function CustomerDashboard({ initialTab = 'overview', initialOrde
                   cards={customerCards}
                   profiles={customerProfiles}
                   orders={customerOrders}
+                  appointments={customerAppointments}
                   designs={designs}
                   onNavigateTab={handleTabChange}
                   onViewOrder={handleViewOrderDetail}
@@ -604,6 +640,12 @@ export default function CustomerDashboard({ initialTab = 'overview', initialOrde
                   customer={user}
                 />
               )}
+              {activeTab === 'appointments' && (
+                <CustomerAppointmentsTab
+                  customer={user}
+                  profiles={customerProfiles.length > 0 ? customerProfiles : profiles}
+                />
+              )}
               {activeTab === 'analytics' && (
                 <CustomerAnalyticsTab
                   customer={user}
@@ -615,6 +657,12 @@ export default function CustomerDashboard({ initialTab = 'overview', initialOrde
                 <CustomerOrdersTab
                   orders={customerOrders}
                   onViewOrder={handleViewOrderDetail}
+                />
+              )}
+              {activeTab === 'invoices' && (
+                <CustomerInvoiceTab
+                  orders={customerOrders}
+                  customer={user}
                 />
               )}
               {activeTab === 'qr' && (
@@ -654,7 +702,7 @@ export default function CustomerDashboard({ initialTab = 'overview', initialOrde
         {[
           { key: 'overview', label: 'Home', icon: LayoutDashboard },
           { key: 'cards', label: 'Cards', icon: Radio },
-          { key: 'profiles', label: 'Profiles', icon: FileText },
+          { key: 'appointments', label: 'Bookings', icon: Calendar, count: customerAppointments.length },
           { key: 'orders', label: 'Orders', icon: Package, count: unreadNotificationsCount },
           { key: 'settings', label: 'Settings', icon: Settings }
         ].map((item) => {

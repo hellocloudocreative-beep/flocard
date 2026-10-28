@@ -187,6 +187,60 @@ export function DataProvider({ children }) {
     return order;
   };
 
+  const submitPrintOrder = (payload) => {
+    const order = StorageEngine.submitPrintOrder(payload);
+    refreshAll();
+    return order;
+  };
+
+  const updateOrderPaymentStatus = (opts) => {
+    const order = StorageEngine.updateOrderPaymentStatus(opts);
+    refreshAll();
+    return order;
+  };
+
+  const setOrderInvoiceEligibility = (opts) => {
+    const order = StorageEngine.setOrderInvoiceEligibility(opts);
+    refreshAll();
+    return order;
+  };
+
+  const assignOrderInvoice = (orderId, actorUser, reason) => {
+    const order = StorageEngine.assignOrderInvoice(orderId, actorUser, reason);
+    refreshAll();
+    return order;
+  };
+
+  const declineOrderInvoice = (orderId, actorUser, reason) => {
+    const order = StorageEngine.declineOrderInvoice(orderId, actorUser, reason);
+    refreshAll();
+    return order;
+  };
+
+  const assignCustomerInvoice = (customerId, actorUser, reason) => {
+    const res = StorageEngine.assignCustomerInvoice(customerId, actorUser, reason);
+    refreshAll();
+    return res;
+  };
+
+  const declineCustomerInvoice = (customerId, actorUser, reason) => {
+    const res = StorageEngine.declineCustomerInvoice(customerId, actorUser, reason);
+    refreshAll();
+    return res;
+  };
+
+  const saveInvoiceConfig = (cfg) => {
+    const updated = StorageEngine.saveInvoiceConfig(cfg);
+    refreshAll();
+    return updated;
+  };
+
+  const saveInvoice = (invoice) => {
+    const saved = StorageEngine.saveInvoice(invoice);
+    refreshAll();
+    return saved;
+  };
+
   const assignDesignToOrder = (designId, notes, adminUser) => {
     const res = StorageEngine.assignDesignToOrder(designId, notes, adminUser);
     refreshAll();
@@ -317,6 +371,19 @@ export function DataProvider({ children }) {
       deliverOrder,
       deleteOrder,
       createOrderFromDesign,
+      submitPrintOrder,
+      updateOrderPaymentStatus,
+      setOrderInvoiceEligibility,
+      assignOrderInvoice,
+      declineOrderInvoice,
+      assignCustomerInvoice,
+      declineCustomerInvoice,
+      getInvoiceConfig: StorageEngine.getInvoiceConfig,
+      saveInvoiceConfig,
+      saveInvoice,
+      getInvoices: StorageEngine.getInvoices,
+      getInvoicesByOrder: StorageEngine.getInvoicesByOrder,
+      getInvoicesByCustomer: StorageEngine.getInvoicesByCustomer,
       assignDesignToOrder,
       saveCustomer,
       deleteCustomer,

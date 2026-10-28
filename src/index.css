@@ -108,8 +108,8 @@ html[data-theme="dark"] {
 
 /* Light Theme — Brand Colors based on official guidelines */
 html[data-theme="light"] {
-  --bg-main: #F8F7FC;
-  --bg-secondary: #F1EDFA;
+  --bg-main: #FFFFFF;
+  --bg-secondary: #F8F7FC;
   --bg-tertiary: #E8E1F5;
   --card-surface: #FFFFFF;
   --elevated-surface: #F1EDFA;
@@ -234,11 +234,8 @@ canvas {
 }
 
 html[data-theme="light"] body {
-  background-color: #F8F7FC;
-  background-image: 
-    radial-gradient(ellipse 80% 50% at 50% -20%, rgba(167, 139, 250, 0.18), transparent 70%),
-    radial-gradient(circle at 10% 20%, rgba(241, 237, 250, 0.6), transparent 40%),
-    radial-gradient(circle at 90% 80%, rgba(107, 0, 255, 0.05), transparent 45%);
+  background-color: #FFFFFF;
+  background-image: none;
 }
 
 /* Scrollbar Customization */

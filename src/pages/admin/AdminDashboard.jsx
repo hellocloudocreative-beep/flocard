@@ -88,6 +88,7 @@ import AnimatedSwitch from '../../components/spectrum/AnimatedSwitch';
 import HoldToConfirm from '../../components/spectrum/HoldToConfirm';
 import MorphButton from '../../components/spectrum/MorphButton';
 import AdminOrderManager from './AdminOrderManager';
+import AdminInvoiceManager from './invoices/AdminInvoiceManager';
 import AdminSalesManager from './sales/AdminSalesManager';
 import AdminLogin from '../auth/AdminLogin';
 import CustomerCardPreview from '../../components/CustomerCardPreview';
@@ -95,6 +96,7 @@ import AdminCardDesignStudio from './design/AdminCardDesignStudio';
 import OwnerActivityFeed from './activity/OwnerActivityFeed';
 import StaffPermissionsManager from './staff/StaffPermissionsManager';
 import AdminQrManager from './qr/AdminQrManager';
+import AdminAppointmentsManager from './appointments/AdminAppointmentsManager';
 import {
   getWhatsAppConfig,
   saveWhatsAppConfig,
@@ -506,12 +508,24 @@ export default function AdminDashboard({ initialTab = 'overview', initialOrderId
     const unassignedNfc = cards.filter(c => c.status === 'in_stock' || c.status === 'unassigned').length;
     const suspendedNfc = cards.filter(c => c.status === 'suspended').length;
 
+    let pendingAppts = 0;
+    try {
+      pendingAppts = StorageEngine.getAppointments().filter(a => a.status === 'pending').length;
+    } catch (_) {}
+
+    const pendingInvoicesCount = orders.filter(o => 
+      (o.hasInvoiceAddon || o.has_invoice_addon) && 
+      (!o.invoiceStatus || o.invoiceStatus === 'pending_review' || (!o.invoiceEligible && o.invoiceStatus !== 'declined'))
+    ).length;
+
     return {
       customers: totalCust,
       publishedProfiles: publishedProf,
       activeCards: activeNfc,
       pendingApprovals: pendingAppr,
       pendingOrders: pendingOrdersCount,
+      pendingAppointments: pendingAppts,
+      pendingInvoices: pendingInvoicesCount,
       totalOrders: orders.length,
       unassignedCards: unassignedNfc,
       suspendedCards: suspendedNfc
@@ -522,13 +536,15 @@ export default function AdminDashboard({ initialTab = 'overview', initialOrderId
   const allNavItems = [
     { id: 'overview', label: 'Dashboard', icon: LayoutDashboard },
     { id: 'orders', label: 'Orders & Fulfillment', icon: Package, badge: stats.pendingOrders > 0 ? stats.pendingOrders : (orders.length > 0 ? orders.length : null) },
+    { id: 'invoices', label: 'Invoices & Access', icon: Receipt, badge: stats.pendingInvoices > 0 ? stats.pendingInvoices : null },
     { id: 'studio', label: 'Card Design Studio', icon: Sparkles, badge: 'Studio' },
     { id: 'designs', label: 'Customer Designs', icon: Palette, badge: stats.pendingApprovals > 0 ? stats.pendingApprovals : null },
     { id: 'qr', label: 'Smart QR Companion', icon: QrCode, badge: 'Smart' },
-    { id: 'sales', label: 'Sales & Ledger', icon: Receipt, badge: 'New' },
+    { id: 'sales', label: 'Sales & Ledger', icon: TrendingUp },
     { id: 'product-sales', label: 'Product Sales', icon: TrendingUp },
     { id: 'customers', label: 'Customers', icon: Users, badge: customers.length },
     { id: 'profiles', label: 'Digital Profiles', icon: FileText, badge: profiles.length },
+    { id: 'appointments', label: 'Appointments', icon: Calendar, badge: stats.pendingAppointments > 0 ? stats.pendingAppointments : null },
     { id: 'cards', label: 'NFC Cards', icon: Radio, badge: cards.length },
     { id: 'pricing', label: 'Products & Pricing', icon: Tag, badge: products?.length || 3 },
     { id: 'templates', label: 'Card Templates', icon: Layers },
@@ -1425,11 +1441,13 @@ export default function AdminDashboard({ initialTab = 'overview', initialOrderId
                 }}
               >
                 {activeTab === 'overview' && 'Dashboard'}
+                {activeTab === 'invoices' && 'Tax Invoice Management & Access Governance'}
                 {activeTab === 'studio' && 'Admin Card Design Studio'}
                 {activeTab === 'sales' && 'Sales Management & Accounting Ledger'}
                 {activeTab === 'product-sales' && 'Product-wise Sales Tracking'}
                 {activeTab === 'customers' && 'Customers'}
                 {activeTab === 'profiles' && 'Digital Profiles'}
+                {activeTab === 'appointments' && 'Appointment Bookings & Schedules'}
                 {activeTab === 'designs' && 'Customer Card Designs'}
                 {activeTab === 'orders' && 'Orders & Fulfillment'}
                 {activeTab === 'cards' && 'NFC Cards'}
@@ -1444,11 +1462,13 @@ export default function AdminDashboard({ initialTab = 'overview', initialOrderId
               </h1>
               <p className="admin-page-subtitle" style={{ margin: '2px 0 0', fontSize: '0.84rem', color: isDark ? '#9B90AD' : '#777184' }}>
                 {activeTab === 'overview' && "Welcome back! Here's what's happening with FLOCARD."}
+                {activeTab === 'invoices' && 'Assign or decline customer tax invoice generator access, configure official invoicing rules, and track tax ledgers.'}
                 {activeTab === 'studio' && 'Dedicated 3-panel professional design workspace for creating, editing, and publishing NFC card designs.'}
                 {activeTab === 'sales' && 'Accounting-grade sales ledger, double-entry balances, tax invoices, and payment tracking.'}
                 {activeTab === 'product-sales' && 'Track revenue, discounts, refunds, units sold, and inventory across every FLOCARD edition.'}
                 {activeTab === 'customers' && 'Manage authenticated customer accounts and enterprise partners.'}
                 {activeTab === 'profiles' && 'Public digital identity profiles, slugs, and live resolutions.'}
+                {activeTab === 'appointments' && 'Inspect incoming customer appointments across all digital profiles, approve schedules, and manage cancellations.'}
                 {activeTab === 'designs' && 'Artwork review queue, bleed safe-area checks, and print approvals.'}
                 {activeTab === 'orders' && 'Card production pipeline, manufacturing orders, and automated NFC card + profile provisioning.'}
                 {activeTab === 'cards' && 'NTAG216 chip inventory, NFC encoding, and permanent redirect routes.'}
@@ -3763,6 +3783,13 @@ export default function AdminDashboard({ initialTab = 'overview', initialOrderId
           )}
 
           {/* ====================================================================
+              VIEW: INVOICE GENERATOR & ACCESS MANAGEMENT (ADMIN INVOICE MANAGER)
+              ==================================================================== */}
+          {activeTab === "invoices" && (
+            <AdminInvoiceManager initialOrderId={initialOrderId} />
+          )}
+
+          {/* ====================================================================
               VIEW: NFC CARDS INVENTORY & ACTIVATION MANAGEMENT
               ==================================================================== */}
           {activeTab === 'cards' && (() => {
@@ -5676,6 +5703,13 @@ export default function AdminDashboard({ initialTab = 'overview', initialOrderId
               ==================================================================== */}
           {activeTab === 'qr' && (
             <AdminQrManager />
+          )}
+
+          {/* ====================================================================
+              VIEW: APPOINTMENTS & BOOKINGS SCHEDULE
+              ==================================================================== */}
+          {activeTab === 'appointments' && (
+            <AdminAppointmentsManager />
           )}
 
           {/* Unauthorized Gate for Owner-Only Tabs */}

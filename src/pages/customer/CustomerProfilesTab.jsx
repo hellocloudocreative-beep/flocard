@@ -1,14 +1,23 @@
 /* ==========================================================================
-   FLOCARD CUSTOMER DASHBOARD — PROFILES TAB & APPEARANCE STUDIO
-   Displays customer's digital profiles with full morphing appearance controls:
-   - Opening behavior (Expandable Card vs Full Profile vs Compact Only)
-   - Card gradients, border glows, photo shape (circle vs rounded_rect)
-   - Subtle background typography
-   - Section visibility & content editing
-   - Interactive Live Morphing Preview Studio
+   FLOCARDS CUSTOMER DASHBOARD — CENTRAL PROFILE EDITOR
+   Organized into 14 dedicated, comprehensive sections:
+   1. Basic Information
+   2. Profile Picture
+   3. Banner and Appearance
+   4. Contact and Social Links
+   5. Business Hours
+   6. Appointment Booking
+   7. Services
+   8. Portfolio Gallery
+   9. Videos
+   10. Payments
+   11. Public Bank Details
+   12. QR Code
+   13. Upload Usage
+   14. Profile Visibility and Publishing
    ========================================================================== */
 
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, useEffect, useMemo } from 'react';
 import {
   FileText,
   ExternalLink,
@@ -36,88 +45,87 @@ import {
   Upload,
   User,
   Building2,
-  Image as ImageIcon
+  Image as ImageIcon,
+  Clock,
+  Calendar,
+  CreditCard,
+  Landmark,
+  Video,
+  HardDrive,
+  QrCode,
+  ShieldCheck,
+  AlertCircle,
+  CheckCircle2,
+  ChevronDown,
+  ChevronUp,
+  RefreshCw,
+  Lock,
+  ArrowRight
 } from 'lucide-react';
 import { downloadVCard } from '../../lib/vcard';
 import { useData } from '../../context/DataContext';
 import { uploadImage } from '../../lib/uploadImage';
-import CompactProfileCard from '../../components/profile/CompactProfileCard';
-import ExpandedPortfolioView from '../../components/profile/ExpandedPortfolioView';
+import { generateQrDataUrl, downloadQrPng, downloadQrSvg, getCanonicalProfileUrl } from '../../lib/qr';
+import { DAYS_OF_WEEK, DAY_LABELS, DEFAULT_BUSINESS_HOURS } from '../../lib/businessHoursService';
+import { getAppointments, updateAppointmentStatus, DEFAULT_BOOKING_CONFIG } from '../../lib/appointmentService';
+import { calculateProfileUsage, validateUploadQuota, DEFAULT_STORAGE_QUOTAS } from '../../lib/storageQuotaService';
+import { validateUpiId, validateIfsc, validateBankDetails } from '../../lib/paymentValidator';
+import FullScreenDigitalProfile from '../../components/profile/FullScreenDigitalProfile';
 
 export default function CustomerProfilesTab({ profiles = [], customer, onSaveProfile }) {
-  const { saveProfile } = useData();
+  const { saveProfile, recordTap } = useData();
 
   const [editingProfile, setEditingProfile] = useState(null);
   const [copiedSlug, setCopiedSlug] = useState(null);
   const [saveSuccess, setSaveSuccess] = useState(false);
   const [previewProfile, setPreviewProfile] = useState(null);
-  const [previewExpanded, setPreviewExpanded] = useState(false);
-  const [editorTab, setEditorTab] = useState('appearance'); // 'appearance' | 'info' | 'sections'
+  const [previewDevice, setPreviewDevice] = useState('desktop'); // 'desktop' | 'mobile'
 
-  // Form states for editing profile
+  // Central Editor Active Section
+  const [editorSection, setEditorSection] = useState('basic');
+
+  // Form states
   const [formData, setFormData] = useState({});
+  const [uploadError, setUploadError] = useState('');
+  const [isUploading, setIsUploading] = useState(false);
+
+  // Appointment management inside owner editor
+  const [profileAppointments, setProfileAppointments] = useState([]);
+  const [appointmentFilter, setAppointmentFilter] = useState('all');
 
   // Image upload refs
   const avatarInputRef = useRef(null);
-  const logoInputRef = useRef(null);
+  const bannerInputRef = useRef(null);
+  const serviceInputRef = useRef(null);
+  const portfolioInputRef = useRef(null);
+  const paymentQrInputRef = useRef(null);
 
-  // Handle Avatar Upload
-  const handleAvatarUpload = async (e) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-    try {
-      const url = await uploadImage(file, 'avatar', customer?.id || 'anon');
-      setFormData(prev => ({ ...prev, avatar: url }));
-    } catch (err) {
-      console.error('Avatar upload failed:', err);
+  // Measured storage usage
+  const storageUsage = useMemo(() => {
+    return calculateProfileUsage(formData);
+  }, [formData]);
+
+  // Load appointments when editor opens
+  useEffect(() => {
+    if (editingProfile?.slug) {
+      getAppointments(editingProfile.slug)
+        .then(setProfileAppointments)
+        .catch(() => {});
     }
-    e.target.value = '';
-  };
+  }, [editingProfile?.slug]);
 
-  // Handle Logo Upload
-  const handleLogoUpload = async (e) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-    try {
-      const url = await uploadImage(file, 'logo', customer?.id || 'anon');
-      setFormData(prev => ({ ...prev, logo: url }));
-    } catch (err) {
-      console.error('Logo upload failed:', err);
-    }
-    e.target.value = '';
-  };
-
-  // Handle Portfolio Item Image Upload
-  const handlePortfolioImageUpload = async (index, e) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-    try {
-      const url = await uploadImage(file, 'portfolio', customer?.id || 'anon');
-      setFormData(prev => {
-        const next = [...(prev.portfolio || [])];
-        next[index] = { ...next[index], image: url };
-        return { ...prev, portfolio: next };
-      });
-    } catch (err) {
-      console.error('Portfolio image upload failed:', err);
-    }
-    e.target.value = '';
-  };
-
+  // Handle Opening the Profile Editor
   const handleOpenEdit = (profile) => {
     setEditingProfile(profile);
-    setEditorTab('appearance');
+    setEditorSection('basic');
+    setUploadError('');
+    setSaveSuccess(false);
+
     setFormData({
       ...profile,
-      openingPreference: profile.openingPreference || 'expandable',
+      openingPreference: profile.openingPreference || 'full',
       cardFinish: profile.cardFinish || (profile.edition === 'gold' ? 'gold' : profile.edition === 'platinum' || profile.edition === 'steel' ? 'steel' : 'purple'),
-      cardColor: profile.cardColor || (
-        (profile.cardFinish === 'gold' || profile.edition === 'gold')
-          ? '#F3CF8A'
-          : (profile.cardFinish === 'steel' || profile.edition === 'platinum' || profile.edition === 'steel')
-            ? '#E2E8F0'
-            : '#A855F7'
-      ),
+      cardColor: profile.cardColor || '#A855F7',
       gradientStart: profile.gradientStart || '#130B22',
       gradientMid: profile.gradientMid || '#240F3E',
       gradientEnd: profile.gradientEnd || '#0B0813',
@@ -127,21 +135,220 @@ export default function CustomerProfilesTab({ profiles = [], customer, onSavePro
       borderGlowIntensity: profile.borderGlowIntensity || 'medium',
       photoShape: profile.photoShape || 'circle',
       backgroundTypography: profile.backgroundTypography || 'FLOCARD',
-      sectionVisibility: profile.sectionVisibility || {
-        about: true,
-        portfolio: true,
-        services: true,
-        experience: true,
-        contact: true
+      banner: {
+        enabled: true,
+        type: 'image',
+        url: '/assets/hero-bg.jpg',
+        height: 280,
+        zoom: 100,
+        positionX: 50,
+        positionY: 45,
+        gradientStart: '#2e1065',
+        gradientEnd: '#090514',
+        solidColor: '#1a0b2e',
+        overlayOpacity: 0.38,
+        overlayColor: '#08060D',
+        ...(profile.banner || {})
       },
-      services: profile.services ? [...profile.services] : [],
-      portfolio: profile.portfolio ? [...profile.portfolio] : [],
+      businessHours: {
+        ...DEFAULT_BUSINESS_HOURS,
+        ...(profile.businessHours || {})
+      },
+      bookingConfig: {
+        ...DEFAULT_BOOKING_CONFIG,
+        ...(profile.bookingConfig || {})
+      },
+      paymentConfig: {
+        enabled: true,
+        upiId: 'flocards@icici',
+        recipientName: profile.name || 'FLOCARDS Merchant',
+        qrUrl: '',
+        instructions: 'Scan with any UPI app (GPay, PhonePe, Paytm, BHIM) to pay securely.',
+        ...(profile.paymentConfig || {})
+      },
+      bankDetails: {
+        enabled: false,
+        isPublic: false,
+        accountHolder: profile.company ? `${profile.company} PRIVATE LIMITED` : 'FLOCARDS DIGITAL SYSTEMS PRIVATE LIMITED',
+        bankName: 'HDFC Bank',
+        branch: 'Indiranagar, Bengaluru',
+        accountNumber: '50200084729103',
+        ifsc: 'HDFC0000123',
+        visibleFields: {
+          accountHolder: true,
+          bankName: true,
+          branch: true,
+          accountNumber: true,
+          ifsc: true
+        },
+        ...(profile.bankDetails || {})
+      },
+      sectionVisibility: {
+        banner: true,
+        about: true,
+        hours: true,
+        booking: true,
+        services: true,
+        portfolio: true,
+        videos: true,
+        payments: true,
+        bankDetails: false,
+        experience: true,
+        contact: true,
+        qrCompanion: true,
+        ...(profile.sectionVisibility || {})
+      },
+      services: Array.isArray(profile.services) ? [...profile.services] : [],
+      portfolio: Array.isArray(profile.portfolio) ? [...profile.portfolio] : [],
+      videos: Array.isArray(profile.videos) ? [...profile.videos] : [],
       whatsapp: profile.whatsapp || profile.socialLinks?.whatsapp || '',
       linkedin: profile.linkedin || profile.socialLinks?.linkedin || '',
       instagram: profile.instagram || profile.socialLinks?.instagram || '',
-      customLinks: Array.isArray(profile.customLinks) ? [...profile.customLinks] : [],
-      socialLinks: profile.socialLinks ? { ...profile.socialLinks } : {}
+      twitter: profile.twitter || profile.socialLinks?.twitter || '',
+      github: profile.github || profile.socialLinks?.github || '',
+      youtube: profile.youtube || profile.socialLinks?.youtube || '',
+      customLinks: Array.isArray(profile.customLinks) ? [...profile.customLinks] : []
     });
+  };
+
+  // Upload Avatar
+  const handleAvatarUpload = async (e) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setUploadError('');
+    setIsUploading(true);
+    try {
+      const url = await uploadImage(file, 'avatar', customer?.id || 'anon', formData);
+      setFormData(prev => ({ ...prev, avatar: url, avatarSizeBytes: file.size }));
+    } catch (err) {
+      setUploadError(err.message || 'Avatar upload failed.');
+    } finally {
+      setIsUploading(false);
+      e.target.value = '';
+    }
+  };
+
+  // Upload Banner
+  const handleBannerUpload = async (e) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setUploadError('');
+    setIsUploading(true);
+    try {
+      const isVideo = file.type?.startsWith('video/') || /\.(mp4|webm)$/i.test(file.name || '');
+      const url = await uploadImage(file, 'banner', customer?.id || 'anon', formData);
+      setFormData(prev => ({
+        ...prev,
+        banner: {
+          ...(prev.banner || {}),
+          url,
+          type: isVideo ? 'video' : 'image',
+          sizeBytes: file.size
+        }
+      }));
+    } catch (err) {
+      setUploadError(err.message || 'Banner upload failed.');
+    } finally {
+      setIsUploading(false);
+      e.target.value = '';
+    }
+  };
+
+  // Upload Portfolio Image
+  const handlePortfolioImageUpload = async (index, e) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setUploadError('');
+    setIsUploading(true);
+    try {
+      const url = await uploadImage(file, 'portfolio', customer?.id || 'anon', formData);
+      setFormData(prev => {
+        const next = [...(prev.portfolio || [])];
+        next[index] = { ...next[index], image: url, sizeBytes: file.size };
+        return { ...prev, portfolio: next };
+      });
+    } catch (err) {
+      setUploadError(err.message || 'Portfolio image upload failed.');
+    } finally {
+      setIsUploading(false);
+      e.target.value = '';
+    }
+  };
+
+  // Upload Service Image
+  const handleServiceImageUpload = async (index, e) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setUploadError('');
+    setIsUploading(true);
+    try {
+      const url = await uploadImage(file, 'service', customer?.id || 'anon', formData);
+      setFormData(prev => {
+        const next = [...(prev.services || [])];
+        next[index] = { ...next[index], image: url, sizeBytes: file.size };
+        return { ...prev, services: next };
+      });
+    } catch (err) {
+      setUploadError(err.message || 'Service thumbnail upload failed.');
+    } finally {
+      setIsUploading(false);
+      e.target.value = '';
+    }
+  };
+
+  // Upload Payment QR
+  const handlePaymentQrUpload = async (e) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setUploadError('');
+    setIsUploading(true);
+    try {
+      const url = await uploadImage(file, 'general', customer?.id || 'anon', formData);
+      setFormData(prev => ({
+        ...prev,
+        paymentConfig: { ...(prev.paymentConfig || {}), qrUrl: url }
+      }));
+    } catch (err) {
+      setUploadError(err.message || 'Payment QR upload failed.');
+    } finally {
+      setIsUploading(false);
+      e.target.value = '';
+    }
+  };
+
+  // Save profile changes
+  const handleSave = (e) => {
+    if (e) e.preventDefault();
+    if (!formData.name || !formData.slug) return;
+
+    // Validate bank details if marked public
+    if (formData.bankDetails?.isPublic && formData.bankDetails?.enabled) {
+      const check = validateBankDetails(formData.bankDetails);
+      if (!check.valid) {
+        setUploadError(Object.values(check.errors)[0] || 'Please review bank details.');
+        setEditorSection('bank');
+        return;
+      }
+    }
+
+    // Validate UPI ID if enabled
+    if (formData.paymentConfig?.enabled && formData.paymentConfig?.upiId) {
+      const upiCheck = validateUpiId(formData.paymentConfig.upiId);
+      if (!upiCheck.valid) {
+        setUploadError(upiCheck.error);
+        setEditorSection('payments');
+        return;
+      }
+    }
+
+    const saved = saveProfile(formData);
+    if (onSaveProfile) onSaveProfile(saved);
+
+    setSaveSuccess(true);
+    setTimeout(() => {
+      setSaveSuccess(false);
+      setEditingProfile(null);
+    }, 1200);
   };
 
   const handleCopyLink = (slug) => {
@@ -153,527 +360,489 @@ export default function CustomerProfilesTab({ profiles = [], customer, onSavePro
     }
   };
 
-  const handleSave = (e) => {
-    e.preventDefault();
-    if (!formData.name || !formData.slug) return;
-
-    saveProfile(formData);
-    setSaveSuccess(true);
-    setTimeout(() => {
-      setSaveSuccess(false);
-      setEditingProfile(null);
-    }, 1200);
+  // Appointment actions
+  const handleAppointmentStatusChange = async (aptId, newStatus) => {
+    try {
+      await updateAppointmentStatus({
+        id: aptId,
+        profileSlug: formData.slug,
+        status: newStatus,
+        actorName: customer?.name || 'Owner'
+      });
+      const fresh = await getAppointments(formData.slug);
+      setProfileAppointments(fresh);
+    } catch (err) {
+      console.error('Failed to update appointment status:', err);
+    }
   };
 
-  const handleOpenPreview = (profileToPreview) => {
-    setPreviewProfile(profileToPreview || formData);
-    setPreviewExpanded(profileToPreview?.openingPreference === 'full');
-  };
+  // 14 Editor Navigation Sections definition
+  const SECTIONS = [
+    { id: 'basic', label: '1. Basic Information', icon: User },
+    { id: 'avatar', label: '2. Profile Picture', icon: CameraIcon },
+    { id: 'banner', label: '3. Banner & Appearance', icon: ImageIcon },
+    { id: 'contact', label: '4. Contact & Social Links', icon: Phone },
+    { id: 'hours', label: '5. Business Hours', icon: Clock },
+    { id: 'booking', label: '6. Appointment Booking', icon: Calendar },
+    { id: 'services', label: '7. Services Showcase', icon: Layers },
+    { id: 'portfolio', label: '8. Portfolio Gallery', icon: BriefcaseIcon },
+    { id: 'videos', label: '9. Videos', icon: Video },
+    { id: 'payments', label: '10. Payments & UPI', icon: CreditCard },
+    { id: 'bank', label: '11. Public Bank Details', icon: Landmark },
+    { id: 'qr', label: '12. QR Code Companion', icon: QrCode },
+    { id: 'usage', label: '13. Upload Usage & Quotas', icon: HardDrive },
+    { id: 'publishing', label: '14. Visibility & Publishing', icon: Globe }
+  ];
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
-      {/* Top Header */}
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '14px' }}>
+      {/* Top Header Card */}
+      <div
+        className="glass-panel"
+        style={{
+          padding: '24px',
+          borderRadius: '20px',
+          backgroundColor: 'var(--card-surface)',
+          border: '1px solid var(--border-color)',
+          display: 'flex',
+          justifyContent: 'space-between',
+          alignItems: 'center',
+          flexWrap: 'wrap',
+          gap: '16px'
+        }}
+      >
         <div>
-          <h2 style={{ margin: 0, fontSize: '1.35rem', color: 'var(--text-primary)', fontWeight: 800 }}>
-            My Digital Profiles & Morphing Studio
+          <h2 style={{ fontSize: '1.4rem', fontWeight: 800, color: 'var(--text-primary)', margin: '0 0 6px' }}>
+            Digital Business Profiles
           </h2>
-          <p style={{ margin: '4px 0 0', fontSize: '0.84rem', color: 'var(--text-secondary)' }}>
-            Customize your compact identity card, shared-element morphing animations, and portfolio presentation.
+          <p style={{ fontSize: '0.86rem', color: 'var(--text-secondary)', margin: 0 }}>
+            Full-screen digital business profile platform accessible through NFC smart cards and unique URLs.
           </p>
         </div>
+
+        {profiles.length > 0 && (
+          <button
+            type="button"
+            onClick={() => handleOpenEdit(profiles[0])}
+            className="btn btn-primary btn-sm"
+            style={{ gap: '8px' }}
+          >
+            <Sliders size={16} />
+            <span>Customize Digital Profile</span>
+          </button>
+        )}
       </div>
 
-      {/* Profiles List or Empty State */}
-      {profiles.length === 0 ? (
-        <div
-          className="glass-panel"
-          style={{
-            padding: '48px 24px',
-            textAlign: 'center',
-            backgroundColor: 'var(--card-surface)',
-            borderRadius: '16px',
-            border: '1px solid var(--border-color)'
-          }}
-        >
-          <FileText size={42} color="var(--border-color)" style={{ margin: '0 auto 14px', display: 'block' }} />
-          <h3 style={{ fontSize: '1.15rem', color: 'var(--text-primary)', margin: '0 0 6px', fontWeight: 700 }}>
-            Create your first digital profile.
-          </h3>
-          <p style={{ fontSize: '0.84rem', color: 'var(--text-secondary)', maxWidth: '440px', margin: '0 auto 20px', lineHeight: 1.5 }}>
-            When you complete a card design and production order, your personalized digital profile is automatically provisioned and ready to share.
-          </p>
-          <a href="/designer" className="btn btn-primary btn-sm" style={{ display: 'inline-flex', gap: '6px' }}>
-            <Sparkles size={14} />
-            <span>Design a Card to Create Profile</span>
-          </a>
-        </div>
-      ) : (
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
-          {profiles.map((profile) => (
+      {/* Profiles Cards List */}
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))', gap: '20px' }}>
+        {profiles.map((prof) => (
+          <div
+            key={prof.id}
+            className="glass-panel"
+            style={{
+              borderRadius: '20px',
+              backgroundColor: 'var(--card-surface)',
+              border: '1px solid var(--border-color)',
+              overflow: 'hidden',
+              boxShadow: 'var(--shadow-card)',
+              display: 'flex',
+              flexDirection: 'column'
+            }}
+          >
+            {/* Mini Banner Preview */}
             <div
-              key={profile.id || profile.slug}
-              className="glass-panel"
               style={{
-                padding: '28px',
-                backgroundColor: 'var(--card-surface)',
-                borderRadius: '16px',
-                border: '1px solid var(--border-color)',
-                display: 'flex',
-                flexDirection: 'column',
-                gap: '20px'
+                width: '100%',
+                height: '110px',
+                backgroundColor: prof.banner?.solidColor || '#1a0b2e',
+                backgroundImage: prof.banner?.url ? `url(${prof.banner.url})` : 'none',
+                backgroundSize: 'cover',
+                backgroundPosition: 'center',
+                position: 'relative'
               }}
             >
-              {/* Profile Top Row */}
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap', gap: '16px' }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
-                  <div
-                    style={{
-                      width: '64px',
-                      height: '64px',
-                      borderRadius: profile.photoShape === 'rounded_rect' ? '16px' : '50%',
-                      padding: '2px',
-                      background: `linear-gradient(135deg, ${profile.glowColor || 'var(--accent-purple)'}, ${profile.accentColor || 'var(--primary-purple)'})`,
-                      boxShadow: `0 0 16px ${(profile.glowColor || '#6B00FF')}40`,
-                      flexShrink: 0
-                    }}
-                  >
-                    <div
-                      style={{
-                        width: '100%',
-                        height: '100%',
-                        borderRadius: profile.photoShape === 'rounded_rect' ? '14px' : '50%',
-                        backgroundColor: 'var(--elevated-surface)',
-                        display: 'flex',
-                        alignItems: 'center',
-                        justifyContent: 'center',
-                        fontWeight: 700,
-                        fontSize: '1.3rem',
-                        color: 'var(--accent-purple)',
-                        overflow: 'hidden'
-                      }}
-                    >
-                      {profile.avatar ? (
-                        <img src={profile.avatar} alt={profile.name} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
-                      ) : (
-                        profile.name?.charAt(0) || 'P'
-                      )}
-                    </div>
-                  </div>
-
-                  <div>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
-                      <h3 style={{ margin: 0, fontSize: '1.2rem', color: 'var(--text-primary)', fontWeight: 700 }}>
-                        {profile.name}
-                      </h3>
-                      <span
-                        style={{
-                          fontSize: '0.68rem',
-                          fontWeight: 700,
-                          padding: '2px 8px',
-                          borderRadius: '9999px',
-                          backgroundColor: 'rgba(168, 85, 247, 0.15)',
-                          color: '#A855F7',
-                          border: '1px solid rgba(168, 85, 247, 0.3)'
-                        }}
-                      >
-                        {profile.openingPreference === 'full' ? 'Direct Full View' : profile.openingPreference === 'compact_only' ? 'Compact Locked' : 'Morphing Card'}
-                      </span>
-                    </div>
-
-                    <div style={{ fontSize: '0.82rem', color: 'var(--text-secondary)', marginTop: '2px' }}>
-                      {profile.role || 'Executive'} {profile.company ? `at ${profile.company}` : ''}
-                    </div>
-
-                    <div
-                      onClick={() => handleCopyLink(profile.slug)}
-                      title="Click to copy profile URL"
-                      style={{
-                        fontSize: '0.78rem',
-                        color: copiedSlug === profile.slug ? '#10B981' : 'var(--accent-purple)',
-                        marginTop: '4px',
-                        fontFamily: 'monospace',
-                        cursor: 'pointer',
-                        display: 'inline-flex',
-                        alignItems: 'center',
-                        gap: '5px'
-                      }}
-                    >
-                      <span>flocard.in/p/{profile.slug}</span>
-                      {copiedSlug === profile.slug ? (
-                        <span style={{ fontSize: '0.7rem', color: '#10B981', display: 'inline-flex', alignItems: 'center', gap: '2px', fontWeight: 700 }}>
-                          <Check size={11} /> Copied!
-                        </span>
-                      ) : (
-                        <Copy size={11} style={{ opacity: 0.7 }} />
-                      )}
-                    </div>
-                  </div>
-                </div>
-
-                {/* Profile Primary Actions */}
-                <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
-                  <button
-                    type="button"
-                    onClick={() => handleOpenEdit(profile)}
-                    className="btn btn-outline btn-xs"
-                    style={{ gap: '6px' }}
-                  >
-                    <Sliders size={13} />
-                    <span>Appearance & Studio</span>
-                  </button>
-
-                  <button
-                    type="button"
-                    onClick={() => handleOpenPreview(profile)}
-                    className="btn btn-secondary btn-xs"
-                    style={{ gap: '6px' }}
-                  >
-                    <Eye size={13} />
-                    <span>Test Morph</span>
-                  </button>
-
-                  <a
-                    href={`/p/${profile.slug}`}
-                    target="_blank"
-                    rel="noreferrer"
-                    className="btn btn-outline btn-xs"
-                    style={{ gap: '6px' }}
-                  >
-                    <ExternalLink size={12} />
-                    <span>Live URL</span>
-                  </a>
-
-                  <button
-                    type="button"
-                    onClick={() => handleCopyLink(profile.slug)}
-                    className="btn btn-outline btn-xs"
-                    style={{ gap: '6px' }}
-                  >
-                    {copiedSlug === profile.slug ? <Check size={13} color="#10B981" /> : <Copy size={13} />}
-                    <span>{copiedSlug === profile.slug ? 'Copied!' : 'Copy'}</span>
-                  </button>
-
-                  <button
-                    type="button"
-                    onClick={() => downloadVCard(profile)}
-                    className="btn btn-primary btn-xs"
-                    style={{ gap: '6px' }}
-                  >
-                    <Download size={13} />
-                    <span>vCard</span>
-                  </button>
-                </div>
-              </div>
-
-              {/* Bio & Details Excerpt */}
               <div
                 style={{
-                  backgroundColor: 'var(--elevated-surface)',
-                  padding: '16px',
-                  borderRadius: '12px',
-                  border: '1px solid var(--border-color)',
-                  display: 'flex',
-                  flexDirection: 'column',
-                  gap: '8px',
-                  fontSize: '0.82rem'
+                  position: 'absolute',
+                  inset: 0,
+                  background: 'linear-gradient(to bottom, rgba(0,0,0,0.2) 0%, rgba(8,6,13,0.85) 100%)'
                 }}
-              >
-                {profile.bio && (
-                  <p style={{ margin: 0, color: 'var(--text-secondary)', lineHeight: 1.5 }}>
-                    {profile.bio}
-                  </p>
-                )}
-
-                <div style={{ display: 'flex', gap: '16px', flexWrap: 'wrap', marginTop: '4px', fontSize: '0.76rem', color: 'var(--text-muted)' }}>
-                  {profile.phone && <span>📞 {profile.phone}</span>}
-                  {profile.email && <span>✉️ {profile.email}</span>}
-                  {profile.location && <span>📍 {profile.location}</span>}
-                  <span>🎨 Glow: {profile.glowColor || '#6B00FF'}</span>
-                  <span>🖼️ Shape: {profile.photoShape === 'rounded_rect' ? 'Rounded Rectangle' : 'Circle'}</span>
-                  <span>🔤 BG Watermark: {profile.backgroundTypography || 'FLOCARD'}</span>
+              />
+              <div style={{ position: 'absolute', bottom: '12px', left: '16px', display: 'flex', alignItems: 'center', gap: '12px' }}>
+                <img
+                  src={prof.avatar || 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=100&auto=format&fit=crop&q=80'}
+                  alt={prof.name}
+                  style={{
+                    width: '46px',
+                    height: '46px',
+                    borderRadius: prof.photoShape === 'rounded_rect' ? '12px' : '50%',
+                    border: '2px solid #FFFFFF',
+                    objectFit: 'cover'
+                  }}
+                />
+                <div>
+                  <div style={{ fontSize: '1rem', fontWeight: 800, color: '#FFFFFF', lineHeight: 1.2 }}>
+                    {prof.name}
+                  </div>
+                  <div style={{ fontSize: '0.74rem', color: '#CBD5E1' }}>
+                    {prof.role} {prof.company ? `• ${prof.company}` : ''}
+                  </div>
                 </div>
               </div>
             </div>
-          ))}
-        </div>
-      )}
 
-      {/* Profile Edit & Morphing Studio Modal */}
+            {/* Profile Info Summary */}
+            <div style={{ padding: '20px', display: 'flex', flexDirection: 'column', gap: '14px', flex: 1 }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: '0.78rem' }}>
+                <span style={{ color: 'var(--text-secondary)' }}>Canonical Profile URL:</span>
+                <a
+                  href={`/p/${prof.slug}`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  style={{ color: 'var(--accent-purple)', fontWeight: 700, textDecoration: 'none', display: 'inline-flex', alignItems: 'center', gap: '4px' }}
+                >
+                  <span>flocard.in/{prof.slug}</span>
+                  <ExternalLink size={12} />
+                </a>
+              </div>
+
+              {/* Action Buttons */}
+              <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap', marginTop: 'auto', paddingTop: '14px', borderTop: '1px solid var(--border-color)' }}>
+                <button
+                  type="button"
+                  onClick={() => handleOpenEdit(prof)}
+                  className="btn btn-primary btn-xs"
+                  style={{ gap: '6px' }}
+                >
+                  <Edit3 size={13} />
+                  <span>Edit Profile</span>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => setPreviewProfile(prof)}
+                  className="btn btn-secondary btn-xs"
+                  style={{ gap: '6px' }}
+                >
+                  <Eye size={13} />
+                  <span>Preview</span>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => handleCopyLink(prof.slug)}
+                  className="btn btn-outline btn-xs"
+                  style={{ gap: '6px' }}
+                >
+                  {copiedSlug === prof.slug ? <Check size={13} color="#10B981" /> : <Copy size={13} />}
+                  <span>{copiedSlug === prof.slug ? 'Copied!' : 'Copy Link'}</span>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => downloadVCard(prof)}
+                  className="btn btn-outline btn-xs"
+                  style={{ gap: '6px' }}
+                >
+                  <Download size={13} />
+                  <span>vCard</span>
+                </button>
+              </div>
+            </div>
+          </div>
+        ))}
+      </div>
+
+      {/* =========================================================================
+          CENTRAL PROFILE EDITOR MODAL (14 SECTIONS)
+          ========================================================================= */}
       {editingProfile && (
         <div
           style={{
             position: 'fixed',
             inset: 0,
-            backgroundColor: 'rgba(0, 0, 0, 0.82)',
-            backdropFilter: 'blur(10px)',
+            backgroundColor: 'rgba(5, 3, 10, 0.88)',
+            backdropFilter: 'blur(12px)',
             zIndex: 1000,
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'center',
-            padding: '20px'
+            padding: '16px',
+            boxSizing: 'border-box'
           }}
         >
           <div
             className="glass-panel"
             style={{
-              maxWidth: '720px',
+              maxWidth: '980px',
               width: '100%',
               backgroundColor: 'var(--card-surface)',
               borderRadius: '24px',
-              border: '1px solid var(--border-highlight)',
-              padding: '28px',
-              maxHeight: '92vh',
-              overflowY: 'auto',
-              boxShadow: 'var(--shadow-card)'
+              border: '1.5px solid var(--border-highlight)',
+              maxHeight: '94vh',
+              display: 'flex',
+              flexDirection: 'column',
+              overflow: 'hidden',
+              boxShadow: 'var(--shadow-card)',
+              position: 'relative'
             }}
           >
-            {/* Modal Header */}
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
+            {/* Modal Header Bar */}
+            <div
+              style={{
+                padding: '20px 24px',
+                borderBottom: '1px solid var(--border-color)',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'space-between',
+                flexWrap: 'wrap',
+                gap: '12px',
+                backgroundColor: 'var(--card-surface)'
+              }}
+            >
               <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
                 <Sliders size={20} color="var(--accent-purple)" />
                 <h3 style={{ margin: 0, fontSize: '1.25rem', color: 'var(--text-primary)', fontWeight: 800 }}>
-                  Profile Appearance & Morphing Studio
+                  Profile Appearance & Business Platform Editor
                 </h3>
               </div>
-              <button
-                type="button"
-                onClick={() => setEditingProfile(null)}
-                style={{ background: 'none', border: 'none', color: 'var(--text-muted)', cursor: 'pointer' }}
+
+              <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                <button
+                  type="button"
+                  onClick={() => setPreviewProfile(formData)}
+                  className="btn btn-secondary btn-xs"
+                  style={{ gap: '6px' }}
+                >
+                  <Eye size={14} />
+                  <span>Live Preview</span>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={handleSave}
+                  className="btn btn-primary btn-xs"
+                  style={{ gap: '6px' }}
+                >
+                  <Save size={14} />
+                  <span>Save All Changes</span>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => setEditingProfile(null)}
+                  style={{ background: 'none', border: 'none', color: 'var(--text-muted)', cursor: 'pointer' }}
+                >
+                  <X size={20} />
+                </button>
+              </div>
+            </div>
+
+            {/* Success & Error Banner */}
+            {saveSuccess && (
+              <div style={{ backgroundColor: 'rgba(16, 185, 129, 0.2)', borderBottom: '1px solid #10B981', color: '#10B981', padding: '10px 24px', fontSize: '0.86rem', fontWeight: 700, display: 'flex', alignItems: 'center', gap: '8px' }}>
+                <CheckCircle2 size={16} />
+                <span>Profile customizations saved successfully across all digital cards and URLs!</span>
+              </div>
+            )}
+            {uploadError && (
+              <div style={{ backgroundColor: 'rgba(239, 68, 68, 0.2)', borderBottom: '1px solid #EF4444', color: '#F87171', padding: '10px 24px', fontSize: '0.86rem', fontWeight: 700, display: 'flex', alignItems: 'center', gap: '8px' }}>
+                <AlertCircle size={16} />
+                <span>{uploadError}</span>
+              </div>
+            )}
+
+            {/* Split Body: Sidebar Navigation + Active Section Form */}
+            <div style={{ display: 'flex', flex: 1, overflow: 'hidden' }}>
+              {/* Left Nav List */}
+              <div
+                style={{
+                  width: '260px',
+                  backgroundColor: 'var(--elevated-surface)',
+                  borderRight: '1px solid var(--border-color)',
+                  padding: '16px 12px',
+                  overflowY: 'auto',
+                  flexShrink: 0,
+                  display: 'flex',
+                  flexDirection: 'column',
+                  gap: '4px'
+                }}
               >
-                <X size={20} />
-              </button>
-            </div>
+                {SECTIONS.map((sec) => {
+                  const Icon = sec.icon;
+                  const active = editorSection === sec.id;
+                  return (
+                    <button
+                      key={sec.id}
+                      type="button"
+                      onClick={() => setEditorSection(sec.id)}
+                      style={{
+                        padding: '10px 12px',
+                        borderRadius: '10px',
+                        border: 'none',
+                        backgroundColor: active ? 'var(--primary-purple)' : 'transparent',
+                        color: active ? '#FFFFFF' : 'var(--text-secondary)',
+                        fontSize: '0.82rem',
+                        fontWeight: active ? 700 : 500,
+                        cursor: 'pointer',
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: '8px',
+                        textAlign: 'left',
+                        transition: 'all 0.16s ease'
+                      }}
+                    >
+                      <Icon size={15} />
+                      <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                        {sec.label}
+                      </span>
+                    </button>
+                  );
+                })}
+              </div>
 
-            {/* Studio Navigation Tabs */}
-            <div style={{ display: 'flex', gap: '8px', borderBottom: '1px solid var(--border-color)', paddingBottom: '12px', marginBottom: '20px' }}>
-              {[
-                { id: 'appearance', label: '1. Card Morphing & Colors', icon: Palette },
-                { id: 'info', label: '2. Identity Info', icon: Edit3 },
-                { id: 'sections', label: '3. Section Visibility', icon: Layers }
-              ].map(tab => {
-                const Icon = tab.icon;
-                const active = editorTab === tab.id;
-                return (
-                  <button
-                    key={tab.id}
-                    type="button"
-                    onClick={() => setEditorTab(tab.id)}
-                    style={{
-                      padding: '8px 14px',
-                      borderRadius: '10px',
-                      border: 'none',
-                      backgroundColor: active ? 'var(--primary-purple)' : 'transparent',
-                      color: active ? '#FFFFFF' : 'var(--text-secondary)',
-                      fontSize: '0.82rem',
-                      fontWeight: 600,
-                      cursor: 'pointer',
-                      display: 'flex',
-                      alignItems: 'center',
-                      gap: '6px'
-                    }}
-                  >
-                    <Icon size={14} />
-                    <span>{tab.label}</span>
-                  </button>
-                );
-              })}
-            </div>
-
-            <form onSubmit={handleSave} style={{ display: 'flex', flexDirection: 'column', gap: '18px' }}>
-              {/* TAB 1: APPEARANCE & MORPHING CONTROLS */}
-              {editorTab === 'appearance' && (
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
-                  {/* Opening Behavior */}
-                  <div style={{ padding: '16px', borderRadius: '14px', backgroundColor: 'var(--elevated-surface)', border: '1px solid var(--border-color)' }}>
-                    <label style={{ fontSize: '0.82rem', fontWeight: 700, color: 'var(--text-primary)', display: 'block', marginBottom: '6px' }}>
-                      Opening Experience Behavior
-                    </label>
-                    <p style={{ fontSize: '0.76rem', color: 'var(--text-secondary)', margin: '0 0 12px' }}>
-                      Choose how your profile displays when visitors tap your card or open your link.
+              {/* Right Active Section Form */}
+              <div
+                style={{
+                  flex: 1,
+                  padding: '24px',
+                  overflowY: 'auto',
+                  boxSizing: 'border-box',
+                  display: 'flex',
+                  flexDirection: 'column',
+                  gap: '20px'
+                }}
+              >
+                {/* 1. BASIC INFORMATION */}
+                {editorSection === 'basic' && (
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+                    <h4 style={{ margin: '0 0 4px', fontSize: '1.05rem', fontWeight: 800 }}>1. Basic Information</h4>
+                    <p style={{ margin: '0 0 12px', fontSize: '0.82rem', color: 'var(--text-secondary)' }}>
+                      Core professional identity shown at the top of your full-screen digital profile.
                     </p>
-                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '10px' }}>
-                      {[
-                        { id: 'expandable', title: 'Expandable Card', desc: 'Shows compact card; morphs into portfolio on click (Recommended)' },
-                        { id: 'full', title: 'Direct Full Profile', desc: 'Opens expanded portfolio view immediately' },
-                        { id: 'compact_only', title: 'Compact Card Only', desc: 'Locked as compact card without expanding' }
-                      ].map(opt => (
-                        <div
-                          key={opt.id}
-                          onClick={() => setFormData({ ...formData, openingPreference: opt.id })}
-                          style={{
-                            padding: '12px',
-                            borderRadius: '10px',
-                            cursor: 'pointer',
-                            backgroundColor: formData.openingPreference === opt.id ? 'rgba(107, 0, 255, 0.15)' : 'var(--card-surface)',
-                            border: `1.5px solid ${formData.openingPreference === opt.id ? 'var(--primary-purple)' : 'var(--border-color)'}`,
-                            transition: 'all 0.2s'
-                          }}
-                        >
-                          <div style={{ fontSize: '0.82rem', fontWeight: 700, color: formData.openingPreference === opt.id ? '#A855F7' : 'var(--text-primary)' }}>
-                            {opt.title}
-                          </div>
-                          <div style={{ fontSize: '0.7rem', color: 'var(--text-secondary)', marginTop: '4px', lineHeight: 1.35 }}>
-                            {opt.desc}
-                          </div>
-                        </div>
-                      ))}
+
+                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: '14px' }}>
+                      <div>
+                        <label style={{ fontSize: '0.8rem', fontWeight: 600, display: 'block', marginBottom: '6px' }}>Full Name *</label>
+                        <input
+                          type="text"
+                          value={formData.name || ''}
+                          onChange={e => setFormData({ ...formData, name: e.target.value })}
+                          className="form-input"
+                          style={{ width: '100%' }}
+                        />
+                      </div>
+                      <div>
+                        <label style={{ fontSize: '0.8rem', fontWeight: 600, display: 'block', marginBottom: '6px' }}>Job Title / Professional Role</label>
+                        <input
+                          type="text"
+                          value={formData.role || ''}
+                          onChange={e => setFormData({ ...formData, role: e.target.value })}
+                          className="form-input"
+                          style={{ width: '100%' }}
+                        />
+                      </div>
+                      <div>
+                        <label style={{ fontSize: '0.8rem', fontWeight: 600, display: 'block', marginBottom: '6px' }}>Company / Organization</label>
+                        <input
+                          type="text"
+                          value={formData.company || ''}
+                          onChange={e => setFormData({ ...formData, company: e.target.value })}
+                          className="form-input"
+                          style={{ width: '100%' }}
+                        />
+                      </div>
+                      <div>
+                        <label style={{ fontSize: '0.8rem', fontWeight: 600, display: 'block', marginBottom: '6px' }}>Location / City</label>
+                        <input
+                          type="text"
+                          value={formData.location || ''}
+                          onChange={e => setFormData({ ...formData, location: e.target.value })}
+                          className="form-input"
+                          style={{ width: '100%' }}
+                        />
+                      </div>
+                    </div>
+
+                    <div>
+                      <label style={{ fontSize: '0.8rem', fontWeight: 600, display: 'block', marginBottom: '6px' }}>Short Biography / Mission</label>
+                      <textarea
+                        rows={3}
+                        value={formData.bio || ''}
+                        onChange={e => setFormData({ ...formData, bio: e.target.value })}
+                        className="form-input"
+                        style={{ width: '100%' }}
+                      />
                     </div>
                   </div>
+                )}
 
-                  {/* Card Background & Edition Theme */}
-                  <div style={{ padding: '16px', borderRadius: '14px', backgroundColor: 'var(--elevated-surface)', border: '1px solid var(--border-color)' }}>
-                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
-                      <label style={{ fontSize: '0.84rem', fontWeight: 700, color: 'var(--text-primary)', display: 'flex', alignItems: 'center', gap: '8px' }}>
-                        <Sparkles size={15} color="var(--accent-purple)" />
-                        <span>Card Background & Edition Theme</span>
-                      </label>
-                      <span style={{ fontSize: '0.72rem', color: 'var(--text-muted)' }}>
-                        Active: {formData.cardFinish === 'gold' ? '24K Mirror Gold' : formData.cardFinish === 'steel' ? 'Brushed Steel' : formData.cardFinish === 'metal' ? 'Gunmetal Metal' : 'Signature Purple'}
-                      </span>
-                    </div>
-                    <p style={{ fontSize: '0.76rem', color: 'var(--text-secondary)', margin: '0 0 12px', lineHeight: 1.4 }}>
-                      Choose your digital card's portrait background artwork: Signature Purple, 24K Gold, Brushed Steel, or Gunmetal Metal.
+                {/* 2. PROFILE PICTURE */}
+                {editorSection === 'avatar' && (
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+                    <h4 style={{ margin: '0 0 4px', fontSize: '1.05rem', fontWeight: 800 }}>2. Profile Picture</h4>
+                    <p style={{ margin: '0 0 12px', fontSize: '0.82rem', color: 'var(--text-secondary)' }}>
+                      High-resolution portrait picture that overlaps the cover banner.
                     </p>
 
-                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(130px, 1fr))', gap: '10px', marginBottom: '14px' }}>
-                      {[
-                        {
-                          id: 'purple',
-                          name: 'Signature Purple',
-                          desc: 'Official FLOCARD obsidian purple portrait artwork',
-                          tint: '#A855F7',
-                          accent: '#A855F7',
-                          glow: '#6B00FF',
-                          portrait: '/assets/cardbg-purple-portrait.png',
-                          gradient: 'linear-gradient(135deg, #C084FC 0%, #7928CA 50%, #4338CA 100%)'
-                        },
-                        {
-                          id: 'gold',
-                          name: '24K Mirror Gold',
-                          desc: 'Prestige radiant gold portrait edition',
-                          tint: '#F3CF8A',
-                          accent: '#F59E0B',
-                          glow: '#D97706',
-                          portrait: '/assets/cardbg-gold-portrait.png',
-                          gradient: 'linear-gradient(135deg, #FDE68A 0%, #F59E0B 50%, #B45309 100%)'
-                        },
-                        {
-                          id: 'steel',
-                          name: 'Brushed Steel',
-                          desc: 'Platinum & silver portrait edition',
-                          tint: '#E2E8F0',
-                          accent: '#94A3B8',
-                          glow: '#64748B',
-                          portrait: '/assets/cardbg-platinum-portrait.png',
-                          gradient: 'linear-gradient(135deg, #FFFFFF 0%, #E2E8F0 50%, #94A3B8 100%)'
-                        },
-                        {
-                          id: 'metal',
-                          name: 'Gunmetal Metal',
-                          desc: 'Brushed titanium gunmetal portrait edition',
-                          tint: '#CBD5E1',
-                          accent: '#94A3B8',
-                          glow: '#475569',
-                          portrait: '/assets/cardbg-metal-portrait.png',
-                          gradient: 'linear-gradient(135deg, #CBD5E1 0%, #475569 50%, #1E293B 100%)'
-                        }
-                      ].map(edition => {
-                        const isSelected = (formData.cardFinish === edition.id) || (!formData.cardFinish && edition.id === 'purple');
-                        return (
-                          <button
-                            key={edition.id}
-                            type="button"
-                            onClick={() => {
-                              setFormData({
-                                ...formData,
-                                cardFinish: edition.id,
-                                cardColor: edition.tint,
-                                glowColor: edition.glow,
-                                accentColor: edition.accent
-                              });
-                            }}
-                            style={{
-                              padding: '12px 10px',
-                              borderRadius: '12px',
-                              border: isSelected ? '2px solid var(--accent-purple)' : '1px solid var(--border-color)',
-                              backgroundColor: isSelected ? 'rgba(107, 0, 255, 0.18)' : 'var(--card-surface)',
-                              cursor: 'pointer',
-                              textAlign: 'left',
-                              display: 'flex',
-                              flexDirection: 'column',
-                              gap: '8px',
-                              transition: 'all 0.2s cubic-bezier(0.16, 1, 0.3, 1)',
-                              transform: isSelected ? 'scale(1.02)' : 'scale(1)',
-                              boxShadow: isSelected ? '0 4px 16px rgba(107, 0, 255, 0.25)' : 'none'
-                            }}
-                          >
-                            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                              <div
-                                style={{
-                                  width: '18px',
-                                  height: '18px',
-                                  borderRadius: '50%',
-                                  background: edition.gradient,
-                                  boxShadow: `0 0 8px ${edition.accent}80`,
-                                  flexShrink: 0
-                                }}
-                              />
-                              <span style={{ fontSize: '0.82rem', fontWeight: 700, color: isSelected ? 'var(--text-primary)' : 'var(--text-secondary)' }}>
-                                {edition.name}
-                              </span>
-                            </div>
-                            <span style={{ fontSize: '0.68rem', color: 'var(--text-muted)', lineHeight: 1.3 }}>
-                              {edition.desc}
-                            </span>
-                          </button>
-                        );
-                      })}
-                    </div>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '20px', flexWrap: 'wrap' }}>
+                      <img
+                        src={formData.avatar || 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=400&auto=format&fit=crop&q=80'}
+                        alt="Avatar Preview"
+                        style={{
+                          width: '100px',
+                          height: '100px',
+                          borderRadius: formData.photoShape === 'rounded_rect' ? '22px' : '50%',
+                          objectFit: 'cover',
+                          border: '3px solid var(--accent-purple)'
+                        }}
+                      />
 
-                    {/* Custom tint fine-tuning */}
-                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', paddingTop: '10px', borderTop: '1px solid var(--border-color)' }}>
-                      <span style={{ fontSize: '0.75rem', color: 'var(--text-secondary)' }}>
-                        Custom Metallic Plate Tint:
-                      </span>
-                      <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
                         <input
-                          type="color"
-                          value={formData.cardColor || (formData.cardFinish === 'gold' ? '#F3CF8A' : formData.cardFinish === 'steel' ? '#E2E8F0' : '#A855F7')}
-                          onChange={e => setFormData({ ...formData, cardColor: e.target.value, cardFinish: 'custom' })}
-                          style={{ width: '34px', height: '30px', borderRadius: '6px', border: 'none', cursor: 'pointer', background: 'none' }}
-                          title="Choose custom metallic tint"
+                          type="file"
+                          ref={avatarInputRef}
+                          style={{ display: 'none' }}
+                          accept="image/*"
+                          onChange={handleAvatarUpload}
                         />
-                        <span style={{ fontSize: '0.74rem', fontFamily: 'monospace', color: 'var(--text-primary)' }}>
-                          {formData.cardColor || (formData.cardFinish === 'gold' ? '#F3CF8A' : formData.cardFinish === 'steel' ? '#E2E8F0' : '#A855F7')}
+                        <button
+                          type="button"
+                          disabled={isUploading}
+                          onClick={() => avatarInputRef.current?.click()}
+                          className="btn btn-primary btn-sm"
+                          style={{ gap: '6px' }}
+                        >
+                          <Upload size={14} />
+                          <span>{isUploading ? 'Uploading...' : 'Upload New Photo'}</span>
+                        </button>
+                        <span style={{ fontSize: '0.74rem', color: 'var(--text-muted)' }}>
+                          Recommended: Square image 400x400 or larger (PNG, JPG, WebP)
                         </span>
                       </div>
                     </div>
-                  </div>
 
-                  {/* Photo Shape & Background Watermark */}
-                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '14px' }}>
-                    <div style={{ padding: '16px', borderRadius: '14px', backgroundColor: 'var(--elevated-surface)', border: '1px solid var(--border-color)' }}>
-                      <label style={{ fontSize: '0.82rem', fontWeight: 700, color: 'var(--text-primary)', display: 'block', marginBottom: '8px' }}>
-                        Profile Photo Shape
+                    {/* Shape Toggle */}
+                    <div style={{ marginTop: '12px' }}>
+                      <label style={{ fontSize: '0.8rem', fontWeight: 600, display: 'block', marginBottom: '8px' }}>
+                        Photo Shape
                       </label>
-                      <div style={{ display: 'flex', gap: '10px' }}>
+                      <div style={{ display: 'flex', gap: '12px' }}>
                         {[
-                          { id: 'circle', label: 'Circular Shape' },
-                          { id: 'rounded_rect', label: 'Rounded Portrait' }
+                          { id: 'circle', label: 'Circular Avatar (Classic)' },
+                          { id: 'rounded_rect', label: 'Rounded Square (Modern)' }
                         ].map(shape => (
                           <button
                             key={shape.id}
                             type="button"
                             onClick={() => setFormData({ ...formData, photoShape: shape.id })}
                             style={{
-                              flex: 1,
-                              padding: '10px',
-                              borderRadius: '8px',
-                              border: `1.5px solid ${formData.photoShape === shape.id ? 'var(--primary-purple)' : 'var(--border-color)'}`,
-                              backgroundColor: formData.photoShape === shape.id ? 'rgba(107, 0, 255, 0.15)' : 'transparent',
-                              color: formData.photoShape === shape.id ? '#A855F7' : 'var(--text-secondary)',
-                              fontSize: '0.78rem',
+                              padding: '10px 18px',
+                              borderRadius: '10px',
+                              border: formData.photoShape === shape.id ? '2px solid var(--accent-purple)' : '1px solid var(--border-color)',
+                              backgroundColor: formData.photoShape === shape.id ? 'var(--primary-purple)' : 'transparent',
+                              color: formData.photoShape === shape.id ? '#FFFFFF' : 'var(--text-secondary)',
+                              fontSize: '0.84rem',
                               fontWeight: 600,
                               cursor: 'pointer'
                             }}
@@ -683,827 +852,1384 @@ export default function CustomerProfilesTab({ profiles = [], customer, onSavePro
                         ))}
                       </div>
                     </div>
+                  </div>
+                )}
 
-                    <div style={{ padding: '16px', borderRadius: '14px', backgroundColor: 'var(--elevated-surface)', border: '1px solid var(--border-color)' }}>
-                      <label style={{ fontSize: '0.82rem', fontWeight: 700, color: 'var(--text-primary)', display: 'block', marginBottom: '6px' }}>
-                        Subtle Oversized Watermark
+                {/* 3. BANNER AND APPEARANCE */}
+                {editorSection === 'banner' && (
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                      <div>
+                        <h4 style={{ margin: '0 0 4px', fontSize: '1.05rem', fontWeight: 800 }}>3. Banner and Appearance</h4>
+                        <p style={{ margin: 0, fontSize: '0.82rem', color: 'var(--text-secondary)' }}>
+                          Facebook/Discord-style customizable cover banner at top of your digital profile.
+                        </p>
+                      </div>
+
+                      {/* Banner Visibility Toggle */}
+                      <label style={{ display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer' }}>
+                        <input
+                          type="checkbox"
+                          checked={formData.banner?.enabled !== false}
+                          onChange={(e) => setFormData({
+                            ...formData,
+                            banner: { ...(formData.banner || {}), enabled: e.target.checked }
+                          })}
+                        />
+                        <span style={{ fontSize: '0.82rem', fontWeight: 700 }}>Enable Banner</span>
                       </label>
-                      <input
-                        type="text"
-                        value={formData.backgroundTypography || ''}
-                        onChange={e => setFormData({ ...formData, backgroundTypography: e.target.value })}
-                        placeholder="e.g. FLOCARD or COMPANY"
-                        className="input"
-                        style={{ width: '100%', fontSize: '0.84rem' }}
-                      />
-                      <div style={{ fontSize: '0.7rem', color: 'var(--text-muted)', marginTop: '4px' }}>
-                        Appears as faint cinematic typography behind the card.
+                    </div>
+
+                    {/* Banner Live Mini Preview */}
+                    <div style={{ width: '100%', borderRadius: '14px', overflow: 'hidden', border: '1px solid var(--border-color)' }}>
+                      <div
+                        style={{
+                          width: '100%',
+                          height: `${formData.banner?.height || 220}px`,
+                          maxHeight: '240px',
+                          backgroundColor: formData.banner?.solidColor || '#1a0b2e',
+                          backgroundImage: formData.banner?.type === 'image' && formData.banner?.url ? `url(${formData.banner.url})` : (formData.banner?.type === 'gradient' ? `linear-gradient(135deg, ${formData.banner.gradientStart || '#2e1065'}, ${formData.banner.gradientEnd || '#090514'})` : 'none'),
+                          backgroundSize: 'cover',
+                          backgroundPosition: `${formData.banner?.positionX ?? 50}% ${formData.banner?.positionY ?? 50}%`,
+                          transform: `scale(${(formData.banner?.zoom || 100) / 100})`,
+                          transformOrigin: 'center center',
+                          position: 'relative'
+                        }}
+                      >
+                        <div
+                          style={{
+                            position: 'absolute',
+                            inset: 0,
+                            background: `linear-gradient(to bottom, transparent 40%, rgba(8,6,13,${formData.banner?.overlayOpacity ?? 0.4}) 100%)`
+                          }}
+                        />
                       </div>
                     </div>
-                  </div>
 
-                  {/* Gradient & Glow Colors */}
-                  <div style={{ padding: '16px', borderRadius: '14px', backgroundColor: 'var(--elevated-surface)', border: '1px solid var(--border-color)' }}>
-                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '12px' }}>
-                      <label style={{ fontSize: '0.82rem', fontWeight: 700, color: 'var(--text-primary)' }}>
-                        Colors & Ambient Lighting
+                    {/* Banner Type Tabs: Image vs Gradient vs Solid Color vs Video */}
+                    <div>
+                      <label style={{ fontSize: '0.8rem', fontWeight: 600, display: 'block', marginBottom: '8px' }}>
+                        Banner Style Type
                       </label>
-                      <div style={{ display: 'flex', gap: '6px' }}>
+                      <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
                         {[
-                          { label: 'Obsidian Violet', start: '#130B22', mid: '#240F3E', end: '#0B0813', glow: '#6B00FF', accent: '#A855F7' },
-                          { label: 'Cosmic Purple', start: '#1F1138', mid: '#3B0764', end: '#090514', glow: '#9333EA', accent: '#C084FC' },
-                          { label: 'Deep Royal', start: '#0F172A', mid: '#1E1B4B', end: '#020617', glow: '#4F46E5', accent: '#818CF8' }
-                        ].map((preset, pIdx) => (
+                          { id: 'image', label: 'Uploaded Image' },
+                          { id: 'gradient', label: 'Gradient Palette' },
+                          { id: 'color', label: 'Solid Color' },
+                          { id: 'video', label: 'Looping Video (MP4/WebM)' }
+                        ].map(t => (
                           <button
-                            key={pIdx}
+                            key={t.id}
                             type="button"
                             onClick={() => setFormData({
                               ...formData,
-                              gradientStart: preset.start,
-                              gradientMid: preset.mid,
-                              gradientEnd: preset.end,
-                              glowColor: preset.glow,
-                              accentColor: preset.accent
+                              banner: { ...(formData.banner || {}), type: t.id }
                             })}
                             style={{
-                              padding: '4px 8px',
-                              borderRadius: '6px',
-                              border: '1px solid var(--border-color)',
-                              backgroundColor: 'var(--card-surface)',
-                              fontSize: '0.7rem',
-                              color: 'var(--text-secondary)',
+                              padding: '8px 14px',
+                              borderRadius: '8px',
+                              border: formData.banner?.type === t.id ? '2px solid var(--accent-purple)' : '1px solid var(--border-color)',
+                              backgroundColor: formData.banner?.type === t.id ? 'var(--primary-purple)' : 'transparent',
+                              color: formData.banner?.type === t.id ? '#FFFFFF' : 'var(--text-secondary)',
+                              fontSize: '0.8rem',
+                              fontWeight: 600,
                               cursor: 'pointer'
                             }}
                           >
-                            {preset.label}
+                            {t.label}
                           </button>
                         ))}
                       </div>
                     </div>
 
-                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '10px' }}>
-                      <div>
-                        <span style={{ fontSize: '0.7rem', color: 'var(--text-muted)', display: 'block', marginBottom: '4px' }}>Gradient Mid</span>
+                    {/* Upload Image/Video Action */}
+                    {(formData.banner?.type === 'image' || formData.banner?.type === 'video') && (
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '12px', flexWrap: 'wrap' }}>
                         <input
-                          type="color"
-                          value={formData.gradientMid || '#240F3E'}
-                          onChange={e => setFormData({ ...formData, gradientMid: e.target.value })}
-                          style={{ width: '100%', height: '36px', borderRadius: '6px', border: 'none', cursor: 'pointer', background: 'none' }}
+                          type="file"
+                          ref={bannerInputRef}
+                          style={{ display: 'none' }}
+                          accept={formData.banner?.type === 'video' ? 'video/mp4,video/webm' : 'image/*'}
+                          onChange={handleBannerUpload}
                         />
-                      </div>
-                      <div>
-                        <span style={{ fontSize: '0.7rem', color: 'var(--text-muted)', display: 'block', marginBottom: '4px' }}>Gradient End</span>
-                        <input
-                          type="color"
-                          value={formData.gradientEnd || '#0B0813'}
-                          onChange={e => setFormData({ ...formData, gradientEnd: e.target.value })}
-                          style={{ width: '100%', height: '36px', borderRadius: '6px', border: 'none', cursor: 'pointer', background: 'none' }}
-                        />
-                      </div>
-                      <div>
-                        <span style={{ fontSize: '0.7rem', color: 'var(--text-muted)', display: 'block', marginBottom: '4px' }}>Glow Accent</span>
-                        <input
-                          type="color"
-                          value={formData.glowColor || '#6B00FF'}
-                          onChange={e => setFormData({ ...formData, glowColor: e.target.value })}
-                          style={{ width: '100%', height: '36px', borderRadius: '6px', border: 'none', cursor: 'pointer', background: 'none' }}
-                        />
-                      </div>
-                      <div>
-                        <span style={{ fontSize: '0.7rem', color: 'var(--text-muted)', display: 'block', marginBottom: '4px' }}>Highlight</span>
-                        <input
-                          type="color"
-                          value={formData.accentColor || '#A855F7'}
-                          onChange={e => setFormData({ ...formData, accentColor: e.target.value })}
-                          style={{ width: '100%', height: '36px', borderRadius: '6px', border: 'none', cursor: 'pointer', background: 'none' }}
-                        />
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              )}
-
-              {/* TAB 2: IDENTITY INFO */}
-              {editorTab === 'info' && (
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
-
-                  {/* ── PHOTO & LOGO UPLOAD ROW ── */}
-                  <div
-                    style={{
-                      display: 'grid',
-                      gridTemplateColumns: '1fr 1fr',
-                      gap: '12px',
-                      padding: '16px',
-                      backgroundColor: 'var(--elevated-surface)',
-                      borderRadius: '14px',
-                      border: '1px solid var(--border-color)'
-                    }}
-                  >
-                    {/* Avatar / Headshot */}
-                    <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '10px' }}>
-                      <div
-                        style={{
-                          width: '80px',
-                          height: '80px',
-                          borderRadius: '50%',
-                          overflow: 'hidden',
-                          border: '2px solid var(--border-color)',
-                          background: 'var(--card-surface)',
-                          display: 'flex',
-                          alignItems: 'center',
-                          justifyContent: 'center',
-                          flexShrink: 0,
-                          cursor: 'pointer',
-                          position: 'relative'
-                        }}
-                        onClick={() => avatarInputRef.current?.click()}
-                        title="Click to upload headshot"
-                      >
-                        {formData.avatar ? (
-                          <img src={formData.avatar} alt="Avatar" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
-                        ) : (
-                          <User size={28} color="var(--text-muted)" />
-                        )}
-                        <div style={{
-                          position: 'absolute',
-                          inset: 0,
-                          borderRadius: '50%',
-                          background: 'rgba(0,0,0,0.35)',
-                          display: 'flex',
-                          alignItems: 'center',
-                          justifyContent: 'center',
-                          opacity: 0,
-                          transition: 'opacity 0.2s'
-                        }}
-                          onMouseEnter={e => e.currentTarget.style.opacity = 1}
-                          onMouseLeave={e => e.currentTarget.style.opacity = 0}
-                        >
-                          <Upload size={16} color="#fff" />
-                        </div>
-                      </div>
-                      <input ref={avatarInputRef} type="file" accept="image/*" onChange={handleAvatarUpload} style={{ display: 'none' }} />
-                      <div style={{ textAlign: 'center' }}>
-                        <div style={{ fontSize: '0.76rem', fontWeight: 700, color: 'var(--text-primary)' }}>Profile Photo</div>
                         <button
                           type="button"
-                          onClick={() => avatarInputRef.current?.click()}
-                          style={{
-                            marginTop: '6px',
-                            display: 'inline-flex',
-                            alignItems: 'center',
-                            gap: '5px',
-                            fontSize: '0.72rem',
-                            fontWeight: 600,
-                            padding: '5px 12px',
-                            borderRadius: '9999px',
-                            border: '1px solid var(--border-color)',
-                            background: 'transparent',
-                            color: 'var(--text-secondary)',
-                            cursor: 'pointer'
-                          }}
+                          disabled={isUploading}
+                          onClick={() => bannerInputRef.current?.click()}
+                          className="btn btn-primary btn-sm"
+                          style={{ gap: '6px' }}
                         >
-                          <Upload size={11} />
-                          {formData.avatar ? 'Change Photo' : 'Upload Photo'}
+                          <Upload size={14} />
+                          <span>{isUploading ? 'Uploading...' : `Upload ${formData.banner?.type === 'video' ? 'Video' : 'Cover Image'}`}</span>
                         </button>
-                        {formData.avatar && (
-                          <button
-                            type="button"
-                            onClick={() => setFormData(prev => ({ ...prev, avatar: '' }))}
-                            style={{
-                              marginTop: '4px',
-                              display: 'block',
-                              fontSize: '0.68rem',
-                              color: '#F87171',
-                              background: 'none',
-                              border: 'none',
-                              cursor: 'pointer',
-                              width: '100%'
-                            }}
-                          >
-                            Remove
-                          </button>
-                        )}
+                        <span style={{ fontSize: '0.74rem', color: 'var(--text-muted)' }}>
+                          Aspect Ratio ~3:1 (e.g. 1500x500px). Max 5MB (Image) or 15MB (Video).
+                        </span>
                       </div>
-                    </div>
+                    )}
 
-                    {/* Company Logo */}
-                    <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '10px' }}>
-                      <div
-                        style={{
-                          width: '80px',
-                          height: '80px',
-                          borderRadius: '16px',
-                          overflow: 'hidden',
-                          border: '2px solid var(--border-color)',
-                          background: 'var(--card-surface)',
-                          display: 'flex',
-                          alignItems: 'center',
-                          justifyContent: 'center',
-                          flexShrink: 0,
-                          cursor: 'pointer',
-                          position: 'relative'
-                        }}
-                        onClick={() => logoInputRef.current?.click()}
-                        title="Click to upload company logo"
-                      >
-                        {formData.logo ? (
-                          <img src={formData.logo} alt="Logo" style={{ width: '100%', height: '100%', objectFit: 'contain', padding: '6px' }} />
-                        ) : (
-                          <Building2 size={28} color="var(--text-muted)" />
-                        )}
-                        <div style={{
-                          position: 'absolute',
-                          inset: 0,
-                          borderRadius: '14px',
-                          background: 'rgba(0,0,0,0.35)',
-                          display: 'flex',
-                          alignItems: 'center',
-                          justifyContent: 'center',
-                          opacity: 0,
-                          transition: 'opacity 0.2s'
-                        }}
-                          onMouseEnter={e => e.currentTarget.style.opacity = 1}
-                          onMouseLeave={e => e.currentTarget.style.opacity = 0}
-                        >
-                          <Upload size={16} color="#fff" />
-                        </div>
+                    {/* Zoom, Position X & Y sliders */}
+                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '14px' }}>
+                      <div>
+                        <label style={{ fontSize: '0.78rem', fontWeight: 600, display: 'flex', justifyContent: 'space-between' }}>
+                          <span>Zoom</span>
+                          <span>{formData.banner?.zoom || 100}%</span>
+                        </label>
+                        <input
+                          type="range"
+                          min="80"
+                          max="150"
+                          value={formData.banner?.zoom || 100}
+                          onChange={(e) => setFormData({
+                            ...formData,
+                            banner: { ...(formData.banner || {}), zoom: Number(e.target.value) }
+                          })}
+                          style={{ width: '100%' }}
+                        />
                       </div>
-                      <input ref={logoInputRef} type="file" accept="image/*" onChange={handleLogoUpload} style={{ display: 'none' }} />
-                      <div style={{ textAlign: 'center' }}>
-                        <div style={{ fontSize: '0.76rem', fontWeight: 700, color: 'var(--text-primary)' }}>Company Logo</div>
-                        <button
-                          type="button"
-                          onClick={() => logoInputRef.current?.click()}
-                          style={{
-                            marginTop: '6px',
-                            display: 'inline-flex',
-                            alignItems: 'center',
-                            gap: '5px',
-                            fontSize: '0.72rem',
-                            fontWeight: 600,
-                            padding: '5px 12px',
-                            borderRadius: '9999px',
-                            border: '1px solid var(--border-color)',
-                            background: 'transparent',
-                            color: 'var(--text-secondary)',
-                            cursor: 'pointer'
-                          }}
-                        >
-                          <Upload size={11} />
-                          {formData.logo ? 'Change Logo' : 'Upload Logo'}
-                        </button>
-                        {formData.logo && (
-                          <button
-                            type="button"
-                            onClick={() => setFormData(prev => ({ ...prev, logo: '' }))}
-                            style={{
-                              marginTop: '4px',
-                              display: 'block',
-                              fontSize: '0.68rem',
-                              color: '#F87171',
-                              background: 'none',
-                              border: 'none',
-                              cursor: 'pointer',
-                              width: '100%'
-                            }}
-                          >
-                            Remove
-                          </button>
-                        )}
+
+                      <div>
+                        <label style={{ fontSize: '0.78rem', fontWeight: 600, display: 'flex', justifyContent: 'space-between' }}>
+                          <span>Vertical Position (Y)</span>
+                          <span>{formData.banner?.positionY ?? 50}%</span>
+                        </label>
+                        <input
+                          type="range"
+                          min="0"
+                          max="100"
+                          value={formData.banner?.positionY ?? 50}
+                          onChange={(e) => setFormData({
+                            ...formData,
+                            banner: { ...(formData.banner || {}), positionY: Number(e.target.value) }
+                          })}
+                          style={{ width: '100%' }}
+                        />
+                      </div>
+
+                      <div>
+                        <label style={{ fontSize: '0.78rem', fontWeight: 600, display: 'flex', justifyContent: 'space-between' }}>
+                          <span>Overlay Darkness</span>
+                          <span>{Math.round((formData.banner?.overlayOpacity ?? 0.38) * 100)}%</span>
+                        </label>
+                        <input
+                          type="range"
+                          min="0"
+                          max="100"
+                          value={Math.round((formData.banner?.overlayOpacity ?? 0.38) * 100)}
+                          onChange={(e) => setFormData({
+                            ...formData,
+                            banner: { ...(formData.banner || {}), overlayOpacity: Number(e.target.value) / 100 }
+                          })}
+                          style={{ width: '100%' }}
+                        />
                       </div>
                     </div>
                   </div>
+                )}
 
-                  {/* ── NAME / ROLE ROW ── */}
-                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
-                    <div>
-                      <label style={{ fontSize: '0.76rem', fontWeight: 600, color: 'var(--text-secondary)', display: 'block', marginBottom: '4px' }}>Full Name</label>
-                      <input
-                        type="text"
-                        required
-                        value={formData.name || ''}
-                        onChange={e => setFormData({ ...formData, name: e.target.value })}
-                        className="input"
-                        style={{ width: '100%', fontSize: '0.84rem' }}
-                      />
-                    </div>
-                    <div>
-                      <label style={{ fontSize: '0.76rem', fontWeight: 600, color: 'var(--text-secondary)', display: 'block', marginBottom: '4px' }}>Role / Professional Title</label>
-                      <input
-                        type="text"
-                        value={formData.role || ''}
-                        onChange={e => setFormData({ ...formData, role: e.target.value })}
-                        className="input"
-                        style={{ width: '100%', fontSize: '0.84rem' }}
-                      />
+                {/* 4. CONTACT AND SOCIAL LINKS */}
+                {editorSection === 'contact' && (
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+                    <h4 style={{ margin: '0 0 4px', fontSize: '1.05rem', fontWeight: 800 }}>4. Contact and Social Links</h4>
+                    <p style={{ margin: '0 0 12px', fontSize: '0.82rem', color: 'var(--text-secondary)' }}>
+                      Direct contact phone, WhatsApp, and social media links.
+                    </p>
+
+                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: '14px' }}>
+                      <div>
+                        <label style={{ fontSize: '0.8rem', fontWeight: 600, display: 'block', marginBottom: '6px' }}>Phone Number</label>
+                        <input
+                          type="text"
+                          value={formData.phone || ''}
+                          onChange={e => setFormData({ ...formData, phone: e.target.value })}
+                          placeholder="+91 98765 43210"
+                          className="form-input"
+                          style={{ width: '100%' }}
+                        />
+                      </div>
+                      <div>
+                        <label style={{ fontSize: '0.8rem', fontWeight: 600, display: 'block', marginBottom: '6px' }}>WhatsApp Number</label>
+                        <input
+                          type="text"
+                          value={formData.whatsapp || ''}
+                          onChange={e => setFormData({ ...formData, whatsapp: e.target.value })}
+                          placeholder="919876543210"
+                          className="form-input"
+                          style={{ width: '100%' }}
+                        />
+                      </div>
+                      <div>
+                        <label style={{ fontSize: '0.8rem', fontWeight: 600, display: 'block', marginBottom: '6px' }}>Email Address</label>
+                        <input
+                          type="email"
+                          value={formData.email || ''}
+                          onChange={e => setFormData({ ...formData, email: e.target.value })}
+                          placeholder="alex@example.com"
+                          className="form-input"
+                          style={{ width: '100%' }}
+                        />
+                      </div>
+                      <div>
+                        <label style={{ fontSize: '0.8rem', fontWeight: 600, display: 'block', marginBottom: '6px' }}>Website URL</label>
+                        <input
+                          type="text"
+                          value={formData.website || ''}
+                          onChange={e => setFormData({ ...formData, website: e.target.value })}
+                          placeholder="https://flocard.in"
+                          className="form-input"
+                          style={{ width: '100%' }}
+                        />
+                      </div>
+                      <div>
+                        <label style={{ fontSize: '0.8rem', fontWeight: 600, display: 'block', marginBottom: '6px' }}>LinkedIn Profile</label>
+                        <input
+                          type="text"
+                          value={formData.linkedin || ''}
+                          onChange={e => setFormData({ ...formData, linkedin: e.target.value })}
+                          placeholder="https://linkedin.com/in/username"
+                          className="form-input"
+                          style={{ width: '100%' }}
+                        />
+                      </div>
+                      <div>
+                        <label style={{ fontSize: '0.8rem', fontWeight: 600, display: 'block', marginBottom: '6px' }}>Instagram</label>
+                        <input
+                          type="text"
+                          value={formData.instagram || ''}
+                          onChange={e => setFormData({ ...formData, instagram: e.target.value })}
+                          placeholder="https://instagram.com/username"
+                          className="form-input"
+                          style={{ width: '100%' }}
+                        />
+                      </div>
                     </div>
                   </div>
+                )}
 
-                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
-                    <div>
-                      <label style={{ fontSize: '0.76rem', fontWeight: 600, color: 'var(--text-secondary)', display: 'block', marginBottom: '4px' }}>Company</label>
-                      <input
-                        type="text"
-                        value={formData.company || ''}
-                        onChange={e => setFormData({ ...formData, company: e.target.value })}
-                        className="input"
-                        style={{ width: '100%', fontSize: '0.84rem' }}
-                      />
-                    </div>
-                    <div>
-                      <label style={{ fontSize: '0.76rem', fontWeight: 600, color: 'var(--text-secondary)', display: 'block', marginBottom: '4px' }}>Slug (flocard.in/p/:slug)</label>
-                      <input
-                        type="text"
-                        required
-                        value={formData.slug || ''}
-                        onChange={e => setFormData({ ...formData, slug: e.target.value.toLowerCase().replace(/[^a-z0-9-]/g, '') })}
-                        className="input"
-                        style={{ width: '100%', fontSize: '0.84rem', fontFamily: 'monospace' }}
-                      />
-                    </div>
-                  </div>
-
-                  <div>
-                    <label style={{ fontSize: '0.76rem', fontWeight: 600, color: 'var(--text-secondary)', display: 'block', marginBottom: '4px' }}>Short Biography</label>
-                    <textarea
-                      rows={3}
-                      value={formData.bio || ''}
-                      onChange={e => setFormData({ ...formData, bio: e.target.value })}
-                      className="input"
-                      style={{ width: '100%', fontSize: '0.84rem', resize: 'vertical' }}
-                    />
-                  </div>
-
-                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
-                    <div>
-                      <label style={{ fontSize: '0.76rem', fontWeight: 600, color: 'var(--text-secondary)', display: 'block', marginBottom: '4px' }}>Phone</label>
-                      <input
-                        type="text"
-                        value={formData.phone || ''}
-                        onChange={e => setFormData({ ...formData, phone: e.target.value })}
-                        className="input"
-                        style={{ width: '100%', fontSize: '0.84rem' }}
-                      />
-                    </div>
-                    <div>
-                      <label style={{ fontSize: '0.76rem', fontWeight: 600, color: 'var(--text-secondary)', display: 'block', marginBottom: '4px' }}>Email</label>
-                      <input
-                        type="email"
-                        value={formData.email || ''}
-                        onChange={e => setFormData({ ...formData, email: e.target.value })}
-                        className="input"
-                        style={{ width: '100%', fontSize: '0.84rem' }}
-                      />
-                    </div>
-                  </div>
-
-                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
-                    <div>
-                      <label style={{ fontSize: '0.76rem', fontWeight: 600, color: 'var(--text-secondary)', display: 'block', marginBottom: '4px' }}>WhatsApp (Phone or wa.me link)</label>
-                      <input
-                        type="text"
-                        value={formData.whatsapp || ''}
-                        onChange={e => setFormData({ ...formData, whatsapp: e.target.value })}
-                        placeholder="+91 97782 78552"
-                        className="input"
-                        style={{ width: '100%', fontSize: '0.84rem' }}
-                      />
-                    </div>
-                    <div>
-                      <label style={{ fontSize: '0.76rem', fontWeight: 600, color: 'var(--text-secondary)', display: 'block', marginBottom: '4px' }}>Location</label>
-                      <input
-                        type="text"
-                        value={formData.location || ''}
-                        onChange={e => setFormData({ ...formData, location: e.target.value })}
-                        placeholder="Bengaluru, India"
-                        className="input"
-                        style={{ width: '100%', fontSize: '0.84rem' }}
-                      />
-                    </div>
-                  </div>
-
-                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
-                    <div>
-                      <label style={{ fontSize: '0.76rem', fontWeight: 600, color: 'var(--text-secondary)', display: 'block', marginBottom: '4px' }}>LinkedIn URL</label>
-                      <input
-                        type="text"
-                        value={formData.linkedin || ''}
-                        onChange={e => setFormData({ ...formData, linkedin: e.target.value })}
-                        placeholder="https://linkedin.com/in/username"
-                        className="input"
-                        style={{ width: '100%', fontSize: '0.84rem' }}
-                      />
-                    </div>
-                    <div>
-                      <label style={{ fontSize: '0.76rem', fontWeight: 600, color: 'var(--text-secondary)', display: 'block', marginBottom: '4px' }}>Instagram URL</label>
-                      <input
-                        type="text"
-                        value={formData.instagram || ''}
-                        onChange={e => setFormData({ ...formData, instagram: e.target.value })}
-                        placeholder="https://instagram.com/username"
-                        className="input"
-                        style={{ width: '100%', fontSize: '0.84rem' }}
-                      />
-                    </div>
-                  </div>
-
-                  <div>
-                    <label style={{ fontSize: '0.76rem', fontWeight: 600, color: 'var(--text-secondary)', display: 'block', marginBottom: '4px' }}>Website URL</label>
-                    <input
-                      type="text"
-                      value={formData.website || ''}
-                      onChange={e => setFormData({ ...formData, website: e.target.value })}
-                      placeholder="https://flocard.in"
-                      className="input"
-                      style={{ width: '100%', fontSize: '0.84rem' }}
-                    />
-                  </div>
-
-                  {/* ── DYNAMIC CUSTOM CONTACT / SOCIAL LINKS ── */}
-                  <div
-                    style={{
-                      padding: '16px',
-                      backgroundColor: 'var(--elevated-surface)',
-                      borderRadius: '14px',
-                      border: '1px solid var(--border-color)',
-                      display: 'flex',
-                      flexDirection: 'column',
-                      gap: '12px'
-                    }}
-                  >
+                {/* 5. BUSINESS HOURS */}
+                {editorSection === 'hours' && (
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                       <div>
-                        <div style={{ fontSize: '0.82rem', fontWeight: 700, color: 'var(--text-primary)', display: 'flex', alignItems: 'center', gap: '6px' }}>
-                          <Globe size={14} color="var(--accent-purple)" />
-                          Additional Custom Links (Auto-detected Icons & Favicons)
-                        </div>
-                        <div style={{ fontSize: '0.72rem', color: 'var(--text-secondary)', marginTop: '2px' }}>
-                          Add YouTube, GitHub, Telegram, or any custom website. Favicons and official icons are fetched automatically.
-                        </div>
+                        <h4 style={{ margin: '0 0 4px', fontSize: '1.05rem', fontWeight: 800 }}>5. Business Hours</h4>
+                        <p style={{ margin: 0, fontSize: '0.82rem', color: 'var(--text-secondary)' }}>
+                          Configure daily opening and closing hours, closed days, and business timezone.
+                        </p>
                       </div>
+
+                      <label style={{ display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer' }}>
+                        <input
+                          type="checkbox"
+                          checked={formData.sectionVisibility?.hours !== false}
+                          onChange={(e) => setFormData({
+                            ...formData,
+                            sectionVisibility: { ...(formData.sectionVisibility || {}), hours: e.target.checked }
+                          })}
+                        />
+                        <span style={{ fontSize: '0.82rem', fontWeight: 700 }}>Show Hours on Profile</span>
+                      </label>
+                    </div>
+
+                    {/* Timezone Selection */}
+                    <div style={{ maxWidth: '300px' }}>
+                      <label style={{ fontSize: '0.8rem', fontWeight: 600, display: 'block', marginBottom: '6px' }}>Business Timezone</label>
+                      <select
+                        value={formData.businessHours?.timezone || 'Asia/Kolkata'}
+                        onChange={(e) => setFormData({
+                          ...formData,
+                          businessHours: { ...(formData.businessHours || {}), timezone: e.target.value }
+                        })}
+                        className="form-input"
+                        style={{ width: '100%' }}
+                      >
+                        <option value="Asia/Kolkata">Asia/Kolkata (IST +5:30)</option>
+                        <option value="America/New_York">America/New_York (EST)</option>
+                        <option value="America/Los_Angeles">America/Los_Angeles (PST)</option>
+                        <option value="Europe/London">Europe/London (GMT/BST)</option>
+                        <option value="Asia/Dubai">Asia/Dubai (GST +4:00)</option>
+                        <option value="Asia/Singapore">Asia/Singapore (SGT +8:00)</option>
+                      </select>
+                    </div>
+
+                    {/* Weekly Schedule Editors */}
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+                      {DAYS_OF_WEEK.map((day) => {
+                        const dayCfg = formData.businessHours?.schedule?.[day] || { isOpen: false, slots: [{ open: '09:00', close: '17:00' }] };
+                        return (
+                          <div
+                            key={day}
+                            style={{
+                              padding: '12px 16px',
+                              borderRadius: '12px',
+                              backgroundColor: 'var(--elevated-surface)',
+                              border: '1px solid var(--border-color)',
+                              display: 'flex',
+                              alignItems: 'center',
+                              justifyContent: 'space-between',
+                              flexWrap: 'wrap',
+                              gap: '12px'
+                            }}
+                          >
+                            <div style={{ width: '120px', fontWeight: 700, fontSize: '0.88rem' }}>
+                              {DAY_LABELS[day]}
+                            </div>
+
+                            <label style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '0.82rem', cursor: 'pointer' }}>
+                              <input
+                                type="checkbox"
+                                checked={dayCfg.isOpen}
+                                onChange={(e) => {
+                                  const updated = {
+                                    ...(formData.businessHours?.schedule || {}),
+                                    [day]: { ...dayCfg, isOpen: e.target.checked }
+                                  };
+                                  setFormData({
+                                    ...formData,
+                                    businessHours: { ...(formData.businessHours || {}), schedule: updated }
+                                  });
+                                }}
+                              />
+                              <span>{dayCfg.isOpen ? 'Open' : 'Closed'}</span>
+                            </label>
+
+                            {dayCfg.isOpen && (
+                              <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                                <input
+                                  type="time"
+                                  value={dayCfg.slots?.[0]?.open || '09:00'}
+                                  onChange={(e) => {
+                                    const slots = [...(dayCfg.slots || [{ open: '09:00', close: '17:00' }])];
+                                    slots[0] = { ...slots[0], open: e.target.value };
+                                    const updated = {
+                                      ...(formData.businessHours?.schedule || {}),
+                                      [day]: { ...dayCfg, slots }
+                                    };
+                                    setFormData({
+                                      ...formData,
+                                      businessHours: { ...(formData.businessHours || {}), schedule: updated }
+                                    });
+                                  }}
+                                  className="form-input"
+                                  style={{ padding: '4px 8px', fontSize: '0.82rem' }}
+                                />
+                                <span>to</span>
+                                <input
+                                  type="time"
+                                  value={dayCfg.slots?.[0]?.close || '18:00'}
+                                  onChange={(e) => {
+                                    const slots = [...(dayCfg.slots || [{ open: '09:00', close: '17:00' }])];
+                                    slots[0] = { ...slots[0], close: e.target.value };
+                                    const updated = {
+                                      ...(formData.businessHours?.schedule || {}),
+                                      [day]: { ...dayCfg, slots }
+                                    };
+                                    setFormData({
+                                      ...formData,
+                                      businessHours: { ...(formData.businessHours || {}), schedule: updated }
+                                    });
+                                  }}
+                                  className="form-input"
+                                  style={{ padding: '4px 8px', fontSize: '0.82rem' }}
+                                />
+                              </div>
+                            )}
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </div>
+                )}
+
+                {/* 6. APPOINTMENT BOOKING */}
+                {editorSection === 'booking' && (
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                      <div>
+                        <h4 style={{ margin: '0 0 4px', fontSize: '1.05rem', fontWeight: 800 }}>6. Appointment Booking</h4>
+                        <p style={{ margin: 0, fontSize: '0.82rem', color: 'var(--text-secondary)' }}>
+                          Configure consultation availability, slot durations, and review incoming bookings.
+                        </p>
+                      </div>
+
+                      <label style={{ display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer' }}>
+                        <input
+                          type="checkbox"
+                          checked={formData.sectionVisibility?.booking !== false}
+                          onChange={(e) => setFormData({
+                            ...formData,
+                            sectionVisibility: { ...(formData.sectionVisibility || {}), booking: e.target.checked }
+                          })}
+                        />
+                        <span style={{ fontSize: '0.82rem', fontWeight: 700 }}>Enable Booking</span>
+                      </label>
+                    </div>
+
+                    {/* Booking Parameters */}
+                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '14px' }}>
+                      <div>
+                        <label style={{ fontSize: '0.8rem', fontWeight: 600, display: 'block', marginBottom: '6px' }}>Slot Duration</label>
+                        <select
+                          value={formData.bookingConfig?.slotDurationMinutes || 30}
+                          onChange={(e) => setFormData({
+                            ...formData,
+                            bookingConfig: { ...(formData.bookingConfig || {}), slotDurationMinutes: Number(e.target.value) }
+                          })}
+                          className="form-input"
+                          style={{ width: '100%' }}
+                        >
+                          <option value={15}>15 Minutes</option>
+                          <option value={30}>30 Minutes</option>
+                          <option value={45}>45 Minutes</option>
+                          <option value={60}>60 Minutes</option>
+                        </select>
+                      </div>
+
+                      <div>
+                        <label style={{ fontSize: '0.8rem', fontWeight: 600, display: 'block', marginBottom: '6px' }}>Buffer Time Between Slots</label>
+                        <select
+                          value={formData.bookingConfig?.bufferMinutes || 10}
+                          onChange={(e) => setFormData({
+                            ...formData,
+                            bookingConfig: { ...(formData.bookingConfig || {}), bufferMinutes: Number(e.target.value) }
+                          })}
+                          className="form-input"
+                          style={{ width: '100%' }}
+                        >
+                          <option value={0}>No Buffer</option>
+                          <option value={5}>5 Minutes</option>
+                          <option value={10}>10 Minutes</option>
+                          <option value={15}>15 Minutes</option>
+                        </select>
+                      </div>
+
+                      <div>
+                        <label style={{ fontSize: '0.8rem', fontWeight: 600, display: 'block', marginBottom: '6px' }}>Min Notice Window</label>
+                        <select
+                          value={formData.bookingConfig?.minNoticeHours || 2}
+                          onChange={(e) => setFormData({
+                            ...formData,
+                            bookingConfig: { ...(formData.bookingConfig || {}), minNoticeHours: Number(e.target.value) }
+                          })}
+                          className="form-input"
+                          style={{ width: '100%' }}
+                        >
+                          <option value={0}>Instant / No Notice</option>
+                          <option value={2}>2 Hours</option>
+                          <option value={4}>4 Hours</option>
+                          <option value={24}>24 Hours</option>
+                        </select>
+                      </div>
+
+                      <div>
+                        <label style={{ fontSize: '0.8rem', fontWeight: 600, display: 'block', marginBottom: '6px' }}>Confirmation Mode</label>
+                        <select
+                          value={formData.bookingConfig?.autoConfirm !== false ? 'auto' : 'manual'}
+                          onChange={(e) => setFormData({
+                            ...formData,
+                            bookingConfig: { ...(formData.bookingConfig || {}), autoConfirm: e.target.value === 'auto' }
+                          })}
+                          className="form-input"
+                          style={{ width: '100%' }}
+                        >
+                          <option value="auto">Auto-Confirm Booking</option>
+                          <option value="manual">Manual Approval Required</option>
+                        </select>
+                      </div>
+                    </div>
+
+                    {/* Bookings Review Table */}
+                    <div style={{ marginTop: '14px' }}>
+                      <h5 style={{ margin: '0 0 10px', fontSize: '0.94rem', fontWeight: 700 }}>
+                        Scheduled Appointments ({profileAppointments.length})
+                      </h5>
+
+                      {profileAppointments.length === 0 ? (
+                        <div style={{ padding: '20px', borderRadius: '12px', backgroundColor: 'var(--elevated-surface)', textAlign: 'center', fontSize: '0.84rem', color: 'var(--text-muted)' }}>
+                          No appointments booked yet.
+                        </div>
+                      ) : (
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                          {profileAppointments.map((apt) => (
+                            <div
+                              key={apt.id}
+                              style={{
+                                padding: '12px 16px',
+                                borderRadius: '12px',
+                                backgroundColor: 'var(--elevated-surface)',
+                                border: '1px solid var(--border-color)',
+                                display: 'flex',
+                                justifyContent: 'space-between',
+                                alignItems: 'center',
+                                flexWrap: 'wrap',
+                                gap: '10px'
+                              }}
+                            >
+                              <div>
+                                <div style={{ fontWeight: 700, fontSize: '0.88rem' }}>
+                                  {apt.customerName} • {apt.referenceCode}
+                                </div>
+                                <div style={{ fontSize: '0.78rem', color: 'var(--text-secondary)' }}>
+                                  📅 {apt.bookingDate} at {apt.startTime} • 📞 {apt.customerPhone}
+                                  {apt.serviceName ? ` • 💼 ${apt.serviceName}` : ''}
+                                </div>
+                              </div>
+
+                              <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                                <span
+                                  style={{
+                                    fontSize: '0.72rem',
+                                    fontWeight: 700,
+                                    padding: '2px 8px',
+                                    borderRadius: '6px',
+                                    backgroundColor: apt.status === 'confirmed' ? 'rgba(16, 185, 129, 0.15)' : 'rgba(239, 68, 68, 0.15)',
+                                    color: apt.status === 'confirmed' ? '#10B981' : '#F87171'
+                                  }}
+                                >
+                                  {apt.status}
+                                </span>
+
+                                {apt.status !== 'confirmed' && (
+                                  <button
+                                    type="button"
+                                    onClick={() => handleAppointmentStatusChange(apt.id, 'confirmed')}
+                                    className="btn btn-outline btn-xs"
+                                  >
+                                    Approve
+                                  </button>
+                                )}
+                                {apt.status !== 'cancelled' && (
+                                  <button
+                                    type="button"
+                                    onClick={() => handleAppointmentStatusChange(apt.id, 'cancelled')}
+                                    className="btn btn-outline btn-xs"
+                                    style={{ color: '#F87171' }}
+                                  >
+                                    Cancel
+                                  </button>
+                                )}
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                )}
+
+                {/* 7. SERVICES SHOWCASE */}
+                {editorSection === 'services' && (
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                      <div>
+                        <h4 style={{ margin: '0 0 4px', fontSize: '1.05rem', fontWeight: 800 }}>7. Services Showcase</h4>
+                        <p style={{ margin: 0, fontSize: '0.82rem', color: 'var(--text-secondary)' }}>
+                          Add, edit, reorder, or hide the services you offer.
+                        </p>
+                      </div>
+
                       <button
                         type="button"
                         onClick={() => {
-                          const current = Array.isArray(formData.customLinks) ? [...formData.customLinks] : [];
-                          current.push({ id: `link_${Date.now()}`, label: '', url: '' });
-                          setFormData({ ...formData, customLinks: current });
+                          const next = [...(formData.services || [])];
+                          next.push({
+                            id: `srv_${Date.now()}`,
+                            title: 'New Service Offering',
+                            description: 'Service description goes here.',
+                            price: '₹1,999',
+                            duration: '30 mins',
+                            actionType: 'book',
+                            visible: true,
+                            displayOrder: next.length + 1
+                          });
+                          setFormData({ ...formData, services: next });
                         }}
-                        style={{
-                          display: 'inline-flex',
-                          alignItems: 'center',
-                          gap: '5px',
-                          fontSize: '0.74rem',
-                          fontWeight: 600,
-                          padding: '6px 12px',
-                          borderRadius: '8px',
-                          border: '1px solid var(--accent-purple)',
-                          backgroundColor: 'rgba(107, 0, 255, 0.12)',
-                          color: '#A855F7',
-                          cursor: 'pointer'
-                        }}
+                        className="btn btn-primary btn-xs"
+                        style={{ gap: '6px' }}
                       >
-                        <Plus size={13} />
-                        Add Link
+                        <Plus size={14} />
+                        <span>Add Service</span>
                       </button>
                     </div>
 
-                    {(formData.customLinks || []).length > 0 && (
-                      <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-                        {formData.customLinks.map((link, lIdx) => (
-                          <div
-                            key={link.id || lIdx}
-                            style={{
-                              display: 'grid',
-                              gridTemplateColumns: '130px 1fr 34px',
-                              gap: '8px',
-                              alignItems: 'center'
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+                      {(formData.services || []).map((srv, idx) => (
+                        <div
+                          key={srv.id || idx}
+                          style={{
+                            padding: '16px',
+                            borderRadius: '14px',
+                            backgroundColor: 'var(--elevated-surface)',
+                            border: '1px solid var(--border-color)',
+                            display: 'flex',
+                            flexDirection: 'column',
+                            gap: '12px'
+                          }}
+                        >
+                          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                            <span style={{ fontWeight: 700, fontSize: '0.9rem' }}>Service #{idx + 1}</span>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                              <label style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '0.78rem', cursor: 'pointer' }}>
+                                <input
+                                  type="checkbox"
+                                  checked={srv.visible !== false}
+                                  onChange={(e) => {
+                                    const next = [...(formData.services || [])];
+                                    next[idx] = { ...next[idx], visible: e.target.checked };
+                                    setFormData({ ...formData, services: next });
+                                  }}
+                                />
+                                <span>Published</span>
+                              </label>
+
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  const next = formData.services.filter((_, i) => i !== idx);
+                                  setFormData({ ...formData, services: next });
+                                }}
+                                style={{ background: 'none', border: 'none', color: '#F87171', cursor: 'pointer' }}
+                              >
+                                <Trash2 size={15} />
+                              </button>
+                            </div>
+                          </div>
+
+                          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '10px' }}>
+                            <input
+                              type="text"
+                              value={srv.title || ''}
+                              onChange={(e) => {
+                                const next = [...(formData.services || [])];
+                                next[idx] = { ...next[idx], title: e.target.value };
+                                setFormData({ ...formData, services: next });
+                              }}
+                              placeholder="Service Title"
+                              className="form-input"
+                            />
+                            <input
+                              type="text"
+                              value={srv.price || ''}
+                              onChange={(e) => {
+                                const next = [...(formData.services || [])];
+                                next[idx] = { ...next[idx], price: e.target.value };
+                                setFormData({ ...formData, services: next });
+                              }}
+                              placeholder="Price (e.g. ₹1,999 or Contact for price)"
+                              className="form-input"
+                            />
+                            <input
+                              type="text"
+                              value={srv.duration || ''}
+                              onChange={(e) => {
+                                const next = [...(formData.services || [])];
+                                next[idx] = { ...next[idx], duration: e.target.value };
+                                setFormData({ ...formData, services: next });
+                              }}
+                              placeholder="Duration (e.g. 30 mins)"
+                              className="form-input"
+                            />
+                            <select
+                              value={srv.actionType || 'book'}
+                              onChange={(e) => {
+                                const next = [...(formData.services || [])];
+                                next[idx] = { ...next[idx], actionType: e.target.value };
+                                setFormData({ ...formData, services: next });
+                              }}
+                              className="form-input"
+                            >
+                              <option value="book">Action: Book Appointment</option>
+                              <option value="contact">Action: WhatsApp / Contact</option>
+                            </select>
+                          </div>
+
+                          <textarea
+                            rows={2}
+                            value={srv.description || srv.desc || ''}
+                            onChange={(e) => {
+                              const next = [...(formData.services || [])];
+                              next[idx] = { ...next[idx], description: e.target.value };
+                              setFormData({ ...formData, services: next });
                             }}
+                            placeholder="Describe what is included in this service..."
+                            className="form-input"
+                          />
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                {/* 8. PORTFOLIO GALLERY */}
+                {editorSection === 'portfolio' && (
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                      <div>
+                        <h4 style={{ margin: '0 0 4px', fontSize: '1.05rem', fontWeight: 800 }}>8. Portfolio Gallery</h4>
+                        <p style={{ margin: 0, fontSize: '0.82rem', color: 'var(--text-secondary)' }}>
+                          Showcase previous work, designs, and achievements in full-screen lightbox gallery.
+                        </p>
+                      </div>
+
+                      <button
+                        type="button"
+                        onClick={() => {
+                          const next = [...(formData.portfolio || [])];
+                          next.push({
+                            id: `port_${Date.now()}`,
+                            title: 'New Project Showcase',
+                            category: 'Design & Tech',
+                            description: '',
+                            image: '/assets/cardbg-purple.png',
+                            link: ''
+                          });
+                          setFormData({ ...formData, portfolio: next });
+                        }}
+                        className="btn btn-primary btn-xs"
+                        style={{ gap: '6px' }}
+                      >
+                        <Plus size={14} />
+                        <span>Add Project</span>
+                      </button>
+                    </div>
+
+                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(260px, 1fr))', gap: '14px' }}>
+                      {(formData.portfolio || []).map((item, idx) => (
+                        <div
+                          key={item.id || idx}
+                          style={{
+                            padding: '14px',
+                            borderRadius: '14px',
+                            backgroundColor: 'var(--elevated-surface)',
+                            border: '1px solid var(--border-color)',
+                            display: 'flex',
+                            flexDirection: 'column',
+                            gap: '10px'
+                          }}
+                        >
+                          <div style={{ width: '100%', height: '120px', borderRadius: '10px', overflow: 'hidden', position: 'relative' }}>
+                            <img
+                              src={item.image || '/assets/cardbg-purple.png'}
+                              alt=""
+                              style={{ width: '100%', height: '100%', objectFit: 'cover' }}
+                            />
+                            <label
+                              style={{
+                                position: 'absolute',
+                                bottom: '8px',
+                                right: '8px',
+                                padding: '4px 8px',
+                                borderRadius: '6px',
+                                backgroundColor: 'rgba(0,0,0,0.7)',
+                                color: '#FFFFFF',
+                                fontSize: '0.72rem',
+                                cursor: 'pointer',
+                                display: 'inline-flex',
+                                alignItems: 'center',
+                                gap: '4px'
+                              }}
+                            >
+                              <Upload size={12} />
+                              <span>Replace</span>
+                              <input
+                                type="file"
+                                style={{ display: 'none' }}
+                                accept="image/*"
+                                onChange={(e) => handlePortfolioImageUpload(idx, e)}
+                              />
+                            </label>
+                          </div>
+
+                          <input
+                            type="text"
+                            value={item.title || ''}
+                            onChange={(e) => {
+                              const next = [...(formData.portfolio || [])];
+                              next[idx] = { ...next[idx], title: e.target.value };
+                              setFormData({ ...formData, portfolio: next });
+                            }}
+                            placeholder="Project Title"
+                            className="form-input"
+                          />
+
+                          <input
+                            type="text"
+                            value={item.category || ''}
+                            onChange={(e) => {
+                              const next = [...(formData.portfolio || [])];
+                              next[idx] = { ...next[idx], category: e.target.value };
+                              setFormData({ ...formData, portfolio: next });
+                            }}
+                            placeholder="Category (e.g. Architecture, UI/UX)"
+                            className="form-input"
+                          />
+
+                          <input
+                            type="text"
+                            value={item.link || ''}
+                            onChange={(e) => {
+                              const next = [...(formData.portfolio || [])];
+                              next[idx] = { ...next[idx], link: e.target.value };
+                              setFormData({ ...formData, portfolio: next });
+                            }}
+                            placeholder="External Link (Optional)"
+                            className="form-input"
+                          />
+
+                          <button
+                            type="button"
+                            onClick={() => {
+                              const next = formData.portfolio.filter((_, i) => i !== idx);
+                              setFormData({ ...formData, portfolio: next });
+                            }}
+                            style={{ alignSelf: 'flex-end', background: 'none', border: 'none', color: '#F87171', cursor: 'pointer', fontSize: '0.76rem', display: 'flex', alignItems: 'center', gap: '4px' }}
                           >
-                            <input
-                              type="text"
-                              value={link.label || ''}
-                              onChange={e => {
-                                const next = [...formData.customLinks];
-                                next[lIdx] = { ...next[lIdx], label: e.target.value };
-                                setFormData({ ...formData, customLinks: next });
-                              }}
-                              placeholder="Label (e.g. YouTube)"
-                              className="input"
-                              style={{ width: '100%', fontSize: '0.8rem' }}
-                            />
-                            <input
-                              type="text"
-                              value={link.url || ''}
-                              onChange={e => {
-                                const next = [...formData.customLinks];
-                                next[lIdx] = { ...next[lIdx], url: e.target.value };
-                                setFormData({ ...formData, customLinks: next });
-                              }}
-                              placeholder="URL (e.g. https://youtube.com/@channel or website)"
-                              className="input"
-                              style={{ width: '100%', fontSize: '0.8rem' }}
-                            />
+                            <Trash2 size={13} />
+                            <span>Remove</span>
+                          </button>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                {/* 9. VIDEOS */}
+                {editorSection === 'videos' && (
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                      <div>
+                        <h4 style={{ margin: '0 0 4px', fontSize: '1.05rem', fontWeight: 800 }}>9. Videos Section</h4>
+                        <p style={{ margin: 0, fontSize: '0.82rem', color: 'var(--text-secondary)' }}>
+                          Embed YouTube videos and YouTube Shorts directly on your public profile.
+                        </p>
+                      </div>
+
+                      <button
+                        type="button"
+                        onClick={() => {
+                          const next = [...(formData.videos || [])];
+                          next.push({
+                            id: `vid_${Date.now()}`,
+                            title: 'Featured Demonstration',
+                            url: 'https://www.youtube.com/watch?v=dQw4w9WgXcQ',
+                            description: '',
+                            visible: true
+                          });
+                          setFormData({ ...formData, videos: next });
+                        }}
+                        className="btn btn-primary btn-xs"
+                        style={{ gap: '6px' }}
+                      >
+                        <Plus size={14} />
+                        <span>Add Video</span>
+                      </button>
+                    </div>
+
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+                      {(formData.videos || []).map((vid, idx) => (
+                        <div
+                          key={vid.id || idx}
+                          style={{
+                            padding: '16px',
+                            borderRadius: '14px',
+                            backgroundColor: 'var(--elevated-surface)',
+                            border: '1px solid var(--border-color)',
+                            display: 'flex',
+                            flexDirection: 'column',
+                            gap: '10px'
+                          }}
+                        >
+                          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                            <span style={{ fontWeight: 700, fontSize: '0.88rem' }}>Video #{idx + 1}</span>
                             <button
                               type="button"
                               onClick={() => {
-                                const next = formData.customLinks.filter((_, idx) => idx !== lIdx);
-                                setFormData({ ...formData, customLinks: next });
+                                const next = formData.videos.filter((_, i) => i !== idx);
+                                setFormData({ ...formData, videos: next });
                               }}
-                              style={{
-                                width: '32px',
-                                height: '32px',
-                                borderRadius: '8px',
-                                border: '1px solid var(--border-color)',
-                                background: 'transparent',
-                                color: '#F87171',
-                                display: 'flex',
-                                alignItems: 'center',
-                                justifyContent: 'center',
-                                cursor: 'pointer'
-                              }}
-                              title="Delete Link"
+                              style={{ background: 'none', border: 'none', color: '#F87171', cursor: 'pointer' }}
                             >
-                              <Trash2 size={14} />
+                              <Trash2 size={15} />
                             </button>
                           </div>
-                        ))}
-                      </div>
-                    )}
-                  </div>
 
-                  {/* ── PORTFOLIO IMAGES ── */}
-                  {(formData.portfolio || []).length > 0 && (
-                    <div
-                      style={{
-                        padding: '14px',
-                        backgroundColor: 'var(--elevated-surface)',
-                        borderRadius: '14px',
-                        border: '1px solid var(--border-color)'
-                      }}
-                    >
-                      <div style={{ fontSize: '0.78rem', fontWeight: 700, color: 'var(--text-primary)', marginBottom: '10px', display: 'flex', alignItems: 'center', gap: '6px' }}>
-                        <ImageIcon size={14} color="var(--accent-purple)" />
-                        Portfolio Images
-                      </div>
-                      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(90px, 1fr))', gap: '10px' }}>
-                        {(formData.portfolio || []).map((item, idx) => (
-                          <label
-                            key={item.id || idx}
-                            title={item.title || `Work ${idx + 1}`}
-                            style={{
-                              position: 'relative',
-                              display: 'block',
-                              width: '100%',
-                              paddingBottom: '100%',
-                              borderRadius: '12px',
-                              overflow: 'hidden',
-                              background: 'var(--card-surface)',
-                              border: '1px dashed var(--border-color)',
-                              cursor: 'pointer'
+                          <input
+                            type="text"
+                            value={vid.url || ''}
+                            onChange={(e) => {
+                              const next = [...(formData.videos || [])];
+                              next[idx] = { ...next[idx], url: e.target.value };
+                              setFormData({ ...formData, videos: next });
                             }}
-                          >
-                            <input
-                              type="file"
-                              accept="image/*"
-                              onChange={e => handlePortfolioImageUpload(idx, e)}
-                              style={{ display: 'none' }}
-                            />
-                            {item.image ? (
-                              <img
-                                src={item.image}
-                                alt={item.title || `Work ${idx + 1}`}
-                                style={{
-                                  position: 'absolute',
-                                  inset: 0,
-                                  width: '100%',
-                                  height: '100%',
-                                  objectFit: 'cover'
-                                }}
-                              />
-                            ) : (
-                              <div style={{
-                                position: 'absolute',
-                                inset: 0,
-                                display: 'flex',
-                                flexDirection: 'column',
-                                alignItems: 'center',
-                                justifyContent: 'center',
-                                gap: '4px',
-                                color: 'var(--text-muted)'
-                              }}>
-                                <Upload size={16} />
-                                <span style={{ fontSize: '0.62rem' }}>Add Image</span>
-                              </div>
-                            )}
-                            {/* Hover overlay */}
-                            <div style={{
-                              position: 'absolute',
-                              inset: 0,
-                              background: 'rgba(107,0,255,0.55)',
-                              display: 'flex',
-                              alignItems: 'center',
-                              justifyContent: 'center',
-                              opacity: 0,
-                              transition: 'opacity 0.2s',
-                              borderRadius: '11px'
+                            placeholder="YouTube Video / Shorts URL (e.g. https://youtube.com/watch?v=...)"
+                            className="form-input"
+                          />
+
+                          <input
+                            type="text"
+                            value={vid.title || ''}
+                            onChange={(e) => {
+                              const next = [...(formData.videos || [])];
+                              next[idx] = { ...next[idx], title: e.target.value };
+                              setFormData({ ...formData, videos: next });
                             }}
-                              onMouseEnter={e => e.currentTarget.style.opacity = 1}
-                              onMouseLeave={e => e.currentTarget.style.opacity = 0}
-                            >
-                              <Upload size={18} color="#fff" />
-                            </div>
-                            {/* Title chip */}
-                            <div style={{
-                              position: 'absolute',
-                              bottom: 0,
-                              left: 0,
-                              right: 0,
-                              background: 'rgba(0,0,0,0.6)',
-                              color: '#fff',
-                              fontSize: '0.6rem',
-                              padding: '3px 5px',
-                              whiteSpace: 'nowrap',
-                              overflow: 'hidden',
-                              textOverflow: 'ellipsis'
-                            }}>
-                              {item.title || `Work ${idx + 1}`}
-                            </div>
-                          </label>
-                        ))}
-                      </div>
-                      <p style={{ fontSize: '0.68rem', color: 'var(--text-muted)', marginTop: '8px', margin: '8px 0 0' }}>
-                        Click any tile to upload / replace its image.
-                      </p>
-                    </div>
-                  )}
-
-                </div>
-              )}
-
-              {/* TAB 3: SECTIONS VISIBILITY */}
-              {editorTab === 'sections' && (
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
-                  <p style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', margin: 0 }}>
-                    Toggle which sections appear in the expanded portfolio view.
-                  </p>
-                  {[
-                    { key: 'portfolio', label: 'Portfolio Gallery', desc: 'Display grid of published work and project showcase' },
-                    { key: 'about', label: 'About Section', desc: 'Detailed biography and company background' },
-                    { key: 'services', label: 'Services Offered', desc: 'List of services and capabilities' },
-                    { key: 'experience', label: 'Work Experience', desc: 'Career history and milestones' },
-                    { key: 'contact', label: 'Contact Details', desc: 'Direct contact info, QR code, and location map' }
-                  ].map(sec => {
-                    const isVisible = formData.sectionVisibility ? formData.sectionVisibility[sec.key] !== false : true;
-                    return (
-                      <div
-                        key={sec.key}
-                        onClick={() => {
-                          const current = formData.sectionVisibility || {};
-                          setFormData({
-                            ...formData,
-                            sectionVisibility: { ...current, [sec.key]: !isVisible }
-                          });
-                        }}
-                        style={{
-                          padding: '14px 16px',
-                          borderRadius: '12px',
-                          backgroundColor: 'var(--elevated-surface)',
-                          border: `1.5px solid ${isVisible ? 'var(--primary-purple)' : 'var(--border-color)'}`,
-                          display: 'flex',
-                          alignItems: 'center',
-                          justifyContent: 'space-between',
-                          cursor: 'pointer'
-                        }}
-                      >
-                        <div>
-                          <div style={{ fontSize: '0.84rem', fontWeight: 700, color: 'var(--text-primary)' }}>{sec.label}</div>
-                          <div style={{ fontSize: '0.74rem', color: 'var(--text-secondary)', marginTop: '2px' }}>{sec.desc}</div>
+                            placeholder="Video Title"
+                            className="form-input"
+                          />
                         </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                {/* 10. PAYMENTS */}
+                {editorSection === 'payments' && (
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                      <div>
+                        <h4 style={{ margin: '0 0 4px', fontSize: '1.05rem', fontWeight: 800 }}>10. Payments and UPI</h4>
+                        <p style={{ margin: 0, fontSize: '0.82rem', color: 'var(--text-secondary)' }}>
+                          Allow visitors and clients to pay you via UPI apps and QR code.
+                        </p>
+                      </div>
+
+                      <label style={{ display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer' }}>
                         <input
                           type="checkbox"
-                          checked={isVisible}
-                          onChange={() => {}}
-                          style={{ width: '18px', height: '18px', cursor: 'pointer', accentColor: 'var(--primary-purple)' }}
+                          checked={formData.sectionVisibility?.payments !== false}
+                          onChange={(e) => setFormData({
+                            ...formData,
+                            sectionVisibility: { ...(formData.sectionVisibility || {}), payments: e.target.checked }
+                          })}
+                        />
+                        <span style={{ fontSize: '0.82rem', fontWeight: 700 }}>Show Payments Section</span>
+                      </label>
+                    </div>
+
+                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: '14px' }}>
+                      <div>
+                        <label style={{ fontSize: '0.8rem', fontWeight: 600, display: 'block', marginBottom: '6px' }}>UPI ID (VPA) *</label>
+                        <input
+                          type="text"
+                          value={formData.paymentConfig?.upiId || ''}
+                          onChange={(e) => setFormData({
+                            ...formData,
+                            paymentConfig: { ...(formData.paymentConfig || {}), upiId: e.target.value.trim() }
+                          })}
+                          placeholder="e.g. yourname@icici or 9876543210@paytm"
+                          className="form-input"
+                          style={{ width: '100%' }}
                         />
                       </div>
-                    );
-                  })}
-                </div>
-              )}
 
-              {saveSuccess && (
-                <div style={{ padding: '10px', borderRadius: '8px', backgroundColor: 'rgba(16, 185, 129, 0.15)', color: '#10B981', fontSize: '0.84rem', fontWeight: 600, textAlign: 'center' }}>
-                  <Check size={16} style={{ display: 'inline', marginRight: '6px' }} />
-                  Profile updated successfully!
-                </div>
-              )}
+                      <div>
+                        <label style={{ fontSize: '0.8rem', fontWeight: 600, display: 'block', marginBottom: '6px' }}>Recipient Name *</label>
+                        <input
+                          type="text"
+                          value={formData.paymentConfig?.recipientName || ''}
+                          onChange={(e) => setFormData({
+                            ...formData,
+                            paymentConfig: { ...(formData.paymentConfig || {}), recipientName: e.target.value }
+                          })}
+                          placeholder="e.g. FLOCARDS Merchant"
+                          className="form-input"
+                          style={{ width: '100%' }}
+                        />
+                      </div>
+                    </div>
 
-              {/* Action Buttons Row */}
-              <div style={{ display: 'flex', gap: '10px', justifyContent: 'space-between', alignItems: 'center', marginTop: '10px' }}>
-                <button
-                  type="button"
-                  onClick={() => handleOpenPreview(formData)}
-                  className="btn btn-secondary btn-sm"
-                  style={{ gap: '6px' }}
-                >
-                  <Eye size={14} />
-                  <span>Test Morphing Preview</span>
-                </button>
+                    <div>
+                      <label style={{ fontSize: '0.8rem', fontWeight: 600, display: 'block', marginBottom: '6px' }}>Payment Instructions (Optional)</label>
+                      <textarea
+                        rows={2}
+                        value={formData.paymentConfig?.instructions || ''}
+                        onChange={(e) => setFormData({
+                          ...formData,
+                          paymentConfig: { ...(formData.paymentConfig || {}), instructions: e.target.value }
+                        })}
+                        placeholder="e.g. Please add your name in payment remarks. Instant settlement."
+                        className="form-input"
+                        style={{ width: '100%' }}
+                      />
+                    </div>
+                  </div>
+                )}
 
-                <div style={{ display: 'flex', gap: '10px' }}>
-                  <button
-                    type="button"
-                    onClick={() => setEditingProfile(null)}
-                    className="btn btn-outline btn-sm"
-                  >
-                    Cancel
-                  </button>
-                  <button
-                    type="submit"
-                    className="btn btn-primary btn-sm"
-                    style={{ gap: '6px' }}
-                  >
-                    <Save size={14} />
-                    <span>Save Changes</span>
-                  </button>
-                </div>
+                {/* 11. PUBLIC BANK DETAILS */}
+                {editorSection === 'bank' && (
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                      <div>
+                        <h4 style={{ margin: '0 0 4px', fontSize: '1.05rem', fontWeight: 800 }}>11. Public Bank Settlement Details</h4>
+                        <p style={{ margin: 0, fontSize: '0.82rem', color: 'var(--text-secondary)' }}>
+                          Protected bank account information for NEFT/RTGS wire transfers.
+                        </p>
+                      </div>
+                    </div>
+
+                    {/* MANDATORY EXPLICIT CONSENT WARNING & CHECKBOX */}
+                    <div
+                      style={{
+                        padding: '16px',
+                        borderRadius: '14px',
+                        backgroundColor: 'rgba(239, 68, 68, 0.08)',
+                        border: '1.5px solid rgba(239, 68, 68, 0.3)',
+                        display: 'flex',
+                        flexDirection: 'column',
+                        gap: '8px'
+                      }}
+                    >
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '8px', color: '#F87171', fontWeight: 700, fontSize: '0.86rem' }}>
+                        <Lock size={16} />
+                        <span>Security & Privacy Safeguard</span>
+                      </div>
+                      <p style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', margin: 0, lineHeight: 1.5 }}>
+                        Bank account details remain private and hidden by default. You must give explicit consent to publish them on your public profile.
+                      </p>
+
+                      <label style={{ display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer', marginTop: '6px' }}>
+                        <input
+                          type="checkbox"
+                          checked={Boolean(formData.bankDetails?.isPublic && formData.bankDetails?.enabled)}
+                          onChange={(e) => setFormData({
+                            ...formData,
+                            bankDetails: {
+                              ...(formData.bankDetails || {}),
+                              isPublic: e.target.checked,
+                              enabled: e.target.checked
+                            },
+                            sectionVisibility: {
+                              ...(formData.sectionVisibility || {}),
+                              bankDetails: e.target.checked
+                            }
+                          })}
+                        />
+                        <span style={{ fontSize: '0.84rem', fontWeight: 700, color: '#FFFFFF' }}>
+                          I explicitly authorize FLOCARDS to publish these bank details publicly on my digital profile.
+                        </span>
+                      </label>
+                    </div>
+
+                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: '14px' }}>
+                      <div>
+                        <label style={{ fontSize: '0.8rem', fontWeight: 600, display: 'block', marginBottom: '6px' }}>Account Holder Name</label>
+                        <input
+                          type="text"
+                          value={formData.bankDetails?.accountHolder || ''}
+                          onChange={(e) => setFormData({
+                            ...formData,
+                            bankDetails: { ...(formData.bankDetails || {}), accountHolder: e.target.value }
+                          })}
+                          className="form-input"
+                          style={{ width: '100%' }}
+                        />
+                      </div>
+
+                      <div>
+                        <label style={{ fontSize: '0.8rem', fontWeight: 600, display: 'block', marginBottom: '6px' }}>Bank Name</label>
+                        <input
+                          type="text"
+                          value={formData.bankDetails?.bankName || ''}
+                          onChange={(e) => setFormData({
+                            ...formData,
+                            bankDetails: { ...(formData.bankDetails || {}), bankName: e.target.value }
+                          })}
+                          className="form-input"
+                          style={{ width: '100%' }}
+                        />
+                      </div>
+
+                      <div>
+                        <label style={{ fontSize: '0.8rem', fontWeight: 600, display: 'block', marginBottom: '6px' }}>Branch</label>
+                        <input
+                          type="text"
+                          value={formData.bankDetails?.branch || ''}
+                          onChange={(e) => setFormData({
+                            ...formData,
+                            bankDetails: { ...(formData.bankDetails || {}), branch: e.target.value }
+                          })}
+                          className="form-input"
+                          style={{ width: '100%' }}
+                        />
+                      </div>
+
+                      <div>
+                        <label style={{ fontSize: '0.8rem', fontWeight: 600, display: 'block', marginBottom: '6px' }}>Account Number</label>
+                        <input
+                          type="text"
+                          value={formData.bankDetails?.accountNumber || ''}
+                          onChange={(e) => setFormData({
+                            ...formData,
+                            bankDetails: { ...(formData.bankDetails || {}), accountNumber: e.target.value.replace(/[^0-9]/g, '') }
+                          })}
+                          className="form-input"
+                          style={{ width: '100%' }}
+                        />
+                      </div>
+
+                      <div>
+                        <label style={{ fontSize: '0.8rem', fontWeight: 600, display: 'block', marginBottom: '6px' }}>IFSC Code (e.g. HDFC0000123)</label>
+                        <input
+                          type="text"
+                          value={formData.bankDetails?.ifsc || ''}
+                          onChange={(e) => setFormData({
+                            ...formData,
+                            bankDetails: { ...(formData.bankDetails || {}), ifsc: e.target.value.toUpperCase().trim() }
+                          })}
+                          className="form-input"
+                          style={{ width: '100%' }}
+                        />
+                      </div>
+                    </div>
+                  </div>
+                )}
+
+                {/* 12. QR CODE */}
+                {editorSection === 'qr' && (
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+                    <h4 style={{ margin: '0 0 4px', fontSize: '1.05rem', fontWeight: 800 }}>12. Smart QR Code Companion</h4>
+                    <p style={{ margin: 0, fontSize: '0.82rem', color: 'var(--text-secondary)' }}>
+                      High-resolution companion QR code pointing to your permanent canonical URL.
+                    </p>
+
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '20px', flexWrap: 'wrap' }}>
+                      <div
+                        style={{
+                          padding: '12px',
+                          borderRadius: '16px',
+                          backgroundColor: '#FFFFFF',
+                          boxShadow: '0 4px 20px rgba(0,0,0,0.3)'
+                        }}
+                      >
+                        <QrCodePreview slug={formData.slug} />
+                      </div>
+
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+                        <div style={{ fontSize: '0.9rem', fontWeight: 700 }}>
+                          Target URL: flocard.in/{formData.slug}
+                        </div>
+                        <div style={{ display: 'flex', gap: '10px' }}>
+                          <button
+                            type="button"
+                            onClick={() => downloadQrPng(`https://flocard.in/p/${formData.slug}`, `FLOCARD-${formData.slug}`)}
+                            className="btn btn-primary btn-sm"
+                            style={{ gap: '6px' }}
+                          >
+                            <Download size={14} />
+                            <span>Download PNG (Print Ready)</span>
+                          </button>
+
+                          <button
+                            type="button"
+                            onClick={() => downloadQrSvg(`https://flocard.in/p/${formData.slug}`, `FLOCARD-${formData.slug}`)}
+                            className="btn btn-secondary btn-sm"
+                            style={{ gap: '6px' }}
+                          >
+                            <Download size={14} />
+                            <span>Download Vector SVG</span>
+                          </button>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                )}
+
+                {/* 13. UPLOAD USAGE */}
+                {editorSection === 'usage' && (
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+                    <h4 style={{ margin: '0 0 4px', fontSize: '1.05rem', fontWeight: 800 }}>13. Upload Usage and Storage Quotas</h4>
+                    <p style={{ margin: 0, fontSize: '0.82rem', color: 'var(--text-secondary)' }}>
+                      Real measured usage of images, videos, and storage on your account.
+                    </p>
+
+                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '14px' }}>
+                      <div style={{ padding: '16px', borderRadius: '14px', backgroundColor: 'var(--elevated-surface)', border: '1px solid var(--border-color)' }}>
+                        <div style={{ fontSize: '0.74rem', textTransform: 'uppercase', color: 'var(--text-muted)', fontWeight: 700 }}>
+                          Gallery Images
+                        </div>
+                        <div style={{ fontSize: '1.4rem', fontWeight: 800, color: 'var(--text-primary)', margin: '4px 0' }}>
+                          {storageUsage.galleryCount} / {storageUsage.maxGalleryImages} used
+                        </div>
+                        <div style={{ width: '100%', height: '6px', borderRadius: '4px', backgroundColor: 'rgba(255,255,255,0.1)', overflow: 'hidden' }}>
+                          <div style={{ width: `${Math.min(100, (storageUsage.galleryCount / storageUsage.maxGalleryImages) * 100)}%`, height: '100%', backgroundColor: 'var(--accent-purple)' }} />
+                        </div>
+                      </div>
+
+                      <div style={{ padding: '16px', borderRadius: '14px', backgroundColor: 'var(--elevated-surface)', border: '1px solid var(--border-color)' }}>
+                        <div style={{ fontSize: '0.74rem', textTransform: 'uppercase', color: 'var(--text-muted)', fontWeight: 700 }}>
+                          Services
+                        </div>
+                        <div style={{ fontSize: '1.4rem', fontWeight: 800, color: 'var(--text-primary)', margin: '4px 0' }}>
+                          {storageUsage.serviceImageCount} / {storageUsage.maxServiceImages} used
+                        </div>
+                        <div style={{ width: '100%', height: '6px', borderRadius: '4px', backgroundColor: 'rgba(255,255,255,0.1)', overflow: 'hidden' }}>
+                          <div style={{ width: `${Math.min(100, (storageUsage.serviceImageCount / storageUsage.maxServiceImages) * 100)}%`, height: '100%', backgroundColor: 'var(--accent-purple)' }} />
+                        </div>
+                      </div>
+
+                      <div style={{ padding: '16px', borderRadius: '14px', backgroundColor: 'var(--elevated-surface)', border: '1px solid var(--border-color)' }}>
+                        <div style={{ fontSize: '0.74rem', textTransform: 'uppercase', color: 'var(--text-muted)', fontWeight: 700 }}>
+                          Total Storage
+                        </div>
+                        <div style={{ fontSize: '1.4rem', fontWeight: 800, color: 'var(--text-primary)', margin: '4px 0' }}>
+                          {storageUsage.totalStorageMb} MB / {storageUsage.maxTotalStorageMb} MB
+                        </div>
+                        <div style={{ width: '100%', height: '6px', borderRadius: '4px', backgroundColor: 'rgba(255,255,255,0.1)', overflow: 'hidden' }}>
+                          <div style={{ width: `${storageUsage.percentUsed}%`, height: '100%', backgroundColor: storageUsage.isAtStorageCap ? '#EF4444' : '#10B981' }} />
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                )}
+
+                {/* 14. PUBLISHING */}
+                {editorSection === 'publishing' && (
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+                    <h4 style={{ margin: '0 0 4px', fontSize: '1.05rem', fontWeight: 800 }}>14. Profile Visibility and Publishing</h4>
+                    <p style={{ margin: 0, fontSize: '0.82rem', color: 'var(--text-secondary)' }}>
+                      Control live profile publication status and canonical slug.
+                    </p>
+
+                    <div>
+                      <label style={{ fontSize: '0.8rem', fontWeight: 600, display: 'block', marginBottom: '6px' }}>Unique Profile URL Slug *</label>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                        <span style={{ fontSize: '0.9rem', color: 'var(--text-muted)' }}>https://flocard.in/</span>
+                        <input
+                          type="text"
+                          value={formData.slug || ''}
+                          onChange={(e) => setFormData({ ...formData, slug: e.target.value.toLowerCase().replace(/[^a-z0-9_-]/g, '') })}
+                          className="form-input"
+                          style={{ maxWidth: '240px' }}
+                        />
+                      </div>
+                    </div>
+
+                    <div>
+                      <label style={{ fontSize: '0.8rem', fontWeight: 600, display: 'block', marginBottom: '6px' }}>Publication Status</label>
+                      <select
+                        value={formData.status || 'active'}
+                        onChange={(e) => setFormData({ ...formData, status: e.target.value })}
+                        className="form-input"
+                        style={{ maxWidth: '240px' }}
+                      >
+                        <option value="active">Active & Published</option>
+                        <option value="draft">Draft (Hidden)</option>
+                        <option value="suspended">Suspended</option>
+                      </select>
+                    </div>
+                  </div>
+                )}
               </div>
-            </form>
+            </div>
+
+            {/* Modal Footer Controls */}
+            <div
+              style={{
+                padding: '16px 24px',
+                borderTop: '1px solid var(--border-color)',
+                backgroundColor: 'var(--card-surface)',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'space-between'
+              }}
+            >
+              <button
+                type="button"
+                onClick={() => setEditingProfile(null)}
+                className="btn btn-secondary btn-sm"
+              >
+                Cancel
+              </button>
+
+              <button
+                type="button"
+                onClick={handleSave}
+                className="btn btn-primary btn-sm"
+                style={{ gap: '6px' }}
+              >
+                <Save size={14} />
+                <span>Save All Changes</span>
+              </button>
+            </div>
           </div>
         </div>
       )}
 
-      {/* Interactive Live Morphing Preview Modal */}
+      {/* =========================================================================
+          LIVE PROFILE PREVIEW MODAL
+          ========================================================================= */}
       {previewProfile && (
         <div
           style={{
             position: 'fixed',
             inset: 0,
-            backgroundColor: 'rgba(8, 6, 13, 0.95)',
+            backgroundColor: 'rgba(5, 3, 10, 0.95)',
             backdropFilter: 'blur(16px)',
-            zIndex: 1100,
+            zIndex: 2000,
             display: 'flex',
             flexDirection: 'column',
-            alignItems: 'center',
-            justifyContent: 'flex-start',
-            overflowY: 'auto',
-            padding: '24px 16px'
+            boxSizing: 'border-box'
           }}
         >
-          {/* Preview Controller Bar */}
+          {/* Top Preview Controls Bar */}
           <div
             style={{
-              position: 'sticky',
-              top: 0,
-              zIndex: 100,
+              padding: '12px 24px',
+              backgroundColor: '#0F091C',
+              borderBottom: '1px solid rgba(255,255,255,0.1)',
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'space-between',
-              maxWidth: '880px',
-              width: '100%',
-              padding: '12px 20px',
-              borderRadius: '9999px',
-              backgroundColor: 'rgba(23, 17, 31, 0.85)',
-              border: '1px solid rgba(168, 85, 247, 0.3)',
-              marginBottom: '28px',
-              backdropFilter: 'blur(10px)'
+              zIndex: 10
             }}
           >
-            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-              <Sparkles size={16} color="#A855F7" />
-              <span style={{ fontSize: '0.84rem', fontWeight: 700, color: '#FFFFFF' }}>
-                Live Morphing Simulator: {previewExpanded ? 'Expanded Portfolio State' : 'Compact Card State'}
+            <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+              <Eye size={18} color="var(--accent-purple)" />
+              <span style={{ fontSize: '0.94rem', fontWeight: 800, color: '#FFFFFF' }}>
+                Live Profile Preview — {previewProfile.name}
               </span>
             </div>
 
             <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
               <button
                 type="button"
-                onClick={() => setPreviewExpanded(!previewExpanded)}
+                onClick={() => setPreviewDevice('desktop')}
                 style={{
                   padding: '6px 14px',
-                  borderRadius: '9999px',
-                  backgroundColor: 'rgba(107, 0, 255, 0.25)',
-                  border: '1px solid #A855F7',
+                  borderRadius: '8px',
+                  border: 'none',
+                  backgroundColor: previewDevice === 'desktop' ? 'var(--primary-purple)' : 'transparent',
                   color: '#FFFFFF',
                   fontSize: '0.78rem',
                   fontWeight: 600,
-                  cursor: 'pointer',
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: '6px'
+                  cursor: 'pointer'
                 }}
               >
-                {previewExpanded ? <Minimize2 size={13} /> : <Maximize2 size={13} />}
-                <span>{previewExpanded ? 'Trigger Collapse' : 'Trigger Expand'}</span>
+                Desktop View
+              </button>
+
+              <button
+                type="button"
+                onClick={() => setPreviewDevice('mobile')}
+                style={{
+                  padding: '6px 14px',
+                  borderRadius: '8px',
+                  border: 'none',
+                  backgroundColor: previewDevice === 'mobile' ? 'var(--primary-purple)' : 'transparent',
+                  color: '#FFFFFF',
+                  fontSize: '0.78rem',
+                  fontWeight: 600,
+                  cursor: 'pointer'
+                }}
+              >
+                Mobile View
               </button>
 
               <button
                 type="button"
                 onClick={() => setPreviewProfile(null)}
                 style={{
-                  width: '30px',
-                  height: '30px',
+                  width: '32px',
+                  height: '32px',
                   borderRadius: '50%',
                   background: 'rgba(255, 255, 255, 0.1)',
                   border: 'none',
@@ -1511,7 +2237,8 @@ export default function CustomerProfilesTab({ profiles = [], customer, onSavePro
                   display: 'flex',
                   alignItems: 'center',
                   justifyContent: 'center',
-                  cursor: 'pointer'
+                  cursor: 'pointer',
+                  marginLeft: '8px'
                 }}
               >
                 <X size={16} />
@@ -1519,22 +2246,75 @@ export default function CustomerProfilesTab({ profiles = [], customer, onSavePro
             </div>
           </div>
 
-          {/* Morphing Component Preview in Center */}
-          <div style={{ width: '100%', display: 'flex', justifyContent: 'center', position: 'relative', zIndex: 10 }}>
-            {!previewExpanded ? (
-              <CompactProfileCard
+          {/* Scrollable Preview Window */}
+          <div
+            style={{
+              flex: 1,
+              overflowY: 'auto',
+              display: 'flex',
+              justifyContent: 'center',
+              backgroundColor: '#08060D'
+            }}
+          >
+            <div
+              style={{
+                width: previewDevice === 'mobile' ? '410px' : '100%',
+                maxWidth: previewDevice === 'mobile' ? '410px' : '100%',
+                margin: previewDevice === 'mobile' ? '24px auto' : '0 auto',
+                borderRadius: previewDevice === 'mobile' ? '32px' : 0,
+                border: previewDevice === 'mobile' ? '4px solid #334155' : 'none',
+                overflow: 'hidden',
+                boxShadow: previewDevice === 'mobile' ? '0 20px 60px rgba(0,0,0,0.8)' : 'none'
+              }}
+            >
+              <FullScreenDigitalProfile
                 profile={previewProfile}
-                onExpand={() => setPreviewExpanded(true)}
+                isLight={previewProfile.themeMode === 'light'}
               />
-            ) : (
-              <ExpandedPortfolioView
-                profile={previewProfile}
-                onCollapse={() => setPreviewExpanded(false)}
-              />
-            )}
+            </div>
           </div>
         </div>
       )}
     </div>
+  );
+}
+
+// Subcomponent: Live QR Preview for Section 12
+function QrCodePreview({ slug }) {
+  const [dataUrl, setDataUrl] = useState('');
+  const targetUrl = `https://flocard.in/p/${slug || 'alex'}`;
+
+  useEffect(() => {
+    generateQrDataUrl(targetUrl, { width: 150, margin: 2 })
+      .then(setDataUrl)
+      .catch(() => {});
+  }, [targetUrl]);
+
+  if (!dataUrl) {
+    return <div style={{ width: '130px', height: '130px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>Loading QR...</div>;
+  }
+
+  return (
+    <img
+      src={dataUrl}
+      alt="QR Code"
+      style={{ width: '130px', height: '130px', display: 'block' }}
+    />
+  );
+}
+
+// Icon helper components
+function CameraIcon(props) {
+  return <User {...props} />;
+}
+function BriefcaseIcon(props) {
+  return <Briefcase {...props} />;
+}
+function Briefcase(props) {
+  return (
+    <svg width={props.size || 20} height={props.size || 20} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" {...props}>
+      <rect width="20" height="14" x="2" y="7" rx="2" ry="2"/>
+      <path d="M16 21V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16"/>
+    </svg>
   );
 }

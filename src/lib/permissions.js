@@ -189,12 +189,16 @@ export function canAccessTab(user, tabId) {
       return hasPermission(user, 'designs.read');
     case 'sales':
       return hasPermission(user, 'finance.read');
+    case 'invoices':
+      return hasPermission(user, 'finance.read') || isOwner || role === 'admin' || role === 'accounts';
     case 'product-sales':
       return hasPermission(user, 'finance.read');
     case 'customers':
       return hasPermission(user, 'customers.read');
     case 'profiles':
       return isOwner || role === 'admin' || role === 'designer';
+    case 'appointments':
+      return isOwner || role === 'admin' || role === 'sales' || role === 'designer';
     case 'cards':
       return hasPermission(user, 'nfc.read');
     case 'pricing':

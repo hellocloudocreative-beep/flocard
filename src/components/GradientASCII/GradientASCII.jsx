@@ -11,7 +11,7 @@ export default function GradientASCII({
   cellSize = 18,
   density = 0.8,
   dpr = 2,
-  interactive = true,
+  interactive = false,
   className = '',
   style = {}
 }) {

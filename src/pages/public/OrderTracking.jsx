@@ -47,10 +47,6 @@ export default function OrderTracking() {
     if (ref) {
       setActiveRef(ref.trim());
       setQueryInput(ref.trim());
-    } else {
-      // Default to premier demo order for instant preview if no query passed
-      setActiveRef('FLC-ORD-9081');
-      setQueryInput('FLC-ORD-9081');
     }
   }, []);
 
@@ -233,35 +229,7 @@ export default function OrderTracking() {
               </div>
             )}
 
-            {/* Quick Suggestions / Sample Order Links */}
-            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px', marginTop: '16px', flexWrap: 'wrap' }}>
-              <span style={{ fontSize: '0.74rem', color: 'var(--text-muted)' }}>Sample Orders:</span>
-              {['FLC-ORD-9081', 'FLC-ORD-9055', 'FLC-ORD-9012'].map((sample) => (
-                <button
-                  key={sample}
-                  type="button"
-                  onClick={() => {
-                    setQueryInput(sample);
-                    setActiveRef(sample);
-                    if (typeof window !== 'undefined') {
-                      window.history.replaceState({}, '', `?ref=${sample}`);
-                    }
-                  }}
-                  style={{
-                    background: 'none',
-                    border: '1px solid rgba(255, 255, 255, 0.1)',
-                    borderRadius: '6px',
-                    padding: '3px 8px',
-                    fontSize: '0.72rem',
-                    color: sample === activeRef ? 'var(--accent-purple)' : 'var(--text-secondary)',
-                    backgroundColor: sample === activeRef ? 'rgba(107, 0, 255, 0.15)' : 'transparent',
-                    cursor: 'pointer'
-                  }}
-                >
-                  {sample}
-                </button>
-              ))}
-            </div>
+
           </div>
         </div>
 

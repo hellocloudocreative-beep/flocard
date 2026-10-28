@@ -51,6 +51,7 @@ import Card3DPreview from '../components/Card3DPreview';
 import GradientASCII from '../components/GradientASCII';
 import SwipeToast from '../components/SwipeToast';
 import SlideCommit from '../components/SlideCommit';
+import OrderSummaryPrintModal from '../components/designer/OrderSummaryPrintModal';
 
 import { EDITIONS, TEMPLATES, BRAND } from '../lib/constants';
 import {
@@ -229,7 +230,7 @@ function InteractiveFontPicker({
 export default function Designer() {
   const { user, isAdmin } = useAuth();
   const { isLight, toggleTheme } = useTheme();
-  const { saveDesign, designs, products, studioBackground, updateStudioBackground, resetStudioBg, createOrderFromDesign, getProductByEdition } = useData();
+  const { saveDesign, designs, products, studioBackground, updateStudioBackground, resetStudioBg, createOrderFromDesign, submitPrintOrder, getProductByEdition } = useData();
 
   // URL query params
   const urlParams = new URLSearchParams(window.location.search);
@@ -293,6 +294,7 @@ export default function Designer() {
   const [adminBgMessage, setAdminBgMessage] = useState('');
   const [hoveredFont, setHoveredFont] = useState(null);
   const [showAuthModal, setShowAuthModal] = useState(false);
+  const [showOrderSummaryModal, setShowOrderSummaryModal] = useState(false);
   const [showOrderSubmittedModal, setShowOrderSubmittedModal] = useState(false);
   const [submittedOrder, setSubmittedOrder] = useState(null);
 
@@ -569,48 +571,7 @@ export default function Designer() {
     setHasUnsavedChanges(false);
 
     if (submit) {
-      const createdOrder = createOrderFromDesign(
-        designObj,
-        'Submitted via Card Designer for Print Production',
-        user
-      );
-      setSubmittedOrder(createdOrder);
-      notify('Submitted for Print!', 'Order details routed to WhatsApp production queue', 'View Details', () => setShowOrderSubmittedModal(true));
-
-      // Customer submitting -> Go to FLOCARD official WhatsApp (+91 97782 78552) with details only (no image download)
-      const clientPhone = createdOrder.customerPhone || user?.phone || '';
-      const orderRef = createdOrder.orderReference || createdOrder.id;
-      const editionName = EDITIONS[edition]?.name || edition;
-      const tmplName = templateType === 'customer_logo' ? 'Custom Logo Design (Pages 4–6)' : 'Standard FLOCARD Design (Pages 1–3)';
-      const priceText = formatCurrencyINR(currentEditionProduct?.price) || '₹1,899';
-
-      const waMessage = 
-`*NEW FLOCARD PRINT ORDER*
-━━━━━━━━━━━━━━━━━━━━
-*Order Ref:* ${orderRef}
-*Customer:* ${clientName}
-*Phone:* ${clientPhone || 'Not provided'}
-*Email:* ${createdOrder.customerEmail}
-*Company:* ${createdOrder.company || 'N/A'}
-*Role / Title:* ${frontConfig.role || 'N/A'}
-*Tagline:* ${frontConfig.tagline || 'One Tap Every Connection'}
-
-*Card Edition:* ${editionName}
-*Template:* ${tmplName}
-*Price:* ${priceText}
-*Status:* New Order Submitted
-
-*Digital Profile:* https://flocard.in/p/${clientSlug}
-━━━━━━━━━━━━━━━━━━━━
-_Submitted from FLOCARD Design Studio_`;
-
-      const waUrl = `https://wa.me/919778278552?text=${encodeURIComponent(waMessage)}`;
-      try {
-        window.open(waUrl, '_blank');
-      } catch (err) {
-        console.error('Failed to open WhatsApp window:', err);
-      }
-      setShowOrderSubmittedModal(true);
+      setShowOrderSummaryModal(true);
     } else {
       notify('Draft Saved', 'Card design stored to your account');
     }
@@ -2751,6 +2712,38 @@ _Submitted from FLOCARD Design Studio_`;
           </div>
         </div>
       )}
+
+      {/* Order Summary & Print Request Modal */}
+      <OrderSummaryPrintModal
+        isOpen={showOrderSummaryModal}
+        onClose={() => setShowOrderSummaryModal(false)}
+        design={{
+          id: existingDesign?.id || `des_${Date.now()}`,
+          title: designTitle,
+          edition,
+          templateType,
+          front: frontConfig,
+          back: backConfig,
+          customColors,
+          customerLogo,
+          flocardLogo
+        }}
+        edition={edition}
+        templateType={templateType}
+        user={user}
+        frontConfig={frontConfig}
+        backConfig={backConfig}
+        customColors={customColors}
+        customerLogo={customerLogo}
+        flocardLogo={flocardLogo}
+        onSubmitOrder={async (orderPayload) => {
+          const ord = submitPrintOrder(orderPayload);
+          setSubmittedOrder(ord);
+          notify('Submitted for Print!', 'Order details routed to WhatsApp production queue');
+          return ord;
+        }}
+        isLight={isLight}
+      />
 
       {/* SwipeToast Component */}
       <SwipeToast

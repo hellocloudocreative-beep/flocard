@@ -349,3 +349,66 @@ export async function testWhatsAppConnection(recipientPhone = '919778278552') {
     return { success: false, error: err.message || 'Network request failed' };
   }
 }
+
+/**
+ * Format official WhatsApp Click-to-Chat message for print order submission
+ */
+export function createPrintOrderWhatsAppMessage(order) {
+  if (!order) return '';
+  const ref = order.orderReference || order.id || 'FLC-ORD';
+  const customerName = order.customerName || 'Valued Client';
+  const phone = order.customerPhone || 'Not provided';
+  const email = order.customerEmail || '';
+  const edition = order.edition || order.design?.edition || 'purple';
+  const editionTitle = `${edition.charAt(0).toUpperCase() + edition.slice(1)} Edition NFC Card`;
+  const quantity = order.quantity || order.pricing?.quantity || 1;
+  const designName = order.designTitle || order.design?.title || `${customerName}'s Card`;
+  const role = order.role || order.design?.front?.role || order.frontConfig?.role || '';
+  const company = order.company || order.design?.company || order.frontConfig?.company || '';
+  const tagline = order.tagline || order.design?.front?.tagline || order.frontConfig?.tagline || 'One Tap. Every Connection.';
+  const templateName = order.templateType === 'customer_logo' ? 'Custom Logo Design (Pages 4–6)' : 'Standard FLOCARDS Design (Pages 1–3)';
+  const total = order.totalAmount || order.pricing?.totalAmount || 1899;
+  const hasInvoice = order.hasInvoiceAddon ? 'Included (Official Business Tax Invoice)' : 'Not requested';
+  const shipping = order.shippingAddress || 'To be confirmed on WhatsApp';
+  const profileSlug = order.profileSlug || order.design?.profileSlug || (customerName ? customerName.toLowerCase().replace(/[^a-z0-9]/g, '') : '');
+  const previewUrl = profileSlug ? `https://flocard.in/p/${profileSlug}` : 'https://flocard.in/designer';
+
+  return `*NEW FLOCARDS PRINT ORDER SUBMISSION*
+━━━━━━━━━━━━━━━━━━━━
+*Order Ref:* ${ref}
+*Customer:* ${customerName}
+*Contact Phone:* ${phone}
+*Email:* ${email}
+*Delivery Address:* ${shipping}
+
+*Product:* ${editionTitle}
+*Template:* ${templateName}
+*Quantity:* ${quantity}
+*Card Design Title:* ${designName}
+*Name on Card:* ${order.design?.front?.name || order.frontConfig?.name || customerName}
+*Role / Company:* ${role ? `${role} • ` : ''}${company || 'Independent'}
+*Tagline:* ${tagline}
+
+*Itemized Breakdown:*
+• Unit Price: ₹${order.pricing?.unitPrice || 1899}
+• Quantity: ${quantity}
+• Delivery: Free Express Shipping
+• Invoice Add-on: ${hasInvoice}
+*Final Total Amount:* ₹${total}
+*Payment Status:* Payment Pending (Awaiting WhatsApp confirmation)
+
+*Design / Profile Proof:*
+${previewUrl}
+━━━━━━━━━━━━━━━━━━━━
+_Submitted for pre-press verification via FLOCARD Studio_`;
+}
+
+/**
+ * Generate click-to-chat WhatsApp URL directed to configured business number
+ */
+export function getPrintOrderWhatsAppUrl(order, targetWhatsApp = '919778278552') {
+  const cleanPhone = String(targetWhatsApp || '919778278552').replace(/[^0-9]/g, '');
+  const message = createPrintOrderWhatsAppMessage(order);
+  return `https://wa.me/${cleanPhone}?text=${encodeURIComponent(message)}`;
+}
+

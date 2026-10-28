@@ -14,7 +14,10 @@ import {
   ShieldCheck,
   Building2,
   ExternalLink,
-  Zap
+  Zap,
+  Calendar,
+  Clock,
+  Mail
 } from 'lucide-react';
 import {
   PhoneIcon,
@@ -29,6 +32,7 @@ import {
 import ProfileAvatar from './ProfileAvatar';
 import { resolveProfileLinks, DynamicLinkIcon } from '../../lib/socialLinkResolver';
 import { downloadVCard } from '../../lib/vcard';
+import { businessHoursService } from '../../lib/businessHoursService';
 
 export default function CompactProfileCard({
   profile,
@@ -113,6 +117,22 @@ export default function CompactProfileCard({
     : { type: 'spring', stiffness: 290, damping: 29, mass: 0.85 };
 
   const idCode = profile?.phone || profile?.email || `NFC-${profile?.slug?.toUpperCase() || '216'}`;
+
+  // Discord / Facebook style banner calculation
+  const banner = profile?.banner;
+  const hasBanner = Boolean(
+    banner &&
+    banner.enabled !== false &&
+    (banner.url || banner.imageUrl || banner.type === 'gradient' || banner.type === 'color')
+  );
+  const bannerUrl = banner?.url || banner?.imageUrl || '';
+  const bannerType = banner?.type || (bannerUrl ? 'image' : 'gradient');
+  const bannerZoom = banner?.zoom || 100;
+  const bannerPosX = banner?.positionX ?? banner?.posX ?? 50;
+  const bannerPosY = banner?.positionY ?? banner?.posY ?? 45;
+  const bannerOverlay = banner?.overlayOpacity ?? banner?.overlay ?? 0.35;
+
+  const liveStatus = profile?.businessHours ? businessHoursService.getLiveStatus(profile.businessHours) : null;
 
   // Interactive 3D tilt tracking with specular light reflection
   const [tilt, setTilt] = useState({ x: 0, y: 0, glareX: 50, glareY: 50, glareOpacity: 0 });
@@ -240,6 +260,77 @@ export default function CompactProfileCard({
             }}
           />
 
+          {/* Top Cover Banner (Discord / Facebook Style Cover Photo) */}
+          {hasBanner && (
+            <div
+              style={{
+                position: 'absolute',
+                top: 0,
+                left: 0,
+                right: 0,
+                height: '145px',
+                overflow: 'hidden',
+                zIndex: 2
+              }}
+            >
+              {bannerType === 'image' && bannerUrl && (
+                <img
+                  src={bannerUrl}
+                  alt=""
+                  style={{
+                    width: '100%',
+                    height: '100%',
+                    objectFit: 'cover',
+                    objectPosition: `${bannerPosX}% ${bannerPosY}%`,
+                    transform: `scale(${bannerZoom / 100})`,
+                    transformOrigin: `${bannerPosX}% ${bannerPosY}%`
+                  }}
+                />
+              )}
+              {bannerType === 'video' && bannerUrl && (
+                <video
+                  src={bannerUrl}
+                  autoPlay
+                  muted
+                  loop
+                  playsInline
+                  style={{
+                    width: '100%',
+                    height: '100%',
+                    objectFit: 'cover',
+                    objectPosition: `${bannerPosX}% ${bannerPosY}%`
+                  }}
+                />
+              )}
+              {bannerType === 'gradient' && (
+                <div
+                  style={{
+                    width: '100%',
+                    height: '100%',
+                    background: `linear-gradient(135deg, ${banner?.gradientStart || '#2e1065'} 0%, ${banner?.gradientEnd || '#090514'} 100%)`
+                  }}
+                />
+              )}
+              {bannerType === 'color' && (
+                <div
+                  style={{
+                    width: '100%',
+                    height: '100%',
+                    backgroundColor: banner?.solidColor || '#1a0b2e'
+                  }}
+                />
+              )}
+              {/* Soft Gradient Shadow fade into card body */}
+              <div
+                style={{
+                  position: 'absolute',
+                  inset: 0,
+                  background: `linear-gradient(to bottom, rgba(8, 4, 14, ${bannerOverlay}) 0%, rgba(8, 4, 14, 0.7) 100%)`
+                }}
+              />
+            </div>
+          )}
+
           {/* Top Row: Verified Badge & Live Status */}
           <div
             style={{
@@ -248,7 +339,8 @@ export default function CompactProfileCard({
               justifyContent: 'space-between',
               width: '100%',
               position: 'relative',
-              zIndex: 3
+              zIndex: 4,
+              marginBottom: hasBanner ? '16px' : '0'
             }}
           >
             <div
@@ -312,7 +404,7 @@ export default function CompactProfileCard({
               zIndex: 3
             }}
           >
-            {/* Centered User Image via Shared ProfileAvatar */}
+            {/* Centered User Image via Shared ProfileAvatar (Overlapping Banner) */}
             <ProfileAvatar
               profile={profile}
               size={108}
@@ -320,7 +412,10 @@ export default function CompactProfileCard({
               accentColor={accentColor}
               isCircle={isCircle}
               transitionConfig={transitionConfig}
-              style={{ marginBottom: '14px' }}
+              style={{
+                marginTop: hasBanner ? '36px' : '0',
+                marginBottom: '14px'
+              }}
             />
 
             {/* User Name with Shared Morphing */}
@@ -347,12 +442,64 @@ export default function CompactProfileCard({
                 fontSize: '0.94rem',
                 fontWeight: 600,
                 color: accentColor,
-                marginBottom: '8px',
+                marginBottom: '6px',
                 textShadow: `0 0 14px ${accentColor}50`
               }}
             >
               {profile?.role || profile?.tagline || 'YOUR ROLE / TAGLINE'}{profile?.company ? ` • ${profile.company}` : ''}
             </div>
+
+            {/* User Email Pill (Prominent and Clickable) */}
+            {profile?.email && (
+              <a
+                href={`mailto:${profile.email}`}
+                onClick={e => e.stopPropagation()}
+                title={`Send email to ${profile.email}`}
+                style={{
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  gap: '6px',
+                  fontSize: '0.78rem',
+                  fontWeight: 600,
+                  color: 'rgba(255, 255, 255, 0.95)',
+                  backgroundColor: 'rgba(255, 255, 255, 0.1)',
+                  border: '1px solid rgba(255, 255, 255, 0.2)',
+                  padding: '3px 12px',
+                  borderRadius: '9999px',
+                  textDecoration: 'none',
+                  marginBottom: '8px',
+                  boxShadow: '0 2px 8px rgba(0, 0, 0, 0.25)',
+                  transition: 'background-color 0.18s ease'
+                }}
+                onMouseEnter={e => e.currentTarget.style.backgroundColor = 'rgba(255, 255, 255, 0.2)'}
+                onMouseLeave={e => e.currentTarget.style.backgroundColor = 'rgba(255, 255, 255, 0.1)'}
+              >
+                <Mail size={12} color={accentColor} />
+                <span>{profile.email}</span>
+              </a>
+            )}
+
+            {/* Live Business Hours / Appointment Status */}
+            {liveStatus && (
+              <div
+                style={{
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  gap: '6px',
+                  padding: '3px 10px',
+                  borderRadius: '9999px',
+                  backgroundColor: liveStatus.isOpen ? 'rgba(16, 185, 129, 0.15)' : 'rgba(239, 68, 68, 0.15)',
+                  border: `1px solid ${liveStatus.isOpen ? 'rgba(16, 185, 129, 0.35)' : 'rgba(239, 68, 68, 0.35)'}`,
+                  color: liveStatus.isOpen ? '#10B981' : '#F87171',
+                  fontSize: '0.72rem',
+                  fontWeight: 700,
+                  marginBottom: '8px'
+                }}
+              >
+                <Clock size={11} />
+                <span>{liveStatus.badge} • {liveStatus.detail}</span>
+              </div>
+            )}
 
             {/* Short Biography / Tagline */}
             {profile?.bio && (

@@ -15,6 +15,8 @@ function safeDispatchEvent(name, detail) {
 
 const STORAGE_KEY_PREFIX = 'flocard_data_v3_';
 
+import { calculateOrderPricing, getInvoiceConfig, saveInvoiceConfig } from './orderPricing.js';
+
 
 // Automatically purge legacy demo caches from localStorage so previous demo records never reload
 try {
@@ -28,34 +30,99 @@ try {
       }
     }
     keysToRemove.forEach(k => localStorage.removeItem(k));
+
+    // Clear demo orders from current storage
+    const currentOrdersRaw = localStorage.getItem('flocard_data_v3_orders');
+    if (currentOrdersRaw) {
+      try {
+        const parsed = JSON.parse(currentOrdersRaw);
+        const filtered = Array.isArray(parsed) ? parsed.filter(o => 
+          !String(o.id || '').startsWith('FLC-ORD-908') &&
+          !String(o.id || '').startsWith('FLC-ORD-907') &&
+          !String(o.id || '').startsWith('FLC-ORD-905') &&
+          !String(o.id || '').startsWith('FLC-ORD-903') &&
+          !String(o.id || '').startsWith('FLC-ORD-89') &&
+          !String(o.id || '').startsWith('FLC-ORD-88') &&
+          !String(o.orderReference || '').startsWith('FLC-ORD-908') &&
+          !String(o.orderReference || '').startsWith('FLC-ORD-907') &&
+          !String(o.orderReference || '').startsWith('FLC-ORD-905') &&
+          !String(o.orderReference || '').startsWith('FLC-ORD-903') &&
+          !String(o.orderReference || '').startsWith('FLC-ORD-89') &&
+          !String(o.orderReference || '').startsWith('FLC-ORD-88') &&
+          o.customerEmail !== 'alex.morgan@flocard.in' &&
+          o.customerEmail !== 'priya@innovatetech.in' &&
+          o.customerEmail !== 'marcus@vanguardcapital.com' &&
+          o.customerEmail !== 'arjun.varma@varmaholdings.com'
+        ) : [];
+        if (filtered.length !== parsed.length) {
+          localStorage.setItem('flocard_data_v3_orders', JSON.stringify(filtered));
+        }
+      } catch (_) {}
+    }
+
+    // Clear demo invoices
+    const currentInvoicesRaw = localStorage.getItem('flocard_data_v3_invoices');
+    if (currentInvoicesRaw) {
+      try {
+        const parsedInv = JSON.parse(currentInvoicesRaw);
+        const filteredInv = Array.isArray(parsedInv) ? parsedInv.filter(inv =>
+          !String(inv.invoiceNumber || '').startsWith('INV-2026-908') &&
+          !String(inv.invoiceNumber || '').startsWith('INV-2026-88') &&
+          !String(inv.orderReference || '').startsWith('FLC-ORD-908') &&
+          !String(inv.orderReference || '').startsWith('FLC-ORD-88')
+        ) : [];
+        if (filteredInv.length !== parsedInv.length) {
+          localStorage.setItem('flocard_data_v3_invoices', JSON.stringify(filteredInv));
+        }
+      } catch (_) {}
+    }
+
+    // Clear demo cards
+    const currentCardsRaw = localStorage.getItem('flocard_data_v3_cards');
+    if (currentCardsRaw) {
+      try {
+        const parsedCards = JSON.parse(currentCardsRaw);
+        const filteredCards = Array.isArray(parsedCards) ? parsedCards.filter(c =>
+          c.id !== 'card_alex_001' && c.id !== 'card_white_002' && c.id !== 'card_pending_003'
+        ) : [];
+        if (filteredCards.length !== parsedCards.length) {
+          localStorage.setItem('flocard_data_v3_cards', JSON.stringify(filteredCards));
+        }
+      } catch (_) {}
+    }
   }
 } catch (e) {
   // Ignore in SSR / private browsing
 }
 
 export const ORDER_STAGES = [
-  { key: 'design_submitted', label: 'Design Submitted', step: 1, description: 'Order received and digital design submitted for pre-press verification.' },
-  { key: 'artwork_approved', label: 'Artwork Approved', step: 2, description: 'Print-ready vector assets, typography, and bleed margins approved by production.' },
-  { key: 'manufacturing_started', label: 'Manufacturing Started', step: 3, description: 'Card base CNC cut and NXP NTAG216 high-frequency chip embedded.' },
-  { key: 'quality_inspection', label: 'Quality Inspection', step: 4, description: 'Dual-frequency NFC transmission tested and surface finish inspected.' },
-  { key: 'dispatched', label: 'Dispatched', step: 5, description: 'Card packaged in luxury presentation box and handed over to courier.' },
-  { key: 'delivered', label: 'Delivered', step: 6, description: 'Card delivered to recipient and NFC redirect routing activated.' }
+  { key: 'new_order', label: 'New Order', step: 1, description: 'Order received and digital design submitted for print review.' },
+  { key: 'design_review', label: 'Design Review', step: 2, description: 'Print-ready vector assets, typography, and bleed margins under pre-press verification.' },
+  { key: 'awaiting_confirmation', label: 'Awaiting Confirmation', step: 3, description: 'Order details and delivery address queued for WhatsApp confirmation with client.' },
+  { key: 'awaiting_payment', label: 'Awaiting Payment', step: 4, description: 'Card design verified. Invoice and payment settlement pending verification.' },
+  { key: 'payment_confirmed', label: 'Payment Confirmed', step: 5, description: 'Payment verified and confirmed by finance. Production order released.' },
+  { key: 'manufacturing', label: 'Manufacturing', step: 6, description: 'Card base CNC cut, custom foil/color applied, and NXP NTAG216 high-frequency chip embedded.' },
+  { key: 'quality_check', label: 'Quality Check', step: 7, description: 'Dual-frequency NFC transmission tested and surface finish inspected.' },
+  { key: 'dispatched', label: 'Dispatched', step: 8, description: 'Card packaged in presentation box and handed over to express courier.' },
+  { key: 'delivered', label: 'Delivered', step: 9, description: 'Card delivered to recipient and NFC redirect routing activated.' }
 ];
 
 export const EXCEPTION_STAGES = [
+  { key: 'cancelled', label: 'Cancelled', description: 'Order cancelled and production halted.' },
   { key: 'revision_required', label: 'Revision Required', description: 'Design adjustments requested before manufacturing can proceed.' },
   { key: 'on_hold', label: 'On Hold', description: 'Production paused per customer request or operational hold.' },
   { key: 'manufacturing_issue', label: 'Manufacturing Issue', description: 'Recalibrating tooling to ensure flawless card surface finish.' },
-  { key: 'delivery_issue', label: 'Delivery Issue', description: 'Courier transit address re-attempt or verification needed.' },
-  { key: 'cancelled', label: 'Cancelled', description: 'Order cancelled and production halted.' }
+  { key: 'delivery_issue', label: 'Delivery Issue', description: 'Courier transit address re-attempt or verification needed.' }
 ];
 
 export function normalizeOrderStatus(status) {
-  if (!status) return 'design_submitted';
-  const s = String(status).toLowerCase();
-  if (s === 'pending' || s === 'draft' || s === 'submitted') return 'design_submitted';
-  if (s === 'processing') return 'artwork_approved';
-  if (s === 'printing') return 'manufacturing_started';
+  if (!status) return 'new_order';
+  const s = String(status).toLowerCase().trim();
+  // Map legacy & alias statuses
+  if (s === 'design_submitted' || s === 'pending' || s === 'draft' || s === 'submitted' || s === 'new') return 'new_order';
+  if (s === 'artwork_approved' || s === 'processing' || s === 'in_review') return 'design_review';
+  if (s === 'manufacturing_started' || s === 'printing') return 'manufacturing';
+  if (s === 'quality_inspection') return 'quality_check';
   if (s === 'shipped') return 'dispatched';
   return s;
 }
@@ -115,7 +182,7 @@ export const INITIAL_PROFILES = [
       twitter: 'https://twitter.com'
     },
     // Morphing Profile & Appearance Customization Settings
-    openingPreference: 'expandable', // 'expandable' | 'full' | 'compact_only'
+    openingPreference: 'full', // 'full' (Continuous full-screen website)
     gradientPreset: 'cosmic_violet',
     gradientStart: '#130B22',
     gradientMid: '#240F3E',
@@ -136,12 +203,107 @@ export const INITIAL_PROFILES = [
       contactBtn: true,
       verifiedBadge: true
     },
+    // Banner Configuration (Discord / Facebook style cover)
+    banner: {
+      enabled: true,
+      type: 'image', // 'image' | 'gradient' | 'color' | 'video'
+      url: '/assets/hero-bg.jpg',
+      height: 280, // Responsive height in px
+      zoom: 100, // Percentage 80 to 150
+      positionX: 50, // 0 - 100%
+      positionY: 45, // 0 - 100%
+      gradientStart: '#2e1065',
+      gradientEnd: '#090514',
+      solidColor: '#1a0b2e',
+      overlayOpacity: 0.38,
+      overlayColor: '#08060D'
+    },
+    // Business Hours Configuration
+    businessHours: {
+      enabled: true,
+      timezone: 'Asia/Kolkata',
+      schedule: {
+        monday: { isOpen: true, slots: [{ open: '09:30', close: '18:30' }] },
+        tuesday: { isOpen: true, slots: [{ open: '09:30', close: '18:30' }] },
+        wednesday: { isOpen: true, slots: [{ open: '09:30', close: '18:30' }] },
+        thursday: { isOpen: true, slots: [{ open: '09:30', close: '18:30' }] },
+        friday: { isOpen: true, slots: [{ open: '09:30', close: '18:30' }] },
+        saturday: { isOpen: true, slots: [{ open: '10:00', close: '16:00' }] },
+        sunday: { isOpen: false, slots: [] }
+      },
+      specialClosures: [],
+      notes: 'Appointments recommended for executive card consultations.'
+    },
+    // Appointment Booking Configuration
+    bookingConfig: {
+      enabled: true,
+      slotDurationMinutes: 30,
+      bufferMinutes: 10,
+      minNoticeHours: 2,
+      maxAdvanceDays: 30,
+      autoConfirm: true,
+      blockedDates: [],
+      blockedTimes: []
+    },
+    // Payment Options (UPI & QR)
+    paymentConfig: {
+      enabled: true,
+      upiId: 'flocards@icici',
+      recipientName: 'FLOCARDS Digital Systems',
+      qrUrl: '',
+      instructions: 'Scan with any UPI app (Google Pay, PhonePe, Paytm, BHIM) to pay securely.'
+    },
+    // Bank Account Details (Private by default, requires explicit consent to publish)
+    bankDetails: {
+      enabled: false,
+      isPublic: false,
+      accountHolder: 'FLOCARDS DIGITAL SYSTEMS PRIVATE LIMITED',
+      bankName: 'HDFC Bank',
+      branch: 'Indiranagar, Bengaluru',
+      accountNumber: '50200084729103',
+      ifsc: 'HDFC0000123',
+      visibleFields: {
+        accountHolder: true,
+        bankName: true,
+        branch: true,
+        accountNumber: true,
+        ifsc: true
+      }
+    },
+    // Videos Section (YouTube / Shorts)
+    videos: [
+      {
+        id: 'vid_1',
+        title: 'FLOCARDS Contactless NFC Demo',
+        description: 'Experience one-tap networking across iOS and Android.',
+        url: 'https://www.youtube.com/watch?v=dQw4w9WgXcQ',
+        isShort: false,
+        visible: true
+      }
+    ],
+    // Section Visibility Toggles
     sectionVisibility: {
+      banner: true,
       about: true,
-      portfolio: true,
+      hours: true,
+      booking: true,
       services: true,
+      portfolio: true,
+      videos: true,
+      payments: true,
+      bankDetails: false,
       experience: true,
-      contact: true
+      contact: true,
+      qrCompanion: true
+    },
+    storageQuotas: {
+      maxGalleryImages: 20,
+      maxServiceImages: 10,
+      maxVideos: 5,
+      maxBannerSizeMb: 5,
+      maxBannerVideoSizeMb: 15,
+      maxUploadSizeMb: 5,
+      maxTotalStorageMb: 50
     },
     galleryLayout: 'grid', // 'grid' | 'masonry' | 'carousel' | 'featured'
     portfolio: [
@@ -171,16 +333,51 @@ export const INITIAL_PROFILES = [
       }
     ],
     services: [
-      { id: 'srv_1', title: 'Enterprise Smart Cards', description: 'Custom metal & hybrid NFC rollouts for corporate teams.' },
-      { id: 'srv_2', title: 'Executive Networking', description: 'Contactless identity infrastructure and lead tracking.' }
+      {
+        id: 'srv_1',
+        title: 'Executive NFC Card Consultation',
+        description: 'Bespoke corporate identity and hardware NFC chip programming for founders and leadership teams.',
+        price: '₹1,999',
+        priceType: 'fixed',
+        duration: '30 mins',
+        actionType: 'book',
+        image: '/assets/cardbg-purple.png',
+        visible: true,
+        displayOrder: 1
+      },
+      {
+        id: 'srv_2',
+        title: 'Custom Metal Card Engraving',
+        description: 'Laser-etched 24K Gold or Matte Black Stainless Steel luxury card editions with dual RFID/NFC chips.',
+        price: '₹3,499',
+        priceType: 'fixed',
+        duration: '45 mins',
+        actionType: 'book',
+        image: '/assets/cardbg-gold.png',
+        visible: true,
+        displayOrder: 2
+      },
+      {
+        id: 'srv_3',
+        title: 'Enterprise Digital Ecosystem Integration',
+        description: 'End-to-end custom staff directories, CRM lead routing, and dynamic vCard synchronization.',
+        price: 'Contact for price',
+        priceType: 'contact',
+        duration: '60 mins',
+        actionType: 'contact',
+        image: '/assets/cardbg-platinum.png',
+        visible: true,
+        displayOrder: 3
+      }
     ],
     experience: [
-      { id: 'exp_1', role: 'Founder & CEO', company: 'FLOCARD', period: '2024 – Present', description: 'Leading product vision, NFC hardware engineering, and digital identity software.' }
+      { id: 'exp_1', role: 'Founder & CEO', company: 'FLOCARDS', period: '2024 – Present', description: 'Leading product vision, NFC hardware engineering, and digital identity software.' }
     ],
     isVerified: true,
     status: 'published'
   }
 ];
+
 
 const INITIAL_CARDS = [
   {
@@ -210,42 +407,6 @@ const INITIAL_CARDS = [
         reason: 'Initial card deployment & profile link'
       }
     ]
-  },
-  {
-    id: 'card_white_002',
-    cardCode: 'flc-pure-white-001',
-    cardName: 'Pure White Edition Demo',
-    chipType: 'NXP NTAG216 (888 Bytes)',
-    batch: 'Batch-2026-B',
-    edition: 'white',
-    customerId: 'usr_cust_02',
-    customerName: 'Akhil Sharma',
-    customerEmail: 'akhil@flocard.in',
-    profileSlug: 'alex',
-    status: 'active',
-    tapCount: 38,
-    registeredAt: '2026-04-01T12:00:00Z',
-    statusChangedAt: '2026-04-01T12:00:00Z',
-    statusReason: 'Pure White card activation',
-    activationHistory: []
-  },
-  {
-    id: 'card_pending_003',
-    cardCode: 'flc-sample-pending',
-    cardName: 'Unassigned Test Card',
-    chipType: 'NXP NTAG216 (888 Bytes)',
-    batch: 'Batch-2026-C',
-    edition: 'purple',
-    customerId: null,
-    customerName: null,
-    customerEmail: null,
-    profileSlug: null,
-    status: 'pending',
-    tapCount: 0,
-    registeredAt: '2026-04-10T09:00:00Z',
-    statusChangedAt: '2026-04-10T09:00:00Z',
-    statusReason: 'Inventory intake',
-    activationHistory: []
   }
 ];
 const INITIAL_DESIGNS = [];
@@ -256,151 +417,23 @@ const INITIAL_NOTIFICATIONS = [];
 const INITIAL_ANALYTICS_EVENTS = [];
 const INITIAL_AUDIT_LOGS = [
   {
-    id: 'evt_init_01',
+    id: 'evt_sys_init',
     timestamp: '2026-10-23T11:45:00Z',
     actorId: 'usr_owner_01',
     actorName: 'FLOCARDS Administrator',
     actorEmail: 'admin@flocard.in',
     actorRole: 'owner',
-    action: 'order.status_update',
-    entityType: 'Order',
-    entityId: 'ORD-9842',
-    description: 'Order status advanced to Dispatched with DTDC Air tracking DTDC-984210',
-    type: 'Order',
-    details: 'Order status advanced to Dispatched with DTDC Air tracking DTDC-984210',
+    action: 'system.initialized',
+    entityType: 'System',
+    entityId: 'flocard-core',
+    description: 'FLOCARDS enterprise platform initialized with secure audit logging.',
+    type: 'System',
+    details: 'FLOCARDS enterprise platform initialized with secure audit logging.',
     userName: 'FLOCARDS Administrator',
-    beforeValues: { status: 'production_ready', carrier: null, trackingNumber: null },
-    afterValues: { status: 'dispatched', carrier: 'DTDC Air Express', trackingNumber: 'DTDC-984210' },
     status: 'success',
     severity: 'info',
-    correlationId: 'req_ord_9842_dsp',
-    timeAgo: '1 hour ago'
-  },
-  {
-    id: 'evt_init_02',
-    timestamp: '2026-10-23T10:12:00Z',
-    actorId: 'usr_prod_01',
-    actorName: 'Rajesh Kumar',
-    actorEmail: 'production@flocard.in',
-    actorRole: 'production',
-    action: 'nfc.activate',
-    entityType: 'Card',
-    entityId: 'FC-882194',
-    description: 'NXP NTAG216 chip encoded & bound to digital profile @alex',
-    type: 'NFC Card',
-    details: 'NXP NTAG216 chip encoded & bound to digital profile @alex',
-    userName: 'Rajesh Kumar',
-    beforeValues: { chipStatus: 'unprogrammed', assignedSlug: null },
-    afterValues: { chipStatus: 'active', assignedSlug: 'alex', nfcUrl: 'https://flocard.in/alex' },
-    status: 'success',
-    severity: 'info',
-    correlationId: 'req_nfc_882194',
-    timeAgo: '2 hours ago'
-  },
-  {
-    id: 'evt_init_03',
-    timestamp: '2026-10-23T09:30:00Z',
-    actorId: 'usr_des_01',
-    actorName: 'Vikram Malhotra',
-    actorEmail: 'designer@flocard.in',
-    actorRole: 'designer',
-    action: 'design.approve',
-    entityType: 'Design',
-    entityId: 'des_alex_gold',
-    description: 'Artwork verified: 24K Gold Matte finish approved for UV laser engraving',
-    type: 'Card Design',
-    details: 'Artwork verified: 24K Gold Matte finish approved for UV laser engraving',
-    userName: 'Vikram Malhotra',
-    beforeValues: { approvalStatus: 'pending_review' },
-    afterValues: { approvalStatus: 'approved', notes: 'Artwork vectors verified with 3mm bleed margin.' },
-    status: 'success',
-    severity: 'info',
-    correlationId: 'req_des_approve_01',
-    timeAgo: '3 hours ago'
-  },
-  {
-    id: 'evt_init_04',
-    timestamp: '2026-10-23T08:50:00Z',
-    actorId: 'usr_owner_01',
-    actorName: 'FLOCARDS Administrator',
-    actorEmail: 'admin@flocard.in',
-    actorRole: 'owner',
-    action: 'staff.role_change',
-    entityType: 'Staff',
-    entityId: 'usr_sales_01',
-    description: 'Updated staff role for Priya Nair to Sales with permissions [orders.create, orders.read, customers.read]',
-    type: 'Admin Access',
-    details: 'Updated staff role for Priya Nair to Sales with permissions [orders.create, orders.read, customers.read]',
-    userName: 'FLOCARDS Administrator',
-    beforeValues: { role: 'pending', status: 'invited' },
-    afterValues: { role: 'sales', status: 'active' },
-    status: 'success',
-    severity: 'warning',
-    correlationId: 'req_perm_sales_01',
-    timeAgo: '4 hours ago'
-  },
-  {
-    id: 'evt_init_05',
-    timestamp: '2026-10-23T07:15:00Z',
-    actorId: 'usr_sys_01',
-    actorName: 'System / Auth Gateway',
-    actorEmail: 'system@flocard.in',
-    actorRole: 'system',
-    action: 'login.failed',
-    entityType: 'Auth',
-    entityId: 'auth_attempt_391',
-    description: 'Failed administrator login attempt with invalid credentials',
-    type: 'Security',
-    details: 'Failed administrator login attempt with invalid credentials',
-    userName: 'Auth Gateway',
-    beforeValues: null,
-    afterValues: { identifier: 'unknown_operator@external.org', failureReason: 'Invalid administrator password' },
-    status: 'failure',
-    severity: 'critical',
-    correlationId: 'req_sec_audit_391',
-    timeAgo: '5 hours ago'
-  },
-  {
-    id: 'evt_init_06',
-    timestamp: '2026-10-22T16:20:00Z',
-    actorId: 'usr_acc_01',
-    actorName: 'Anjali Sharma',
-    actorEmail: 'accounts@flocard.in',
-    actorRole: 'accounts',
-    action: 'payment.status_change',
-    entityType: 'Payment',
-    entityId: 'INV-2026-081',
-    description: 'Verified Razorpay settlement for Order ORD-9842 (₹2,240.82 with 18% GST)',
-    type: 'Finance',
-    details: 'Verified Razorpay settlement for Order ORD-9842 (₹2,240.82 with 18% GST)',
-    userName: 'Anjali Sharma',
-    beforeValues: { paymentStatus: 'pending_gateway' },
-    afterValues: { paymentStatus: 'paid', gstInvoiceNumber: 'INV-2026-081' },
-    status: 'success',
-    severity: 'info',
-    correlationId: 'req_pay_inv_081',
-    timeAgo: 'Yesterday'
-  },
-  {
-    id: 'evt_init_07',
-    timestamp: '2026-10-22T14:05:00Z',
-    actorId: 'usr_owner_01',
-    actorName: 'FLOCARDS Administrator',
-    actorEmail: 'admin@flocard.in',
-    actorRole: 'owner',
-    action: 'qr.config_update',
-    entityType: 'Smart QR',
-    entityId: 'cfg_smart_qr_global',
-    description: 'Updated Smart QR canonical redirect host to https://flocard.in with high-contrast quiet zone',
-    type: 'Smart QR',
-    details: 'Updated Smart QR canonical redirect host to https://flocard.in with high-contrast quiet zone',
-    userName: 'FLOCARDS Administrator',
-    beforeValues: { baseUrl: 'https://flocard.in', quietZone: 4 },
-    afterValues: { baseUrl: 'https://flocard.in', quietZone: 4, errorCorrectionLevel: 'H' },
-    status: 'success',
-    severity: 'info',
-    correlationId: 'req_qr_cfg_01',
-    timeAgo: 'Yesterday'
+    correlationId: 'req_init_sys',
+    timeAgo: 'Just now'
   }
 ];
 
@@ -506,645 +539,8 @@ export function normalizeOrderFinancials(order) {
   };
 }
 
-// Generate high-fidelity seed orders dynamically calculated relative to current date
-const _now = Date.now();
-const _d = (daysAgo, hoursAgo = 0) => new Date(_now - daysAgo * 86400000 - hoursAgo * 3600000).toISOString();
-
-const INITIAL_ORDERS = [
-  {
-    id: 'FLC-ORD-9081',
-    orderReference: 'FLC-ORD-9081',
-    invoiceId: 'INV-2026-9081',
-    invoiceDate: _d(0, 3),
-    orderDate: _d(0, 3),
-    customerName: 'Alex Morgan',
-    customerEmail: 'alex.morgan@flocard.in',
-    customerPhone: '+91 97782 78552',
-    company: 'FLOCARDS Technologies',
-    role: 'Founder & CEO',
-    tagline: 'Pioneering connected NFC identity systems.',
-    edition: 'gold',
-    templateType: 'customer_logo',
-    status: 'in_production',
-    quantity: 1,
-    unitPrice: 2499,
-    discount: 0,
-    tax: 381.20,
-    shippingCharge: 0,
-    totalAmount: 2499,
-    amountPaid: 2499,
-    amountOutstanding: 0,
-    refundAmount: 0,
-    paymentMethod: 'upi',
-    paymentStatus: 'paid',
-    transactionReference: 'UPI/202610208491',
-    shippingAddress: 'Plot 42, Infopark Phase II, Kochi, Kerala 682042',
-    cardCode: 'FLC-GLD-0104',
-    nfcUid: '04:7B:A2:1F:90:3C:80',
-    cardStatus: 'processing',
-    profileSlug: 'alex',
-    source: 'website',
-    items: [
-      {
-        id: 'item_9081_1',
-        productId: 'prod_gold',
-        productName: 'Gold Edition NFC Card',
-        sku: 'FLC-CRD-GLD-01',
-        edition: 'gold',
-        variant: '24K Metallic Champagne Gold',
-        templateType: 'customer_logo',
-        quantity: 1,
-        unitPrice: 2499,
-        discount: 0,
-        tax: 381.20,
-        total: 2499,
-        image: '/assets/cardbg-gold.png'
-      }
-    ],
-    paymentTransactions: [
-      {
-        id: 'txn_9081_1',
-        type: 'payment',
-        amount: 2499,
-        method: 'upi',
-        reference: 'UPI/202610208491',
-        date: _d(0, 3),
-        note: 'UPI Payment verified via QR scan',
-        recordedBy: 'Razorpay Webhook'
-      }
-    ]
-  },
-  {
-    id: 'FLC-ORD-9080',
-    orderReference: 'FLC-ORD-9080',
-    invoiceId: 'INV-2026-9080',
-    invoiceDate: _d(0, 6),
-    orderDate: _d(0, 6),
-    customerName: 'Priya Sharma',
-    customerEmail: 'priya.sharma@nexusfintech.com',
-    customerPhone: '+91 98450 12893',
-    company: 'Nexus Fintech Ventures',
-    role: 'Managing Partner',
-    tagline: 'Empowering digital capital.',
-    edition: 'purple',
-    templateType: 'standard',
-    status: 'design_submitted',
-    quantity: 1,
-    unitPrice: 1899,
-    discount: 0,
-    tax: 289.68,
-    shippingCharge: 0,
-    totalAmount: 1899,
-    amountPaid: 0,
-    amountOutstanding: 1899,
-    refundAmount: 0,
-    paymentMethod: 'upi',
-    paymentStatus: 'pending',
-    transactionReference: 'PENDING-INV-9080',
-    shippingAddress: 'Tower B, 14th Floor, UB City, Bengaluru, Karnataka 560001',
-    cardCode: 'FLC-PRP-0211',
-    nfcUid: '04:8A:2F:3C:44:91:80',
-    cardStatus: 'designing',
-    profileSlug: 'priyasharma',
-    source: 'whatsapp',
-    items: [
-      {
-        id: 'item_9080_1',
-        productId: 'prod_purple',
-        productName: 'Purple Edition NFC Card',
-        sku: 'FLC-CRD-PRP-03',
-        edition: 'purple',
-        variant: 'Ultraviolet Signature Obsidian',
-        templateType: 'standard',
-        quantity: 1,
-        unitPrice: 1899,
-        discount: 0,
-        tax: 289.68,
-        total: 1899,
-        image: '/assets/cardbg-purple.png'
-      }
-    ],
-    paymentTransactions: []
-  },
-  {
-    id: 'FLC-ORD-9074',
-    orderReference: 'FLC-ORD-9074',
-    invoiceId: 'INV-2026-9074',
-    invoiceDate: _d(1, 4),
-    orderDate: _d(1, 4),
-    customerName: 'Rohan Mehta',
-    customerEmail: 'rohan@mehtacapital.in',
-    customerPhone: '+91 98200 44812',
-    company: 'Mehta Capital Partners',
-    role: 'Principal Investor',
-    tagline: 'Long term strategic value creation.',
-    edition: 'metal',
-    templateType: 'customer_logo',
-    status: 'ready_to_dispatch',
-    quantity: 1,
-    unitPrice: 2799,
-    discount: 0,
-    tax: 426.97,
-    shippingCharge: 0,
-    totalAmount: 2799,
-    amountPaid: 2799,
-    amountOutstanding: 0,
-    refundAmount: 0,
-    paymentMethod: 'card',
-    paymentStatus: 'paid',
-    transactionReference: 'CARD-VISA-9821',
-    shippingAddress: '402 Regency Heights, Bandra West, Mumbai 400050',
-    cardCode: 'FLC-MTL-0056',
-    nfcUid: '04:B1:68:5D:82:1A:80',
-    cardStatus: 'ready_to_dispatch',
-    profileSlug: 'rohan',
-    source: 'website',
-    items: [
-      {
-        id: 'item_9074_1',
-        productId: 'prod_metal',
-        productName: 'Metal Edition NFC Card',
-        sku: 'FLC-CRD-MTL-04',
-        edition: 'metal',
-        variant: 'Brushed Gunmetal & Laser White',
-        templateType: 'customer_logo',
-        quantity: 1,
-        unitPrice: 2799,
-        discount: 0,
-        tax: 426.97,
-        total: 2799,
-        image: '/assets/cardbg-metal.png'
-      }
-    ],
-    paymentTransactions: [
-      {
-        id: 'txn_9074_1',
-        type: 'payment',
-        amount: 2799,
-        method: 'card',
-        reference: 'CARD-VISA-9821',
-        date: _d(1, 4),
-        note: 'Visa Business Card verified online',
-        recordedBy: 'Payment Gateway'
-      }
-    ]
-  },
-  {
-    id: 'FLC-ORD-9071',
-    orderReference: 'FLC-ORD-9071',
-    invoiceId: 'INV-2026-9071',
-    invoiceDate: _d(1, 8),
-    orderDate: _d(1, 8),
-    customerName: 'Ananya Nair',
-    customerEmail: 'ananya.nair@aerodesign.io',
-    customerPhone: '+91 97455 33019',
-    company: 'Aero Design Labs',
-    role: 'Chief Creative Officer',
-    tagline: 'Designing tomorrow’s interfaces.',
-    edition: 'platinum',
-    templateType: 'standard',
-    status: 'processing',
-    quantity: 1,
-    unitPrice: 2199,
-    discount: 0,
-    tax: 335.44,
-    shippingCharge: 0,
-    totalAmount: 2199,
-    amountPaid: 1100,
-    amountOutstanding: 1099,
-    refundAmount: 0,
-    paymentMethod: 'bank_transfer',
-    paymentStatus: 'partially_paid',
-    transactionReference: 'NEFT-HDFC-99124',
-    shippingAddress: 'Studio 12, Panampilly Nagar, Kochi, Kerala 682036',
-    cardCode: 'FLC-PLT-0089',
-    nfcUid: '04:5C:3D:7A:12:8E:80',
-    cardStatus: 'processing',
-    profileSlug: 'ananya',
-    source: 'whatsapp',
-    items: [
-      {
-        id: 'item_9071_1',
-        productId: 'prod_platinum',
-        productName: 'Platinum Edition NFC Card',
-        sku: 'FLC-CRD-PLT-02',
-        edition: 'platinum',
-        variant: 'Brushed Platinum & Silver',
-        templateType: 'standard',
-        quantity: 1,
-        unitPrice: 2199,
-        discount: 0,
-        tax: 335.44,
-        total: 2199,
-        image: '/assets/cardbg-platinum.png'
-      }
-    ],
-    paymentTransactions: [
-      {
-        id: 'txn_9071_1',
-        type: 'payment',
-        amount: 1100,
-        method: 'bank_transfer',
-        reference: 'NEFT-HDFC-99124',
-        date: _d(1, 8),
-        note: '50% Advance via Bank NEFT received',
-        recordedBy: 'Administrator'
-      }
-    ]
-  },
-  {
-    id: 'FLC-ORD-9055',
-    orderReference: 'FLC-ORD-9055',
-    invoiceId: 'INV-2026-9055',
-    invoiceDate: _d(3, 2),
-    orderDate: _d(3, 2),
-    customerName: 'Vikram Patel',
-    customerEmail: 'vikram@patellaw.com',
-    customerPhone: '+91 98791 22300',
-    company: 'Patel & Associates Law Firm',
-    role: 'Senior Advocate',
-    tagline: 'Corporate law & IP advisory.',
-    edition: 'gold',
-    templateType: 'standard',
-    status: 'shipped',
-    quantity: 2,
-    unitPrice: 2499,
-    discount: 200,
-    tax: 732.05,
-    shippingCharge: 0,
-    totalAmount: 4798,
-    amountPaid: 4798,
-    amountOutstanding: 0,
-    refundAmount: 0,
-    paymentMethod: 'razorpay',
-    paymentStatus: 'paid',
-    transactionReference: 'pay_P108420489',
-    shippingAddress: '701 Law Chambers, Ashram Road, Ahmedabad, Gujarat 380009',
-    trackingNumber: 'DTDC-77401294',
-    carrierName: 'DTDC Express Air',
-    cardCode: 'FLC-GLD-0105',
-    nfcUid: '04:91:AA:22:3B:5F:80',
-    cardStatus: 'shipped',
-    profileSlug: 'vikrampatel',
-    source: 'website',
-    items: [
-      {
-        id: 'item_9055_1',
-        productId: 'prod_gold',
-        productName: 'Gold Edition NFC Card',
-        sku: 'FLC-CRD-GLD-01',
-        edition: 'gold',
-        variant: '24K Metallic Champagne Gold',
-        templateType: 'standard',
-        quantity: 2,
-        unitPrice: 2499,
-        discount: 200,
-        tax: 732.05,
-        total: 4798,
-        image: '/assets/cardbg-gold.png'
-      }
-    ],
-    paymentTransactions: [
-      {
-        id: 'txn_9055_1',
-        type: 'payment',
-        amount: 4798,
-        method: 'razorpay',
-        reference: 'pay_P108420489',
-        date: _d(3, 2),
-        note: 'Razorpay Auto-settlement (Discount ₹200 applied)',
-        recordedBy: 'Payment Gateway'
-      }
-    ]
-  },
-  {
-    id: 'FLC-ORD-9032',
-    orderReference: 'FLC-ORD-9032',
-    invoiceId: 'INV-2026-9032',
-    invoiceDate: _d(6, 5),
-    orderDate: _d(6, 5),
-    customerName: 'Neha Gupta',
-    customerEmail: 'neha@glowbeauty.in',
-    customerPhone: '+91 99100 88214',
-    company: 'Glow Botanicals',
-    role: 'Founder & Formulator',
-    tagline: 'Clean clinical botanicals.',
-    edition: 'purple',
-    templateType: 'customer_logo',
-    status: 'delivered',
-    quantity: 1,
-    unitPrice: 1899,
-    discount: 0,
-    tax: 289.68,
-    shippingCharge: 0,
-    totalAmount: 1899,
-    amountPaid: 1899,
-    amountOutstanding: 0,
-    refundAmount: 0,
-    paymentMethod: 'upi',
-    paymentStatus: 'paid',
-    transactionReference: 'UPI/202610148920',
-    shippingAddress: 'Villa 45, DLF Phase 5, Gurugram, Haryana 122009',
-    trackingNumber: 'BLUEDART-8891024',
-    carrierName: 'BlueDart Apex',
-    cardCode: 'FLC-PRP-0212',
-    nfcUid: '04:77:E1:9C:55:0B:80',
-    cardStatus: 'activated',
-    profileSlug: 'nehagupta',
-    source: 'website',
-    items: [
-      {
-        id: 'item_9032_1',
-        productId: 'prod_purple',
-        productName: 'Purple Edition NFC Card',
-        sku: 'FLC-CRD-PRP-03',
-        edition: 'purple',
-        variant: 'Ultraviolet Signature Obsidian',
-        templateType: 'customer_logo',
-        quantity: 1,
-        unitPrice: 1899,
-        discount: 0,
-        tax: 289.68,
-        total: 1899,
-        image: '/assets/cardbg-purple.png'
-      }
-    ],
-    paymentTransactions: [
-      {
-        id: 'txn_9032_1',
-        type: 'payment',
-        amount: 1899,
-        method: 'upi',
-        reference: 'UPI/202610148920',
-        date: _d(6, 5),
-        note: 'UPI Payment captured via Google Pay',
-        recordedBy: 'Razorpay'
-      }
-    ]
-  },
-  {
-    id: 'FLC-ORD-8994',
-    orderReference: 'FLC-ORD-8994',
-    invoiceId: 'INV-2026-8994',
-    invoiceDate: _d(12, 1),
-    orderDate: _d(12, 1),
-    customerName: 'Siddharth Sen',
-    customerEmail: 'siddharth@senai.tech',
-    customerPhone: '+91 98300 77123',
-    company: 'Sen Robotics AI',
-    role: 'Chief AI Officer',
-    tagline: 'Perception engineering at scale.',
-    edition: 'metal',
-    templateType: 'standard',
-    status: 'cancelled',
-    quantity: 1,
-    unitPrice: 2799,
-    discount: 0,
-    tax: 426.97,
-    shippingCharge: 0,
-    totalAmount: 2799,
-    amountPaid: 0,
-    amountOutstanding: 0,
-    refundAmount: 2799,
-    paymentMethod: 'card',
-    paymentStatus: 'refunded',
-    transactionReference: 'RFD-2026100801',
-    shippingAddress: 'Sector V, Salt Lake Electronic Complex, Kolkata 700091',
-    cardCode: 'FLC-MTL-0057',
-    nfcUid: '04:19:64:8B:E3:71:80',
-    cardStatus: 'cancelled',
-    profileSlug: 'siddharth',
-    source: 'website',
-    items: [
-      {
-        id: 'item_8994_1',
-        productId: 'prod_metal',
-        productName: 'Metal Edition NFC Card',
-        sku: 'FLC-CRD-MTL-04',
-        edition: 'metal',
-        variant: 'Brushed Gunmetal & Laser White',
-        templateType: 'standard',
-        quantity: 1,
-        unitPrice: 2799,
-        discount: 0,
-        tax: 426.97,
-        total: 2799,
-        image: '/assets/cardbg-metal.png'
-      }
-    ],
-    paymentTransactions: [
-      {
-        id: 'txn_8994_1',
-        type: 'payment',
-        amount: 2799,
-        method: 'card',
-        reference: 'CARD-MC-7712',
-        date: _d(12, 1),
-        note: 'Initial Mastercard payment received',
-        recordedBy: 'Payment Gateway'
-      },
-      {
-        id: 'txn_8994_2',
-        type: 'refund',
-        amount: 2799,
-        method: 'card',
-        reference: 'RFD-2026100801',
-        date: _d(11, 2),
-        note: '[Refund] Client relocated overseas before card print run; full refund issued.',
-        recordedBy: 'Administrator'
-      }
-    ]
-  },
-  {
-    id: 'FLC-ORD-8950',
-    orderReference: 'FLC-ORD-8950',
-    invoiceId: 'INV-2026-8950',
-    invoiceDate: _d(18, 7),
-    orderDate: _d(18, 7),
-    customerName: 'Kabir Joshi',
-    customerEmail: 'kabir@joshistudio.design',
-    customerPhone: '+91 98211 66345',
-    company: 'Joshi Design Studio',
-    role: 'Design Director',
-    tagline: 'Architecture & spatial brand identity.',
-    edition: 'platinum',
-    templateType: 'customer_logo',
-    status: 'delivered',
-    quantity: 2,
-    unitPrice: 2199,
-    discount: 198,
-    tax: 640.68,
-    shippingCharge: 0,
-    totalAmount: 4200,
-    amountPaid: 4200,
-    amountOutstanding: 0,
-    refundAmount: 0,
-    paymentMethod: 'upi',
-    paymentStatus: 'paid',
-    transactionReference: 'UPI/202610023340',
-    shippingAddress: '19 Koregaon Park, Lane 7, Pune, Maharashtra 411001',
-    cardCode: 'FLC-PLT-0090',
-    nfcUid: '04:88:99:AA:BB:CC:80',
-    cardStatus: 'activated',
-    profileSlug: 'kabir',
-    source: 'website',
-    items: [
-      {
-        id: 'item_8950_1',
-        productId: 'prod_platinum',
-        productName: 'Platinum Edition NFC Card',
-        sku: 'FLC-CRD-PLT-02',
-        edition: 'platinum',
-        variant: 'Brushed Platinum & Silver',
-        templateType: 'customer_logo',
-        quantity: 2,
-        unitPrice: 2199,
-        discount: 198,
-        tax: 640.68,
-        total: 4200,
-        image: '/assets/cardbg-platinum.png'
-      }
-    ],
-    paymentTransactions: [
-      {
-        id: 'txn_8950_1',
-        type: 'payment',
-        amount: 4200,
-        method: 'upi',
-        reference: 'UPI/202610023340',
-        date: _d(18, 7),
-        note: 'UPI Payment received via Paytm Business',
-        recordedBy: 'Payment Gateway'
-      }
-    ]
-  },
-  {
-    id: 'FLC-ORD-8870',
-    orderReference: 'FLC-ORD-8870',
-    invoiceId: 'INV-2026-8870',
-    invoiceDate: _d(38, 4),
-    orderDate: _d(38, 4),
-    customerName: 'Deepa Rao',
-    customerEmail: 'deepa@raoconsulting.com',
-    customerPhone: '+91 98490 55123',
-    company: 'Rao Strategy Consultants',
-    role: 'Principal Partner',
-    tagline: 'Healthcare strategy & M&A advisory.',
-    edition: 'gold',
-    templateType: 'standard',
-    status: 'delivered',
-    quantity: 1,
-    unitPrice: 2499,
-    discount: 0,
-    tax: 381.20,
-    shippingCharge: 0,
-    totalAmount: 2499,
-    amountPaid: 2499,
-    amountOutstanding: 0,
-    refundAmount: 0,
-    paymentMethod: 'upi',
-    paymentStatus: 'paid',
-    transactionReference: 'UPI/202609129031',
-    shippingAddress: 'Plot 104, Jubilee Hills Road 36, Hyderabad 500033',
-    cardCode: 'FLC-GLD-0099',
-    nfcUid: '04:44:55:66:77:88:80',
-    cardStatus: 'activated',
-    profileSlug: 'deeparao',
-    source: 'whatsapp',
-    items: [
-      {
-        id: 'item_8870_1',
-        productId: 'prod_gold',
-        productName: 'Gold Edition NFC Card',
-        sku: 'FLC-CRD-GLD-01',
-        edition: 'gold',
-        variant: '24K Metallic Champagne Gold',
-        templateType: 'standard',
-        quantity: 1,
-        unitPrice: 2499,
-        discount: 0,
-        tax: 381.20,
-        total: 2499,
-        image: '/assets/cardbg-gold.png'
-      }
-    ],
-    paymentTransactions: [
-      {
-        id: 'txn_8870_1',
-        type: 'payment',
-        amount: 2499,
-        method: 'upi',
-        reference: 'UPI/202609129031',
-        date: _d(38, 4),
-        note: 'Direct PhonePe Business UPI settlement',
-        recordedBy: 'Administrator'
-      }
-    ]
-  },
-  {
-    id: 'FLC-ORD-8855',
-    orderReference: 'FLC-ORD-8855',
-    invoiceId: 'INV-2026-8855',
-    invoiceDate: _d(42, 6),
-    orderDate: _d(42, 6),
-    customerName: 'Arjun Varma',
-    customerEmail: 'arjun@varmalogistics.com',
-    customerPhone: '+91 98950 44321',
-    company: 'Varma Global Logistics',
-    role: 'Executive Vice President',
-    tagline: 'Intermodal maritime freight solutions.',
-    edition: 'metal',
-    templateType: 'customer_logo',
-    status: 'delivered',
-    quantity: 1,
-    unitPrice: 2799,
-    discount: 0,
-    tax: 426.97,
-    shippingCharge: 0,
-    totalAmount: 2799,
-    amountPaid: 2799,
-    amountOutstanding: 0,
-    refundAmount: 0,
-    paymentMethod: 'card',
-    paymentStatus: 'paid',
-    transactionReference: 'CARD-MC-4491',
-    shippingAddress: 'Marine Drive, Willington Island, Kochi, Kerala 682003',
-    cardCode: 'FLC-MTL-0050',
-    nfcUid: '04:11:22:33:44:55:80',
-    cardStatus: 'activated',
-    profileSlug: 'arjunvarma',
-    source: 'website',
-    items: [
-      {
-        id: 'item_8855_1',
-        productId: 'prod_metal',
-        productName: 'Metal Edition NFC Card',
-        sku: 'FLC-CRD-MTL-04',
-        edition: 'metal',
-        variant: 'Brushed Gunmetal & Laser White',
-        templateType: 'customer_logo',
-        quantity: 1,
-        unitPrice: 2799,
-        discount: 0,
-        tax: 426.97,
-        total: 2799,
-        image: '/assets/cardbg-metal.png'
-      }
-    ],
-    paymentTransactions: [
-      {
-        id: 'txn_8855_1',
-        type: 'payment',
-        amount: 2799,
-        method: 'card',
-        reference: 'CARD-MC-4491',
-        date: _d(42, 6),
-        note: 'Mastercard Corporate verified',
-        recordedBy: 'Payment Gateway'
-      }
-    ]
-  }
-];
+// All demo orders and demo bills removed - clean production state
+const INITIAL_ORDERS = [];
 
 const INITIAL_ADMIN_ACCOUNTS = [
   {
@@ -1531,7 +927,34 @@ function setLocal(key, value) {
 export const StorageEngine = {
   // Profiles
   getProfiles: () => {
-    const list = getLocal('profiles', INITIAL_PROFILES);
+    const rawList = getLocal('profiles', INITIAL_PROFILES);
+    const list = rawList.map(p => {
+      const init = INITIAL_PROFILES.find(ip => ip.id === p.id || ip.slug === p.slug) || INITIAL_PROFILES[0];
+      return {
+        ...init,
+        ...p,
+        banner: p.banner || init.banner,
+        businessHours: p.businessHours || init.businessHours,
+        bookingConfig: p.bookingConfig || init.bookingConfig,
+        paymentConfig: p.paymentConfig || init.paymentConfig,
+        bankDetails: p.bankDetails || init.bankDetails,
+        videos: Array.isArray(p.videos) ? p.videos : (init.videos || []),
+        storageQuotas: p.storageQuotas || init.storageQuotas || {
+          maxGalleryImages: 20,
+          maxServiceImages: 10,
+          maxVideos: 5,
+          maxBannerSizeMb: 5,
+          maxBannerVideoSizeMb: 15,
+          maxUploadSizeMb: 5,
+          maxTotalStorageMb: 50
+        },
+        sectionVisibility: {
+          ...(init.sectionVisibility || {}),
+          ...(p.sectionVisibility || {})
+        }
+      };
+    });
+
     const primary = list.find(p => p.id === 'prof_alex_001' || p.slug === 'alex' || p.id === 'prof_akhil_001' || p.slug === 'akhil');
     if (primary && (primary.name === 'Your Name' || !primary.avatar || primary.name === 'Akhil Anvar')) {
       primary.name = 'Alex Morgan';
@@ -1552,6 +975,9 @@ export const StorageEngine = {
     // Fallbacks for primary admin/demo profile (handles legacy 'akhil' redirect gracefully)
     if (cleanSlug === 'alex' || cleanSlug === 'akhil' || cleanSlug === 'default' || cleanSlug === 'demo') {
       const matchPrimary = list.find(p => p.id === 'prof_alex_001' || p.slug === 'alex') || list[0] || INITIAL_PROFILES[0];
+      if (matchPrimary && cleanSlug === 'akhil') {
+        return { ...matchPrimary, slug: 'akhil' };
+      }
       return matchPrimary;
     }
     return null;
@@ -1583,6 +1009,82 @@ export const StorageEngine = {
     StorageEngine.addAuditLog('Profile', `Profile deleted: ${id}`, 'You');
     if (typeof window !== 'undefined') {
       window.dispatchEvent(new CustomEvent('flocard_profile_updated', { detail: { deletedId: id, list } }));
+    }
+  },
+
+  // Appointments
+  getAppointments: (profileSlug = null) => {
+    const list = getLocal('appointments', [
+      {
+        id: 'apt_demo_001',
+        profileSlug: 'alex',
+        profileId: 'prof_alex_001',
+        serviceId: 'srv_1',
+        serviceName: 'Executive NFC Card Consultation',
+        customerName: 'Sarah Jenkins',
+        customerEmail: 'sarah.jenkins@acme.com',
+        customerPhone: '+91 98765 43210',
+        bookingDate: '2026-10-28',
+        startTime: '10:30',
+        endTime: '11:00',
+        notes: 'Consultation for 25 leadership metal NFC cards.',
+        status: 'confirmed',
+        referenceCode: 'FLC-BK-2610-7B2K',
+        createdAt: '2026-10-25T14:20:00Z',
+        updatedAt: '2026-10-25T14:20:00Z'
+      }
+    ]);
+    if (!profileSlug) return list;
+    return list.filter(a => a.profileSlug && a.profileSlug.toLowerCase() === profileSlug.toLowerCase());
+  },
+  saveAppointment: (appointment) => {
+    if (!appointment) return null;
+    const list = getLocal('appointments', []);
+    const index = list.findIndex(a => a.id === appointment.id || (appointment.referenceCode && a.referenceCode === appointment.referenceCode));
+    let saved;
+    if (index >= 0) {
+      saved = { ...list[index], ...appointment, updatedAt: new Date().toISOString() };
+      list[index] = saved;
+    } else {
+      saved = {
+        ...appointment,
+        id: appointment.id || `apt_${Date.now()}_${Math.random().toString(36).slice(2, 6)}`,
+        createdAt: appointment.createdAt || new Date().toISOString(),
+        updatedAt: new Date().toISOString()
+      };
+      list.unshift(saved);
+    }
+    setLocal('appointments', list);
+    if (typeof window !== 'undefined') {
+      window.dispatchEvent(new CustomEvent('flocard_appointment_updated', { detail: { appointment: saved, list } }));
+    }
+    return saved;
+  },
+  updateAppointmentStatus: (id, status, meta = {}) => {
+    const list = getLocal('appointments', []);
+    const index = list.findIndex(a => a.id === id);
+    if (index >= 0) {
+      list[index] = {
+        ...list[index],
+        status,
+        ...(meta.rescheduleDate ? { bookingDate: meta.rescheduleDate } : {}),
+        ...(meta.rescheduleTime ? { startTime: meta.rescheduleTime } : {}),
+        updatedAt: new Date().toISOString()
+      };
+      const updated = list[index];
+      setLocal('appointments', list);
+      if (typeof window !== 'undefined') {
+        window.dispatchEvent(new CustomEvent('flocard_appointment_updated', { detail: { appointment: updated, list } }));
+      }
+      return updated;
+    }
+    return null;
+  },
+  deleteAppointment: (id) => {
+    const list = getLocal('appointments', []).filter(a => a.id !== id);
+    setLocal('appointments', list);
+    if (typeof window !== 'undefined') {
+      window.dispatchEvent(new CustomEvent('flocard_appointment_updated', { detail: { deletedId: id, list } }));
     }
   },
 
@@ -1817,18 +1319,24 @@ export const StorageEngine = {
       frontConfig: design.front || {},
       backConfig: design.back || {},
       customColors: design.customColors || {},
-      status: 'design_submitted',
+      status: 'new_order',
+      paymentStatus: 'payment_pending',
+      paymentReference: null,
+      pricing: calculateOrderPricing({ edition: design.edition || 'purple', quantity: 1, hasInvoiceAddon: false }),
+      hasInvoiceAddon: false,
+      invoiceEligible: false,
+      billingDetails: {},
       orderDate: new Date().toISOString(),
       createdAt: new Date().toISOString(),
       updatedAt: new Date().toISOString(),
-      totalAmount: 1999,
+      totalAmount: 1899,
       quantity: 1,
       shippingAddress: design.shippingAddress || '',
       trackingNumber: null,
       carrierName: null,
       trackingUrl: null,
       estimatedDeliveryAt: null,
-      approvalNotes: notes || design.reviewNotes || 'Design artwork submitted for pre-production verification',
+      approvalNotes: notes || design.reviewNotes || 'Design artwork submitted for print review',
       cardCode: null,
       profileSlug: null
     };
@@ -1840,8 +1348,8 @@ export const StorageEngine = {
     StorageEngine.addOrderStatusHistoryEntry({
       orderId: newOrder.id,
       previousStatus: null,
-      newStatus: 'design_submitted',
-      publicMessage: 'Order received and digital design submitted for pre-press verification.',
+      newStatus: 'new_order',
+      publicMessage: 'Order received and digital design submitted for print review.',
       actorUserId: customerUser?.id || 'customer',
       actorName: customerName
     });
@@ -1896,6 +1404,217 @@ export const StorageEngine = {
       window.dispatchEvent(new CustomEvent('flocard_order_updated', { detail: { orderId: newOrder.id, status: newOrder.status } }));
       window.dispatchEvent(new CustomEvent('flocard_notification_created', { detail: { customerId: newOrder.customerId } }));
     }
+
+    return newOrder;
+  },
+
+  // Authoritative Print Order Submission with validation, duplicate prevention, and server-side pricing
+  submitPrintOrder: (payload = {}) => {
+    const design = payload.design || payload.cardConfig || payload.cardDesign;
+    const customerDetails = payload.customerDetails || {
+      name: payload.customerName,
+      email: payload.customerEmail,
+      phone: payload.customerPhone,
+      shippingAddress: payload.shippingAddress || payload.shipping_address,
+      company: payload.company
+    };
+    const billingDetails = payload.billingDetails || payload.billing_details || {};
+    const hasInvoiceAddon = Boolean(payload.hasInvoiceAddon ?? payload.has_invoice_addon ?? false);
+    const quantity = payload.quantity || 1;
+    const notes = payload.notes || '';
+    const customerUser = payload.customerUser || null;
+    const idempotencyKey = payload.idempotencyKey || null;
+
+    if (!design) {
+      throw new Error('Card design configuration is required to submit a print order.');
+    }
+
+    const orders = getLocal('orders', INITIAL_ORDERS);
+    const now = Date.now();
+    const customerEmail = (customerDetails.email || customerUser?.email || design.customerEmail || '').toLowerCase().trim();
+    const customerPhone = (customerDetails.phone || customerUser?.phone || design.customerPhone || '').trim();
+    const customerName = (customerDetails.name || customerUser?.name || design.customerName || design.front?.name || '').trim();
+    const shippingAddress = (customerDetails.shippingAddress || customerDetails.address || design.shippingAddress || '').trim();
+
+    // 1. Validate required customer and order fields
+    if (!customerName || customerName.length < 2) {
+      throw new Error('Please enter customer full name.');
+    }
+    if (!customerPhone || customerPhone.replace(/[^0-9]/g, '').length < 8) {
+      throw new Error('Please enter a valid WhatsApp contact number.');
+    }
+    if (!customerEmail || !customerEmail.includes('@')) {
+      throw new Error('Please enter a valid email address.');
+    }
+    if (!shippingAddress || shippingAddress.length < 5) {
+      throw new Error('Please provide a complete shipping / delivery address.');
+    }
+
+    // 2. Prevent duplicate order creation if customer double-clicks or retries
+    const recentDuplicate = orders.find(o => {
+      if (idempotencyKey && o.idempotencyKey === idempotencyKey) return true;
+      const isSameDesign = o.designId === design.id;
+      const isSameEmail = (o.customerEmail || '').toLowerCase().trim() === customerEmail;
+      const timeDiff = now - new Date(o.createdAt).getTime();
+      return isSameDesign && isSameEmail && timeDiff < 30000 && o.status === 'new_order';
+    });
+
+    if (recentDuplicate) {
+      return recentDuplicate;
+    }
+
+    // 3. Calculate authoritative pricing
+    const safeQty = Math.max(1, parseInt(quantity, 10) || 1);
+    const edition = design.edition || 'purple';
+    const pricing = calculateOrderPricing({
+      edition,
+      quantity: safeQty,
+      hasInvoiceAddon: Boolean(hasInvoiceAddon)
+    });
+
+    // 4. Generate unique order reference
+    const orderRef = `FLC-ORD-${Math.floor(1000 + Math.random() * 9000)}`;
+    const clientSlug = customerName.toLowerCase().replace(/[^a-z0-9]/g, '') || 'client';
+    const logoUrl = design.customerLogo?.url || (typeof design.customerLogo === 'string' ? design.customerLogo : null) || design.front?.customLogo || null;
+
+    const newOrder = {
+      id: orderRef,
+      orderReference: orderRef,
+      idempotencyKey: idempotencyKey || `idem_${now}_${Math.random().toString(36).substring(2, 9)}`,
+      designId: design.id,
+      design: JSON.parse(JSON.stringify(design)), // Frozen permanent snapshot of submitted design
+      designTitle: design.title || `${customerName}'s Card Design`,
+      templateType: design.templateType || 'standard',
+      edition: edition,
+      productName: pricing.productName,
+      customerId: customerUser?.id || design.customerId || `cust_${now}`,
+      customerName,
+      customerEmail,
+      customerPhone,
+      company: customerDetails.company || design.company || customerUser?.company || design.front?.company || '',
+      role: design.front?.role || '',
+      tagline: design.front?.tagline || '',
+      frontConfig: design.front || {},
+      backConfig: design.back || {},
+      customColors: design.customColors || {},
+      customerLogo: design.customerLogo || logoUrl,
+      flocardLogo: design.flocardLogo || { size: 100, position: 'top-left' },
+      shippingAddress,
+      billingDetails: {
+        company: billingDetails.company || customerDetails.company || '',
+        gstin: (billingDetails.gstin || '').toUpperCase().trim(),
+        address: billingDetails.address || shippingAddress,
+        city: billingDetails.city || '',
+        state: billingDetails.state || '',
+        postalCode: billingDetails.postalCode || ''
+      },
+      hasInvoiceAddon: Boolean(hasInvoiceAddon),
+      invoiceEligible: Boolean(hasInvoiceAddon),
+      pricing,
+      pricingBreakdown: pricing,
+      pricing_breakdown: pricing,
+      totalAmount: pricing.totalAmount,
+      quantity: safeQty,
+      status: 'new_order',
+      paymentStatus: 'payment_pending',
+      paymentReference: null,
+      source: 'web_studio',
+      approvalNotes: notes || 'Submitted via Card Designer for Print Production & WhatsApp Confirmation',
+      profileSlug: design.profileSlug || clientSlug,
+      trackingNumber: null,
+      carrierName: null,
+      trackingUrl: null,
+      estimatedDeliveryAt: null,
+      orderDate: new Date().toISOString(),
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString()
+    };
+
+    orders.unshift(newOrder);
+    setLocal('orders', orders);
+
+    // Initial immutable audit trail
+    StorageEngine.addOrderStatusHistoryEntry({
+      orderId: newOrder.id,
+      previousStatus: null,
+      newStatus: 'new_order',
+      publicMessage: 'Order received and digital design submitted for print review. Team will coordinate payment via WhatsApp.',
+      actorUserId: customerUser?.id || 'customer',
+      actorName: customerName
+    });
+
+    // Customer in-app notification
+    StorageEngine.createNotification({
+      recipientUserId: newOrder.customerId,
+      orderId: newOrder.id,
+      title: 'Print Order Placed',
+      message: `Your FLOCARDS print order ${newOrder.orderReference} has been placed. Our team will contact you on WhatsApp to confirm details.`
+    });
+
+    // Ensure customer account record exists
+    const customers = getLocal('customers', INITIAL_CUSTOMERS);
+    let cust = customers.find(c => c.id === newOrder.customerId || c.email?.toLowerCase() === customerEmail);
+    if (cust) {
+      cust.totalDesigns = (cust.totalDesigns || 0) + 1;
+      cust.phone = customerPhone || cust.phone;
+      setLocal('customers', customers);
+    } else {
+      customers.unshift({
+        id: newOrder.customerId,
+        name: customerName,
+        email: customerEmail,
+        phone: customerPhone,
+        company: newOrder.company,
+        avatar: logoUrl,
+        totalCards: 0,
+        totalDesigns: 1,
+        status: 'active',
+        joinedDate: new Date().toISOString().split('T')[0]
+      });
+      setLocal('customers', customers);
+    }
+
+    // Link design status back to order
+    const designs = getLocal('designs', INITIAL_DESIGNS);
+    const dItem = designs.find(d => d.id === design.id);
+    if (dItem) {
+      dItem.orderId = newOrder.id;
+      dItem.status = 'submitted';
+      setLocal('designs', designs);
+    }
+
+    StorageEngine.addAuditLog(
+      'Print Order Submission',
+      `Print order ${newOrder.orderReference} (${newOrder.id}) submitted by ${customerName} (Payment Pending, Total: ₹${newOrder.totalAmount})`,
+      customerName
+    );
+
+    // Asynchronously synchronize with Supabase if online
+    (async () => {
+      try {
+        const { supabase } = await import('./supabase.js');
+        if (supabase) {
+          await supabase.from('orders').upsert({
+            id: newOrder.id,
+            order_reference: newOrder.orderReference,
+            customer_name: newOrder.customerName,
+            customer_email: newOrder.customerEmail,
+            customer_phone: newOrder.customerPhone,
+            company: newOrder.company,
+            status: newOrder.status,
+            shipping_address: newOrder.shippingAddress,
+            total_amount: newOrder.totalAmount,
+            created_at: newOrder.createdAt,
+            updated_at: newOrder.updatedAt
+          });
+        }
+      } catch (err) {
+        console.warn('[Storage] Supabase order sync note:', err.message);
+      }
+    })();
+
+    safeDispatchEvent('flocard_order_updated', { orderId: newOrder.id, status: newOrder.status });
+    safeDispatchEvent('flocard_notification_created', { customerId: newOrder.customerId });
 
     return newOrder;
   },
@@ -2614,7 +2333,26 @@ export const StorageEngine = {
   deleteCustomer: (id) => {
     const list = getLocal('customers', INITIAL_CUSTOMERS).filter(c => c.id !== id && c.email !== id);
     setLocal('customers', list);
-    StorageEngine.addAuditLog('Customer', `Customer record deleted: ${id}`, 'You');
+
+    // Also purge all associated orders so deleted customers don't leave zombie orders
+    const orders = getLocal('orders', INITIAL_ORDERS).filter(o => {
+      const matchId = o.customerId === id || o.customer_id === id;
+      const matchEmail = (o.customerEmail && o.customerEmail.toLowerCase() === String(id).toLowerCase()) ||
+                         (o.customerDetails?.email && o.customerDetails.email.toLowerCase() === String(id).toLowerCase());
+      return !matchId && !matchEmail;
+    });
+    setLocal('orders', orders);
+
+    // Also purge associated invoices
+    const invoices = getLocal('invoices', []).filter(inv => {
+      const matchCust = inv.customerId === id || 
+                        (inv.customerEmail && inv.customerEmail.toLowerCase() === String(id).toLowerCase()) ||
+                        (inv.billedTo?.email && inv.billedTo.email.toLowerCase() === String(id).toLowerCase());
+      return !matchCust;
+    });
+    setLocal('invoices', invoices);
+
+    StorageEngine.addAuditLog('Customer', `Customer record and associated orders deleted: ${id}`, 'You');
   },
 
   // Card Templates
@@ -3164,6 +2902,307 @@ export const StorageEngine = {
     return { success: true, demoConfig: DEFAULT_DEMO_CONFIG };
   },
 
+  // Invoices Management
+  getInvoices: () => getLocal('invoices', []),
+  saveInvoice: (invoice) => {
+    if (!invoice || (!invoice.id && !invoice.invoiceNumber)) {
+      throw new Error('Invoice object with ID or invoiceNumber is required.');
+    }
+    const list = getLocal('invoices', []);
+    const invId = invoice.id || `inv_${Date.now()}`;
+    const idx = list.findIndex(i => i.id === invId || (invoice.invoiceNumber && i.invoiceNumber === invoice.invoiceNumber));
+    const now = new Date().toISOString();
+    let saved;
+    if (idx >= 0) {
+      saved = { ...list[idx], ...invoice, updatedAt: now };
+      list[idx] = saved;
+    } else {
+      saved = {
+        ...invoice,
+        id: invId,
+        createdAt: invoice.createdAt || now,
+        updatedAt: now
+      };
+      list.unshift(saved);
+    }
+    setLocal('invoices', list);
+    safeDispatchEvent('flocard_invoice_updated', saved);
+    return saved;
+  },
+  getInvoicesByOrder: (orderId) => {
+    if (!orderId) return [];
+    const list = getLocal('invoices', []);
+    return list.filter(i => i.orderId === orderId || i.orderReference === orderId);
+  },
+  getInvoicesByCustomer: (emailOrId) => {
+    if (!emailOrId) return [];
+    const norm = String(emailOrId).toLowerCase().trim();
+    const list = getLocal('invoices', []);
+    return list.filter(i =>
+      (i.customerId && String(i.customerId).toLowerCase() === norm) ||
+      (i.customerEmail && i.customerEmail.toLowerCase().trim() === norm)
+    );
+  },
+
+  // Controlled Payment Status Transition (Admin Only)
+  // Controlled Payment Status Transition (Admin Only)
+  updateOrderPaymentStatus: (arg1, arg2, arg3, arg4) => {
+    let orderId, paymentStatus, paymentReference, notes, actorUser;
+    if (typeof arg1 === 'object' && arg1 !== null && !arg2) {
+      orderId = arg1.orderId;
+      paymentStatus = arg1.paymentStatus;
+      paymentReference = arg1.paymentReference ?? null;
+      notes = arg1.notes ?? '';
+      actorUser = arg1.actorUser ?? null;
+    } else {
+      orderId = arg1;
+      paymentStatus = arg2;
+      paymentReference = arg3 ?? null;
+      actorUser = arg4 ?? null;
+      notes = '';
+    }
+
+    const orders = getLocal('orders', INITIAL_ORDERS);
+    const order = orders.find(o => o.id === orderId || o.orderReference === orderId);
+    if (!order) throw new Error(`Order ${orderId} not found.`);
+
+    const isElevated = !actorUser || isElevatedUser(actorUser);
+    if (!isElevated) {
+      throw new Error('Access Denied: Only administrators can update or confirm payment status.');
+    }
+
+    const prevPayment = order.paymentStatus || 'payment_pending';
+    order.paymentStatus = paymentStatus;
+    if (paymentReference) order.paymentReference = paymentReference;
+    order.updatedAt = new Date().toISOString();
+
+    if (paymentStatus === 'payment_confirmed') {
+      order.paidAt = new Date().toISOString();
+      StorageEngine.addOrderStatusHistoryEntry({
+        orderId: order.id,
+        previousStatus: order.status,
+        newStatus: order.status,
+        publicMessage: `Payment confirmed (${paymentReference ? `Ref: ${paymentReference}` : 'Verified via Bank / UPI settlement'}).`,
+        actorUserId: actorUser?.id || 'admin',
+        actorName: actorUser?.name || 'Finance Administrator'
+      });
+      StorageEngine.createNotification({
+        recipientUserId: order.customerId,
+        orderId: order.id,
+        title: 'Payment Confirmed',
+        message: `Payment for order ${order.orderReference} has been verified and confirmed. Card manufacturing is scheduled.`
+      });
+    }
+
+    setLocal('orders', orders);
+    StorageEngine.addAuditLog(
+      'Payment Status Update',
+      `Order ${order.orderReference} payment updated from ${prevPayment} to ${paymentStatus} by ${actorUser?.name || 'Administrator'}`,
+      actorUser?.email || 'admin@flocard.in'
+    );
+    safeDispatchEvent('flocard_order_updated', { orderId: order.id, status: order.status, paymentStatus });
+    return order;
+  },
+
+  // Invoice Eligibility Control (Owner / Admin)
+  // Invoice Eligibility Control (Owner / Admin)
+  setOrderInvoiceEligibility: (arg1, arg2, arg3, arg4) => {
+    let orderId, isEligible, actorUser, reason, status;
+    if (typeof arg1 === 'object' && arg1 !== null && typeof arg2 === 'undefined') {
+      orderId = arg1.orderId;
+      isEligible = arg1.isEligible;
+      status = arg1.status;
+      reason = arg1.reason ?? '';
+      actorUser = arg1.actorUser ?? null;
+    } else {
+      orderId = arg1;
+      isEligible = arg2;
+      actorUser = arg3 ?? null;
+      reason = arg4 ?? '';
+    }
+
+    const orders = getLocal('orders', INITIAL_ORDERS);
+    const order = orders.find(o => o.id === orderId || o.orderReference === orderId);
+    if (!order) throw new Error(`Order ${orderId} not found.`);
+
+    const isElevated = !actorUser || isElevatedUser(actorUser);
+    if (!isElevated) {
+      throw new Error('Access Denied: Only administrators can modify invoice eligibility.');
+    }
+
+    order.invoiceEligible = Boolean(isEligible);
+    order.hasInvoiceAddon = Boolean(isEligible);
+    order.invoiceStatus = status || (isEligible ? 'assigned' : 'declined');
+    order.invoiceStatusReason = reason || (isEligible ? 'Approved and assigned by administrator' : 'Declined / Access revoked by administrator');
+    order.invoiceStatusUpdatedAt = new Date().toISOString();
+    order.invoiceStatusUpdatedBy = actorUser?.name || 'Administrator';
+    order.updatedAt = new Date().toISOString();
+
+    // Create in-app notification for the customer
+    StorageEngine.createNotification({
+      recipientUserId: order.customerId,
+      orderId: order.id,
+      title: isEligible ? 'Tax Invoice Generator Enabled' : 'Tax Invoice Access Updated',
+      message: isEligible
+        ? `Invoice generator access for order ${order.orderReference} has been approved. You can now customize themes and download official tax invoices in your dashboard.`
+        : `Invoice generator access for order ${order.orderReference} was updated: ${order.invoiceStatusReason}`
+    });
+
+    // Add immutable audit log
+    StorageEngine.addAuditLog(
+      isEligible ? 'Invoice Access Assigned' : 'Invoice Access Declined',
+      `Order ${order.orderReference} invoice generator access was ${isEligible ? 'ASSIGNED' : 'DECLINED'} by ${actorUser?.name || 'Administrator'}. Reason: ${order.invoiceStatusReason}`,
+      actorUser?.email || 'admin@flocard.in'
+    );
+
+    setLocal('orders', orders);
+    safeDispatchEvent('flocard_order_updated', {
+      orderId: order.id,
+      invoiceEligible: order.invoiceEligible,
+      invoiceStatus: order.invoiceStatus
+    });
+    return order;
+  },
+
+  // Assign (Approve / Grant) Invoice Generator Access
+  assignOrderInvoice: (orderId, actorUser = null, reason = 'Admin verified payment & approved') => {
+    return StorageEngine.setOrderInvoiceEligibility({
+      orderId,
+      isEligible: true,
+      status: 'assigned',
+      reason,
+      actorUser
+    });
+  },
+
+  // Decline (Reject / Revoke) Invoice Generator Access
+  declineOrderInvoice: (orderId, actorUser = null, reason = 'Declined by administrator') => {
+    return StorageEngine.setOrderInvoiceEligibility({
+      orderId,
+      isEligible: false,
+      status: 'declined',
+      reason,
+      actorUser
+    });
+  },
+
+  // Assign Invoice Generator Access to Customer & All Their Orders
+  assignCustomerInvoice: (customerId, actorUser = null, reason = 'Admin verified payment & approved') => {
+    const isElevated = !actorUser || isElevatedUser(actorUser);
+    if (!isElevated) {
+      throw new Error('Access Denied: Only administrators can modify invoice eligibility.');
+    }
+
+    const customers = getLocal('customers', INITIAL_CUSTOMERS);
+    const custIndex = customers.findIndex(c => c.id === customerId || c.email === customerId);
+    let targetCustomer = null;
+    if (custIndex >= 0) {
+      customers[custIndex].invoiceEligible = true;
+      customers[custIndex].invoiceStatus = 'assigned';
+      customers[custIndex].invoiceStatusReason = reason;
+      customers[custIndex].invoiceStatusUpdatedAt = new Date().toISOString();
+      customers[custIndex].invoiceStatusUpdatedBy = actorUser?.name || 'Administrator';
+      targetCustomer = customers[custIndex];
+      setLocal('customers', customers);
+    }
+
+    // Also assign to any orders belonging to this customer
+    const orders = getLocal('orders', INITIAL_ORDERS);
+    let ordersUpdated = 0;
+    orders.forEach(order => {
+      const matchId = order.customerId === customerId || order.customer_id === customerId;
+      const matchEmail = (order.customerEmail && order.customerEmail.toLowerCase() === String(customerId).toLowerCase()) ||
+                         (order.customerDetails?.email && order.customerDetails.email.toLowerCase() === String(customerId).toLowerCase()) ||
+                         (targetCustomer?.email && order.customerEmail?.toLowerCase() === targetCustomer.email.toLowerCase());
+      if (matchId || matchEmail) {
+        order.invoiceEligible = true;
+        order.hasInvoiceAddon = true;
+        order.invoiceStatus = 'assigned';
+        order.invoiceStatusReason = reason;
+        order.invoiceStatusUpdatedAt = new Date().toISOString();
+        order.invoiceStatusUpdatedBy = actorUser?.name || 'Administrator';
+        ordersUpdated++;
+      }
+    });
+    if (ordersUpdated > 0) {
+      setLocal('orders', orders);
+    }
+
+    StorageEngine.createNotification({
+      recipientUserId: customerId,
+      title: 'Tax Invoice Generator Enabled',
+      message: `Tax invoice generator access has been approved for your account: ${reason}`
+    });
+
+    StorageEngine.addAuditLog(
+      'Invoice Access Assigned',
+      `Customer ${targetCustomer?.name || customerId} invoice generator access was ASSIGNED by ${actorUser?.name || 'Administrator'}. Reason: ${reason}`,
+      actorUser?.email || 'admin@flocard.in'
+    );
+
+    safeDispatchEvent('flocard_customer_updated', { customerId, invoiceEligible: true });
+    return { customer: targetCustomer, ordersUpdated };
+  },
+
+  // Decline / Revoke Invoice Generator Access from Customer & Their Orders
+  declineCustomerInvoice: (customerId, actorUser = null, reason = 'Declined by administrator') => {
+    const isElevated = !actorUser || isElevatedUser(actorUser);
+    if (!isElevated) {
+      throw new Error('Access Denied: Only administrators can modify invoice eligibility.');
+    }
+
+    const customers = getLocal('customers', INITIAL_CUSTOMERS);
+    const custIndex = customers.findIndex(c => c.id === customerId || c.email === customerId);
+    let targetCustomer = null;
+    if (custIndex >= 0) {
+      customers[custIndex].invoiceEligible = false;
+      customers[custIndex].invoiceStatus = 'declined';
+      customers[custIndex].invoiceStatusReason = reason;
+      customers[custIndex].invoiceStatusUpdatedAt = new Date().toISOString();
+      customers[custIndex].invoiceStatusUpdatedBy = actorUser?.name || 'Administrator';
+      targetCustomer = customers[custIndex];
+      setLocal('customers', customers);
+    }
+
+    const orders = getLocal('orders', INITIAL_ORDERS);
+    let ordersUpdated = 0;
+    orders.forEach(order => {
+      const matchId = order.customerId === customerId || order.customer_id === customerId;
+      const matchEmail = (order.customerEmail && order.customerEmail.toLowerCase() === String(customerId).toLowerCase()) ||
+                         (order.customerDetails?.email && order.customerDetails.email.toLowerCase() === String(customerId).toLowerCase()) ||
+                         (targetCustomer?.email && order.customerEmail?.toLowerCase() === targetCustomer.email.toLowerCase());
+      if (matchId || matchEmail) {
+        order.invoiceEligible = false;
+        order.invoiceStatus = 'declined';
+        order.invoiceStatusReason = reason;
+        order.invoiceStatusUpdatedAt = new Date().toISOString();
+        order.invoiceStatusUpdatedBy = actorUser?.name || 'Administrator';
+        ordersUpdated++;
+      }
+    });
+    if (ordersUpdated > 0) {
+      setLocal('orders', orders);
+    }
+
+    StorageEngine.createNotification({
+      recipientUserId: customerId,
+      title: 'Tax Invoice Access Declined',
+      message: `Tax invoice generator access was declined: ${reason}`
+    });
+
+    StorageEngine.addAuditLog(
+      'Invoice Access Declined',
+      `Customer ${targetCustomer?.name || customerId} invoice generator access was DECLINED by ${actorUser?.name || 'Administrator'}. Reason: ${reason}`,
+      actorUser?.email || 'admin@flocard.in'
+    );
+
+    safeDispatchEvent('flocard_customer_updated', { customerId, invoiceEligible: false });
+    return { customer: targetCustomer, ordersUpdated };
+  },
+
+  getInvoiceConfig: () => getInvoiceConfig(),
+  saveInvoiceConfig: (cfg) => saveInvoiceConfig(cfg),
+
   // System Reset
   resetAll: () => {
     localStorage.removeItem(STORAGE_KEY_PREFIX + 'profiles');
@@ -3177,6 +3216,7 @@ export const StorageEngine = {
     localStorage.removeItem(STORAGE_KEY_PREFIX + 'admin_accounts');
     localStorage.removeItem(STORAGE_KEY_PREFIX + 'studio_bg');
     localStorage.removeItem(STORAGE_KEY_PREFIX + 'demo_config');
+    localStorage.removeItem(STORAGE_KEY_PREFIX + 'invoices');
     return true;
   }
 };

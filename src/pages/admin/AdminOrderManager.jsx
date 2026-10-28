@@ -36,7 +36,9 @@ import {
   RotateCw,
   Trash2,
   UserCheck,
-  Users
+  Users,
+  Receipt,
+  CreditCard
 } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 import { useData } from '../../context/DataContext';
@@ -69,7 +71,9 @@ export default function AdminOrderManager({ initialOrderId = null }) {
     addOrderInternalNote,
     saveOrder,
     saveCustomer,
-    customers = []
+    customers = [],
+    updateOrderPaymentStatus,
+    setOrderInvoiceEligibility
   } = useData();
 
   const [searchQuery, setSearchQuery] = useState('');
@@ -430,6 +434,11 @@ export default function AdminOrderManager({ initialOrderId = null }) {
     return matchesQuery && matchesStatus && matchesSource;
   });
 
+  const [paymentRefInput, setPaymentRefInput] = useState('');
+  const [isUpdatingPayment, setIsUpdatingPayment] = useState(false);
+  const [paymentActionError, setPaymentActionError] = useState('');
+  const [paymentActionSuccess, setPaymentActionSuccess] = useState('');
+
   const handleOpenUpdateModal = (order) => {
     const currentNorm = normalizeOrderStatus(order.status);
     setSelectedOrder(order);
@@ -442,7 +451,66 @@ export default function AdminOrderManager({ initialOrderId = null }) {
     setEstimatedDeliveryAt(order.estimatedDeliveryAt ? order.estimatedDeliveryAt.split('T')[0] : '');
     setActionError('');
     setActionSuccess('');
+    setPaymentRefInput(order.paymentReference || order.payment_reference || '');
+    setPaymentActionError('');
+    setPaymentActionSuccess('');
     setIsUpdateModalOpen(true);
+  };
+
+  const handleConfirmPayment = async (newStatus) => {
+    if (!selectedOrder) return;
+    setPaymentActionError('');
+    setPaymentActionSuccess('');
+    setIsUpdatingPayment(true);
+    try {
+      if (newStatus === 'payment_confirmed' && !paymentRefInput.trim()) {
+        setPaymentActionError('Please provide a payment reference (e.g. UTR, Bank Ref, or UPI transaction ID) for audit verification.');
+        setIsUpdatingPayment(false);
+        return;
+      }
+      const refToSave = newStatus === 'payment_confirmed' ? paymentRefInput.trim() : null;
+      const updated = await updateOrderPaymentStatus(
+        selectedOrder.id,
+        newStatus,
+        refToSave
+      );
+      if (updated) {
+        setSelectedOrder(prev => ({
+          ...prev,
+          paymentStatus: newStatus,
+          payment_status: newStatus,
+          paymentReference: refToSave,
+          payment_reference: refToSave
+        }));
+        setPaymentActionSuccess(
+          newStatus === 'payment_confirmed'
+            ? 'Payment verified & confirmed! Audit log recorded.'
+            : 'Payment status marked as Pending.'
+        );
+      }
+    } catch (err) {
+      setPaymentActionError(err.message || 'Failed to update payment status');
+    } finally {
+      setIsUpdatingPayment(false);
+    }
+  };
+
+  const handleToggleInvoiceEligibility = async (eligible) => {
+    if (!selectedOrder) return;
+    try {
+      const updated = await setOrderInvoiceEligibility(selectedOrder.id, eligible);
+      if (updated) {
+        setSelectedOrder(prev => ({
+          ...prev,
+          invoiceEligible: eligible,
+          invoice_eligible: eligible,
+          hasInvoiceAddon: eligible,
+          has_invoice_addon: eligible
+        }));
+      }
+    } catch (err) {
+      console.error('Failed to toggle invoice eligibility:', err);
+    }
   };
 
   useEffect(() => {
@@ -725,6 +793,8 @@ export default function AdminOrderManager({ initialOrderId = null }) {
                 <th style={{ padding: '12px 14px' }}>Order Ref & Channel</th>
                 <th style={{ padding: '12px 14px' }}>Customer & Contact</th>
                 <th style={{ padding: '12px 14px' }}>Card Edition</th>
+                <th style={{ padding: '12px 14px' }}>Payment</th>
+                <th style={{ padding: '12px 14px' }}>Invoice Add-On</th>
                 <th style={{ padding: '12px 14px' }}>Fulfillment Stage</th>
                 <th style={{ padding: '12px 14px' }}>Carrier / Tracking</th>
                 <th style={{ padding: '12px 14px', textAlign: 'center' }}>Actions</th>
@@ -733,7 +803,7 @@ export default function AdminOrderManager({ initialOrderId = null }) {
             <tbody>
               {filteredOrders.length === 0 ? (
                 <tr>
-                  <td colSpan={6} style={{ padding: '48px 16px', textAlign: 'center', color: textSecondary }}>
+                  <td colSpan={8} style={{ padding: '48px 16px', textAlign: 'center', color: textSecondary }}>
                     <Package size={36} color={cardBorder} style={{ margin: '0 auto 10px', display: 'block' }} />
                     <div style={{ fontWeight: 600, color: textPrimary, marginBottom: '4px' }}>
                       {orders.length === 0 ? 'No manufacturing orders in queue' : 'No orders matching filter'}
@@ -750,6 +820,8 @@ export default function AdminOrderManager({ initialOrderId = null }) {
                   const isDelivered = normStatus === 'delivered';
                   const isException = EXCEPTION_STAGES.some(s => s.key === normStatus);
                   const ed = EDITIONS[order.edition] || EDITIONS.purple;
+                  const isPaid = order.paymentStatus === 'payment_confirmed' || order.payment_status === 'payment_confirmed' || normStatus === 'payment_confirmed';
+                  const hasInvoice = order.hasInvoiceAddon || order.has_invoice_addon || order.invoiceEligible || order.invoice_eligible;
 
                   return (
                     <tr key={order.id} style={{ borderBottom: `1px solid ${cardBorder}` }}>
@@ -836,6 +908,54 @@ export default function AdminOrderManager({ initialOrderId = null }) {
                         <div style={{ fontSize: '0.7rem', color: textMuted, marginTop: '4px' }}>
                           {order.templateType === 'customer_logo' ? 'With Customer Logo' : 'Standard Format'}
                         </div>
+                      </td>
+
+                      {/* Payment Status */}
+                      <td style={{ padding: '12px 14px' }}>
+                        <span
+                          style={{
+                            fontSize: '0.72rem',
+                            fontWeight: 700,
+                            padding: '3px 8px',
+                            borderRadius: '9999px',
+                            backgroundColor: isPaid ? (isLight ? '#DCFCE7' : 'rgba(34, 197, 94, 0.15)') : (isLight ? '#FEF3C7' : 'rgba(245, 158, 11, 0.15)'),
+                            color: isPaid ? '#16A34A' : '#D97706',
+                            border: `1px solid ${isPaid ? (isLight ? '#86EFAC' : 'rgba(34, 197, 94, 0.3)') : (isLight ? '#FDE68A' : 'rgba(245, 158, 11, 0.3)')}`,
+                            display: 'inline-flex',
+                            alignItems: 'center',
+                            gap: '4px'
+                          }}
+                        >
+                          ● {isPaid ? 'Payment Confirmed' : 'Payment Pending'}
+                        </span>
+                        <div style={{ fontSize: '0.74rem', fontWeight: 700, color: textPrimary, marginTop: '3px' }}>
+                          ₹{Number(order.totalAmount || order.total_amount || 0).toLocaleString('en-IN')}
+                        </div>
+                      </td>
+
+                      {/* Invoice Add-On Status */}
+                      <td style={{ padding: '12px 14px' }}>
+                        {hasInvoice ? (
+                          <span
+                            style={{
+                              fontSize: '0.7rem',
+                              fontWeight: 700,
+                              padding: '2px 8px',
+                              borderRadius: '6px',
+                              backgroundColor: isLight ? '#F3EEFF' : 'rgba(107, 0, 255, 0.15)',
+                              color: '#6B00FF',
+                              border: `1px solid ${isLight ? '#DDD6FE' : 'rgba(107, 0, 255, 0.3)'}`,
+                              display: 'inline-flex',
+                              alignItems: 'center',
+                              gap: '4px'
+                            }}
+                          >
+                            <Receipt size={11} />
+                            <span>Included</span>
+                          </span>
+                        ) : (
+                          <span style={{ fontSize: '0.74rem', color: textMuted }}>—</span>
+                        )}
                       </td>
 
                       {/* Fulfillment Stage */}
@@ -1010,6 +1130,18 @@ export default function AdminOrderManager({ initialOrderId = null }) {
                         {ed.name || order.edition || 'Purple'}
                       </div>
                     </div>
+                    <div>
+                      <div style={{ fontSize: '0.65rem', color: textMuted, textTransform: 'uppercase', fontWeight: 600 }}>Payment</div>
+                      <div style={{ fontSize: '0.74rem', fontWeight: 700, color: (order.paymentStatus === 'payment_confirmed' || order.payment_status === 'payment_confirmed') ? '#16A34A' : '#D97706', marginTop: '2px' }}>
+                        {(order.paymentStatus === 'payment_confirmed' || order.payment_status === 'payment_confirmed') ? '● Confirmed' : '● Pending'} (₹{Number(order.totalAmount || order.total_amount || 0).toLocaleString('en-IN')})
+                      </div>
+                    </div>
+                    <div>
+                      <div style={{ fontSize: '0.65rem', color: textMuted, textTransform: 'uppercase', fontWeight: 600 }}>Invoice Add-On</div>
+                      <div style={{ fontSize: '0.74rem', fontWeight: 600, color: (order.hasInvoiceAddon || order.has_invoice_addon || order.invoiceEligible || order.invoice_eligible) ? '#6B00FF' : textMuted, marginTop: '2px' }}>
+                        {(order.hasInvoiceAddon || order.has_invoice_addon || order.invoiceEligible || order.invoice_eligible) ? '✓ Included' : 'Not Included'}
+                      </div>
+                    </div>
                   </div>
 
                   {order.trackingNumber && (
@@ -1096,6 +1228,149 @@ export default function AdminOrderManager({ initialOrderId = null }) {
             {/* Live Customer Designed Card Preview */}
             <div style={{ marginBottom: '16px' }}>
               <CustomerCardPreview order={selectedOrder} isLight={isLight} />
+            </div>
+
+            {/* Order Financials & Shipping Details */}
+            <div style={{ padding: '14px', borderRadius: '12px', backgroundColor: elevatedBg, border: `1px solid ${cardBorder}`, marginBottom: '16px' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
+                <span style={{ fontSize: '0.74rem', textTransform: 'uppercase', fontWeight: 700, color: textSecondary }}>
+                  Order Financials & Delivery
+                </span>
+                <span style={{ fontSize: '1rem', fontWeight: 800, color: '#6B00FF' }}>
+                  Total: ₹{Number(selectedOrder.totalAmount || selectedOrder.total_amount || 0).toLocaleString('en-IN')}
+                </span>
+              </div>
+
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 200px), 1fr))', gap: '8px', fontSize: '0.78rem', color: textSecondary }}>
+                <div>
+                  <span style={{ color: textMuted }}>Quantity: </span>
+                  <strong style={{ color: textPrimary }}>{selectedOrder.quantity || 1} unit(s)</strong>
+                </div>
+                <div>
+                  <span style={{ color: textMuted }}>Shipping To: </span>
+                  <strong style={{ color: textPrimary }}>{selectedOrder.shippingAddress || selectedOrder.shipping_address || 'Standard Delivery'}</strong>
+                </div>
+                {selectedOrder.billingDetails?.gstin && (
+                  <div>
+                    <span style={{ color: textMuted }}>GSTIN: </span>
+                    <strong style={{ color: textPrimary, fontFamily: 'monospace' }}>{selectedOrder.billingDetails.gstin}</strong>
+                  </div>
+                )}
+                {selectedOrder.billingDetails?.company && (
+                  <div>
+                    <span style={{ color: textMuted }}>Billing Entity: </span>
+                    <strong style={{ color: textPrimary }}>{selectedOrder.billingDetails.company}</strong>
+                  </div>
+                )}
+              </div>
+
+              {selectedOrder.pricingBreakdown && (
+                <div style={{ marginTop: '10px', paddingTop: '8px', borderTop: `1px dashed ${cardBorder}`, display: 'flex', flexWrap: 'wrap', gap: '12px', fontSize: '0.74rem', color: textMuted }}>
+                  <span>Base: ₹{selectedOrder.pricingBreakdown.basePrice}</span>
+                  {selectedOrder.pricingBreakdown.customizationCharge > 0 && <span>Customization: +₹{selectedOrder.pricingBreakdown.customizationCharge}</span>}
+                  <span>Delivery: {selectedOrder.pricingBreakdown.deliveryCharge > 0 ? `+₹${selectedOrder.pricingBreakdown.deliveryCharge}` : 'FREE'}</span>
+                  {selectedOrder.pricingBreakdown.invoiceAddonCharge > 0 && <span>Invoice Add-on: +₹{selectedOrder.pricingBreakdown.invoiceAddonCharge}</span>}
+                  <span>GST (18%): +₹{selectedOrder.pricingBreakdown.taxAmount}</span>
+                </div>
+              )}
+            </div>
+
+            {/* Authorized Payment Verification Section */}
+            <div style={{ padding: '14px', borderRadius: '12px', backgroundColor: (selectedOrder.paymentStatus === 'payment_confirmed' || selectedOrder.payment_status === 'payment_confirmed') ? (isLight ? '#F0FDF4' : 'rgba(34, 197, 94, 0.08)') : (isLight ? '#FFFBEB' : 'rgba(245, 158, 11, 0.08)'), border: `1px solid ${(selectedOrder.paymentStatus === 'payment_confirmed' || selectedOrder.payment_status === 'payment_confirmed') ? (isLight ? '#BBF7D0' : 'rgba(34, 197, 94, 0.25)') : (isLight ? '#FDE68A' : 'rgba(245, 158, 11, 0.25)')}`, marginBottom: '16px' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                  <CreditCard size={15} color={(selectedOrder.paymentStatus === 'payment_confirmed' || selectedOrder.payment_status === 'payment_confirmed') ? '#16A34A' : '#D97706'} />
+                  <span style={{ fontSize: '0.8rem', fontWeight: 700, color: (selectedOrder.paymentStatus === 'payment_confirmed' || selectedOrder.payment_status === 'payment_confirmed') ? '#16A34A' : '#D97706' }}>
+                    Payment Verification (Independent Bank Audit)
+                  </span>
+                </div>
+                <span style={{ fontSize: '0.74rem', fontWeight: 700, padding: '2px 8px', borderRadius: '9999px', backgroundColor: (selectedOrder.paymentStatus === 'payment_confirmed' || selectedOrder.payment_status === 'payment_confirmed') ? '#16A34A' : '#D97706', color: '#FFFFFF' }}>
+                  {(selectedOrder.paymentStatus === 'payment_confirmed' || selectedOrder.payment_status === 'payment_confirmed') ? 'PAID / CONFIRMED' : 'PAYMENT PENDING'}
+                </span>
+              </div>
+
+              {(selectedOrder.paymentStatus === 'payment_confirmed' || selectedOrder.payment_status === 'payment_confirmed') ? (
+                <div>
+                  <div style={{ fontSize: '0.76rem', color: textSecondary, marginBottom: '8px' }}>
+                    Reference: <strong style={{ fontFamily: 'monospace', color: textPrimary }}>{selectedOrder.paymentReference || selectedOrder.payment_reference || 'MANUAL-ADMIN-VERIFIED'}</strong>
+                  </div>
+                  <button
+                    type="button"
+                    disabled={isUpdatingPayment}
+                    onClick={() => handleConfirmPayment('payment_pending')}
+                    style={{ fontSize: '0.72rem', padding: '4px 10px', borderRadius: '6px', border: `1px solid ${cardBorder}`, backgroundColor: elevatedBg, color: textMuted, cursor: 'pointer' }}
+                  >
+                    Revert to Payment Pending
+                  </button>
+                </div>
+              ) : (
+                <div>
+                  <p style={{ margin: '0 0 8px', fontSize: '0.73rem', color: textMuted }}>
+                    Verify bank account or UPI credit before marking confirmed. Never infer payment from WhatsApp click-to-chat.
+                  </p>
+                  <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
+                    <input
+                      type="text"
+                      value={paymentRefInput}
+                      onChange={e => setPaymentRefInput(e.target.value)}
+                      placeholder="Bank UTR / UPI Ref / Transaction ID"
+                      style={{ flex: 1, fontSize: '0.78rem', padding: '7px 10px', borderRadius: '6px', border: `1px solid ${cardBorder}`, backgroundColor: cardBg, color: textPrimary }}
+                    />
+                    <button
+                      type="button"
+                      disabled={isUpdatingPayment}
+                      onClick={() => handleConfirmPayment('payment_confirmed')}
+                      style={{ fontSize: '0.75rem', fontWeight: 700, padding: '7px 14px', borderRadius: '6px', border: 'none', backgroundColor: '#16A34A', color: '#FFFFFF', cursor: 'pointer', whiteSpace: 'nowrap' }}
+                    >
+                      {isUpdatingPayment ? 'Verifying...' : 'Mark Payment Confirmed'}
+                    </button>
+                  </div>
+                </div>
+              )}
+
+              {paymentActionError && (
+                <div style={{ marginTop: '8px', fontSize: '0.73rem', color: '#EF4444' }}>
+                  {paymentActionError}
+                </div>
+              )}
+              {paymentActionSuccess && (
+                <div style={{ marginTop: '8px', fontSize: '0.73rem', color: '#10B981' }}>
+                  {paymentActionSuccess}
+                </div>
+              )}
+            </div>
+
+            {/* Invoice Add-On Management Section */}
+            <div style={{ padding: '12px 14px', borderRadius: '12px', backgroundColor: elevatedBg, border: `1px solid ${cardBorder}`, marginBottom: '16px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+              <div>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                  <Receipt size={14} color="#6B00FF" />
+                  <span style={{ fontSize: '0.78rem', fontWeight: 700, color: textPrimary }}>
+                    Customer Tax Invoice Add-on
+                  </span>
+                </div>
+                <div style={{ fontSize: '0.72rem', color: textMuted, marginTop: '2px' }}>
+                  {(selectedOrder.hasInvoiceAddon || selectedOrder.has_invoice_addon || selectedOrder.invoiceEligible || selectedOrder.invoice_eligible)
+                    ? 'Customer is eligible to generate theme-matched tax invoices in dashboard.'
+                    : 'Customer did not purchase the ₹199 invoice add-on.'}
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => handleToggleInvoiceEligibility(!(selectedOrder.hasInvoiceAddon || selectedOrder.has_invoice_addon || selectedOrder.invoiceEligible || selectedOrder.invoice_eligible))}
+                style={{
+                  fontSize: '0.72rem',
+                  fontWeight: 600,
+                  padding: '5px 12px',
+                  borderRadius: '6px',
+                  border: '1px solid #6B00FF',
+                  backgroundColor: (selectedOrder.hasInvoiceAddon || selectedOrder.has_invoice_addon || selectedOrder.invoiceEligible || selectedOrder.invoice_eligible) ? 'rgba(107, 0, 255, 0.1)' : '#6B00FF',
+                  color: (selectedOrder.hasInvoiceAddon || selectedOrder.has_invoice_addon || selectedOrder.invoiceEligible || selectedOrder.invoice_eligible) ? '#6B00FF' : '#FFFFFF',
+                  cursor: 'pointer'
+                }}
+              >
+                {(selectedOrder.hasInvoiceAddon || selectedOrder.has_invoice_addon || selectedOrder.invoiceEligible || selectedOrder.invoice_eligible) ? 'Revoke Access' : 'Grant Access'}
+              </button>
             </div>
 
             <form onSubmit={handleStatusChangePrecheck} style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
