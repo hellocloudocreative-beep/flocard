@@ -19,6 +19,7 @@ import {
   Moon,
   Sparkles,
   ArrowRight,
+  ArrowLeft,
   ExternalLink,
   Check,
   CheckCheck,
@@ -319,6 +320,38 @@ export default function CustomerDashboard({ initialTab = 'overview', initialOrde
           </div>
         </div>
 
+        {/* Featured "Design Your Card" Button in Sidebar */}
+        <a
+          href="/designer"
+          style={{
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            gap: '8px',
+            padding: '10px 14px',
+            borderRadius: '10px',
+            background: 'linear-gradient(135deg, #7038f8 0%, #a855f7 100%)',
+            color: '#FFFFFF',
+            textDecoration: 'none',
+            fontWeight: 700,
+            fontSize: '0.84rem',
+            boxShadow: '0 4px 14px rgba(112, 56, 248, 0.3)',
+            marginBottom: '16px',
+            transition: 'transform 0.15s ease, box-shadow 0.15s ease'
+          }}
+          onMouseEnter={e => {
+            e.currentTarget.style.transform = 'translateY(-1px)';
+            e.currentTarget.style.boxShadow = '0 6px 20px rgba(112, 56, 248, 0.45)';
+          }}
+          onMouseLeave={e => {
+            e.currentTarget.style.transform = 'translateY(0)';
+            e.currentTarget.style.boxShadow = '0 4px 14px rgba(112, 56, 248, 0.3)';
+          }}
+        >
+          <Sparkles size={16} />
+          <span>Design Your Card</span>
+        </a>
+
         {/* Sidebar Nav Items */}
         <nav style={{ display: 'flex', flexDirection: 'column', gap: '6px', flex: 1 }}>
           {navItems.map((item) => {
@@ -430,7 +463,7 @@ export default function CustomerDashboard({ initialTab = 'overview', initialOrde
             backdropFilter: 'blur(12px)'
           }}
         >
-          {/* Active Title Breadcrumb & Mobile Drawer Trigger */}
+          {/* Active Title Breadcrumb, Back Button & Mobile Drawer Trigger */}
           <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
             <button
               type="button"
@@ -452,6 +485,42 @@ export default function CustomerDashboard({ initialTab = 'overview', initialOrde
             >
               <Menu size={18} />
             </button>
+
+            {/* Back Button */}
+            <button
+              type="button"
+              onClick={() => {
+                if (selectedOrderId) {
+                  handleBackToOrders();
+                } else if (activeTab !== 'overview') {
+                  handleTabChange('overview');
+                } else if (typeof window !== 'undefined' && window.history.length > 1) {
+                  window.history.back();
+                } else {
+                  window.location.href = '/';
+                }
+              }}
+              aria-label="Go Back"
+              style={{
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: '6px',
+                padding: '6px 12px',
+                borderRadius: '8px',
+                backgroundColor: 'var(--elevated-surface)',
+                border: '1px solid var(--border-color)',
+                color: 'var(--text-primary)',
+                fontSize: '0.82rem',
+                fontWeight: 600,
+                cursor: 'pointer',
+                transition: 'all 0.15s ease'
+              }}
+              title="Go back"
+            >
+              <ArrowLeft size={15} />
+              <span>Back</span>
+            </button>
+
             <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
               <span style={{ fontSize: '0.84rem', color: 'var(--text-muted)' }}>Dashboard</span>
               <ChevronRight size={14} color="var(--text-muted)" />
@@ -461,8 +530,38 @@ export default function CustomerDashboard({ initialTab = 'overview', initialOrde
             </div>
           </div>
 
-          {/* Right Header Actions: Notification Bell & Theme Switch */}
+          {/* Right Header Actions: Design Card CTA, Notification Bell & Theme Switch */}
           <div style={{ display: 'flex', alignItems: 'center', gap: '12px', position: 'relative' }}>
+            {/* Header "Design Your Card" Button */}
+            <a
+              href="/designer"
+              style={{
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: '6px',
+                padding: '7px 16px',
+                borderRadius: '9999px',
+                background: 'linear-gradient(135deg, #7038f8 0%, #a855f7 100%)',
+                color: '#FFFFFF',
+                textDecoration: 'none',
+                fontWeight: 700,
+                fontSize: '0.82rem',
+                boxShadow: '0 4px 14px rgba(112, 56, 248, 0.35)',
+                whiteSpace: 'nowrap',
+                transition: 'transform 0.15s ease, box-shadow 0.15s ease'
+              }}
+              onMouseEnter={e => {
+                e.currentTarget.style.transform = 'translateY(-1px)';
+                e.currentTarget.style.boxShadow = '0 6px 18px rgba(112, 56, 248, 0.5)';
+              }}
+              onMouseLeave={e => {
+                e.currentTarget.style.transform = 'translateY(0)';
+                e.currentTarget.style.boxShadow = '0 4px 14px rgba(112, 56, 248, 0.35)';
+              }}
+            >
+              <Sparkles size={14} />
+              <span>Design Your Card</span>
+            </a>
             {/* Notification Bell */}
             <div style={{ position: 'relative' }}>
               <button
@@ -824,6 +923,30 @@ export default function CustomerDashboard({ initialTab = 'overview', initialOrde
                 <X size={20} />
               </button>
             </div>
+
+            {/* Mobile "Design Your Card" CTA */}
+            <a
+              href="/designer"
+              onClick={() => setMobileDrawerOpen(false)}
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                gap: '8px',
+                padding: '10px 14px',
+                borderRadius: '10px',
+                background: 'linear-gradient(135deg, #7038f8 0%, #a855f7 100%)',
+                color: '#FFFFFF',
+                textDecoration: 'none',
+                fontWeight: 700,
+                fontSize: '0.84rem',
+                marginBottom: '16px',
+                boxShadow: '0 4px 14px rgba(112, 56, 248, 0.3)'
+              }}
+            >
+              <Sparkles size={16} />
+              <span>Design Your Card</span>
+            </a>
 
             {/* Drawer Nav Links */}
             <nav style={{ display: 'flex', flexDirection: 'column', gap: '6px', flex: 1, overflowY: 'auto' }}>

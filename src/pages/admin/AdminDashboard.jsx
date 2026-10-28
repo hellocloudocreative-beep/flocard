@@ -1350,6 +1350,38 @@ export default function AdminDashboard({ initialTab = 'overview', initialOrderId
             </button>
           </div>
 
+          {/* Back to Website Link in Sidebar */}
+          <div style={{ padding: '0 8px 16px' }}>
+            <a
+              href="/"
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: '8px',
+                padding: '8px 12px',
+                borderRadius: '8px',
+                border: isDark ? '1px solid rgba(255, 255, 255, 0.08)' : '1px solid #E2E8F0',
+                background: isDark ? 'rgba(255, 255, 255, 0.03)' : '#F8FAFC',
+                color: isDark ? '#B8AEC8' : '#64748B',
+                textDecoration: 'none',
+                fontSize: '0.78rem',
+                fontWeight: 600,
+                transition: 'all 0.15s ease'
+              }}
+              onMouseEnter={e => {
+                e.currentTarget.style.color = isDark ? '#FFFFFF' : '#191522';
+                e.currentTarget.style.borderColor = '#A855F7';
+              }}
+              onMouseLeave={e => {
+                e.currentTarget.style.color = isDark ? '#B8AEC8' : '#64748B';
+                e.currentTarget.style.borderColor = isDark ? 'rgba(255, 255, 255, 0.08)' : '#E2E8F0';
+              }}
+            >
+              <ArrowLeft size={14} />
+              <span>Back to Website</span>
+            </a>
+          </div>
+
           {/* 10 Navigation Items */}
           <nav style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
             {navItems.map((item) => {
@@ -1544,6 +1576,40 @@ export default function AdminDashboard({ initialTab = 'overview', initialOrderId
               aria-label="Open sidebar menu"
             >
               <Menu size={22} />
+            </button>
+
+            {/* Admin Header Back Button */}
+            <button
+              type="button"
+              onClick={() => {
+                if (activeTab !== 'overview') {
+                  setActiveTab('overview');
+                  window.history.pushState({}, '', '/admin');
+                } else if (typeof window !== 'undefined' && window.history.length > 1) {
+                  window.history.back();
+                } else {
+                  window.location.href = '/';
+                }
+              }}
+              style={{
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: '6px',
+                padding: '7px 12px',
+                borderRadius: '8px',
+                border: isDark ? '1px solid #2A2038' : '1px solid #D6D0DF',
+                background: isDark ? 'rgba(255, 255, 255, 0.05)' : '#F5F3F8',
+                color: isDark ? '#FFFFFF' : '#191522',
+                fontSize: '0.8rem',
+                fontWeight: 600,
+                cursor: 'pointer',
+                flexShrink: 0,
+                transition: 'all 0.15s ease'
+              }}
+              title="Go back / Return to site"
+            >
+              <ArrowLeft size={15} />
+              <span>Back</span>
             </button>
 
             <div style={{ minWidth: 0 }}>
