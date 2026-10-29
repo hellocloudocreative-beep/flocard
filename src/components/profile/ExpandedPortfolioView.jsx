@@ -614,17 +614,27 @@ export default function ExpandedPortfolioView({
           >
             <div
               style={{
-                display: 'inline-flex',
+                display: 'flex',
                 alignItems: 'center',
-                gap: '6px',
+                justifyContent: 'space-between',
                 fontSize: '0.84rem',
                 fontWeight: 700,
                 color: '#FFFFFF',
                 marginBottom: '6px'
               }}
             >
-              <MapPin size={15} color={accentColor} />
-              <span>Experience Center:</span>
+              <div style={{ display: 'inline-flex', alignItems: 'center', gap: '6px' }}>
+                <MapPin size={15} color={accentColor} />
+                <span>{profile?.address ? 'Office Address:' : 'Location:'}</span>
+              </div>
+              <a
+                href={profile?.mapsUrl || `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(displayAddress)}`}
+                target="_blank"
+                rel="noopener noreferrer"
+                style={{ fontSize: '0.74rem', color: accentColor, fontWeight: 700, textDecoration: 'none' }}
+              >
+                Directions ↗
+              </a>
             </div>
             <p
               style={{
@@ -844,8 +854,23 @@ export default function ExpandedPortfolioView({
                 <div style={{ fontSize: '1rem', fontWeight: 700, marginTop: '4px' }}>{profile.company}</div>
               </div>
               <div style={{ padding: '16px', borderRadius: '16px', backgroundColor: 'rgba(255, 255, 255, 0.03)', border: '1px solid rgba(255, 255, 255, 0.06)' }}>
-                <span style={{ fontSize: '0.74rem', color: '#D5C9E5', textTransform: 'uppercase', fontWeight: 600 }}>Location</span>
-                <div style={{ fontSize: '1rem', fontWeight: 700, marginTop: '4px' }}>{profile.location || 'Global'}</div>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                  <span style={{ fontSize: '0.74rem', color: '#D5C9E5', textTransform: 'uppercase', fontWeight: 600 }}>Location</span>
+                  {(profile.mapsUrl || profile.location || profile.address) && (
+                    <a
+                      href={profile.mapsUrl || `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(profile.address || profile.location)}`}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      style={{ fontSize: '0.74rem', color: '#A855F7', fontWeight: 700, textDecoration: 'none' }}
+                    >
+                      Directions ↗
+                    </a>
+                  )}
+                </div>
+                <div style={{ fontSize: '1rem', fontWeight: 700, marginTop: '4px' }}>{profile.location || profile.address || 'Global'}</div>
+                {profile.address && profile.location && profile.address !== profile.location && (
+                  <div style={{ fontSize: '0.78rem', color: '#94A3B8', marginTop: '2px' }}>{profile.address}</div>
+                )}
               </div>
             </div>
           </div>

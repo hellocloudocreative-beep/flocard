@@ -225,7 +225,7 @@ export default function AdminDashboard({ initialTab = 'overview', initialOrderId
 
   // Form States
   const [newCustForm, setNewCustForm] = useState({ name: '', email: '', phone: '', company: '' });
-  const [newProfForm, setNewProfForm] = useState({ name: '', slug: '', role: '', company: '', theme: 'purple' });
+  const [newProfForm, setNewProfForm] = useState({ name: '', slug: '', role: '', company: '', theme: 'purple', location: '' });
   const [assignCardForm, setAssignCardForm] = useState({ cardCode: '', customerId: '', profileSlug: '', edition: 'purple' });
 
   // Global Demo Showcase State
@@ -735,13 +735,14 @@ export default function AdminDashboard({ initialTab = 'overview', initialOrderId
       slug: newProfForm.slug.toLowerCase().replace(/[^a-z0-9_-]/g, ''),
       role: newProfForm.role || 'Executive',
       company: newProfForm.company || 'FLOCARD Network',
+      location: newProfForm.location || '',
       theme: newProfForm.theme || 'purple',
       status: 'published',
       portfolio: [],
       services: []
     });
     setNewProfileModal(false);
-    setNewProfForm({ name: '', slug: '', role: '', company: '', theme: 'purple' });
+    setNewProfForm({ name: '', slug: '', role: '', company: '', theme: 'purple', location: '' });
   };
 
   // Handle Assign Card
@@ -6730,6 +6731,16 @@ export default function AdminDashboard({ initialTab = 'overview', initialOrderId
                   style={{ width: '100%', padding: '9px 12px', borderRadius: '8px', border: 'var(--adm-card-border)' }}
                 />
               </div>
+              <div>
+                <label style={{ display: 'block', fontSize: '0.78rem', fontWeight: 600, marginBottom: '4px' }}>Location / City</label>
+                <input
+                  type="text"
+                  value={newProfForm.location || ''}
+                  onChange={(e) => setNewProfForm({ ...newProfForm, location: e.target.value })}
+                  placeholder="e.g. Bengaluru, India"
+                  style={{ width: '100%', padding: '9px 12px', borderRadius: '8px', border: 'var(--adm-card-border)' }}
+                />
+              </div>
               <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '10px', marginTop: '10px' }}>
                 <button type="button" onClick={() => setNewProfileModal(false)} style={{ padding: '8px 16px', borderRadius: '8px', border: 'var(--adm-card-border)', background: 'none' }}>
                   Cancel
@@ -7139,6 +7150,29 @@ export default function AdminDashboard({ initialTab = 'overview', initialOrderId
                     type="text"
                     value={editingProfile.tagline || ''}
                     onChange={(e) => setEditingProfile({ ...editingProfile, tagline: e.target.value })}
+                    style={{ width: '100%', padding: '9px 12px', borderRadius: '8px', border: 'var(--adm-card-border)', fontSize: '0.84rem' }}
+                  />
+                </div>
+              </div>
+
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
+                <div>
+                  <label style={{ display: 'block', fontSize: '0.78rem', fontWeight: 600, marginBottom: '4px', color: 'var(--adm-text-primary)' }}>Office / Street Address</label>
+                  <input
+                    type="text"
+                    value={editingProfile.address || ''}
+                    onChange={(e) => setEditingProfile({ ...editingProfile, address: e.target.value })}
+                    placeholder="e.g. Archierio Experience Center, HSR Layout"
+                    style={{ width: '100%', padding: '9px 12px', borderRadius: '8px', border: 'var(--adm-card-border)', fontSize: '0.84rem' }}
+                  />
+                </div>
+                <div>
+                  <label style={{ display: 'block', fontSize: '0.78rem', fontWeight: 600, marginBottom: '4px', color: 'var(--adm-text-primary)' }}>Google Maps URL / Directions</label>
+                  <input
+                    type="url"
+                    value={editingProfile.mapsUrl || ''}
+                    onChange={(e) => setEditingProfile({ ...editingProfile, mapsUrl: e.target.value })}
+                    placeholder="https://maps.google.com/..."
                     style={{ width: '100%', padding: '9px 12px', borderRadius: '8px', border: 'var(--adm-card-border)', fontSize: '0.84rem' }}
                   />
                 </div>

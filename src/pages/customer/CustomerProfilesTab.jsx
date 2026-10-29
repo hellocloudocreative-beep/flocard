@@ -863,6 +863,32 @@ export default function CustomerProfilesTab({ profiles = [], customer, onSavePro
                           type="text"
                           value={formData.location || ''}
                           onChange={e => setFormData({ ...formData, location: e.target.value })}
+                          placeholder="e.g. Bengaluru, India"
+                          className="form-input"
+                          style={{ width: '100%' }}
+                        />
+                      </div>
+                    </div>
+
+                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))', gap: '16px' }}>
+                      <div>
+                        <label style={{ fontSize: '0.8rem', fontWeight: 600, display: 'block', marginBottom: '6px' }}>Office / Street Address (Optional)</label>
+                        <input
+                          type="text"
+                          value={formData.address || ''}
+                          onChange={e => setFormData({ ...formData, address: e.target.value })}
+                          placeholder="e.g. Archierio Experience Center, HSR Layout"
+                          className="form-input"
+                          style={{ width: '100%' }}
+                        />
+                      </div>
+                      <div>
+                        <label style={{ fontSize: '0.8rem', fontWeight: 600, display: 'block', marginBottom: '6px' }}>Google Maps Location URL (Optional)</label>
+                        <input
+                          type="url"
+                          value={formData.mapsUrl || ''}
+                          onChange={e => setFormData({ ...formData, mapsUrl: e.target.value })}
+                          placeholder="https://maps.google.com/..."
                           className="form-input"
                           style={{ width: '100%' }}
                         />
@@ -1556,6 +1582,28 @@ export default function CustomerProfilesTab({ profiles = [], customer, onSavePro
                           value={formData.instagram || ''}
                           onChange={e => setFormData({ ...formData, instagram: e.target.value })}
                           placeholder="https://instagram.com/username"
+                          className="form-input"
+                          style={{ width: '100%' }}
+                        />
+                      </div>
+                      <div>
+                        <label style={{ fontSize: '0.8rem', fontWeight: 600, display: 'block', marginBottom: '6px' }}>Office / Street Address (Optional)</label>
+                        <input
+                          type="text"
+                          value={formData.address || ''}
+                          onChange={e => setFormData({ ...formData, address: e.target.value })}
+                          placeholder="e.g. Archierio Center, HSR Layout"
+                          className="form-input"
+                          style={{ width: '100%' }}
+                        />
+                      </div>
+                      <div>
+                        <label style={{ fontSize: '0.8rem', fontWeight: 600, display: 'block', marginBottom: '6px' }}>Google Maps Location URL (Optional)</label>
+                        <input
+                          type="url"
+                          value={formData.mapsUrl || ''}
+                          onChange={e => setFormData({ ...formData, mapsUrl: e.target.value })}
+                          placeholder="https://maps.google.com/..."
                           className="form-input"
                           style={{ width: '100%' }}
                         />

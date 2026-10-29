@@ -17,7 +17,8 @@ import {
   Zap,
   Calendar,
   Clock,
-  Mail
+  Mail,
+  MapPin
 } from 'lucide-react';
 import {
   PhoneIcon,
@@ -449,35 +450,66 @@ export default function CompactProfileCard({
               {profile?.role || profile?.tagline || 'YOUR ROLE / TAGLINE'}{profile?.company ? ` • ${profile.company}` : ''}
             </div>
 
-            {/* User Email Pill (Prominent and Clickable) */}
-            {profile?.email && (
-              <a
-                href={`mailto:${profile.email}`}
-                onClick={e => e.stopPropagation()}
-                title={`Send email to ${profile.email}`}
-                style={{
-                  display: 'inline-flex',
-                  alignItems: 'center',
-                  gap: '6px',
-                  fontSize: '0.78rem',
-                  fontWeight: 600,
-                  color: 'rgba(255, 255, 255, 0.95)',
-                  backgroundColor: 'rgba(255, 255, 255, 0.1)',
-                  border: '1px solid rgba(255, 255, 255, 0.2)',
-                  padding: '3px 12px',
-                  borderRadius: '9999px',
-                  textDecoration: 'none',
-                  marginBottom: '8px',
-                  boxShadow: '0 2px 8px rgba(0, 0, 0, 0.25)',
-                  transition: 'background-color 0.18s ease'
-                }}
-                onMouseEnter={e => e.currentTarget.style.backgroundColor = 'rgba(255, 255, 255, 0.2)'}
-                onMouseLeave={e => e.currentTarget.style.backgroundColor = 'rgba(255, 255, 255, 0.1)'}
-              >
-                <Mail size={12} color={accentColor} />
-                <span>{profile.email}</span>
-              </a>
-            )}
+            {/* Identity Badges (Email & Location Pills) */}
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', flexWrap: 'wrap', gap: '6px', marginBottom: '8px' }}>
+              {profile?.email && (
+                <a
+                  href={`mailto:${profile.email}`}
+                  onClick={e => e.stopPropagation()}
+                  title={`Send email to ${profile.email}`}
+                  style={{
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    gap: '6px',
+                    fontSize: '0.78rem',
+                    fontWeight: 600,
+                    color: 'rgba(255, 255, 255, 0.95)',
+                    backgroundColor: 'rgba(255, 255, 255, 0.1)',
+                    border: '1px solid rgba(255, 255, 255, 0.2)',
+                    padding: '3px 12px',
+                    borderRadius: '9999px',
+                    textDecoration: 'none',
+                    boxShadow: '0 2px 8px rgba(0, 0, 0, 0.25)',
+                    transition: 'background-color 0.18s ease'
+                  }}
+                  onMouseEnter={e => e.currentTarget.style.backgroundColor = 'rgba(255, 255, 255, 0.2)'}
+                  onMouseLeave={e => e.currentTarget.style.backgroundColor = 'rgba(255, 255, 255, 0.1)'}
+                >
+                  <Mail size={12} color={accentColor} />
+                  <span>{profile.email}</span>
+                </a>
+              )}
+
+              {(profile?.location || profile?.address) && (
+                <a
+                  href={profile.mapsUrl || `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(profile.address || profile.location)}`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  onClick={e => e.stopPropagation()}
+                  title="View location on Google Maps"
+                  style={{
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    gap: '5px',
+                    fontSize: '0.76rem',
+                    fontWeight: 600,
+                    color: 'rgba(255, 255, 255, 0.95)',
+                    backgroundColor: 'rgba(255, 255, 255, 0.1)',
+                    border: '1px solid rgba(255, 255, 255, 0.2)',
+                    padding: '3px 10px',
+                    borderRadius: '9999px',
+                    textDecoration: 'none',
+                    boxShadow: '0 2px 8px rgba(0, 0, 0, 0.25)',
+                    transition: 'background-color 0.18s ease'
+                  }}
+                  onMouseEnter={e => e.currentTarget.style.backgroundColor = 'rgba(255, 255, 255, 0.2)'}
+                  onMouseLeave={e => e.currentTarget.style.backgroundColor = 'rgba(255, 255, 255, 0.1)'}
+                >
+                  <MapPin size={11} color={accentColor} />
+                  <span>{profile.location || profile.address}</span>
+                </a>
+              )}
+            </div>
 
             {/* Live Business Hours / Appointment Status */}
             {liveStatus && (

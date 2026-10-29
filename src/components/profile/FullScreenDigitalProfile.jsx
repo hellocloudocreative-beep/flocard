@@ -100,7 +100,8 @@ export default function FullScreenDigitalProfile({
   const rawWhatsapp = p.whatsapp || p.phone || '919778278552';
   const cleanWhatsapp = String(rawWhatsapp).replace(/[^0-9]/g, '');
   const displayEmail = p.email || 'contact@flocard.in';
-  const displayAddress = p.address || p.location || 'Bengaluru, India';
+  const displayAddress = p.address || p.location || '';
+  const mapsLink = p.mapsUrl || (displayAddress ? `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(displayAddress)}` : null);
 
   // Resolved social links
   const resolvedLinks = useMemo(() => resolveProfileLinks(p), [p]);
@@ -321,6 +322,39 @@ export default function FullScreenDigitalProfile({
               )}
             </div>
 
+            {/* Location Pill Header */}
+            {(p.location || p.address) && (
+              <div style={{ marginBottom: '12px' }}>
+                <a
+                  href={mapsLink || '#'}
+                  target={mapsLink ? '_blank' : '_self'}
+                  rel="noopener noreferrer"
+                  onClick={e => { if (!mapsLink) e.preventDefault(); }}
+                  title="View location on Google Maps"
+                  style={{
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    gap: '6px',
+                    padding: '4px 12px',
+                    borderRadius: '9999px',
+                    backgroundColor: isLight ? 'rgba(0, 0, 0, 0.05)' : 'rgba(255, 255, 255, 0.07)',
+                    border: `1px solid ${isLight ? 'rgba(0, 0, 0, 0.1)' : 'rgba(255, 255, 255, 0.12)'}`,
+                    color: isLight ? '#334155' : '#E2E8F0',
+                    fontSize: '0.82rem',
+                    fontWeight: 600,
+                    textDecoration: 'none',
+                    transition: 'all 0.18s ease'
+                  }}
+                  onMouseEnter={e => e.currentTarget.style.borderColor = accentColor}
+                  onMouseLeave={e => e.currentTarget.style.borderColor = isLight ? 'rgba(0, 0, 0, 0.1)' : 'rgba(255, 255, 255, 0.12)'}
+                >
+                  <MapPin size={13} color={accentColor} />
+                  <span>{p.location || p.address}</span>
+                  {mapsLink && <span style={{ fontSize: '0.72rem', opacity: 0.7 }}>↗</span>}
+                </a>
+              </div>
+            )}
+
             {p.bio && (
               <p
                 style={{
@@ -503,13 +537,39 @@ export default function FullScreenDigitalProfile({
                   border: `1px solid ${isLight ? 'rgba(0,0,0,0.06)' : 'rgba(255,255,255,0.06)'}`
                 }}
               >
-                <div style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '0.74rem', textTransform: 'uppercase', fontWeight: 700, color: accentColor, marginBottom: '4px' }}>
-                  <MapPin size={14} />
-                  <span>Location / Base</span>
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '4px' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '0.74rem', textTransform: 'uppercase', fontWeight: 700, color: accentColor }}>
+                    <MapPin size={14} />
+                    <span>Location / Base</span>
+                  </div>
+                  {mapsLink && (
+                    <a
+                      href={mapsLink}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      style={{
+                        display: 'inline-flex',
+                        alignItems: 'center',
+                        gap: '4px',
+                        fontSize: '0.75rem',
+                        fontWeight: 700,
+                        color: accentColor,
+                        textDecoration: 'none'
+                      }}
+                    >
+                      <span>Directions</span>
+                      <ExternalLink size={12} />
+                    </a>
+                  )}
                 </div>
                 <div style={{ fontSize: '1rem', fontWeight: 700, color: isLight ? '#0F172A' : '#FFFFFF' }}>
-                  {displayAddress}
+                  {p.location || p.address || 'Global'}
                 </div>
+                {p.address && p.location && p.address !== p.location && (
+                  <div style={{ fontSize: '0.8rem', color: isLight ? '#64748B' : '#94A3B8', marginTop: '4px', lineHeight: 1.4 }}>
+                    {p.address}
+                  </div>
+                )}
               </div>
             </div>
           </section>
