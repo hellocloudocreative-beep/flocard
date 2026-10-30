@@ -110,6 +110,7 @@ import {
   canManageCardStatus,
   verifyActivationRequirements
 } from '../../lib/cardService';
+import { resolveMapUrl } from '../../lib/constants';
 
 export default function AdminDashboard({ initialTab = 'overview', initialOrderId = null }) {
   const {
@@ -7167,7 +7168,19 @@ export default function AdminDashboard({ initialTab = 'overview', initialOrderId
                   />
                 </div>
                 <div>
-                  <label style={{ display: 'block', fontSize: '0.78rem', fontWeight: 600, marginBottom: '4px', color: 'var(--adm-text-primary)' }}>Google Maps URL / Directions</label>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '4px' }}>
+                    <label style={{ display: 'block', fontSize: '0.78rem', fontWeight: 600, color: 'var(--adm-text-primary)' }}>Google Maps URL / Directions</label>
+                    {resolveMapUrl(editingProfile) && (
+                      <a
+                        href={resolveMapUrl(editingProfile)}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        style={{ fontSize: '0.72rem', color: '#6B00FF', fontWeight: 700, textDecoration: 'none' }}
+                      >
+                        Test Map Link ↗
+                      </a>
+                    )}
+                  </div>
                   <input
                     type="url"
                     value={editingProfile.mapsUrl || ''}

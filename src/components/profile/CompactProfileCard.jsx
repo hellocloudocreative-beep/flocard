@@ -34,6 +34,7 @@ import ProfileAvatar from './ProfileAvatar';
 import { resolveProfileLinks, DynamicLinkIcon } from '../../lib/socialLinkResolver';
 import { downloadVCard } from '../../lib/vcard';
 import { businessHoursService } from '../../lib/businessHoursService';
+import { resolveMapUrl } from '../../lib/constants';
 
 export default function CompactProfileCard({
   profile,
@@ -482,11 +483,14 @@ export default function CompactProfileCard({
 
               {(profile?.location || profile?.address) && (
                 <a
-                  href={profile.mapsUrl || `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(profile.address || profile.location)}`}
-                  target="_blank"
+                  href={resolveMapUrl(profile) || '#'}
+                  target={resolveMapUrl(profile) ? '_blank' : '_self'}
                   rel="noopener noreferrer"
-                  onClick={e => e.stopPropagation()}
-                  title="View location on Google Maps"
+                  onClick={e => {
+                    e.stopPropagation();
+                    if (!resolveMapUrl(profile)) e.preventDefault();
+                  }}
+                  title="Open location in Google Maps"
                   style={{
                     display: 'inline-flex',
                     alignItems: 'center',
@@ -500,13 +504,23 @@ export default function CompactProfileCard({
                     borderRadius: '9999px',
                     textDecoration: 'none',
                     boxShadow: '0 2px 8px rgba(0, 0, 0, 0.25)',
-                    transition: 'background-color 0.18s ease'
+                    cursor: resolveMapUrl(profile) ? 'pointer' : 'default',
+                    transition: 'all 0.18s ease'
                   }}
-                  onMouseEnter={e => e.currentTarget.style.backgroundColor = 'rgba(255, 255, 255, 0.2)'}
-                  onMouseLeave={e => e.currentTarget.style.backgroundColor = 'rgba(255, 255, 255, 0.1)'}
+                  onMouseEnter={e => {
+                    e.currentTarget.style.backgroundColor = 'rgba(255, 255, 255, 0.22)';
+                    e.currentTarget.style.borderColor = accentColor;
+                    e.currentTarget.style.transform = 'scale(1.03)';
+                  }}
+                  onMouseLeave={e => {
+                    e.currentTarget.style.backgroundColor = 'rgba(255, 255, 255, 0.1)';
+                    e.currentTarget.style.borderColor = 'rgba(255, 255, 255, 0.2)';
+                    e.currentTarget.style.transform = 'none';
+                  }}
                 >
                   <MapPin size={11} color={accentColor} />
                   <span>{profile.location || profile.address}</span>
+                  {resolveMapUrl(profile) && <span style={{ fontSize: '0.68rem', opacity: 0.8 }}>↗</span>}
                 </a>
               )}
             </div>

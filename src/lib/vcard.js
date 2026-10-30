@@ -2,6 +2,8 @@
    vCard (VCF 3.0) GENERATOR & DOWNLOADER
    ========================================================================== */
 
+import { resolveMapUrl } from './constants.js';
+
 export function generateVCardString(profile) {
   const nameParts = (profile.name || '').trim().split(' ');
   const lastName = nameParts.length > 1 ? nameParts.slice(1).join(' ') : '';
@@ -18,7 +20,7 @@ export function generateVCardString(profile) {
     profile.email ? `EMAIL;TYPE=WORK,INTERNET:${profile.email}` : '',
     profile.website ? `URL:${profile.website}` : '',
     (profile.address || profile.location) ? `ADR;TYPE=WORK:;;${profile.address || profile.location};;;;` : '',
-    profile.mapsUrl ? `URL;TYPE=LOCATION:${profile.mapsUrl}` : '',
+    resolveMapUrl(profile) ? `URL;TYPE=LOCATION:${resolveMapUrl(profile)}` : '',
     profile.bio ? `NOTE:${profile.bio.replace(/\n/g, '\\n')}` : '',
     `NOTE;FLOCARD:Verified FLOCARD NFC Digital Identity - flocard.in/p/${profile.slug || ''}`,
     'REV:' + new Date().toISOString(),

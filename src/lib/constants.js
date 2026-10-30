@@ -322,3 +322,31 @@ export const FONT_OPTIONS = [
   { id: 'Playfair Display', name: 'Playfair Display', style: 'Luxury Serif' },
   { id: 'Montserrat', name: 'Montserrat', style: 'Geometric Bold' }
 ];
+
+/**
+ * Resolves a reliable Google Maps link from either an explicit URL,
+ * or automatically generates a search link using street address + location city.
+ */
+export function resolveMapUrl(data = {}) {
+  if (!data) return null;
+  const rawUrl = typeof data === 'string' ? data : (data.mapsUrl || data.mapUrl || '');
+  if (rawUrl && typeof rawUrl === 'string' && rawUrl.trim()) {
+    const trimmed = rawUrl.trim();
+    if (/^https?:\/\//i.test(trimmed)) {
+      return trimmed;
+    }
+    return `https://${trimmed}`;
+  }
+  const address = typeof data === 'object' ? data.address : '';
+  const location = typeof data === 'object' ? data.location : '';
+  const fullAddress = [address, location]
+    .filter(Boolean)
+    .map(s => String(s).trim())
+    .filter(Boolean)
+    .join(', ');
+  if (fullAddress) {
+    return `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(fullAddress)}`;
+  }
+  return null;
+}
+

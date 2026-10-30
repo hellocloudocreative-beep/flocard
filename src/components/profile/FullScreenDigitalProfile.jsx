@@ -43,6 +43,7 @@ import VideoPortfolioSection from './VideoPortfolioSection';
 import PaymentSection from './PaymentSection';
 import BankDetailsSection from './BankDetailsSection';
 import { resolveProfileLinks, DynamicLinkIcon } from '../../lib/socialLinkResolver';
+import { resolveMapUrl } from '../../lib/constants';
 import { downloadVCard } from '../../lib/vcard';
 import { generateQrDataUrl, downloadQrPng, downloadQrSvg } from '../../lib/qr';
 
@@ -100,8 +101,8 @@ export default function FullScreenDigitalProfile({
   const rawWhatsapp = p.whatsapp || p.phone || '919778278552';
   const cleanWhatsapp = String(rawWhatsapp).replace(/[^0-9]/g, '');
   const displayEmail = p.email || 'contact@flocard.in';
-  const displayAddress = p.address || p.location || '';
-  const mapsLink = p.mapsUrl || (displayAddress ? `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(displayAddress)}` : null);
+  const displayAddress = [p.address, p.location].filter(Boolean).join(', ') || p.address || p.location || '';
+  const mapsLink = resolveMapUrl(p);
 
   // Resolved social links
   const resolvedLinks = useMemo(() => resolveProfileLinks(p), [p]);
@@ -330,12 +331,12 @@ export default function FullScreenDigitalProfile({
                   target={mapsLink ? '_blank' : '_self'}
                   rel="noopener noreferrer"
                   onClick={e => { if (!mapsLink) e.preventDefault(); }}
-                  title="View location on Google Maps"
+                  title={mapsLink ? 'Open location in Google Maps' : 'Location details'}
                   style={{
                     display: 'inline-flex',
                     alignItems: 'center',
                     gap: '6px',
-                    padding: '4px 12px',
+                    padding: '5px 14px',
                     borderRadius: '9999px',
                     backgroundColor: isLight ? 'rgba(0, 0, 0, 0.05)' : 'rgba(255, 255, 255, 0.07)',
                     border: `1px solid ${isLight ? 'rgba(0, 0, 0, 0.1)' : 'rgba(255, 255, 255, 0.12)'}`,
@@ -343,14 +344,27 @@ export default function FullScreenDigitalProfile({
                     fontSize: '0.82rem',
                     fontWeight: 600,
                     textDecoration: 'none',
+                    cursor: mapsLink ? 'pointer' : 'default',
                     transition: 'all 0.18s ease'
                   }}
-                  onMouseEnter={e => e.currentTarget.style.borderColor = accentColor}
-                  onMouseLeave={e => e.currentTarget.style.borderColor = isLight ? 'rgba(0, 0, 0, 0.1)' : 'rgba(255, 255, 255, 0.12)'}
+                  onMouseEnter={e => {
+                    if (mapsLink) {
+                      e.currentTarget.style.borderColor = accentColor;
+                      e.currentTarget.style.backgroundColor = isLight ? 'rgba(0, 0, 0, 0.08)' : 'rgba(255, 255, 255, 0.12)';
+                      e.currentTarget.style.transform = 'translateY(-1px)';
+                    }
+                  }}
+                  onMouseLeave={e => {
+                    if (mapsLink) {
+                      e.currentTarget.style.borderColor = isLight ? 'rgba(0, 0, 0, 0.1)' : 'rgba(255, 255, 255, 0.12)';
+                      e.currentTarget.style.backgroundColor = isLight ? 'rgba(0, 0, 0, 0.05)' : 'rgba(255, 255, 255, 0.07)';
+                      e.currentTarget.style.transform = 'none';
+                    }
+                  }}
                 >
                   <MapPin size={13} color={accentColor} />
                   <span>{p.location || p.address}</span>
-                  {mapsLink && <span style={{ fontSize: '0.72rem', opacity: 0.7 }}>↗</span>}
+                  {mapsLink && <span style={{ fontSize: '0.72rem', opacity: 0.8 }}>↗</span>}
                 </a>
               </div>
             )}
@@ -529,12 +543,36 @@ export default function FullScreenDigitalProfile({
                 </div>
               </div>
 
-              <div
+              <a
+                href={mapsLink || '#'}
+                target={mapsLink ? '_blank' : '_self'}
+                rel="noopener noreferrer"
+                onClick={e => { if (!mapsLink) e.preventDefault(); }}
+                title={mapsLink ? 'Click to open in Google Maps' : 'Location details'}
                 style={{
+                  display: 'block',
                   padding: '18px 20px',
                   borderRadius: '16px',
                   backgroundColor: isLight ? '#FFFFFF' : 'rgba(255,255,255,0.03)',
-                  border: `1px solid ${isLight ? 'rgba(0,0,0,0.06)' : 'rgba(255,255,255,0.06)'}`
+                  border: `1px solid ${isLight ? 'rgba(0,0,0,0.06)' : 'rgba(255,255,255,0.06)'}`,
+                  textDecoration: 'none',
+                  cursor: mapsLink ? 'pointer' : 'default',
+                  transition: 'all 0.2s ease',
+                  position: 'relative'
+                }}
+                onMouseEnter={e => {
+                  if (mapsLink) {
+                    e.currentTarget.style.borderColor = accentColor;
+                    e.currentTarget.style.transform = 'translateY(-2px)';
+                    e.currentTarget.style.boxShadow = `0 8px 24px ${accentColor}22`;
+                  }
+                }}
+                onMouseLeave={e => {
+                  if (mapsLink) {
+                    e.currentTarget.style.borderColor = isLight ? 'rgba(0,0,0,0.06)' : 'rgba(255,255,255,0.06)';
+                    e.currentTarget.style.transform = 'none';
+                    e.currentTarget.style.boxShadow = 'none';
+                  }
                 }}
               >
                 <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '4px' }}>
@@ -543,23 +581,19 @@ export default function FullScreenDigitalProfile({
                     <span>Location / Base</span>
                   </div>
                   {mapsLink && (
-                    <a
-                      href={mapsLink}
-                      target="_blank"
-                      rel="noopener noreferrer"
+                    <span
                       style={{
                         display: 'inline-flex',
                         alignItems: 'center',
                         gap: '4px',
                         fontSize: '0.75rem',
                         fontWeight: 700,
-                        color: accentColor,
-                        textDecoration: 'none'
+                        color: accentColor
                       }}
                     >
                       <span>Directions</span>
                       <ExternalLink size={12} />
-                    </a>
+                    </span>
                   )}
                 </div>
                 <div style={{ fontSize: '1rem', fontWeight: 700, color: isLight ? '#0F172A' : '#FFFFFF' }}>
@@ -570,7 +604,7 @@ export default function FullScreenDigitalProfile({
                     {p.address}
                   </div>
                 )}
-              </div>
+              </a>
             </div>
           </section>
         )}

@@ -70,6 +70,7 @@ import { DAYS_OF_WEEK, DAY_LABELS, DEFAULT_BUSINESS_HOURS } from '../../lib/busi
 import { getAppointments, updateAppointmentStatus, DEFAULT_BOOKING_CONFIG } from '../../lib/appointmentService';
 import { calculateProfileUsage, validateUploadQuota, DEFAULT_STORAGE_QUOTAS } from '../../lib/storageQuotaService';
 import { validateUpiId, validateIfsc, validateBankDetails } from '../../lib/paymentValidator';
+import { resolveMapUrl } from '../../lib/constants';
 import FullScreenDigitalProfile from '../../components/profile/FullScreenDigitalProfile';
 
 export default function CustomerProfilesTab({ profiles = [], customer, onSaveProfile }) {
@@ -883,7 +884,19 @@ export default function CustomerProfilesTab({ profiles = [], customer, onSavePro
                         />
                       </div>
                       <div>
-                        <label style={{ fontSize: '0.8rem', fontWeight: 600, display: 'block', marginBottom: '6px' }}>Google Maps Location URL (Optional)</label>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '6px' }}>
+                          <label style={{ fontSize: '0.8rem', fontWeight: 600 }}>Google Maps Location URL (Optional)</label>
+                          {resolveMapUrl(formData) && (
+                            <a
+                              href={resolveMapUrl(formData)}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              style={{ fontSize: '0.74rem', color: 'var(--accent-purple)', fontWeight: 700, textDecoration: 'none' }}
+                            >
+                              Test Map Link ↗
+                            </a>
+                          )}
+                        </div>
                         <input
                           type="url"
                           value={formData.mapsUrl || ''}
@@ -892,6 +905,9 @@ export default function CustomerProfilesTab({ profiles = [], customer, onSavePro
                           className="form-input"
                           style={{ width: '100%' }}
                         />
+                        <div style={{ fontSize: '0.72rem', color: 'var(--text-muted)', marginTop: '4px' }}>
+                          When visitors click your location on your card or profile, they will open this map link directly.
+                        </div>
                       </div>
                     </div>
 
@@ -1598,7 +1614,19 @@ export default function CustomerProfilesTab({ profiles = [], customer, onSavePro
                         />
                       </div>
                       <div>
-                        <label style={{ fontSize: '0.8rem', fontWeight: 600, display: 'block', marginBottom: '6px' }}>Google Maps Location URL (Optional)</label>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '6px' }}>
+                          <label style={{ fontSize: '0.8rem', fontWeight: 600 }}>Google Maps Location URL (Optional)</label>
+                          {resolveMapUrl(formData) && (
+                            <a
+                              href={resolveMapUrl(formData)}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              style={{ fontSize: '0.74rem', color: 'var(--accent-purple)', fontWeight: 700, textDecoration: 'none' }}
+                            >
+                              Test Map Link ↗
+                            </a>
+                          )}
+                        </div>
                         <input
                           type="url"
                           value={formData.mapsUrl || ''}

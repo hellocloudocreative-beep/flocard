@@ -41,6 +41,7 @@ import {
 import ProfileAvatar from './ProfileAvatar';
 import { resolveProfileLinks, DynamicLinkIcon } from '../../lib/socialLinkResolver';
 import { downloadVCard } from '../../lib/vcard';
+import { resolveMapUrl } from '../../lib/constants';
 
 export default function ExpandedPortfolioView({
   profile = {},
@@ -203,6 +204,7 @@ export default function ExpandedPortfolioView({
   const displayEmail = profile?.email || 'contact@flocard.in';
   
   const displayAddress = profile?.address || profile?.location || '2nd Floor, Archierio Experience Center, 668, 8th Main Rd, above Shivam Sanitary Ware, 7th Sector, HSR Layout, Bengaluru, Karnataka 560102';
+  const mapsHref = resolveMapUrl(profile) || `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(displayAddress)}`;
   
   const displayWeb = profile?.website
     ? profile.website.replace(/^https?:\/\//, '').replace(/\/$/, '')
@@ -600,16 +602,42 @@ export default function ExpandedPortfolioView({
           </div>
 
           {/* 7. Experience Center / Address Block */}
-          <div
+          <a
+            href={mapsHref || '#'}
+            target={mapsHref ? '_blank' : '_self'}
+            rel="noopener noreferrer"
+            onClick={e => { if (!mapsHref) e.preventDefault(); }}
+            title={mapsHref ? 'Click to open in Google Maps' : 'Office address'}
             style={{
-              textAlign: 'center',
+              display: 'block',
+              textAlign: 'left',
               marginBottom: '14px',
               maxWidth: '440px',
               width: '100%',
-              padding: '0 8px',
+              padding: '14px 16px',
               boxSizing: 'border-box',
               position: 'relative',
-              zIndex: 2
+              zIndex: 2,
+              backgroundColor: 'rgba(255, 255, 255, 0.04)',
+              border: '1px solid rgba(255, 255, 255, 0.08)',
+              borderRadius: '16px',
+              textDecoration: 'none',
+              cursor: mapsHref ? 'pointer' : 'default',
+              transition: 'all 0.2s ease'
+            }}
+            onMouseEnter={e => {
+              if (mapsHref) {
+                e.currentTarget.style.borderColor = accentColor;
+                e.currentTarget.style.transform = 'translateY(-2px)';
+                e.currentTarget.style.boxShadow = `0 8px 20px ${accentColor}20`;
+              }
+            }}
+            onMouseLeave={e => {
+              if (mapsHref) {
+                e.currentTarget.style.borderColor = 'rgba(255, 255, 255, 0.08)';
+                e.currentTarget.style.transform = 'none';
+                e.currentTarget.style.boxShadow = 'none';
+              }
             }}
           >
             <div
@@ -627,14 +655,13 @@ export default function ExpandedPortfolioView({
                 <MapPin size={15} color={accentColor} />
                 <span>{profile?.address ? 'Office Address:' : 'Location:'}</span>
               </div>
-              <a
-                href={profile?.mapsUrl || `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(displayAddress)}`}
-                target="_blank"
-                rel="noopener noreferrer"
-                style={{ fontSize: '0.74rem', color: accentColor, fontWeight: 700, textDecoration: 'none' }}
-              >
-                Directions ↗
-              </a>
+              {mapsHref && (
+                <span
+                  style={{ fontSize: '0.74rem', color: accentColor, fontWeight: 700 }}
+                >
+                  Directions ↗
+                </span>
+              )}
             </div>
             <p
               style={{
@@ -648,7 +675,7 @@ export default function ExpandedPortfolioView({
             >
               {displayAddress}
             </p>
-          </div>
+          </a>
 
           {/* 8. Direct Website / Domain Link */}
           <a
@@ -853,25 +880,52 @@ export default function ExpandedPortfolioView({
                 <span style={{ fontSize: '0.74rem', color: '#D5C9E5', textTransform: 'uppercase', fontWeight: 600 }}>Organization</span>
                 <div style={{ fontSize: '1rem', fontWeight: 700, marginTop: '4px' }}>{profile.company}</div>
               </div>
-              <div style={{ padding: '16px', borderRadius: '16px', backgroundColor: 'rgba(255, 255, 255, 0.03)', border: '1px solid rgba(255, 255, 255, 0.06)' }}>
+              <a
+                href={mapsHref || '#'}
+                target={mapsHref ? '_blank' : '_self'}
+                rel="noopener noreferrer"
+                onClick={e => { if (!mapsHref) e.preventDefault(); }}
+                title={mapsHref ? 'Click to open in Google Maps' : 'Location details'}
+                style={{
+                  display: 'block',
+                  padding: '16px',
+                  borderRadius: '16px',
+                  backgroundColor: 'rgba(255, 255, 255, 0.03)',
+                  border: '1px solid rgba(255, 255, 255, 0.06)',
+                  textDecoration: 'none',
+                  cursor: mapsHref ? 'pointer' : 'default',
+                  transition: 'all 0.2s ease'
+                }}
+                onMouseEnter={e => {
+                  if (mapsHref) {
+                    e.currentTarget.style.borderColor = accentColor;
+                    e.currentTarget.style.transform = 'translateY(-2px)';
+                    e.currentTarget.style.boxShadow = `0 8px 20px ${accentColor}20`;
+                  }
+                }}
+                onMouseLeave={e => {
+                  if (mapsHref) {
+                    e.currentTarget.style.borderColor = 'rgba(255, 255, 255, 0.06)';
+                    e.currentTarget.style.transform = 'none';
+                    e.currentTarget.style.boxShadow = 'none';
+                  }
+                }}
+              >
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                   <span style={{ fontSize: '0.74rem', color: '#D5C9E5', textTransform: 'uppercase', fontWeight: 600 }}>Location</span>
-                  {(profile.mapsUrl || profile.location || profile.address) && (
-                    <a
-                      href={profile.mapsUrl || `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(profile.address || profile.location)}`}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      style={{ fontSize: '0.74rem', color: '#A855F7', fontWeight: 700, textDecoration: 'none' }}
+                  {mapsHref && (
+                    <span
+                      style={{ fontSize: '0.74rem', color: accentColor, fontWeight: 700 }}
                     >
                       Directions ↗
-                    </a>
+                    </span>
                   )}
                 </div>
-                <div style={{ fontSize: '1rem', fontWeight: 700, marginTop: '4px' }}>{profile.location || profile.address || 'Global'}</div>
+                <div style={{ fontSize: '1rem', fontWeight: 700, marginTop: '4px', color: '#FFFFFF' }}>{profile.location || profile.address || 'Global'}</div>
                 {profile.address && profile.location && profile.address !== profile.location && (
                   <div style={{ fontSize: '0.78rem', color: '#94A3B8', marginTop: '2px' }}>{profile.address}</div>
                 )}
-              </div>
+              </a>
             </div>
           </div>
         )}

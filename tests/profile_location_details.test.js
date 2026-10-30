@@ -1,5 +1,6 @@
 import assert from 'assert';
 import { generateVCardString } from '../src/lib/vcard.js';
+import { resolveMapUrl } from '../src/lib/constants.js';
 
 console.log('--- STARTING DIGITAL PROFILE LOCATION TEST SUITE ---');
 
@@ -31,13 +32,28 @@ const profileLocOnly = {
 };
 const vcardLocOnly = generateVCardString(profileLocOnly);
 assert(vcardLocOnly.includes('ADR;TYPE=WORK:;;Dubai, UAE;;;;'), 'vCard should contain location');
-console.log('✓ Test 2 Passed: vCard falls back to location when address is omitted.');
+assert(vcardLocOnly.includes('URL;TYPE=LOCATION:https://www.google.com/maps/search/?api=1&query=Dubai%2C%20UAE'), 'vCard should auto-generate maps link for location');
+console.log('✓ Test 2 Passed: vCard falls back to location and auto-generates map link.');
 
-// Test 3: Maps query resolution
-console.log('\nTest 3: Maps query resolution');
-const testLoc = 'Bengaluru, India';
-const expectedUrl = `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(testLoc)}`;
-assert.strictEqual(expectedUrl, 'https://www.google.com/maps/search/?api=1&query=Bengaluru%2C%20India');
-console.log('✓ Test 3 Passed: Maps query encoded properly.');
+// Test 3: resolveMapUrl resolution across different formats
+console.log('\nTest 3: resolveMapUrl resolution across different formats');
+// 3a: Explicit URL
+assert.strictEqual(
+  resolveMapUrl({ mapsUrl: 'https://maps.app.goo.gl/xyz123' }),
+  'https://maps.app.goo.gl/xyz123'
+);
+// 3b: Bare URL without protocol
+assert.strictEqual(
+  resolveMapUrl({ mapsUrl: 'maps.google.com/?q=HSR+Layout' }),
+  'https://maps.google.com/?q=HSR+Layout'
+);
+// 3c: Address + Location combined
+assert.strictEqual(
+  resolveMapUrl({ location: 'Bengaluru, India', address: 'Archierio Center, HSR Layout' }),
+  'https://www.google.com/maps/search/?api=1&query=Archierio%20Center%2C%20HSR%20Layout%2C%20Bengaluru%2C%20India'
+);
+// 3d: Empty object
+assert.strictEqual(resolveMapUrl({}), null);
+console.log('✓ Test 3 Passed: resolveMapUrl accurately handles explicit URLs, bare protocols, and address queries.');
 
 console.log('\n🎉 ALL PROFILE LOCATION TESTS PASSED SUCCESSFULLY! 🎉\n');
