@@ -111,6 +111,9 @@ import {
   verifyActivationRequirements
 } from '../../lib/cardService';
 import { resolveMapUrl } from '../../lib/constants';
+import DashboardLayout from '../../components/dashboard/DashboardLayout';
+import WhatsAppContactButton from '../../components/dashboard/WhatsAppContactButton';
+import AddCustomerModal from '../../components/dashboard/AddCustomerModal';
 
 export default function AdminDashboard({ initialTab = 'overview', initialOrderId = null }) {
   const {
@@ -630,32 +633,40 @@ export default function AdminDashboard({ initialTab = 'overview', initialOrderId
     };
   }, [customers, profiles, cards, designs, orders]);
 
-  // Sidebar Items
+  // Sidebar Items: 7 Primary Navigation Tabs + Secondary Management & Tools
   const allNavItems = [
     { id: 'overview', label: 'Dashboard', icon: LayoutDashboard },
-    { id: 'orders', label: 'Orders & Fulfillment', icon: Package, badge: stats.pendingOrders > 0 ? stats.pendingOrders : (orders.length > 0 ? orders.length : null) },
+    { id: 'customers', label: 'Customers', icon: Users, badge: customers.length },
+    { id: 'cards', label: 'NFC Cards', icon: Radio, badge: cards.length },
+    { id: 'orders', label: 'Orders & Requests', icon: Package, badge: stats.pendingOrders > 0 ? stats.pendingOrders : (orders.length > 0 ? orders.length : null) },
+    { id: 'profiles', label: 'Digital Profiles', icon: FileText, badge: profiles.length },
+    { id: 'analytics', label: 'Analytics', icon: BarChart3 },
+    { id: 'settings', label: 'Settings', icon: Settings },
+
+    { isSectionHeader: true, label: 'Management & Tools' },
     { id: 'invoices', label: 'Invoices & Access', icon: Receipt, badge: stats.pendingInvoices > 0 ? stats.pendingInvoices : null },
     { id: 'studio', label: 'Card Design Studio', icon: Sparkles, badge: 'Studio' },
     { id: 'designs', label: 'Customer Designs', icon: Palette, badge: stats.pendingApprovals > 0 ? stats.pendingApprovals : null },
     { id: 'qr', label: 'Smart QR Companion', icon: QrCode, badge: 'Smart' },
-    { id: 'sales', label: 'Sales & Ledger', icon: TrendingUp },
-    { id: 'product-sales', label: 'Product Sales', icon: TrendingUp },
-    { id: 'customers', label: 'Customers', icon: Users, badge: customers.length },
-    { id: 'profiles', label: 'Digital Profiles', icon: FileText, badge: profiles.length },
-    { id: 'appointments', label: 'Appointments', icon: Calendar, badge: stats.pendingAppointments > 0 ? stats.pendingAppointments : null },
-    { id: 'cards', label: 'NFC Cards', icon: Radio, badge: cards.length },
     { id: 'pricing', label: 'Products & Pricing', icon: Tag, badge: products?.length || 3 },
     { id: 'templates', label: 'Card Templates', icon: Layers },
-    { id: 'analytics', label: 'Analytics', icon: BarChart3 },
+    { id: 'sales', label: 'Sales & Ledger', icon: TrendingUp },
+    { id: 'product-sales', label: 'Product Sales', icon: TrendingUp },
+    { id: 'appointments', label: 'Appointments', icon: Calendar, badge: stats.pendingAppointments > 0 ? stats.pendingAppointments : null },
     { id: 'admin-access', label: 'Staff & Permissions', icon: ShieldCheck, ownerOnly: true },
-    { id: 'audit-logs', label: 'Owner Activity Feed', icon: Activity, ownerOnly: true },
-    { id: 'settings', label: 'Settings', icon: Settings }
+    { id: 'audit-logs', label: 'Owner Activity Feed', icon: Activity, ownerOnly: true }
   ];
 
   const navItems = allNavItems.filter((item) => {
+    if (item.isSectionHeader || item.isDivider) return true;
     if (item.ownerOnly && !isOwner) return false;
     return canAccessTab ? canAccessTab(item.id) : true;
   });
+
+  const getTabLabel = (tabId) => {
+    const found = allNavItems.find(item => item.id === tabId);
+    return found ? found.label : 'Overview';
+  };
 
   // Global search filtering across relevant items
   const filteredData = useMemo(() => {
@@ -1276,769 +1287,130 @@ export default function AdminDashboard({ initialTab = 'overview', initialOrderId
           border-bottom: var(--adm-card-border) !important;
         }
       `}</style>
-      {/* Mobile Sidebar Backdrop */}
-      {sidebarOpen && (
-        <div
-          className="admin-sidebar-backdrop"
-          onClick={() => setSidebarOpen(false)}
-          aria-hidden="true"
-        />
-      )}
-      {/* ====================================================================
-          1. BRANDED SIDEBAR NAVIGATION (Light/Dark aware)
-          ==================================================================== */}
-      <aside
-        style={{
-          width: '260px',
-          backgroundColor: isLight ? '#FFFFFF' : '#100819',
-          borderRight: isLight ? '1px solid #E8E3EF' : '1px solid #1B1028',
-          display: 'flex',
-          flexDirection: 'column',
-          justifyContent: 'space-between',
-          flexShrink: 0,
-          position: 'sticky',
-          top: 0,
-          height: '100vh',
-          zIndex: 100,
-          padding: '24px 16px 20px',
-          boxSizing: 'border-box',
-          overflowX: 'hidden',
-          overflowY: 'auto',
-          transition: 'transform 0.3s ease, background-color 0.25s ease, border-color 0.25s ease'
-        }}
-        className={`admin-sidebar ${sidebarOpen ? 'mobile-open' : ''}`}
-      >
-        <div>
-          {/* FLOCARD Brand Logo */}
-          <div style={{ padding: '0 8px 24px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', overflow: 'hidden' }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', maxWidth: '100%', overflow: 'hidden' }}>
-              <img
-                src={isLight ? '/assets/logo-dark.png' : '/assets/logo-light.png'}
-                alt="FLOCARD"
-                style={{ height: '24px', width: 'auto', display: 'block', maxWidth: '160px', objectFit: 'contain' }}
-                onError={(e) => {
-                  e.target.style.display = 'none';
-                  if (e.target.nextSibling) e.target.nextSibling.style.display = 'inline-flex';
-                }}
-              />
-              <span
-                style={{
-                  fontFamily: 'var(--font-heading, Sora)',
-                  fontWeight: 800,
-                  fontSize: '1.2rem',
-                  letterSpacing: '0.04em',
-                  color: '#FFFFFF',
-                  display: 'none',
-                  alignItems: 'center'
-                }}
-              >
-                FLOCARD<sup style={{ fontSize: '0.55em', marginLeft: '2px', color: '#A855F7' }}>®</sup>
-              </span>
-            </div>
-
-            {/* Mobile close button */}
+      {/* FLOCARDS Dashboard Layout (Minimal Finance & Payroll Visual System) */}
+      <DashboardLayout
+        brandTitle="FLOCARDS"
+        navItems={navItems}
+        activeTab={activeTab}
+        setActiveTab={setActiveTab}
+        breadcrumbs={["FLOCARDS", getTabLabel(activeTab)]}
+        searchQuery={searchQuery}
+        setSearchQuery={setSearchQuery}
+        searchPlaceholder="Search customers, orders, cards, profiles..."
+        quickActions={
+          <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
             <button
               type="button"
-              onClick={() => setSidebarOpen(false)}
-              className="mobile-only-btn"
+              onClick={() => setNewCustomerModal(true)}
               style={{
-                background: 'none',
-                border: 'none',
-                color: '#B8AEC8',
-                display: 'none',
-                cursor: 'pointer'
+                display: "inline-flex",
+                alignItems: "center",
+                gap: "6px",
+                padding: "7px 13px",
+                borderRadius: "9px",
+                backgroundColor: "#6B004F",
+                color: "#FFFFFF",
+                border: "none",
+                fontSize: "0.78rem",
+                fontWeight: 700,
+                cursor: "pointer",
+                boxShadow: "0 2px 8px rgba(107, 0, 79, 0.35)"
               }}
             >
-              <X size={20} />
+              <UserPlus size={14} />
+              <span>Add Customer</span>
             </button>
-          </div>
-
-          {/* Back to Website Link in Sidebar */}
-          <div style={{ padding: '0 8px 16px' }}>
             <a
-              href="/"
+              href="/designer"
               style={{
-                display: 'flex',
-                alignItems: 'center',
-                gap: '8px',
-                padding: '8px 12px',
-                borderRadius: '8px',
-                border: isDark ? '1px solid rgba(255, 255, 255, 0.08)' : '1px solid #E2E8F0',
-                background: isDark ? 'rgba(255, 255, 255, 0.03)' : '#F8FAFC',
-                color: isDark ? '#B8AEC8' : '#64748B',
-                textDecoration: 'none',
-                fontSize: '0.78rem',
+                display: "inline-flex",
+                alignItems: "center",
+                gap: "6px",
+                padding: "7px 12px",
+                borderRadius: "9px",
+                backgroundColor: isDark ? "rgba(255, 255, 255, 0.06)" : "rgba(0, 0, 0, 0.05)",
+                color: isDark ? "#FFFFFF" : "#191522",
+                border: isDark ? "1px solid rgba(255, 255, 255, 0.1)" : "1px solid rgba(0, 0, 0, 0.08)",
+                fontSize: "0.78rem",
                 fontWeight: 600,
-                transition: 'all 0.15s ease'
-              }}
-              onMouseEnter={e => {
-                e.currentTarget.style.color = isDark ? '#FFFFFF' : '#191522';
-                e.currentTarget.style.borderColor = '#A855F7';
-              }}
-              onMouseLeave={e => {
-                e.currentTarget.style.color = isDark ? '#B8AEC8' : '#64748B';
-                e.currentTarget.style.borderColor = isDark ? 'rgba(255, 255, 255, 0.08)' : '#E2E8F0';
+                textDecoration: "none"
               }}
             >
-              <ArrowLeft size={14} />
-              <span>Back to Website</span>
+              <Sparkles size={14} />
+              <span>Design Card</span>
             </a>
           </div>
-
-          {/* 10 Navigation Items */}
-          <nav style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
-            {navItems.map((item) => {
-              if (item.ownerOnly && !isOwner) return null;
-              const Icon = item.icon;
-              const active = activeTab === item.id;
-
-              return (
-                <button
-                  key={item.id}
-                  type="button"
-                  onClick={() => {
-                    setActiveTab(item.id);
-                    setSidebarOpen(false);
-                  }}
-                  style={{
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'space-between',
-                    padding: '11px 16px',
-                    borderRadius: '12px',
-                    border: 'none',
-                    cursor: 'pointer',
-                    background: active
-                      ? 'linear-gradient(135deg, #6B00FF 0%, #8B5CF6 100%)'
-                      : 'transparent',
-                    color: active ? '#FFFFFF' : (isLight ? '#5C546B' : '#B8AEC8'),
-                    fontWeight: active ? 600 : 500,
-                    fontSize: '0.88rem',
-                    textAlign: 'left',
-                    transition: 'all 0.2s cubic-bezier(0.4, 0, 0.2, 1)',
-                    boxShadow: active ? '0 4px 16px rgba(107, 0, 255, 0.35)' : 'none'
-                  }}
-                  onMouseEnter={(e) => {
-                    if (!active) {
-                      e.currentTarget.style.backgroundColor = isLight ? '#F4EFFC' : '#1B1028';
-                      e.currentTarget.style.color = isLight ? '#6B00FF' : '#FFFFFF';
-                    }
-                  }}
-                  onMouseLeave={(e) => {
-                    if (!active) {
-                      e.currentTarget.style.backgroundColor = 'transparent';
-                      e.currentTarget.style.color = isLight ? '#5C546B' : '#B8AEC8';
-                    }
-                  }}
-                >
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-                    <Icon size={18} color={active ? '#FFFFFF' : (isLight ? '#6B5F7F' : '#82758F')} />
-                    <span>{item.label}</span>
-                  </div>
-
-                  {item.badge !== undefined && item.badge !== null && (
-                    <span
-                      style={{
-                        background: active ? 'rgba(255, 255, 255, 0.22)' : (isLight ? '#F3EEFF' : '#1B1028'),
-                        color: active ? '#FFFFFF' : (isLight ? '#6B00FF' : '#A855F7'),
-                        fontSize: '0.7rem',
-                        fontWeight: 700,
-                        padding: '2px 8px',
-                        borderRadius: '9999px',
-                        border: active ? 'none' : (isLight ? '1px solid #E4D9F8' : '1px solid #30223F')
-                      }}
-                    >
-                      {item.badge}
-                    </span>
-                  )}
-                </button>
-              );
-            })}
-          </nav>
-        </div>
-
-        {/* Bottom NFC Card Graphic & Tagline Widget */}
-        <div>
+        }
+        notifications={auditLogs.slice(0, 8).map(l => ({ id: l.id, text: l.type + ": " + l.details, time: l.timeAgo, read: false }))}
+        user={user}
+        isDark={isDark}
+        toggleTheme={toggleTheme}
+        onLogout={logout}
+      >
+        {/* Fulfillment Toast Notification */}
+        {fulfillmentToast && (
           <div
             style={{
-              background: isLight ? 'linear-gradient(180deg, #F6EFFE 0%, #EDE3FC 100%)' : 'linear-gradient(180deg, #1B1028 0%, #120A1D 100%)',
-              border: isLight ? '1px solid #E4D7F8' : '1px solid #30223F',
-              borderRadius: '16px',
-              padding: '16px 14px',
-              position: 'relative',
-              overflow: 'hidden',
-              boxShadow: isLight ? '0 4px 16px rgba(107, 0, 255, 0.08)' : '0 8px 24px rgba(0, 0, 0, 0.4)'
+              padding: "14px 18px",
+              borderRadius: "12px",
+              backgroundColor: "#10B981",
+              color: "#FFFFFF",
+              marginBottom: "20px",
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "space-between",
+              boxShadow: "0 4px 16px rgba(16, 185, 129, 0.3)"
             }}
           >
-            {/* Tilted NFC Obsidian Cards Illustration */}
-            <div style={{ position: 'relative', height: '88px', marginBottom: '10px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-              {/* Back Card */}
-              <div
-                style={{
-                  position: 'absolute',
-                  width: '120px',
-                  height: '75px',
-                  borderRadius: '8px',
-                  background: 'linear-gradient(135deg, #2E1065 0%, #0F0818 100%)',
-                  border: '1px solid #6B00FF',
-                  transform: 'rotate(-10deg) translate(-15px, -5px)',
-                  boxShadow: '0 10px 20px rgba(0, 0, 0, 0.5)',
-                  opacity: 0.8
-                }}
-              />
-              {/* Front Card */}
-              <div
-                style={{
-                  position: 'absolute',
-                  width: '126px',
-                  height: '78px',
-                  borderRadius: '8px',
-                  background: 'linear-gradient(135deg, #180F26 0%, #08060D 100%)',
-                  border: '1px solid #A855F7',
-                  transform: 'rotate(6deg) translate(8px, 4px)',
-                  boxShadow: '0 12px 25px rgba(107, 0, 255, 0.35)',
-                  padding: '8px',
-                  display: 'flex',
-                  flexDirection: 'column',
-                  justifyContent: 'space-between'
-                }}
-              >
-                <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
-                  {/* Contactless waves icon */}
-                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#FFFFFF" strokeWidth="2.5" strokeLinecap="round">
-                    <path d="M8.5 16.5a5 5 0 0 1 0-7" />
-                    <path d="M12 19a8.5 8.5 0 0 0 0-14" />
-                  </svg>
-                </div>
-                <div style={{ fontSize: '0.62rem', fontWeight: 800, color: '#FFFFFF', letterSpacing: '0.06em' }}>
-                  FLOCARD
-                </div>
-              </div>
+            <div>
+              <div style={{ fontWeight: 700, fontSize: "0.88rem" }}>{fulfillmentToast.title}</div>
+              <div style={{ fontSize: "0.8rem", opacity: 0.95, marginTop: "2px" }}>{fulfillmentToast.message}</div>
             </div>
-
-            <div style={{ textAlign: 'center' }}>
-              <div style={{ fontSize: '0.82rem', fontWeight: 700, color: isLight ? '#191522' : '#FFFFFF', letterSpacing: '-0.01em' }}>
-                One Tap. Every Connection.
-              </div>
-              <div style={{ fontSize: '0.68rem', color: isLight ? '#6B637B' : '#82758F', marginTop: '2px' }}>
-                NFC Enterprise Identity
-              </div>
-            </div>
+            <button
+              type="button"
+              onClick={() => setFulfillmentToast(null)}
+              style={{ background: "none", border: "none", color: "#FFFFFF", cursor: "pointer", padding: "4px" }}
+            >
+              <X size={16} />
+            </button>
           </div>
-        </div>
-      </aside>
-
-      {/* ====================================================================
-          2. MAIN CONTENT AREA (Crisp Light Background #F7F6FA)
-          ==================================================================== */}
-      <div
-        className="admin-main-container"
-        style={{
-          flex: 1,
-          display: 'flex',
-          flexDirection: 'column',
-          minWidth: 0,
-          overflowY: 'auto',
-          overflowX: 'hidden',
-          width: '100%',
-          maxWidth: '100%'
-        }}
-      >
-        {/* Top Navigation Bar */}
-        <header
-          className="admin-header"
-          style={{
-            backgroundColor: isDark ? '#0E0A16' : '#FFFFFF',
-            borderBottom: isDark ? '1px solid #1F162B' : '1px solid #E8E3EF',
-            padding: '16px 32px',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'space-between',
-            position: 'sticky',
-            top: 0,
-            zIndex: 90,
-            boxShadow: isDark ? '0 4px 20px rgba(0, 0, 0, 0.4)' : '0 1px 3px rgba(0, 0, 0, 0.02)',
-            transition: 'background-color 0.25s ease, border-color 0.25s ease'
-          }}
-        >
-          {/* Left: Mobile Toggle + Page Heading */}
-          <div style={{ display: 'flex', alignItems: 'center', gap: '14px', minWidth: 0, flexShrink: 1 }}>
-            <button
-              type="button"
-              onClick={() => setSidebarOpen(true)}
-              className="mobile-hamburger-btn"
-              style={{
-                display: 'none',
-                background: 'none',
-                border: 'none',
-                color: isDark ? '#FFFFFF' : '#191522',
-                cursor: 'pointer',
-                padding: '4px',
-                flexShrink: 0
-              }}
-              aria-label="Open sidebar menu"
-            >
-              <Menu size={22} />
-            </button>
-
-            {/* Admin Header Back Button */}
-            <button
-              type="button"
-              onClick={() => {
-                if (activeTab !== 'overview') {
-                  setActiveTab('overview');
-                  window.history.pushState({}, '', '/admin');
-                } else if (typeof window !== 'undefined' && window.history.length > 1) {
-                  window.history.back();
-                } else {
-                  window.location.href = '/';
-                }
-              }}
-              style={{
-                display: 'inline-flex',
-                alignItems: 'center',
-                gap: '6px',
-                padding: '7px 12px',
-                borderRadius: '8px',
-                border: isDark ? '1px solid #2A2038' : '1px solid #D6D0DF',
-                background: isDark ? 'rgba(255, 255, 255, 0.05)' : '#F5F3F8',
-                color: isDark ? '#FFFFFF' : '#191522',
-                fontSize: '0.8rem',
-                fontWeight: 600,
-                cursor: 'pointer',
-                flexShrink: 0,
-                transition: 'all 0.15s ease'
-              }}
-              title="Go back / Return to site"
-            >
-              <ArrowLeft size={15} />
-              <span>Back</span>
-            </button>
-
-            <div style={{ minWidth: 0 }}>
-              <h1
-                className="admin-page-title"
-                style={{
-                  margin: 0,
-                  fontSize: '1.45rem',
-                  fontWeight: 800,
-                  color: isDark ? '#FFFFFF' : '#191522',
-                  fontFamily: 'var(--font-heading, Sora)',
-                  letterSpacing: '-0.02em',
-                  whiteSpace: 'nowrap',
-                  overflow: 'hidden',
-                  textOverflow: 'ellipsis'
-                }}
-              >
-                {activeTab === 'overview' && 'Dashboard'}
-                {activeTab === 'invoices' && 'Tax Invoice Management & Access Governance'}
-                {activeTab === 'studio' && 'Admin Card Design Studio'}
-                {activeTab === 'sales' && 'Sales Management & Accounting Ledger'}
-                {activeTab === 'product-sales' && 'Product-wise Sales Tracking'}
-                {activeTab === 'customers' && 'Customers'}
-                {activeTab === 'profiles' && 'Digital Profiles'}
-                {activeTab === 'appointments' && 'Appointment Bookings & Schedules'}
-                {activeTab === 'designs' && 'Customer Card Designs'}
-                {activeTab === 'orders' && 'Orders & Fulfillment'}
-                {activeTab === 'cards' && 'NFC Cards'}
-                {activeTab === 'pricing' && 'Card Products & Pricing'}
-                {activeTab === 'templates' && 'Card Templates'}
-                {activeTab === 'demo' && 'Demo Showcase Settings'}
-                {activeTab === 'analytics' && 'Analytics'}
-                {activeTab === 'qr' && 'Smart QR Companion & Preview Studio'}
-                {activeTab === 'admin-access' && 'Staff Roles & Permissions Governance'}
-                {activeTab === 'audit-logs' && 'Owner-Only Live Activity Feed'}
-                {activeTab === 'settings' && 'Settings'}
-              </h1>
-              <p className="admin-page-subtitle" style={{ margin: '2px 0 0', fontSize: '0.84rem', color: isDark ? '#9B90AD' : '#777184' }}>
-                {activeTab === 'overview' && "Welcome back! Here's what's happening with FLOCARD."}
-                {activeTab === 'invoices' && 'Assign or decline customer tax invoice generator access, configure official invoicing rules, and track tax ledgers.'}
-                {activeTab === 'studio' && 'Dedicated 3-panel professional design workspace for creating, editing, and publishing NFC card designs.'}
-                {activeTab === 'sales' && 'Accounting-grade sales ledger, double-entry balances, tax invoices, and payment tracking.'}
-                {activeTab === 'product-sales' && 'Track revenue, discounts, refunds, units sold, and inventory across every FLOCARD edition.'}
-                {activeTab === 'customers' && 'Manage authenticated customer accounts and enterprise partners.'}
-                {activeTab === 'profiles' && 'Public digital identity profiles, slugs, and live resolutions.'}
-                {activeTab === 'appointments' && 'Inspect incoming customer appointments across all digital profiles, approve schedules, and manage cancellations.'}
-                {activeTab === 'designs' && 'Artwork review queue, bleed safe-area checks, and print approvals.'}
-                {activeTab === 'orders' && 'Card production pipeline, manufacturing orders, and automated NFC card + profile provisioning.'}
-                {activeTab === 'cards' && 'NTAG216 chip inventory, NFC encoding, and permanent redirect routes.'}
-                {activeTab === 'pricing' && 'Configure authoritative physical NFC card pricing, compare prices, included specifications, and live store availability.'}
-                {activeTab === 'templates' && 'Manage Standard FLOCARD (Without Customer Logo) and Customer Logo (With Customer Logo) brand templates.'}
-                {activeTab === 'demo' && 'Customize default demo name, role, tagline, company, and brand logo across Homepage and demo card previews.'}
-                {activeTab === 'analytics' && 'Real-time contactless tap metrics and telemetry logs.'}
-                {activeTab === 'qr' && 'High-resolution PNG, vector SVG, and multi-format mockup placement preview.'}
-                {activeTab === 'admin-access' && 'Owner-governed staff administration across Owner, Sales, Designer, Production, and Accounts.'}
-                {activeTab === 'audit-logs' && 'Strictly owner-only real-time audit ledger, timeline filters, and before-and-after diffs.'}
-                {activeTab === 'settings' && 'Database synchronization, studio backdrop, and system settings.'}
-              </p>
-            </div>
-          </div>
-
-          {/* Right: Search, Notifications, Theme Toggle, Date Filter & Profile Pill */}
-          <div className="admin-header-actions" style={{ display: 'flex', alignItems: 'center', gap: '14px', flexShrink: 0 }}>
-            {/* Mobile Search Toggle Button */}
-            <button
-              type="button"
-              onClick={() => setMobileSearchOpen(!mobileSearchOpen)}
-              className="admin-mobile-search-toggle"
-              aria-label="Toggle search"
-              style={{
-                display: 'none',
-                width: '38px',
-                height: '38px',
-                borderRadius: '50%',
-                border: isDark ? '1px solid #2B1E3E' : '1px solid #E8E3EF',
-                backgroundColor: mobileSearchOpen ? (isDark ? '#261A3B' : '#F3EEFF') : (isDark ? '#161022' : '#FFFFFF'),
-                color: mobileSearchOpen ? '#A855F7' : (isDark ? '#FFFFFF' : '#191522'),
-                alignItems: 'center',
-                justifyContent: 'center',
-                cursor: 'pointer'
-              }}
-            >
-              <Search size={18} />
-            </button>
-
-            {/* Global Search Bar */}
-            <div
-              className={`admin-header-search ${mobileSearchOpen ? 'mobile-visible' : ''}`}
-              style={{ position: 'relative', width: '260px' }}
-            >
-              <Search size={16} color={isDark ? '#8A7D9D' : '#777184'} style={{ position: 'absolute', left: '12px', top: '50%', transform: 'translateY(-50%)' }} />
-              <input
-                type="text"
-                placeholder="Search customers, profiles, cards..."
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                style={{
-                  width: '100%',
-                  padding: '9px 12px 9px 36px',
-                  borderRadius: '9999px',
-                  border: isDark ? '1px solid #2B1E3E' : '1px solid #E8E3EF',
-                  backgroundColor: isDark ? '#161022' : '#FFFFFF',
-                  fontSize: '0.82rem',
-                  color: isDark ? '#FFFFFF' : '#191522',
-                  outline: 'none',
-                  boxShadow: '0 1px 2px rgba(0, 0, 0, 0.02)',
-                  transition: 'border-color 0.2s ease, background-color 0.2s ease'
-                }}
-                onFocus={(e) => { e.target.style.borderColor = '#6B00FF'; }}
-                onBlur={(e) => { e.target.style.borderColor = isDark ? '#2B1E3E' : '#E8E3EF'; }}
-              />
-            </div>
-
-            {/* Theme Toggle Button */}
-            <button
-              type="button"
-              onClick={toggleTheme}
-              aria-label={`Switch to ${isDark ? 'light' : 'dark'} mode`}
-              title={`Switch to ${isDark ? 'light' : 'dark'} mode`}
-              style={{
-                width: '38px',
-                height: '38px',
-                borderRadius: '50%',
-                border: isDark ? '1px solid #2B1E3E' : '1px solid #E8E3EF',
-                backgroundColor: isDark ? '#161022' : '#FFFFFF',
-                color: isDark ? '#FBBF24' : '#6B00FF',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                cursor: 'pointer',
-                transition: 'all 0.2s ease',
-                flexShrink: 0
-              }}
-            >
-              {isDark ? <Sun size={17} color="#FBBF24" /> : <Moon size={17} color="#6B00FF" />}
-            </button>
-
-            {/* Notification Bell */}
-            <div style={{ position: 'relative' }}>
-              <button
-                type="button"
-                onClick={() => setNotificationsOpen(!notificationsOpen)}
-                style={{
-                  width: '38px',
-                  height: '38px',
-                  borderRadius: '50%',
-                  border: isDark ? '1px solid #2B1E3E' : '1px solid #E8E3EF',
-                  backgroundColor: isDark ? '#161022' : '#FFFFFF',
-                  color: isDark ? '#FFFFFF' : '#191522',
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  cursor: 'pointer',
-                  position: 'relative'
-                }}
-              >
-                <Bell size={18} />
-                <span
-                  style={{
-                    position: 'absolute',
-                    top: '8px',
-                    right: '8px',
-                    width: '7px',
-                    height: '7px',
-                    borderRadius: '50%',
-                    backgroundColor: '#6B00FF'
-                  }}
-                />
-              </button>
-
-              {notificationsOpen && (
-                <div
-                  style={{
-                    position: 'absolute',
-                    right: 0,
-                    top: '46px',
-                    width: '300px',
-                    backgroundColor: isDark ? '#130C1E' : '#FFFFFF',
-                    borderRadius: '16px',
-                    border: isDark ? '1px solid #2B1E3E' : '1px solid #E8E3EF',
-                    boxShadow: '0 12px 30px rgba(0, 0, 0, 0.2)',
-                    padding: '16px',
-                    zIndex: 200
-                  }}
-                >
-                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '12px' }}>
-                    <span style={{ fontWeight: 700, fontSize: '0.88rem', color: isDark ? '#FFFFFF' : '#191522' }}>Live Notifications</span>
-                    <span style={{ fontSize: '0.72rem', color: '#6B00FF', fontWeight: 600 }}>{auditLogs.length} events</span>
-                  </div>
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: '10px', maxHeight: '240px', overflowY: 'auto' }}>
-                    {auditLogs.slice(0, 4).map((log) => (
-                      <div key={log.id} style={{ fontSize: '0.78rem', padding: '8px', borderRadius: '8px', backgroundColor: isDark ? '#1C132A' : '#F7F6FA' }}>
-                        <div style={{ fontWeight: 600, color: isDark ? '#FFFFFF' : '#191522' }}>{log.type}</div>
-                        <div style={{ color: isDark ? '#9B90AD' : '#777184', marginTop: '2px' }}>{log.details}</div>
-                        <div style={{ color: '#A855F7', fontSize: '0.7rem', marginTop: '4px' }}>{log.timeAgo}</div>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              )}
-            </div>
-
-            {/* Date Range Filter Pill */}
-            <div
-              className="admin-header-date-filter"
-              style={{
-                display: 'flex',
-                alignItems: 'center',
-                gap: '8px',
-                padding: '8px 14px',
-                borderRadius: '9999px',
-                border: isDark ? '1px solid #2B1E3E' : '1px solid #E8E3EF',
-                backgroundColor: isDark ? '#161022' : '#FFFFFF',
-                fontSize: '0.82rem',
-                color: isDark ? '#FFFFFF' : '#191522',
-                fontWeight: 500,
-                boxShadow: '0 1px 2px rgba(0, 0, 0, 0.02)'
-              }}
-            >
-              <Calendar size={15} color="#6B00FF" />
-              <span>{dateRange}</span>
-            </div>
-
-            {/* User Account Capsule */}
-            <div style={{ position: 'relative' }}>
-              <button
-                type="button"
-                className="admin-user-btn"
-                onClick={() => setUserDropdownOpen(!userDropdownOpen)}
-                style={{
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: '10px',
-                  padding: '4px 10px 4px 4px',
-                  borderRadius: '9999px',
-                  border: isDark ? '1px solid #2B1E3E' : '1px solid #E8E3EF',
-                  backgroundColor: isDark ? '#161022' : '#FFFFFF',
-                  cursor: 'pointer',
-                  boxShadow: '0 1px 2px rgba(0, 0, 0, 0.02)'
-                }}
-              >
-                <div
-                  style={{
-                    width: '32px',
-                    height: '32px',
-                    borderRadius: '50%',
-                    backgroundColor: '#6B00FF',
-                    color: '#FFFFFF',
-                    overflow: 'hidden',
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    fontWeight: 700,
-                    fontSize: '0.82rem',
-                    flexShrink: 0
-                  }}
-                >
-                  {user?.avatar ? (
-                    <img src={user.avatar} alt={user.name} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
-                  ) : (
-                    user?.name?.charAt(0) || 'A'
-                  )}
-                </div>
-
-                <div className="admin-user-details" style={{ textAlign: 'left', lineHeight: 1.2 }}>
-                  <div style={{ fontSize: '0.82rem', fontWeight: 700, color: isDark ? '#FFFFFF' : '#191522', whiteSpace: 'nowrap' }}>
-                    {user?.name || 'Administrator'}
-                  </div>
-                  <div style={{ fontSize: '0.7rem', color: isDark ? '#9B90AD' : '#777184', whiteSpace: 'nowrap' }}>
-                    {isOwner ? 'Owner' : 'Administrator'}
-                  </div>
-                </div>
-
-                <ChevronDown className="admin-user-chevron" size={14} color={isDark ? '#9B90AD' : '#777184'} />
-              </button>
-
-              {userDropdownOpen && (
-                <div
-                  style={{
-                    position: 'absolute',
-                    right: 0,
-                    top: '46px',
-                    width: '200px',
-                    backgroundColor: isDark ? '#130C1E' : '#FFFFFF',
-                    borderRadius: '14px',
-                    border: isDark ? '1px solid #2B1E3E' : '1px solid #E8E3EF',
-                    boxShadow: '0 12px 30px rgba(0, 0, 0, 0.2)',
-                    padding: '8px',
-                    zIndex: 200
-                  }}
-                >
-                  <div style={{ padding: '8px 12px', borderBottom: isDark ? '1px solid #261A3B' : '1px solid #F2ECFF' }}>
-                    <div style={{ fontSize: '0.82rem', fontWeight: 600, color: isDark ? '#FFFFFF' : '#191522' }}>{user?.email || 'admin@flocard.in'}</div>
-                    <div style={{ fontSize: '0.72rem', color: '#6B00FF', fontWeight: 600, textTransform: 'capitalize' }}>
-                      {user?.role ? `${user.role} Desk` : (isOwner ? 'Platform Owner' : 'Administrator')}
-                    </div>
-                  </div>
-
-                  {/* QA & Security Role Switcher */}
-                  <div style={{ padding: '8px 12px', borderBottom: isDark ? '1px solid #261A3B' : '1px solid #F2ECFF' }}>
-                    <div style={{ fontSize: '0.68rem', fontWeight: 700, color: '#A855F7', textTransform: 'uppercase', marginBottom: '6px' }}>
-                      Role Access Switcher:
-                    </div>
-                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '4px' }}>
-                      {[
-                        { role: 'owner', label: 'Owner' },
-                        { role: 'sales', label: 'Sales' },
-                        { role: 'designer', label: 'Designer' },
-                        { role: 'production', label: 'Production' },
-                        { role: 'accounts', label: 'Accounts' }
-                      ].map((p) => (
-                        <button
-                          key={p.role}
-                          type="button"
-                          onClick={() => {
-                            switchPersona(p.role);
-                            setUserDropdownOpen(false);
-                            setActiveTab('overview');
-                          }}
-                          style={{
-                            background: user?.role === p.role ? '#6B00FF' : (isDark ? '#1C122C' : '#F4EFFC'),
-                            border: 'none',
-                            color: user?.role === p.role ? '#FFFFFF' : (isDark ? '#C4B5FD' : '#6B00FF'),
-                            fontSize: '0.72rem',
-                            fontWeight: 600,
-                            padding: '4px 6px',
-                            borderRadius: '6px',
-                            cursor: 'pointer',
-                            textAlign: 'center'
-                          }}
-                        >
-                          {p.label}
-                        </button>
-                      ))}
-                    </div>
-                  </div>
-
-                  <a
-                    href="/alex"
-                    target="_blank"
-                    rel="noreferrer"
-                    style={{
-                      display: 'flex',
-                      alignItems: 'center',
-                      gap: '8px',
-                      padding: '8px 12px',
-                      fontSize: '0.82rem',
-                      color: isDark ? '#FFFFFF' : '#191522',
-                      textDecoration: 'none',
-                      borderRadius: '8px'
-                    }}
-                    onMouseEnter={(e) => { e.currentTarget.style.backgroundColor = isDark ? '#201533' : '#F7F6FA'; }}
-                    onMouseLeave={(e) => { e.currentTarget.style.backgroundColor = 'transparent'; }}
-                  >
-                    <ExternalLink size={14} color="#6B00FF" />
-                    <span>View Public Profile</span>
-                  </a>
-
-                  <button
-                    type="button"
-                    onClick={() => {
-                      logout();
-                      window.history.pushState({}, '', '/admin-login');
-                      window.dispatchEvent(new PopStateEvent('popstate'));
-                    }}
-                    style={{
-                      width: '100%',
-                      display: 'flex',
-                      alignItems: 'center',
-                      gap: '8px',
-                      padding: '8px 12px',
-                      fontSize: '0.82rem',
-                      color: '#DC4545',
-                      border: 'none',
-                      background: 'none',
-                      cursor: 'pointer',
-                      borderRadius: '8px',
-                      textAlign: 'left'
-                    }}
-                    onMouseEnter={(e) => { e.currentTarget.style.backgroundColor = '#FEF2F2'; }}
-                    onMouseLeave={(e) => { e.currentTarget.style.backgroundColor = 'transparent'; }}
-                  >
-                    <LogOut size={14} color="#DC4545" />
-                    <span>Sign Out</span>
-                  </button>
-                </div>
-              )}
-            </div>
-          </div>
-        </header>
+        )}
 
         {/* Global Search Results Overlay if search active */}
         {filteredData && (
-          <div style={{ padding: '24px 32px', backgroundColor: 'var(--adm-card-bg)', borderBottom: 'var(--adm-card-border)' }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
-              <h3 style={{ margin: 0, fontSize: '1.05rem', fontWeight: 700, color: 'var(--adm-text-primary)' }}>
+          <div style={{ padding: "20px 24px", backgroundColor: "var(--adm-card-bg)", borderRadius: "16px", border: "var(--adm-card-border)", marginBottom: "24px" }}>
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "16px" }}>
+              <h3 style={{ margin: 0, fontSize: "1.05rem", fontWeight: 700, color: "var(--adm-text-primary)" }}>
                 Search Results for "{searchQuery}"
               </h3>
               <button
                 type="button"
-                onClick={() => setSearchQuery('')}
-                style={{ background: 'none', border: 'none', color: '#6B00FF', cursor: 'pointer', fontSize: '0.82rem', fontWeight: 600 }}
+                onClick={() => setSearchQuery("")}
+                style={{ background: "none", border: "none", color: "#6B004F", cursor: "pointer", fontSize: "0.82rem", fontWeight: 600 }}
               >
                 Clear Search
               </button>
             </div>
 
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 240px), 1fr))', gap: '16px' }}>
+            <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(min(100%, 240px), 1fr))", gap: "16px" }}>
               {/* Customer matches */}
-              <div style={{ padding: '14px', borderRadius: '12px', border: 'var(--adm-card-border)', background: 'var(--adm-search-bg)' }}>
-                <span style={{ fontSize: '0.75rem', fontWeight: 700, color: '#6B00FF', textTransform: 'uppercase' }}>
+              <div style={{ padding: "14px", borderRadius: "12px", border: "var(--adm-card-border)", background: "var(--adm-search-bg)" }}>
+                <span style={{ fontSize: "0.75rem", fontWeight: 700, color: "#6B004F", textTransform: "uppercase" }}>
                   Customers ({filteredData.customers.length})
                 </span>
                 {filteredData.customers.map(c => (
-                  <div key={c.id} style={{ marginTop: '8px', fontSize: '0.84rem', fontWeight: 600 }}>{c.name} ({c.email})</div>
+                  <div key={c.id} style={{ marginTop: "8px", fontSize: "0.84rem", fontWeight: 600 }}>{c.name} ({c.email})</div>
                 ))}
               </div>
 
               {/* Profile matches */}
-              <div style={{ padding: '14px', borderRadius: '12px', border: 'var(--adm-card-border)', background: 'var(--adm-search-bg)' }}>
-                <span style={{ fontSize: '0.75rem', fontWeight: 700, color: '#2563EB', textTransform: 'uppercase' }}>
+              <div style={{ padding: "14px", borderRadius: "12px", border: "var(--adm-card-border)", background: "var(--adm-search-bg)" }}>
+                <span style={{ fontSize: "0.75rem", fontWeight: 700, color: "#2563EB", textTransform: "uppercase" }}>
                   Profiles ({filteredData.profiles.length})
                 </span>
                 {filteredData.profiles.map(p => (
-                  <div key={p.id} style={{ marginTop: '8px', fontSize: '0.84rem', fontWeight: 600 }}>
-                    <a href={`/p/${p.slug}`} target="_blank" rel="noreferrer" style={{ color: '#2563EB', textDecoration: 'none' }}>
+                  <div key={p.id} style={{ marginTop: "8px", fontSize: "0.84rem", fontWeight: 600 }}>
+                    <a href={"/p/" + p.slug} target="_blank" rel="noreferrer" style={{ color: "#2563EB", textDecoration: "none" }}>
                       {p.name} (/p/{p.slug})
                     </a>
                   </div>
@@ -2046,20 +1418,18 @@ export default function AdminDashboard({ initialTab = 'overview', initialOrderId
               </div>
 
               {/* NFC Card matches */}
-              <div style={{ padding: '14px', borderRadius: '12px', border: 'var(--adm-card-border)', background: 'var(--adm-search-bg)' }}>
-                <span style={{ fontSize: '0.75rem', fontWeight: 700, color: '#16A36A', textTransform: 'uppercase' }}>
+              <div style={{ padding: "14px", borderRadius: "12px", border: "var(--adm-card-border)", background: "var(--adm-search-bg)" }}>
+                <span style={{ fontSize: "0.75rem", fontWeight: 700, color: "#16A36A", textTransform: "uppercase" }}>
                   NFC Cards ({filteredData.cards.length})
                 </span>
                 {filteredData.cards.map(c => (
-                  <div key={c.id} style={{ marginTop: '8px', fontSize: '0.84rem', fontWeight: 600 }}>{c.cardCode} — {c.customerName || 'Unassigned'}</div>
+                  <div key={c.id} style={{ marginTop: "8px", fontSize: "0.84rem", fontWeight: 600 }}>{c.cardCode} — {c.customerName || "Unassigned"}</div>
                 ))}
               </div>
             </div>
           </div>
         )}
 
-        {/* Dashboard Main Scrollable View */}
-        <div className="admin-main-content" style={{ padding: '28px 32px 48px', width: '100%', boxSizing: 'border-box' }}>
           {/* ====================================================================
               VIEW: DASHBOARD OVERVIEW (Exact Reference Image 2)
               ==================================================================== */}
@@ -2520,6 +1890,125 @@ export default function AdminDashboard({ initialTab = 'overview', initialOrderId
                       </tbody>
                     </table>
                   </div>
+                </div>
+              </div>
+
+              {/* Recent Customers & Direct WhatsApp Section */}
+              <div
+                style={{
+                  backgroundColor: 'var(--adm-card-bg)',
+                  borderRadius: '16px',
+                  border: 'var(--adm-card-border)',
+                  padding: '24px',
+                  boxShadow: 'var(--adm-card-shadow)',
+                  marginBottom: '28px'
+                }}
+              >
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '18px', flexWrap: 'wrap', gap: '12px' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                    <div style={{ width: '34px', height: '34px', borderRadius: '10px', backgroundColor: 'rgba(34, 197, 94, 0.15)', color: '#16A34A', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                      <Users size={18} />
+                    </div>
+                    <div>
+                      <h3 style={{ margin: 0, fontSize: '1rem', fontWeight: 700, color: 'var(--adm-text-primary)' }}>
+                        Recent Customers & Direct Contact
+                      </h3>
+                      <p style={{ margin: '2px 0 0', fontSize: '0.76rem', color: 'var(--adm-text-secondary)' }}>
+                        Manage customer relations with one-click manual WhatsApp chat
+                      </p>
+                    </div>
+                  </div>
+                  <div style={{ display: 'flex', gap: '8px' }}>
+                    <button
+                      type="button"
+                      onClick={() => setNewCustomerModal(true)}
+                      style={{
+                        display: 'inline-flex',
+                        alignItems: 'center',
+                        gap: '6px',
+                        padding: '6px 14px',
+                        borderRadius: '9999px',
+                        backgroundColor: '#6B004F',
+                        color: '#FFFFFF',
+                        border: 'none',
+                        fontSize: '0.76rem',
+                        fontWeight: 700,
+                        cursor: 'pointer'
+                      }}
+                    >
+                      <UserPlus size={13} />
+                      <span>Add Customer</span>
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setActiveTab('customers')}
+                      style={{
+                        padding: '6px 14px',
+                        borderRadius: '9999px',
+                        border: 'var(--adm-card-border)',
+                        backgroundColor: 'var(--adm-card-bg)',
+                        color: 'var(--adm-text-primary)',
+                        fontSize: '0.76rem',
+                        fontWeight: 600,
+                        cursor: 'pointer'
+                      }}
+                    >
+                      View All Customers ({customers.length})
+                    </button>
+                  </div>
+                </div>
+
+                <div style={{ overflowX: 'auto' }}>
+                  <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left', fontSize: '0.82rem' }}>
+                    <thead>
+                      <tr style={{ borderBottom: 'var(--adm-divider)', color: 'var(--adm-text-secondary)', fontSize: '0.74rem', textTransform: 'uppercase' }}>
+                        <th style={{ padding: '8px 12px 10px', fontWeight: 600 }}>Customer</th>
+                        <th style={{ padding: '8px 12px 10px', fontWeight: 600 }}>Company</th>
+                        <th style={{ padding: '8px 12px 10px', fontWeight: 600 }}>Contact</th>
+                        <th style={{ padding: '8px 12px 10px', fontWeight: 600 }}>Status</th>
+                        <th style={{ padding: '8px 12px 10px', fontWeight: 600, textAlign: 'center' }}>WhatsApp Action</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {customers.length === 0 ? (
+                        <tr>
+                          <td colSpan={5} style={{ padding: '32px 12px', textAlign: 'center', color: 'var(--adm-text-secondary)' }}>
+                            No customers found. Click &quot;Add Customer&quot; to create the first record.
+                          </td>
+                        </tr>
+                      ) : (
+                        customers.slice(0, 5).map((cust) => (
+                          <tr key={cust.id} style={{ borderBottom: 'var(--adm-divider)' }}>
+                            <td style={{ padding: '12px' }}>
+                              <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                                <div style={{ width: '28px', height: '28px', borderRadius: '50%', backgroundColor: '#6B004F', color: '#FFFFFF', overflow: 'hidden', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '0.72rem', fontWeight: 700 }}>
+                                  {cust.avatar ? <img src={cust.avatar} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} /> : (cust.name?.charAt(0) || 'C')}
+                                </div>
+                                <div>
+                                  <div style={{ color: 'var(--adm-text-primary)', fontWeight: 600, fontSize: '0.82rem' }}>{cust.name}</div>
+                                  <div style={{ color: 'var(--adm-text-secondary)', fontSize: '0.7rem' }}>{cust.email || 'No email provided'}</div>
+                                </div>
+                              </div>
+                            </td>
+                            <td style={{ padding: '12px', color: 'var(--adm-text-secondary)' }}>
+                              {cust.company || '—'}
+                            </td>
+                            <td style={{ padding: '12px', color: 'var(--adm-text-secondary)' }}>
+                              {cust.phone || cust.whatsapp || '—'}
+                            </td>
+                            <td style={{ padding: '12px' }}>
+                              <span style={{ fontSize: '0.72rem', fontWeight: 600, padding: '2px 8px', borderRadius: '9999px', backgroundColor: cust.status === 'suspended' ? 'rgba(239, 68, 68, 0.15)' : 'rgba(16, 185, 129, 0.15)', color: cust.status === 'suspended' ? '#EF4444' : '#10B981' }}>
+                                ● {cust.status || 'Active'}
+                              </span>
+                            </td>
+                            <td style={{ padding: '12px', textAlign: 'center' }}>
+                              <WhatsAppContactButton customerOrOrder={cust} size="sm" />
+                            </td>
+                          </tr>
+                        ))
+                      )}
+                    </tbody>
+                  </table>
                 </div>
               </div>
 
@@ -2989,7 +2478,8 @@ export default function AdminDashboard({ initialTab = 'overview', initialOrderId
                         </td>
                         <td style={{ padding: '12px', color: 'var(--adm-text-secondary)' }}>{c.joinedDate || '2026-10-14'}</td>
                         <td style={{ padding: '12px', textAlign: 'center' }}>
-                          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px' }}>
+                          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px', flexWrap: 'wrap' }}>
+                            <WhatsAppContactButton customerOrOrder={c} size="sm" />
                             <button
                               type="button"
                               onClick={() => setEditingCustomer(c)}
@@ -3122,7 +2612,8 @@ export default function AdminDashboard({ initialTab = 'overview', initialOrderId
                       </div>
 
                       {/* Action Buttons */}
-                      <div style={{ display: 'flex', gap: '8px', marginTop: '2px' }}>
+                      <div style={{ display: 'flex', gap: '8px', marginTop: '2px', flexWrap: 'wrap' }}>
+                        <WhatsAppContactButton customerOrOrder={c} size="sm" style={{ flex: '1 1 100%', justifyContent: 'center' }} />
                         <button
                           type="button"
                           onClick={() => setEditingCustomer(c)}
@@ -6482,8 +5973,7 @@ export default function AdminDashboard({ initialTab = 'overview', initialOrderId
 
             </div>
           )}
-        </div>
-      </div>
+      </DashboardLayout>
 
       {/* ====================================================================
           MODAL: DESIGN REVIEW & APPROVAL (With Card 3D Preview & PDF Export)
@@ -6642,55 +6132,20 @@ export default function AdminDashboard({ initialTab = 'overview', initialOrderId
       {/* ====================================================================
           MODAL: ADD CUSTOMER
           ==================================================================== */}
-      {newCustomerModal && (
-        <div style={{ position: 'fixed', inset: 0, backgroundColor: 'rgba(8, 6, 13, 0.85)', backdropFilter: 'blur(4px)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000, padding: '20px' }}>
-          <div style={{ backgroundColor: 'var(--adm-card-bg)', borderRadius: '20px', width: '100%', maxWidth: '440px', padding: '28px', border: 'var(--adm-card-border)' }}>
-            <h3 style={{ margin: '0 0 16px', fontSize: '1.2rem', fontWeight: 800, color: 'var(--adm-text-primary)' }}>Add New Customer</h3>
-            <form onSubmit={handleCreateCustomer} style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
-              <div>
-                <label style={{ display: 'block', fontSize: '0.78rem', fontWeight: 600, marginBottom: '4px' }}>Full Name</label>
-                <input
-                  type="text"
-                  required
-                  value={newCustForm.name}
-                  onChange={(e) => setNewCustForm({ ...newCustForm, name: e.target.value })}
-                  placeholder="e.g. Zainab Tariq"
-                  style={{ width: '100%', padding: '9px 12px', borderRadius: '8px', border: 'var(--adm-card-border)' }}
-                />
-              </div>
-              <div>
-                <label style={{ display: 'block', fontSize: '0.78rem', fontWeight: 600, marginBottom: '4px' }}>Email Address</label>
-                <input
-                  type="email"
-                  required
-                  value={newCustForm.email}
-                  onChange={(e) => setNewCustForm({ ...newCustForm, email: e.target.value })}
-                  placeholder="zainab@example.com"
-                  style={{ width: '100%', padding: '9px 12px', borderRadius: '8px', border: 'var(--adm-card-border)' }}
-                />
-              </div>
-              <div>
-                <label style={{ display: 'block', fontSize: '0.78rem', fontWeight: 600, marginBottom: '4px' }}>Company</label>
-                <input
-                  type="text"
-                  value={newCustForm.company}
-                  onChange={(e) => setNewCustForm({ ...newCustForm, company: e.target.value })}
-                  placeholder="Studio Crescent"
-                  style={{ width: '100%', padding: '9px 12px', borderRadius: '8px', border: 'var(--adm-card-border)' }}
-                />
-              </div>
-              <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '10px', marginTop: '10px' }}>
-                <button type="button" onClick={() => setNewCustomerModal(false)} style={{ padding: '8px 16px', borderRadius: '8px', border: 'var(--adm-card-border)', background: 'none' }}>
-                  Cancel
-                </button>
-                <button type="submit" style={{ padding: '8px 20px', borderRadius: '8px', border: 'none', backgroundColor: '#6B00FF', color: '#FFFFFF', fontWeight: 600 }}>
-                  Save Customer
-                </button>
-              </div>
-            </form>
-          </div>
-        </div>
-      )}
+      <AddCustomerModal
+        isOpen={newCustomerModal}
+        onClose={() => setNewCustomerModal(false)}
+        onSaveCustomer={(newCust) => {
+          saveCustomer(newCust);
+          setFulfillmentToast({
+            title: 'Customer Added!',
+            message: `Customer ${newCust.name} has been successfully added to your records.`
+          });
+          setTimeout(() => setFulfillmentToast(null), 4500);
+        }}
+        existingCustomers={customers}
+        isDark={isDark}
+      />
 
       {/* ====================================================================
           MODAL: CREATE PROFILE

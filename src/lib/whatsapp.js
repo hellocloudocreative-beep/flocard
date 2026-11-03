@@ -412,3 +412,66 @@ export function getPrintOrderWhatsAppUrl(order, targetWhatsApp = '919778278552')
   return `https://wa.me/${cleanPhone}?text=${encodeURIComponent(message)}`;
 }
 
+/**
+ * Validate whether a string has a usable phone/WhatsApp number
+ */
+export function isValidWhatsAppNumber(rawNumber) {
+  if (!rawNumber) return false;
+  const clean = String(rawNumber).replace(/[^0-9]/g, '');
+  return clean.length >= 8 && clean.length <= 15;
+}
+
+/**
+ * Clean and format a phone/WhatsApp number with default '91' prepend for 10-digit numbers
+ */
+export function formatWhatsAppNumber(rawNumber) {
+  if (!rawNumber) return '';
+  const clean = String(rawNumber).replace(/[^0-9]/g, '');
+  if (!clean) return '';
+  return clean.length === 10 ? `91${clean}` : clean;
+}
+
+/**
+ * Generate official manual WhatsApp click-to-chat URL for contacting a customer directly.
+ * Formats:
+ * 1. "Hello [Customer Name], we received your FLOCARDS card request. We will contact you regarding the next steps."
+ * 2. Or custom text provided by the admin.
+ * Returns null if no valid number is available (so UI can disable button).
+ */
+export function getManualCustomerWhatsAppUrl(customerOrOrder, customText = '') {
+  if (!customerOrOrder) return null;
+  const rawNumber =
+    customerOrOrder.whatsapp ||
+    customerOrOrder.whatsappNumber ||
+    customerOrOrder.phone ||
+    customerOrOrder.customerPhone ||
+    customerOrOrder.customerDetails?.phone ||
+    customerOrOrder.customerDetails?.whatsapp ||
+    '';
+
+  const clean = String(rawNumber).replace(/[^0-9]/g, '');
+  if (!clean || clean.length < 8) return null;
+
+  // Prepend default Indian country code (91) if 10-digit number without country code
+  const fullNumber = clean.length === 10 ? `91${clean}` : clean;
+
+  const customerName =
+    customerOrOrder.name ||
+    customerOrOrder.customerName ||
+    customerOrOrder.customerDetails?.name ||
+    'there';
+
+  const orderRef =
+    customerOrOrder.orderReference ||
+    customerOrOrder.id ||
+    '';
+
+  let message = customText;
+  if (!message) {
+    message = `Hello ${customerName}, we received your FLOCARDS card request. We will contact you regarding the next steps.`;
+  }
+
+  return `https://wa.me/${fullNumber}?text=${encodeURIComponent(message)}`;
+}
+
+

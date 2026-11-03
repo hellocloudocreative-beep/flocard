@@ -50,6 +50,7 @@ import CustomerCardPreview from '../../components/CustomerCardPreview';
 import OrderPrintDownloadsPanel from '../../components/admin/OrderPrintDownloadsPanel';
 import { uploadImage } from '../../lib/uploadImage';
 import { queueWhatsAppNotification, getWhatsAppOutbox, retryWhatsAppMessage } from '../../lib/whatsapp';
+import WhatsAppContactButton from '../../components/dashboard/WhatsAppContactButton';
 
 export default function AdminOrderManager({ initialOrderId = null }) {
   const { user } = useAuth();
@@ -999,7 +1000,8 @@ export default function AdminOrderManager({ initialOrderId = null }) {
 
                       {/* Actions */}
                       <td style={{ padding: '12px 14px', textAlign: 'center' }}>
-                        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px' }}>
+                        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px', flexWrap: 'wrap' }}>
+                          <WhatsAppContactButton customerOrOrder={order} size="sm" />
                           <button
                             type="button"
                             onClick={() => handleOpenUpdateModal(order)}
@@ -1208,14 +1210,17 @@ export default function AdminOrderManager({ initialOrderId = null }) {
               overflowY: 'auto'
             }}
           >
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '18px' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '18px', flexWrap: 'wrap', gap: '12px' }}>
               <div>
                 <h3 style={{ margin: 0, fontSize: '1.25rem', color: textPrimary, fontWeight: 700 }}>
                   Update Order Journey: {selectedOrder.orderReference || selectedOrder.id}
                 </h3>
-                <p style={{ margin: '4px 0 0', fontSize: '0.8rem', color: textSecondary }}>
-                  Customer: <strong>{selectedOrder.customerName}</strong> ({selectedOrder.customerEmail})
-                </p>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginTop: '6px', flexWrap: 'wrap' }}>
+                  <p style={{ margin: 0, fontSize: '0.8rem', color: textSecondary }}>
+                    Customer: <strong>{selectedOrder.customerName}</strong> ({selectedOrder.customerEmail})
+                  </p>
+                  <WhatsAppContactButton customerOrOrder={selectedOrder} size="sm" />
+                </div>
               </div>
               <button
                 type="button"

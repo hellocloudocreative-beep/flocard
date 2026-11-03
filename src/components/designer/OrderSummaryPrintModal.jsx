@@ -158,19 +158,8 @@ export default function OrderSummaryPrintModal({
 
       const created = await onSubmitOrder(orderPayload);
       setSubmittedOrder(created);
-
-      // Open WhatsApp click-to-chat directed to FLOCARDS business number
-      const waUrl = getPrintOrderWhatsAppUrl(created, '919778278552');
-      try {
-        const opened = window.open(waUrl, '_blank');
-        if (!opened) {
-          console.warn('[WhatsApp] Popup was blocked by browser. Fallback button available.');
-        }
-      } catch (err) {
-        console.warn('[WhatsApp] Popup open error:', err);
-      }
     } catch (err) {
-      setErrorMessage(err.message || 'Failed to submit print order. Please try again.');
+      setErrorMessage(err.message || 'Failed to submit card request. Please try again.');
     } finally {
       setIsSubmitting(false);
     }
@@ -305,18 +294,18 @@ export default function OrderSummaryPrintModal({
               </div>
 
               <h3 style={{ fontSize: '1.4rem', fontWeight: 800, color: isLight ? '#191522' : '#FFFFFF', marginBottom: '8px' }}>
-                Print Order Placed Successfully!
+                Card Request Submitted Successfully!
               </h3>
 
               <p style={{ fontSize: '0.86rem', color: isLight ? '#64748B' : '#94A3B8', maxWidth: '440px', margin: '0 auto 20px', lineHeight: 1.5 }}>
-                Your custom NFC card order has been created and logged in the FLOCARDS administrative production queue.
+                Your custom NFC card design and details have been saved to your account. Our team has received your request and will review it shortly.
               </p>
 
               {/* Order Reference Box */}
               <div
                 style={{
-                  backgroundColor: isLight ? '#F1EEF8' : 'rgba(107, 0, 255, 0.1)',
-                  border: '1px solid rgba(168, 85, 247, 0.3)',
+                  backgroundColor: isLight ? '#F1EEF8' : 'rgba(107, 0, 79, 0.12)',
+                  border: isLight ? '1px solid #E8D5E5' : '1px solid rgba(168, 85, 247, 0.3)',
                   borderRadius: '14px',
                   padding: '16px',
                   marginBottom: '22px',
@@ -328,9 +317,9 @@ export default function OrderSummaryPrintModal({
               >
                 <div style={{ textAlign: 'left' }}>
                   <div style={{ fontSize: '0.72rem', color: isLight ? '#64748B' : '#94A3B8', textTransform: 'uppercase', fontWeight: 600 }}>
-                    Order Reference Code
+                    Request Reference Code
                   </div>
-                  <div style={{ fontSize: '1.25rem', fontWeight: 800, fontFamily: 'monospace', color: 'var(--accent-purple, #A855F7)' }}>
+                  <div style={{ fontSize: '1.25rem', fontWeight: 800, fontFamily: 'monospace', color: '#6B004F' }}>
                     {submittedOrder.orderReference || submittedOrder.id}
                   </div>
                 </div>
@@ -374,77 +363,50 @@ export default function OrderSummaryPrintModal({
                   <strong style={{ color: isLight ? '#191522' : '#FFFFFF' }}>{submittedOrder.quantity} Unit(s)</strong>
                 </div>
                 <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-                  <span style={{ color: isLight ? '#64748B' : '#94A3B8' }}>Invoice Add-on:</span>
-                  <strong style={{ color: submittedOrder.hasInvoiceAddon ? '#22C55E' : (isLight ? '#64748B' : '#94A3B8') }}>
-                    {submittedOrder.hasInvoiceAddon ? 'Included (Official Tax Invoice)' : 'Standard Print'}
-                  </strong>
-                </div>
-                <div style={{ display: 'flex', justifyContent: 'space-between', borderTop: isLight ? '1px solid #E2E8F0' : '1px solid rgba(255, 255, 255, 0.08)', paddingTop: '8px', marginTop: '2px' }}>
-                  <span style={{ color: isLight ? '#64748B' : '#94A3B8' }}>Total Payable:</span>
-                  <strong style={{ fontSize: '1rem', color: 'var(--accent-purple, #A855F7)' }}>
-                    ₹{submittedOrder.totalAmount}
-                  </strong>
-                </div>
-                <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-                  <span style={{ color: isLight ? '#64748B' : '#94A3B8' }}>Payment Status:</span>
+                  <span style={{ color: isLight ? '#64748B' : '#94A3B8' }}>Status:</span>
                   <span
                     style={{
                       fontSize: '0.74rem',
                       fontWeight: 700,
                       padding: '2px 8px',
                       borderRadius: '9999px',
-                      backgroundColor: 'rgba(245, 158, 11, 0.15)',
-                      color: '#F59E0B'
+                      backgroundColor: 'rgba(59, 130, 246, 0.15)',
+                      color: '#3B82F6'
                     }}
                   >
-                    ● Payment Pending
+                    ● New Request (In Review)
                   </span>
                 </div>
               </div>
 
-              {/* WhatsApp Action */}
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+              {/* Navigation Actions */}
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
                 <a
-                  href={getPrintOrderWhatsAppUrl(submittedOrder, '919778278552')}
-                  target="_blank"
-                  rel="noopener noreferrer"
+                  href="/dashboard/orders"
                   className="btn btn-primary btn-lg"
                   style={{
-                    backgroundColor: '#22C55E',
-                    borderColor: '#22C55E',
+                    backgroundColor: '#6B004F',
+                    borderColor: '#6B004F',
                     color: '#FFFFFF',
-                    fontWeight: 800,
+                    fontWeight: 700,
                     fontSize: '0.92rem',
-                    gap: '10px',
+                    gap: '8px',
                     justifyContent: 'center',
-                    boxShadow: '0 8px 24px rgba(34, 197, 94, 0.4)'
+                    textDecoration: 'none'
                   }}
                 >
-                  <Send size={18} />
-                  <span>Send Order to WhatsApp (+91 97782 78552)</span>
+                  <span>Track Request in Dashboard</span>
+                  <ChevronRight size={18} />
                 </a>
 
-                <p style={{ margin: 0, fontSize: '0.76rem', color: isLight ? '#64748B' : '#94A3B8', lineHeight: 1.4 }}>
-                  WhatsApp opens with your prefilled order summary. Tap <strong>Send</strong> in WhatsApp so our team can confirm production and coordinate your preferred payment method.
-                </p>
-
-                <div style={{ display: 'flex', gap: '10px', marginTop: '10px' }}>
-                  <a
-                    href="/dashboard/orders"
-                    className="btn btn-outline"
-                    style={{ flex: 1, justifyContent: 'center' }}
-                  >
-                    <span>View in Dashboard</span>
-                  </a>
-                  <button
-                    type="button"
-                    onClick={onClose}
-                    className="btn btn-secondary"
-                    style={{ flex: 1, justifyContent: 'center' }}
-                  >
-                    <span>Done</span>
-                  </button>
-                </div>
+                <button
+                  type="button"
+                  onClick={onClose}
+                  className="btn btn-secondary"
+                  style={{ justifyContent: 'center' }}
+                >
+                  <span>Done</span>
+                </button>
               </div>
             </div>
           ) : (

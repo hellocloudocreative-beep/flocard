@@ -95,8 +95,19 @@ try {
   // Ignore in SSR / private browsing
 }
 
+export const SIMPLE_REQUEST_STAGES = [
+  { key: 'new_order', label: 'New Request', step: 1, color: '#3B82F6', badgeBg: 'rgba(59, 130, 246, 0.12)', badgeText: '#60A5FA', description: 'Customer request received and awaiting admin review.' },
+  { key: 'reviewing', label: 'Reviewing', step: 2, color: '#F59E0B', badgeBg: 'rgba(245, 158, 11, 0.12)', badgeText: '#FBBF24', description: 'Admin is reviewing design, contact, and fulfillment details.' },
+  { key: 'approved', label: 'Approved', step: 3, color: '#10B981', badgeBg: 'rgba(16, 185, 129, 0.12)', badgeText: '#34D399', description: 'Request approved. Ready for customer card fulfillment.' },
+  { key: 'completed', label: 'Completed', step: 4, color: '#8B5CF6', badgeBg: 'rgba(139, 92, 246, 0.12)', badgeText: '#A78BFA', description: 'Card request completed and delivered to customer.' },
+  { key: 'cancelled', label: 'Cancelled', step: 0, color: '#EF4444', badgeBg: 'rgba(239, 68, 68, 0.12)', badgeText: '#F87171', description: 'Card request has been cancelled.' }
+];
+
 export const ORDER_STAGES = [
-  { key: 'new_order', label: 'New Order', step: 1, description: 'Order received and digital design submitted for print review.' },
+  { key: 'new_order', label: 'New Request', step: 1, description: 'Order received and digital design submitted for print review.' },
+  { key: 'reviewing', label: 'Reviewing', step: 2, description: 'Print-ready vector assets, typography, and bleed margins under pre-press verification.' },
+  { key: 'approved', label: 'Approved', step: 3, description: 'Card design verified and approved for fulfillment.' },
+  { key: 'completed', label: 'Completed', step: 4, description: 'Card delivered to recipient and NFC redirect routing activated.' },
   { key: 'design_review', label: 'Design Review', step: 2, description: 'Print-ready vector assets, typography, and bleed margins under pre-press verification.' },
   { key: 'awaiting_confirmation', label: 'Awaiting Confirmation', step: 3, description: 'Order details and delivery address queued for WhatsApp confirmation with client.' },
   { key: 'awaiting_payment', label: 'Awaiting Payment', step: 4, description: 'Card design verified. Invoice and payment settlement pending verification.' },
@@ -118,12 +129,12 @@ export const EXCEPTION_STAGES = [
 export function normalizeOrderStatus(status) {
   if (!status) return 'new_order';
   const s = String(status).toLowerCase().trim();
-  // Map legacy & alias statuses
-  if (s === 'design_submitted' || s === 'pending' || s === 'draft' || s === 'submitted' || s === 'new') return 'new_order';
-  if (s === 'artwork_approved' || s === 'processing' || s === 'in_review') return 'design_review';
-  if (s === 'manufacturing_started' || s === 'printing') return 'manufacturing';
-  if (s === 'quality_inspection') return 'quality_check';
-  if (s === 'shipped') return 'dispatched';
+  // Map simplified 5-stage workflow: New Request, Reviewing, Approved, Completed, Cancelled
+  if (s === 'design_submitted' || s === 'new_request' || s === 'new_order' || s === 'pending' || s === 'draft' || s === 'submitted' || s === 'new') return 'new_order';
+  if (s === 'reviewing' || s === 'design_review' || s === 'in_review' || s === 'processing' || s === 'awaiting_confirmation') return 'reviewing';
+  if (s === 'approved' || s === 'artwork_verified' || s === 'artwork_approved' || s === 'payment_confirmed' || s === 'awaiting_payment' || s === 'manufacturing' || s === 'shipped') return 'approved';
+  if (s === 'completed' || s === 'delivered' || s === 'dispatched' || s === 'quality_check') return 'completed';
+  if (s === 'cancelled' || s === 'rejected') return 'cancelled';
   return s;
 }
 
@@ -2653,17 +2664,28 @@ export const StorageEngine = {
   },
   saveCustomer: (cust) => {
     const list = getLocal('customers', INITIAL_CUSTOMERS);
-    const index = list.findIndex(c => c.id === cust.id || c.email === cust.email);
+    const cleanEmail = cust.email ? String(cust.email).toLowerCase().trim() : '';
+    const cleanId = cust.id ? String(cust.id).trim() : '';
+    const index = list.findIndex(c => {
+      if (cleanId && String(c.id).trim() === cleanId) return true;
+      if (cleanEmail && c.email && String(c.email).toLowerCase().trim() === cleanEmail) return true;
+      return false;
+    });
     let saved;
     if (index >= 0) {
       list[index] = { ...list[index], ...cust, updatedAt: new Date().toISOString() };
       saved = list[index];
     } else {
-      saved = { ...cust, id: cust.id || `cust_${Date.now()}`, joinedDate: new Date().toISOString().split('T')[0] };
+      saved = {
+        ...cust,
+        id: cust.id || `cust_${Date.now()}`,
+        status: cust.status || 'active',
+        joinedDate: cust.joinedDate || new Date().toISOString().split('T')[0]
+      };
       list.unshift(saved);
     }
     setLocal('customers', list);
-    StorageEngine.addAuditLog('Customer', `Customer record saved: ${cust.name}`, 'You');
+    StorageEngine.addAuditLog('Customer', `Customer record saved: ${cust.name || 'New Customer'}`, 'You');
     // Asynchronously synchronize with Supabase cloud
     StorageEngine.syncCustomerToCloud(saved);
     return saved;
