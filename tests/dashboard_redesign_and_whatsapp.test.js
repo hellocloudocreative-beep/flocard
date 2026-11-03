@@ -108,3 +108,4 @@ assert.notStrictEqual(newCust.phone, '+91 90000 00000');
 console.log('✓ Test 4 Passed: Customer creation preserves empty phone/whatsapp without injecting fake numbers.');
 
 console.log('\n🎉 ALL DASHBOARD REDESIGN & WHATSAPP TESTS PASSED SUCCESSFULLY! 🎉\n');
+
