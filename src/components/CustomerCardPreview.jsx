@@ -10,9 +10,24 @@
 import React, { useState, useMemo, useRef } from 'react';
 import CardCanvas from './CardCanvas';
 import Card3DPreview from './Card3DPreview';
-import { Eye, RotateCw, AlertTriangle, CheckCircle2, QrCode, Type, Image as ImageIcon, Download, Printer } from 'lucide-react';
+import {
+  Eye,
+  RotateCw,
+  AlertTriangle,
+  CheckCircle2,
+  QrCode,
+  Type,
+  Image as ImageIcon,
+  Download,
+  Printer,
+  Edit3,
+  Sparkles,
+  ShieldCheck,
+  Layers
+} from 'lucide-react';
 import { EDITIONS } from '../lib/constants';
 import { useData } from '../context/DataContext';
+import { useAuth } from '../context/AuthContext';
 import { exportCardPDF, downloadBothSides, generateCardPrintPDF, renderAuthoritativeCardCanvas } from '../lib/pdfExport';
 import { normalizeCardDesign } from '../lib/cardArtworkService';
 
@@ -28,6 +43,7 @@ export default function CustomerCardPreview({
   showControls = true,
   showExport = false,
   isLight = false,
+  isAdmin: forcedIsAdmin = null,
   className = ''
 }) {
   let contextDesigns = [];
@@ -38,6 +54,30 @@ export default function CustomerCardPreview({
     // If rendered outside DataProvider
   }
 
+  let authUser = null;
+  let authIsAdmin = false;
+  try {
+    const auth = useAuth();
+    authUser = auth?.user;
+    authIsAdmin = Boolean(auth?.isAdmin);
+  } catch {
+    // If rendered outside AuthProvider
+  }
+
+  const effectiveIsAdmin = forcedIsAdmin !== null ? Boolean(forcedIsAdmin) : authIsAdmin;
+
+  const hasEditedVersion = Boolean(order?.editedDesign);
+  const isApprovedAdminEdited = Boolean(order?.approvedVersion === 'admin_edited' && order?.editedDesign);
+
+  // Version view state:
+  // Admin: 'original' | 'admin_print' | 'edited'
+  // Customer: 'approved' | 'original'
+  const [versionView, setVersionView] = useState(() => {
+    if (effectiveIsAdmin) return 'original';
+    if (isApprovedAdminEdited) return 'approved';
+    return 'original';
+  });
+
   const activeFallbackDesigns = fallbackDesigns && fallbackDesigns.length > 0 ? fallbackDesigns : contextDesigns;
   const [side, setSide] = useState('front');
   const [isExporting, setIsExporting] = useState(false);
@@ -46,9 +86,26 @@ export default function CustomerCardPreview({
   const frontCanvasRef = useRef(null);
   const backCanvasRef = useRef(null);
 
+  // Resolve target design based on versionView
+  const targetDesignRecord = useMemo(() => {
+    if (!order) return design;
+    if (versionView === 'original') {
+      return order.originalDesign || order.design || order;
+    }
+    if (versionView === 'edited' || versionView === 'approved') {
+      return order.editedDesign || order.design || order;
+    }
+    if (versionView === 'admin_print') {
+      return order.editedDesign || order.originalDesign || order.design || order;
+    }
+    return order.design || order;
+  }, [order, design, versionView]);
+
+  const isAdminPrintMode = versionView === 'admin_print';
+
   const { edition, templateType, isLegacyFallback, config } = useMemo(() => {
-    return normalizeCardDesign(design || order, activeFallbackDesigns);
-  }, [design, order, activeFallbackDesigns]);
+    return normalizeCardDesign(targetDesignRecord, activeFallbackDesigns);
+  }, [targetDesignRecord, activeFallbackDesigns]);
 
   const editionName = EDITIONS[edition]?.name || edition.toUpperCase();
   const hasCustomLogo = Boolean(config.customerLogo?.url);
@@ -57,14 +114,14 @@ export default function CustomerCardPreview({
     setIsExporting(true);
     try {
       // Authoritative prepress export: generates directly from design data with CR80 dimensions & bleed
-      await generateCardPrintPDF(design || order, {
+      await generateCardPrintPDF(targetDesignRecord, {
         mode: 'dual',
         withBleed: true,
-        download: true
+        download: true,
+        adminPrintMode: isAdminPrintMode
       });
     } catch (e) {
       console.error('PDF export error:', e);
-      // Fallback to canvas reference if available
       try {
         await exportCardPDF({
           frontCanvas: frontCanvasRef.current,
@@ -85,18 +142,24 @@ export default function CustomerCardPreview({
     try {
       let front = frontCanvasRef.current;
       let back = backCanvasRef.current;
-      if (!front || typeof front.toDataURL !== 'function') {
-        front = await renderAuthoritativeCardCanvas(design || order, 'front', { withBleed: false });
+      if (!front || typeof front.toDataURL !== 'function' || isAdminPrintMode) {
+        front = await renderAuthoritativeCardCanvas(targetDesignRecord, 'front', {
+          withBleed: false,
+          adminPrintMode: isAdminPrintMode
+        });
       }
-      if (!back || typeof back.toDataURL !== 'function') {
-        back = await renderAuthoritativeCardCanvas(design || order, 'back', { withBleed: false });
+      if (!back || typeof back.toDataURL !== 'function' || isAdminPrintMode) {
+        back = await renderAuthoritativeCardCanvas(targetDesignRecord, 'back', {
+          withBleed: false,
+          adminPrintMode: isAdminPrintMode
+        });
       }
 
       await downloadBothSides({
         frontCanvas: front,
         backCanvas: back,
         designName: config.front?.name ? `${config.front.name}-FLOCARD` : 'FLOCARD-Card',
-        editionName
+        editionName: isAdminPrintMode ? `${editionName} (White & Black Print)` : editionName
       });
     } catch (e) {
       console.error('Artwork download error:', e);
@@ -127,6 +190,7 @@ export default function CustomerCardPreview({
           config={config}
           canvasRef={frontCanvasRef}
           width={1080}
+          adminPrintMode={isAdminPrintMode}
         />
         <CardCanvas
           side="back"
@@ -135,8 +199,172 @@ export default function CustomerCardPreview({
           config={config}
           canvasRef={backCanvasRef}
           width={1080}
+          adminPrintMode={isAdminPrintMode}
         />
       </div>
+
+      {/* Admin Version Selector & Edit Button */}
+      {effectiveIsAdmin && (
+        <div
+          style={{
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'space-between',
+            width: '100%',
+            marginBottom: '10px',
+            flexWrap: 'wrap',
+            gap: '8px'
+          }}
+        >
+          <div
+            style={{
+              display: 'inline-flex',
+              padding: '3px',
+              borderRadius: '8px',
+              backgroundColor: isLight ? '#E5DDF2' : 'rgba(255, 255, 255, 0.06)',
+              border: isLight ? '1px solid #D8B4FE' : '1px solid rgba(255, 255, 255, 0.1)'
+            }}
+          >
+            <button
+              type="button"
+              onClick={() => setVersionView('original')}
+              style={{
+                padding: '4px 10px',
+                borderRadius: '6px',
+                border: 'none',
+                backgroundColor: versionView === 'original' ? '#7038F8' : 'transparent',
+                color: versionView === 'original' ? '#FFFFFF' : (isLight ? '#4C1D95' : '#CBD5E1'),
+                fontSize: '0.73rem',
+                fontWeight: 600,
+                cursor: 'pointer',
+                transition: 'all 0.15s ease'
+              }}
+            >
+              Original Customer Design
+            </button>
+            <button
+              type="button"
+              onClick={() => setVersionView('admin_print')}
+              style={{
+                padding: '4px 10px',
+                borderRadius: '6px',
+                border: 'none',
+                backgroundColor: versionView === 'admin_print' ? '#7038F8' : 'transparent',
+                color: versionView === 'admin_print' ? '#FFFFFF' : (isLight ? '#4C1D95' : '#CBD5E1'),
+                fontSize: '0.73rem',
+                fontWeight: 600,
+                cursor: 'pointer',
+                transition: 'all 0.15s ease'
+              }}
+            >
+              Admin Print Version (White & Black)
+            </button>
+            {hasEditedVersion && (
+              <button
+                type="button"
+                onClick={() => setVersionView('edited')}
+                style={{
+                  padding: '4px 10px',
+                  borderRadius: '6px',
+                  border: 'none',
+                  backgroundColor: versionView === 'edited' ? '#7038F8' : 'transparent',
+                  color: versionView === 'edited' ? '#FFFFFF' : (isLight ? '#4C1D95' : '#CBD5E1'),
+                  fontSize: '0.73rem',
+                  fontWeight: 600,
+                  cursor: 'pointer',
+                  transition: 'all 0.15s ease'
+                }}
+              >
+                Admin Edited Artwork
+              </button>
+            )}
+          </div>
+
+          {(order?.id || order?.orderReference) && (
+            <a
+              href={`/designer?orderId=${order.id || order.orderReference}&mode=admin_edit`}
+              style={{
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: '5px',
+                padding: '5px 12px',
+                borderRadius: '8px',
+                backgroundColor: '#7038F8',
+                color: '#FFFFFF',
+                fontSize: '0.74rem',
+                fontWeight: 700,
+                textDecoration: 'none',
+                boxShadow: '0 2px 8px rgba(112, 56, 248, 0.3)'
+              }}
+            >
+              <Edit3 size={13} />
+              <span>Edit Design</span>
+            </a>
+          )}
+        </div>
+      )}
+
+      {/* Customer Dashboard Update Banner */}
+      {!effectiveIsAdmin && isApprovedAdminEdited && (
+        <div
+          style={{
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'space-between',
+            width: '100%',
+            padding: '8px 12px',
+            borderRadius: '10px',
+            backgroundColor: isLight ? 'rgba(112, 56, 248, 0.08)' : 'rgba(112, 56, 248, 0.15)',
+            border: isLight ? '1px solid #D8B4FE' : '1px solid rgba(168, 85, 247, 0.3)',
+            color: isLight ? '#6B00FF' : '#D8B4FE',
+            fontSize: '0.76rem',
+            fontWeight: 600,
+            marginBottom: '10px',
+            boxSizing: 'border-box',
+            flexWrap: 'wrap',
+            gap: '8px'
+          }}
+        >
+          <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+            <Sparkles size={15} style={{ flexShrink: 0 }} />
+            <span>Artwork updated by FLOCARDS design team</span>
+          </div>
+          <div style={{ display: 'inline-flex', padding: '2px', borderRadius: '6px', backgroundColor: isLight ? '#E5DDF2' : 'rgba(0, 0, 0, 0.25)' }}>
+            <button
+              type="button"
+              onClick={() => setVersionView('approved')}
+              style={{
+                padding: '3px 8px',
+                borderRadius: '4px',
+                border: 'none',
+                backgroundColor: versionView === 'approved' ? '#7038F8' : 'transparent',
+                color: versionView === 'approved' ? '#FFFFFF' : (isLight ? '#4C1D95' : '#CBD5E1'),
+                fontSize: '0.7rem',
+                cursor: 'pointer',
+                fontWeight: 600
+              }}
+            >
+              Approved Version
+            </button>
+            <button
+              type="button"
+              onClick={() => setVersionView('original')}
+              style={{
+                padding: '3px 8px',
+                borderRadius: '4px',
+                border: 'none',
+                backgroundColor: versionView === 'original' ? '#7038F8' : 'transparent',
+                color: versionView === 'original' ? '#FFFFFF' : (isLight ? '#4C1D95' : '#CBD5E1'),
+                fontSize: '0.7rem',
+                cursor: 'pointer',
+                fontWeight: 600
+              }}
+            >
+              Original Submission
+            </button>
+          </div>
+        </div>
+      )}
 
       {/* Legacy Order Fallback Indicator */}
       {isLegacyFallback && (
@@ -340,6 +568,7 @@ export default function CustomerCardPreview({
             onSideChange={setSide}
             enableTilt={interactive}
             allowFlip={interactive}
+            adminPrintMode={isAdminPrintMode}
           />
         ) : (
           <CardCanvas
@@ -348,6 +577,7 @@ export default function CustomerCardPreview({
             edition={edition}
             config={config}
             width={width}
+            adminPrintMode={isAdminPrintMode}
           />
         )}
       </div>

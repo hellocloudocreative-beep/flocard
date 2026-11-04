@@ -38,7 +38,8 @@ import {
   UserCheck,
   Users,
   Receipt,
-  CreditCard
+  CreditCard,
+  Edit3
 } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 import { useData } from '../../context/DataContext';
@@ -1002,6 +1003,14 @@ export default function AdminOrderManager({ initialOrderId = null }) {
                       <td style={{ padding: '12px 14px', textAlign: 'center' }}>
                         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px', flexWrap: 'wrap' }}>
                           <WhatsAppContactButton customerOrOrder={order} size="sm" />
+                          <a
+                            href={`/designer?orderId=${order.id || order.orderReference}&mode=admin_edit`}
+                            className="btn btn-outline btn-xs"
+                            style={{ gap: '4px', textDecoration: 'none' }}
+                          >
+                            <Edit3 size={12} />
+                            <span>Edit Design</span>
+                          </a>
                           <button
                             type="button"
                             onClick={() => handleOpenUpdateModal(order)}
@@ -1153,28 +1162,38 @@ export default function AdminOrderManager({ initialOrderId = null }) {
                     </div>
                   )}
 
-                  <button
-                    type="button"
-                    onClick={() => handleOpenUpdateModal(order)}
-                    style={{
-                      width: '100%',
-                      display: 'flex',
-                      alignItems: 'center',
-                      justifyContent: 'center',
-                      gap: '6px',
-                      padding: '10px 14px',
-                      borderRadius: '8px',
-                      background: 'linear-gradient(135deg, #7038f8 0%, #905cfc 100%)',
-                      border: 'none',
-                      color: '#ffffff',
-                      fontSize: '0.8rem',
-                      fontWeight: 700,
-                      cursor: 'pointer'
-                    }}
-                  >
-                    <Sliders size={14} />
-                    <span>Update Order Stage</span>
-                  </button>
+                  <div style={{ display: 'flex', gap: '8px', width: '100%' }}>
+                    <a
+                      href={`/designer?orderId=${order.id || order.orderReference}&mode=admin_edit`}
+                      className="btn btn-outline btn-sm"
+                      style={{ flex: 1, justifyContent: 'center', textDecoration: 'none', gap: '6px' }}
+                    >
+                      <Edit3 size={13} />
+                      <span>Edit Design</span>
+                    </a>
+                    <button
+                      type="button"
+                      onClick={() => handleOpenUpdateModal(order)}
+                      style={{
+                        flex: 2,
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        gap: '6px',
+                        padding: '10px 14px',
+                        borderRadius: '8px',
+                        background: 'linear-gradient(135deg, #7038f8 0%, #905cfc 100%)',
+                        border: 'none',
+                        color: '#ffffff',
+                        fontSize: '0.8rem',
+                        fontWeight: 700,
+                        cursor: 'pointer'
+                      }}
+                    >
+                      <Sliders size={14} />
+                      <span>Update Order Stage</span>
+                    </button>
+                  </div>
                 </div>
               );
             })

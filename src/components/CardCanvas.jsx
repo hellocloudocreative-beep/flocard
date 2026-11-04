@@ -20,16 +20,27 @@ export default function CardCanvas({
   width = 540,
   scale = 1,
   className = '',
-  onLogoWarningChange = null
+  onLogoWarningChange = null,
+  adminPrintMode = false
 }) {
   const [qrDataUrl, setQrDataUrl] = useState('');
+  const isAdminPrint = Boolean(adminPrintMode);
   const editionInfo = EDITIONS[edition] || EDITIONS.purple;
   const defaults = editionInfo.defaults || {};
   const height = Math.round(width / 1.585);
 
-  // Resolved custom colors with edition fallbacks
+  // Resolved custom colors with edition fallbacks or admin print override
   const customColors = config.customColors || {};
-  const colors = {
+  const colors = isAdminPrint ? {
+    primaryAccent: '#000000',
+    secondaryAccent: '#000000',
+    nameColor: '#000000',
+    roleColor: '#000000',
+    detailsColor: '#000000',
+    taglineColor: '#000000',
+    nfcColor: '#000000',
+    qrColor: '#000000'
+  } : {
     primaryAccent: customColors.primaryAccent || defaults.primaryAccent || editionInfo.accentColor,
     secondaryAccent: customColors.secondaryAccent || defaults.secondaryAccent || editionInfo.secondaryColor,
     nameColor: customColors.nameColor || defaults.nameColor || '#FFFFFF',
@@ -56,15 +67,18 @@ export default function CardCanvas({
     position: config.flocardLogo?.position || (templateType === 'customer_logo' ? 'bottom-right' : 'top-left')
   };
 
-  const isMetal = edition === 'metal';
-  const isGold = edition === 'gold';
-  const isPlatinum = edition === 'platinum';
-  const isWhite = edition === 'white';
+  const isMetal = !isAdminPrint && edition === 'metal';
+  const isGold = !isAdminPrint && edition === 'gold';
+  const isPlatinum = !isAdminPrint && edition === 'platinum';
+  const isWhite = isAdminPrint || edition === 'white';
 
-  const isGoldText = (colors.nameColor && (colors.nameColor.toLowerCase() === '#e9c766' || colors.nameColor.toLowerCase() === '#d4af37')) ||
-                     (colors.primaryAccent && (colors.primaryAccent.toLowerCase() === '#e9c766' || colors.primaryAccent.toLowerCase() === '#d4af37'));
+  const isGoldText = !isAdminPrint && (
+    (colors.nameColor && (colors.nameColor.toLowerCase() === '#e9c766' || colors.nameColor.toLowerCase() === '#d4af37')) ||
+    (colors.primaryAccent && (colors.primaryAccent.toLowerCase() === '#e9c766' || colors.primaryAccent.toLowerCase() === '#d4af37'))
+  );
 
   const getCardLogoSrc = () => {
+    if (isAdminPrint) return "/assets/flocard-logo-dark.png";
     if (isGold) return "/assets/flocard-logo-gold.png";
     if (isPlatinum) return "/assets/flocard-logo-platinum.png";
     if (isWhite) {
@@ -351,7 +365,9 @@ export default function CardCanvas({
 
     // 1. Clean solid background matching text contrast (Solid Black or Solid White, NO gradients, NO web textures)
     let solidBg = '#000000';
-    if (edition === 'white') {
+    if (isAdminPrint) {
+      solidBg = '#FFFFFF';
+    } else if (edition === 'white') {
       solidBg = '#FFFFFF';
     } else {
       const nColor = (colors.nameColor || '').toLowerCase();
@@ -365,8 +381,18 @@ export default function CardCanvas({
 
     function renderCanvasElements(ctx, w, h) {
       // Edge stroke with restrained highlight
-      ctx.strokeStyle = edition === 'white' ? 'rgba(0, 0, 0, 0.12)' : edition === 'gold' ? 'rgba(233, 199, 102, 0.4)' : edition === 'metal' ? 'rgba(148, 163, 184, 0.35)' : edition === 'platinum' ? 'rgba(226, 232, 240, 0.3)' : 'rgba(168, 85, 247, 0.4)';
-      ctx.lineWidth = 4;
+      ctx.strokeStyle = isAdminPrint
+        ? 'rgba(0, 0, 0, 0.45)'
+        : edition === 'white'
+        ? 'rgba(0, 0, 0, 0.12)'
+        : edition === 'gold'
+        ? 'rgba(233, 199, 102, 0.4)'
+        : edition === 'metal'
+        ? 'rgba(148, 163, 184, 0.35)'
+        : edition === 'platinum'
+        ? 'rgba(226, 232, 240, 0.3)'
+        : 'rgba(168, 85, 247, 0.4)';
+      ctx.lineWidth = isAdminPrint ? 2 : 4;
       ctx.stroke();
 
       // Helper for metallic specular gradients on Canvas text
@@ -390,6 +416,7 @@ export default function CardCanvas({
       };
 
       const getNameFill = (x, y, textW, textH, fallbackColor) => {
+        if (isAdminPrint) return '#000000';
         if (isWhite) {
           if (isGoldText) return createMetallicGradient(x, y - textH, x + textW, y, 'gold');
           return colors.nameColor || '#000000';
@@ -401,6 +428,7 @@ export default function CardCanvas({
       };
 
       const getRoleFill = (x, y, textW, textH, fallbackColor) => {
+        if (isAdminPrint) return '#000000';
         if (isWhite) {
           if (isGoldText) return '#B8860B';
           return colors.roleColor || '#1A1A1A';
@@ -412,6 +440,7 @@ export default function CardCanvas({
       };
 
       const getTaglineFill = (x, y, textW, textH, fallbackColor) => {
+        if (isAdminPrint) return '#000000';
         if (isWhite) {
           if (isGoldText) return '#996515';
           return colors.taglineColor || '#475569';
@@ -618,18 +647,20 @@ export default function CardCanvas({
           borderRadius: '16px',
           overflow: 'hidden',
           position: 'relative',
-          backgroundImage: isWhite ? 'none' : (editionInfo.bgImage ? `url(${editionInfo.bgImage})` : 'none'),
+          backgroundImage: (isAdminPrint || isWhite) ? 'none' : (editionInfo.bgImage ? `url(${editionInfo.bgImage})` : 'none'),
           backgroundSize: 'cover',
           backgroundPosition: 'center',
-          backgroundColor: isWhite ? '#FFFFFF' : editionInfo.cardBg,
-          border: isWhite ? '1px solid rgba(0, 0, 0, 0.12)' : editionInfo.border,
-          boxShadow: isWhite
+          backgroundColor: (isAdminPrint || isWhite) ? '#FFFFFF' : editionInfo.cardBg,
+          border: isAdminPrint ? '1.5px solid rgba(0, 0, 0, 0.45)' : (isWhite ? '1px solid rgba(0, 0, 0, 0.12)' : editionInfo.border),
+          boxShadow: isAdminPrint
+            ? '0 10px 30px rgba(0, 0, 0, 0.10), 0 0 0 1px rgba(0, 0, 0, 0.12)'
+            : (isWhite
             ? '0 14px 40px -10px rgba(0, 0, 0, 0.18), 0 0 0 1px rgba(0, 0, 0, 0.08)'
             : edition === 'gold'
             ? 'inset 0 0 0 1px rgba(255, 240, 166, 0.08), 0 14px 40px -10px rgba(0, 0, 0, 0.85), 0 0 20px rgba(201, 151, 44, 0.12)'
             : edition === 'metal'
             ? 'inset 0 0 0 1px rgba(226, 232, 240, 0.08), 0 14px 40px -10px rgba(0, 0, 0, 0.9), 0 0 20px rgba(148, 163, 184, 0.12)'
-            : `0 12px 40px -10px ${editionInfo.glow}`,
+            : `0 12px 40px -10px ${editionInfo.glow}`),
           padding: 0,
           position: 'relative',
           transition: 'all 0.3s cubic-bezier(0.16, 1, 0.3, 1)'
@@ -640,6 +671,7 @@ export default function CardCanvas({
           style={{
             position: 'absolute',
             inset: 0,
+            display: isAdminPrint ? 'none' : 'block',
             background: isWhite
               ? 'radial-gradient(circle at 80% 20%, rgba(255, 255, 255, 0.8), transparent 60%)'
               : edition === 'purple'

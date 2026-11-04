@@ -47,7 +47,8 @@ export async function exportCardPDF(arg1 = {}, arg2 = null, arg3 = null, arg4 = 
   if (!isDirectCanvas && !hasCanvasProps && arg1 && typeof arg1 === 'object') {
     // Check if this is an order or design object (e.g. from review modal or admin order list)
     if (arg1.front || arg1.back || arg1.frontConfig || arg1.orderReference || arg1.edition || arg1.designId || arg1.design) {
-      return generateCardPrintPDF(arg1, { withBleed: true, download: true });
+      const opts = (arg2 && typeof arg2 === 'object' && typeof arg2.toDataURL !== 'function') ? arg2 : {};
+      return generateCardPrintPDF(arg1, { withBleed: true, download: true, ...opts });
     }
   }
 

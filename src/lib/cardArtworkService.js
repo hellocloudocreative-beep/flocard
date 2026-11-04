@@ -426,14 +426,19 @@ export async function generateIsolatedLogoAsset(designOrOrder, options = {}) {
 /**
  * Draws the high-precision vector NFC symbol on canvas.
  */
-function drawVectorNfcSymbol(ctx, x, y, color, targetW = 76, edition = null) {
+function drawVectorNfcSymbol(ctx, x, y, color, targetW = 76, edition = null, isAdminPrint = false) {
   const scale = targetW / 76;
   ctx.save();
   ctx.translate(x, y);
   ctx.scale(scale, scale);
 
   let strokeStyle = color || '#FFFFFF';
-  if (edition === 'gold') {
+  if (isAdminPrint) {
+    strokeStyle = '#000000';
+    ctx.shadowColor = 'transparent';
+    ctx.shadowBlur = 0;
+    ctx.shadowOffsetY = 0;
+  } else if (edition === 'gold') {
     const nfcGrad = ctx.createLinearGradient(0, 0, 76, 106);
     nfcGrad.addColorStop(0, '#FFF0A6');
     nfcGrad.addColorStop(0.35, '#E9C766');
@@ -489,22 +494,22 @@ function drawVectorNfcSymbol(ctx, x, y, color, targetW = 76, edition = null) {
 /**
  * Draws the official FLOCARD brand mark on canvas.
  */
-async function drawBrandLogo(ctx, x, y, targetWidth = 297, scale = 100, edition = 'purple') {
+async function drawBrandLogo(ctx, x, y, targetWidth = 297, scale = 100, edition = 'purple', isAdminPrint = false) {
   ctx.save();
   ctx.translate(x, y);
   const s = (scale || 100) / 100;
   ctx.scale(s, s);
 
-  const isGold = edition === 'gold';
-  const isPlatinum = edition === 'platinum';
-  const isWhite = edition === 'white';
+  const isGold = edition === 'gold' && !isAdminPrint;
+  const isPlatinum = edition === 'platinum' && !isAdminPrint;
+  const isWhite = edition === 'white' || isAdminPrint;
 
-  const logoSrc = isGold
+  const logoSrc = (isAdminPrint || isWhite)
+    ? '/assets/flocard-logo-dark.png'
+    : isGold
     ? '/assets/flocard-logo-gold.png'
     : isPlatinum
     ? '/assets/flocard-logo-platinum.png'
-    : isWhite
-    ? '/assets/flocard-logo-dark.png'
     : '/assets/flocard-logo-white.png';
 
   const img = await loadImageAsset(logoSrc);
@@ -514,7 +519,7 @@ async function drawBrandLogo(ctx, x, y, targetWidth = 297, scale = 100, edition 
     ctx.drawImage(img, 0, 0, targetWidth, targetH);
   } else {
     // Vector typography fallback
-    ctx.fillStyle = isGold ? '#E9C766' : isWhite ? '#191522' : '#FFFFFF';
+    ctx.fillStyle = isAdminPrint ? '#000000' : (isGold ? '#E9C766' : isWhite ? '#191522' : '#FFFFFF');
     ctx.font = 'bold 36px "Space Grotesk", sans-serif';
     ctx.letterSpacing = '2px';
     ctx.fillText('FLOCARD', 0, 32);
@@ -592,11 +597,12 @@ export async function renderAuthoritativeCardCanvas(designOrOrder, side = 'front
   }
 
   // 1. Exact Background Resolution
+  const isAdminPrint = Boolean(options.adminPrintMode || options.whiteBlackMode);
   const customColors = config.customColors || {};
-  const isWhite = edition === 'white';
-  const isGold = edition === 'gold';
-  const isPlatinum = edition === 'platinum';
-  const isMetal = edition === 'metal';
+  const isWhite = edition === 'white' || isAdminPrint;
+  const isGold = edition === 'gold' && !isAdminPrint;
+  const isPlatinum = edition === 'platinum' && !isAdminPrint;
+  const isMetal = edition === 'metal' && !isAdminPrint;
 
   const customCardBg = customColors.cardBg || config.cardBg || null;
 
@@ -609,9 +615,12 @@ export async function renderAuthoritativeCardCanvas(designOrOrder, side = 'front
   const fillH = withBleed ? canvasH : baseH;
 
   // For prepress PDF downloads & print-ready artwork:
-  // Solid flat background matching text contrast (Solid Black or Solid White, NO gradients, NO web textures)
+  // In Admin Print mode: Pure white card background (#FFFFFF)
+  // Otherwise solid flat background matching text contrast (Solid Black or Solid White, NO gradients, NO web textures)
   let solidBg = '#000000';
-  if (customCardBg) {
+  if (isAdminPrint) {
+    solidBg = '#FFFFFF';
+  } else if (customCardBg) {
     solidBg = customCardBg;
   } else if (isWhite) {
     solidBg = '#FFFFFF';
@@ -634,7 +643,9 @@ export async function renderAuthoritativeCardCanvas(designOrOrder, side = 'front
   }
 
   // Subtle perimeter card border guide
-  ctx.strokeStyle = isWhite
+  ctx.strokeStyle = isAdminPrint
+    ? '#000000'
+    : isWhite
     ? 'rgba(0, 0, 0, 0.08)'
     : isGold
     ? 'rgba(233, 199, 102, 0.35)'
@@ -643,11 +654,20 @@ export async function renderAuthoritativeCardCanvas(designOrOrder, side = 'front
     : isPlatinum
     ? 'rgba(226, 232, 240, 0.25)'
     : 'rgba(168, 85, 247, 0.35)';
-  ctx.lineWidth = 3;
+  ctx.lineWidth = isAdminPrint ? 2 : 3;
   ctx.strokeRect(0, 0, baseW, baseH);
 
   // 3. Color Palette & Typography Helpers
-  const colors = {
+  const colors = isAdminPrint ? {
+    primaryAccent: '#000000',
+    secondaryAccent: '#000000',
+    nameColor: '#000000',
+    roleColor: '#000000',
+    detailsColor: '#000000',
+    taglineColor: '#000000',
+    nfcColor: '#000000',
+    qrColor: '#000000'
+  } : {
     primaryAccent: customColors.primaryAccent || defaults.primaryAccent || editionInfo.accentColor,
     secondaryAccent: customColors.secondaryAccent || defaults.secondaryAccent || editionInfo.secondaryColor,
     nameColor: customColors.nameColor || defaults.nameColor || (isWhite ? '#000000' : '#FFFFFF'),
@@ -658,10 +678,13 @@ export async function renderAuthoritativeCardCanvas(designOrOrder, side = 'front
     qrColor: customColors.qrColor || defaults.qrColor || (isWhite ? '#000000' : '#FFFFFF')
   };
 
-  const isGoldText = (colors.nameColor && (colors.nameColor.toLowerCase() === '#e9c766' || colors.nameColor.toLowerCase() === '#d4af37')) ||
-                     (colors.primaryAccent && (colors.primaryAccent.toLowerCase() === '#e9c766' || colors.primaryAccent.toLowerCase() === '#d4af37'));
+  const isGoldText = !isAdminPrint && (
+    (colors.nameColor && (colors.nameColor.toLowerCase() === '#e9c766' || colors.nameColor.toLowerCase() === '#d4af37')) ||
+    (colors.primaryAccent && (colors.primaryAccent.toLowerCase() === '#e9c766' || colors.primaryAccent.toLowerCase() === '#d4af37'))
+  );
 
   const getNameFill = (x, y, textW, textH, fallbackColor) => {
+    if (isAdminPrint) return '#000000';
     if (isWhite) {
       if (isGoldText) return createMetallicGradient(ctx, x, y - textH, x + textW, y, 'gold');
       return colors.nameColor || '#000000';
@@ -673,6 +696,7 @@ export async function renderAuthoritativeCardCanvas(designOrOrder, side = 'front
   };
 
   const getRoleFill = (x, y, textW, textH, fallbackColor) => {
+    if (isAdminPrint) return '#000000';
     if (isWhite) {
       if (isGoldText) return '#B8860B';
       return colors.roleColor || '#1A1A1A';
@@ -684,6 +708,7 @@ export async function renderAuthoritativeCardCanvas(designOrOrder, side = 'front
   };
 
   const getTaglineFill = (x, y, textW, textH, fallbackColor) => {
+    if (isAdminPrint) return '#000000';
     if (isWhite) {
       if (isGoldText) return '#996515';
       return colors.taglineColor || '#475569';
@@ -704,7 +729,7 @@ export async function renderAuthoritativeCardCanvas(designOrOrder, side = 'front
     if (templateType === 'standard') {
       // THEME 1 FRONT: Name, Role, Tagline, NFC on right
       if (front.showNfc) {
-        drawVectorNfcSymbol(ctx, Math.round(baseW * 0.825), Math.round(baseH * 0.428), colors.nfcColor, Math.round(baseW * 0.076), edition);
+        drawVectorNfcSymbol(ctx, Math.round(baseW * 0.825), Math.round(baseH * 0.428), colors.nfcColor, Math.round(baseW * 0.076), edition, isAdminPrint);
       }
 
       // Optional Customer Logo on top-left
@@ -721,7 +746,7 @@ export async function renderAuthoritativeCardCanvas(designOrOrder, side = 'front
       const startX = Math.round(baseW * 0.08);
       const nameY = front.details ? (baseH - 156) : (baseH - 142);
       ctx.fillStyle = getNameFill(startX, nameY, 320, 44, colors.nameColor);
-      ctx.font = `${isGold || isPlatinum ? '600' : 'bold'} 44px "${front.fontFamily || 'Space Grotesk'}", sans-serif`;
+      ctx.font = `${!isAdminPrint && (isGold || isPlatinum) ? '600' : 'bold'} 44px "${front.fontFamily || 'Space Grotesk'}", sans-serif`;
       ctx.fillText((front.name || 'YOUR NAME').toUpperCase(), startX, nameY);
 
       const roleY = front.details ? (baseH - 110) : (baseH - 92);
@@ -733,7 +758,7 @@ export async function renderAuthoritativeCardCanvas(designOrOrder, side = 'front
 
       if (front.details) {
         const detailsY = baseH - 74;
-        ctx.fillStyle = isGold ? '#E9C766' : isPlatinum ? '#E2E8F0' : (colors.detailsColor || colors.roleColor);
+        ctx.fillStyle = isAdminPrint ? '#000000' : (isGold ? '#E9C766' : isPlatinum ? '#E2E8F0' : (colors.detailsColor || colors.roleColor));
         ctx.font = `400 18px "${front.detailsFontFamily || front.roleFontFamily || 'Inter'}", sans-serif`;
         ctx.letterSpacing = '2px';
         ctx.fillText(front.details.toUpperCase(), startX, detailsY);
@@ -749,7 +774,7 @@ export async function renderAuthoritativeCardCanvas(designOrOrder, side = 'front
     } else {
       // THEME 2 FRONT: Centered Customer Logo badge, NFC on right, Tagline
       if (front.showNfc) {
-        drawVectorNfcSymbol(ctx, Math.round(baseW * 0.825), Math.round(baseH * 0.428), colors.nfcColor, Math.round(baseW * 0.076), edition);
+        drawVectorNfcSymbol(ctx, Math.round(baseW * 0.825), Math.round(baseH * 0.428), colors.nfcColor, Math.round(baseW * 0.076), edition, isAdminPrint);
       }
 
       if (front.showTagline) {
@@ -770,7 +795,9 @@ export async function renderAuthoritativeCardCanvas(designOrOrder, side = 'front
       const radius = Math.round(baseW * 0.178 * sizeScale);
 
       if (customerLogo.showCircleBadge !== false) {
-        ctx.strokeStyle = isGold ? 'rgba(233, 199, 102, 0.45)' : 'rgba(255, 255, 255, 0.45)';
+        ctx.strokeStyle = isAdminPrint
+          ? '#000000'
+          : isGold ? 'rgba(233, 199, 102, 0.45)' : 'rgba(255, 255, 255, 0.45)';
         ctx.lineWidth = 3;
         ctx.beginPath();
         ctx.arc(centerX, centerY, radius, 0, Math.PI * 2);
@@ -785,12 +812,14 @@ export async function renderAuthoritativeCardCanvas(designOrOrder, side = 'front
           ctx.drawImage(cImg, centerX - (imgW / 2), centerY - (imgH / 2), imgW, imgH);
         }
       } else {
-        ctx.fillStyle = isGold
+        ctx.fillStyle = isAdminPrint
+          ? '#000000'
+          : isGold
           ? createMetallicGradient(ctx, centerX - 80, centerY - 20, centerX + 80, centerY + 20, 'gold')
           : isPlatinum
           ? createMetallicGradient(ctx, centerX - 80, centerY - 20, centerX + 80, centerY + 20, 'platinum')
           : '#FFFFFF';
-        ctx.font = `${isGold ? '600' : 'bold'} 26px "Space Grotesk", sans-serif`;
+        ctx.font = `${!isAdminPrint && isGold ? '600' : 'bold'} 26px "Space Grotesk", sans-serif`;
         ctx.textAlign = 'center';
         ctx.letterSpacing = '3px';
         ctx.fillText('YOUR LOGO', centerX, centerY + 8);
@@ -801,7 +830,7 @@ export async function renderAuthoritativeCardCanvas(designOrOrder, side = 'front
   } else {
     // BACK SIDE RENDERING (QR Code + NFC Specifications)
     const targetUrl = back.qrUrl || 'https://flocard.in';
-    const qrColor = colors.qrColor || (isWhite ? '#000000' : '#FFFFFF');
+    const qrColor = isAdminPrint ? '#000000' : (colors.qrColor || (isWhite ? '#000000' : '#FFFFFF'));
 
     let qrDataUrl = '';
     try {
@@ -820,7 +849,7 @@ export async function renderAuthoritativeCardCanvas(designOrOrder, side = 'front
 
     if (templateType === 'standard') {
       // THEME 1 BACK: FLOCARD logo top-left, QR Code top-right
-      await drawBrandLogo(ctx, Math.round(baseW * 0.095), Math.round(baseH * 0.17), Math.round(baseW * 0.275), flocardLogo.size, edition);
+      await drawBrandLogo(ctx, Math.round(baseW * 0.095), Math.round(baseH * 0.17), Math.round(baseW * 0.275), flocardLogo.size, edition, isAdminPrint);
 
       if (qrDataUrl) {
         const qrImg = await loadImageAsset(qrDataUrl);
@@ -835,7 +864,7 @@ export async function renderAuthoritativeCardCanvas(designOrOrder, side = 'front
       // NFC Specs text on bottom-left
       if (back.showNfcSpecs !== false) {
         const specsX = Math.round(baseW * 0.095);
-        ctx.fillStyle = isWhite ? '#64748B' : '#94A3B8';
+        ctx.fillStyle = isAdminPrint ? '#000000' : (isWhite ? '#64748B' : '#94A3B8');
         ctx.font = '500 16px "Inter", sans-serif';
         ctx.letterSpacing = '2px';
         ctx.fillText(back.specsText || 'NFC | PORTFOLIO | CONTACT | CONNECT', specsX, baseH - 52);
@@ -857,7 +886,7 @@ export async function renderAuthoritativeCardCanvas(designOrOrder, side = 'front
       const startX = Math.round(baseW * 0.08);
       const nameY = front.details ? (baseH - 124) : (baseH - 110);
       ctx.fillStyle = getNameFill(startX, nameY, 320, 44, colors.nameColor);
-      ctx.font = `${isGold || isPlatinum ? '600' : 'bold'} 44px "${front.fontFamily || 'Space Grotesk'}", sans-serif`;
+      ctx.font = `${!isAdminPrint && (isGold || isPlatinum) ? '600' : 'bold'} 44px "${front.fontFamily || 'Space Grotesk'}", sans-serif`;
       ctx.fillText((front.name || 'YOUR NAME').toUpperCase(), startX, nameY);
 
       const roleY = front.details ? (baseH - 80) : (baseH - 65);
@@ -869,7 +898,7 @@ export async function renderAuthoritativeCardCanvas(designOrOrder, side = 'front
 
       if (front.details) {
         const detailsY = baseH - 46;
-        ctx.fillStyle = isGold ? '#E9C766' : isPlatinum ? '#E2E8F0' : (colors.detailsColor || colors.roleColor);
+        ctx.fillStyle = isAdminPrint ? '#000000' : (isGold ? '#E9C766' : isPlatinum ? '#E2E8F0' : (colors.detailsColor || colors.roleColor));
         ctx.font = `400 18px "${front.detailsFontFamily || front.roleFontFamily || 'Inter'}", sans-serif`;
         ctx.letterSpacing = '2px';
         ctx.fillText(front.details.toUpperCase(), startX, detailsY);
@@ -877,7 +906,7 @@ export async function renderAuthoritativeCardCanvas(designOrOrder, side = 'front
       }
 
       // FLOCARD Logo bottom-right (aligned under QR code)
-      await drawBrandLogo(ctx, Math.round(baseW * 0.635), Math.round(baseH * 0.78), Math.round(baseW * 0.285), flocardLogo.size, edition);
+      await drawBrandLogo(ctx, Math.round(baseW * 0.635), Math.round(baseH * 0.78), Math.round(baseW * 0.285), flocardLogo.size, edition, isAdminPrint);
     }
   }
 
@@ -926,9 +955,12 @@ export async function generateCardPrintPDF(designOrOrder, options = {}) {
   const {
     mode = 'dual', // 'dual' | 'front' | 'back'
     withBleed = true,
-    download = true
+    download = true,
+    adminPrintMode = false,
+    whiteBlackMode = false
   } = options;
 
+  const isAdminPrint = Boolean(adminPrintMode || whiteBlackMode);
   const normalized = normalizeCardDesign(designOrOrder);
   const orderRef = designOrOrder.orderReference || designOrOrder.id || 'FLOCARD';
   const clientName = normalized.config?.front?.name || 'Customer';
@@ -955,7 +987,10 @@ export async function generateCardPrintPDF(designOrOrder, options = {}) {
 
   // Page 1: Front Artwork
   if (shouldRenderFront) {
-    const frontCanvas = await renderAuthoritativeCardCanvas(designOrOrder, 'front', { withBleed });
+    const frontCanvas = await renderAuthoritativeCardCanvas(designOrOrder, 'front', {
+      withBleed,
+      adminPrintMode: isAdminPrint
+    });
     const frontData = frontCanvas.toDataURL ? frontCanvas.toDataURL('image/png', 1.0) : '';
 
     if (frontData) {
@@ -972,7 +1007,10 @@ export async function generateCardPrintPDF(designOrOrder, options = {}) {
     if (hasPage) {
       doc.addPage([pageW, pageH], 'landscape');
     }
-    const backCanvas = await renderAuthoritativeCardCanvas(designOrOrder, 'back', { withBleed });
+    const backCanvas = await renderAuthoritativeCardCanvas(designOrOrder, 'back', {
+      withBleed,
+      adminPrintMode: isAdminPrint
+    });
     const backData = backCanvas.toDataURL ? backCanvas.toDataURL('image/png', 1.0) : '';
 
     if (backData) {
@@ -985,9 +1023,10 @@ export async function generateCardPrintPDF(designOrOrder, options = {}) {
 
   const safeClient = clientName.replace(/[^a-zA-Z0-9_-]/g, '_');
   const safeOrder = orderRef.replace(/[^a-zA-Z0-9_-]/g, '_');
+  const adminSuffix = isAdminPrint ? '_admin_white_black' : '';
   const modeSuffix = mode === 'front' ? '_front' : mode === 'back' ? '_back' : '_dual_sided';
   const bleedSuffix = withBleed ? '_with_bleed' : '_trimmed';
-  const filename = `${safeOrder}_${safeClient}${modeSuffix}${bleedSuffix}_300dpi.pdf`;
+  const filename = `${safeOrder}_${safeClient}${adminSuffix}${modeSuffix}${bleedSuffix}_300dpi.pdf`;
 
   if (download && typeof window !== 'undefined') {
     doc.save(filename);
@@ -1000,7 +1039,8 @@ export async function generateCardPrintPDF(designOrOrder, options = {}) {
     pageHeight: pageH,
     bleed,
     mode,
-    withBleed
+    withBleed,
+    adminPrintMode: isAdminPrint
   };
 }
 

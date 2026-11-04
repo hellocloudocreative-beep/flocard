@@ -19,7 +19,8 @@ export default function Card3DPreview({
   showGuides = false,
   showBleed = false,
   onLogoWarningChange,
-  className = ''
+  className = '',
+  adminPrintMode = false
 }) {
   const [internalSide, setInternalSide] = useState(initialSide);
   const activeSide = controlledSide !== undefined ? controlledSide : internalSide;
@@ -142,6 +143,7 @@ export default function Card3DPreview({
             showGuides={showGuides}
             showBleed={showBleed}
             onLogoWarningChange={onLogoWarningChange}
+            adminPrintMode={adminPrintMode}
           />
         </div>
 
@@ -163,6 +165,7 @@ export default function Card3DPreview({
             width={effectiveWidth}
             showGuides={showGuides}
             showBleed={showBleed}
+            adminPrintMode={adminPrintMode}
           />
         </div>
 

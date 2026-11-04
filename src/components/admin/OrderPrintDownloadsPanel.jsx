@@ -23,7 +23,8 @@ import {
   Sparkles,
   FileText,
   ShieldCheck,
-  ExternalLink
+  ExternalLink,
+  Edit3
 } from 'lucide-react';
 import {
   generateCardPrintPDF,
@@ -71,19 +72,44 @@ export default function OrderPrintDownloadsPanel({
     }
   };
 
-  // 1. Download Dual-Sided Print-Ready PDF
-  const handleDownloadFullPDF = async (withBleed = true) => {
+  // 1a. Download Admin Print PDF (White Background & Black Elements)
+  const handleDownloadAdminPrintPDF = async (withBleed = true) => {
     setIsProcessing(true);
-    setActiveTask(withBleed ? 'Generating Prepress PDF with Bleed...' : 'Generating Trimmed Card PDF...');
+    setActiveTask(withBleed ? 'Generating Admin Prepress PDF (White & Black, Bleed)...' : 'Generating Trimmed White & Black PDF...');
     setErrorMessage('');
 
     try {
       const result = await generateCardPrintPDF(order, {
         mode: 'dual',
         withBleed,
+        adminPrintMode: true,
         download: true
       });
-      showNotification(`✓ Downloaded ${result.filename} (${withBleed ? '91.6 x 60mm with 3mm Bleed' : '85.6 x 54mm Exact Trim'})`);
+      showNotification(`✓ Downloaded Admin Print PDF: ${result.filename} (Pure White & Black, ${withBleed ? '3mm Bleed' : 'Trimmed'})`);
+      if (onAssetGenerated) onAssetGenerated('card_pdf', result);
+    } catch (err) {
+      console.error('[PrintPanel] Error generating Admin PDF:', err);
+      showNotification(err.message || 'Failed to generate Admin print-ready PDF.', true);
+    } finally {
+      setIsProcessing(false);
+      setActiveTask('');
+    }
+  };
+
+  // 1b. Download Original Customer Colors PDF
+  const handleDownloadFullPDF = async (withBleed = true) => {
+    setIsProcessing(true);
+    setActiveTask(withBleed ? 'Generating Original Artwork PDF with Bleed...' : 'Generating Trimmed Card PDF...');
+    setErrorMessage('');
+
+    try {
+      const result = await generateCardPrintPDF(order, {
+        mode: 'dual',
+        withBleed,
+        adminPrintMode: false,
+        download: true
+      });
+      showNotification(`✓ Downloaded Original Colors PDF: ${result.filename}`);
       if (onAssetGenerated) onAssetGenerated('card_pdf', result);
     } catch (err) {
       console.error('[PrintPanel] Error generating PDF:', err);
@@ -341,10 +367,10 @@ export default function OrderPrintDownloadsPanel({
           gap: '10px'
         }}
       >
-        {/* Action 1: Full Card PDF with Bleed */}
+        {/* Action 1: Admin Print PDF (Pure White Background & Black Elements) */}
         <button
           type="button"
-          onClick={() => handleDownloadFullPDF(true)}
+          onClick={() => handleDownloadAdminPrintPDF(true)}
           disabled={isProcessing}
           style={{
             display: 'flex',
@@ -352,25 +378,29 @@ export default function OrderPrintDownloadsPanel({
             gap: '10px',
             padding: '12px',
             borderRadius: '10px',
-            border: '1px solid #A855F7',
-            background: isLight ? 'linear-gradient(135deg, #7038F8 0%, #A855F7 100%)' : 'linear-gradient(135deg, rgba(112, 56, 248, 0.3) 0%, rgba(168, 85, 247, 0.3) 100%)',
+            border: '2px solid #7038F8',
+            background: isLight ? 'linear-gradient(135deg, #7038F8 0%, #A855F7 100%)' : 'linear-gradient(135deg, rgba(112, 56, 248, 0.4) 0%, rgba(168, 85, 247, 0.4) 100%)',
             color: '#FFFFFF',
             cursor: isProcessing ? 'wait' : 'pointer',
             textAlign: 'left',
-            transition: 'transform 0.15s ease, box-shadow 0.15s ease'
+            boxShadow: '0 4px 14px rgba(112, 56, 248, 0.25)',
+            position: 'relative'
           }}
         >
           <Printer size={18} style={{ flexShrink: 0, marginTop: '2px' }} />
           <div>
-            <div style={{ fontSize: '0.82rem', fontWeight: 700 }}>Download Card PDF</div>
-            <div style={{ fontSize: '0.7rem', opacity: 0.88 }}>Dual-Sided with 3mm Bleed & Crop Marks</div>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+              <span style={{ fontSize: '0.82rem', fontWeight: 800 }}>Admin Print PDF (White & Black)</span>
+              <span style={{ fontSize: '0.62rem', padding: '1px 5px', borderRadius: '4px', backgroundColor: '#FFFFFF', color: '#7038F8', fontWeight: 800 }}>PRINT STANDARD</span>
+            </div>
+            <div style={{ fontSize: '0.7rem', opacity: 0.9, marginTop: '2px' }}>Pure White BG • Black Text & Outlines • 3mm Bleed</div>
           </div>
         </button>
 
-        {/* Action 1b: Exact Trimmed PDF (No Bleed) */}
+        {/* Action 2: Original Customer Design Artwork PDF */}
         <button
           type="button"
-          onClick={() => handleDownloadFullPDF(false)}
+          onClick={() => handleDownloadFullPDF(true)}
           disabled={isProcessing}
           style={{
             display: 'flex',
@@ -387,10 +417,35 @@ export default function OrderPrintDownloadsPanel({
         >
           <FileText size={18} color="#A855F7" style={{ flexShrink: 0, marginTop: '2px' }} />
           <div>
-            <div style={{ fontSize: '0.82rem', fontWeight: 700 }}>Download Trimmed PDF</div>
-            <div style={{ fontSize: '0.7rem', color: isLight ? '#64748B' : '#94A3B8' }}>Exact 85.60 × 53.98 mm (No Margin)</div>
+            <div style={{ fontSize: '0.82rem', fontWeight: 700 }}>Original Artwork PDF</div>
+            <div style={{ fontSize: '0.7rem', color: isLight ? '#64748B' : '#94A3B8', marginTop: '2px' }}>Customer Selected Colors & Background</div>
           </div>
         </button>
+
+        {/* Action 2b: Edit Design in 3D Studio (Admin Only) */}
+        {isAdmin && (order?.id || order?.orderReference) && (
+          <a
+            href={`/designer?orderId=${order.id || order.orderReference}&mode=admin_edit`}
+            style={{
+              display: 'flex',
+              alignItems: 'flex-start',
+              gap: '10px',
+              padding: '12px',
+              borderRadius: '10px',
+              border: isLight ? '1px solid #C4B5FD' : '1px solid rgba(168, 85, 247, 0.3)',
+              background: isLight ? '#F5F3FF' : 'rgba(112, 56, 248, 0.12)',
+              color: isLight ? '#6D28D9' : '#C4B5FD',
+              textDecoration: 'none',
+              textAlign: 'left'
+            }}
+          >
+            <Edit3 size={18} style={{ flexShrink: 0, marginTop: '2px' }} />
+            <div>
+              <div style={{ fontSize: '0.82rem', fontWeight: 700 }}>Edit Customer Design</div>
+              <div style={{ fontSize: '0.7rem', opacity: 0.85, marginTop: '2px' }}>Pre-load artwork in 3D Studio to adjust & save</div>
+            </div>
+          </a>
+        )}
 
         {/* Action 2: Front Artwork */}
         <div

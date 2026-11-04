@@ -231,17 +231,49 @@ function InteractiveFontPicker({
 export default function Designer() {
   const { user, isAdmin } = useAuth();
   const { isLight, toggleTheme } = useTheme();
-  const { saveDesign, designs, products, studioBackground, updateStudioBackground, resetStudioBg, createOrderFromDesign, submitPrintOrder, getProductByEdition } = useData();
+  const {
+    saveDesign,
+    designs,
+    products,
+    studioBackground,
+    updateStudioBackground,
+    resetStudioBg,
+    createOrderFromDesign,
+    submitPrintOrder,
+    getProductByEdition,
+    orders,
+    saveAdminOrderDesign
+  } = useData();
 
   // URL query params
-  const urlParams = new URLSearchParams(window.location.search);
+  const urlParams = new URLSearchParams(typeof window !== 'undefined' ? window.location.search : '');
   const initialEdition = urlParams.get('edition') || 'purple';
   const initialTemplate = urlParams.get('template') || 'standard';
   const initialTagline = urlParams.get('tagline');
   const initialFont = urlParams.get('font');
   const initialDesignId = urlParams.get('id');
+  const editingOrderId = urlParams.get('orderId');
+  const isAdminEditMode = urlParams.get('mode') === 'admin_edit' || Boolean(editingOrderId && isAdmin);
 
-  const existingDesign = initialDesignId ? designs.find(d => d.id === initialDesignId) : null;
+  const editingOrder = editingOrderId
+    ? (orders || []).find(o => o.id === editingOrderId || o.orderReference === editingOrderId) ||
+      (typeof window !== 'undefined' && window.StorageEngine ? window.StorageEngine.getOrderById(editingOrderId) : null)
+    : null;
+
+  const orderDesignSource = editingOrder
+    ? (editingOrder.editedDesign || editingOrder.design || {
+        front: editingOrder.frontConfig || {},
+        back: editingOrder.backConfig || {},
+        customColors: editingOrder.customColors || {},
+        customerLogo: editingOrder.customerLogo,
+        flocardLogo: editingOrder.flocardLogo,
+        templateType: editingOrder.templateType,
+        edition: editingOrder.edition,
+        title: editingOrder.designTitle
+      })
+    : null;
+
+  const existingDesign = orderDesignSource || (initialDesignId ? (designs || []).find(d => d.id === initialDesignId) : null);
 
   // Active products configured by admin (hidden if disabled)
   const activeProducts = (products || [])
@@ -565,6 +597,32 @@ export default function Designer() {
       return;
     }
 
+    if (editingOrder) {
+      const updatedDesign = {
+        title: designTitle,
+        templateType,
+        edition,
+        customColors,
+        customerLogo,
+        flocardLogo,
+        front: frontConfig,
+        back: backConfig,
+        status: 'approved'
+      };
+
+      if (saveAdminOrderDesign) {
+        saveAdminOrderDesign(editingOrder.id, updatedDesign, user, { publishToCustomer: true });
+      }
+      setHasUnsavedChanges(false);
+      notify(
+        'Order Design Updated',
+        `Artwork revisions saved to ${editingOrder.orderReference} and published to customer.`,
+        'Back to Admin',
+        () => { window.location.href = '/admin?tab=orders'; }
+      );
+      return;
+    }
+
     const newStatus = submit ? 'submitted' : designStatus;
     const clientName = user?.name || frontConfig.name || '';
     const clientSlug = clientName.toLowerCase().replace(/[^a-z0-9]/g, '') || 'client';
@@ -676,6 +734,71 @@ export default function Designer() {
         paddingBottom: viewportWidth < 1024 ? '100px' : '60px'
       }}
     >
+      {/* Admin Order Revision Banner */}
+      {editingOrder && (
+        <div
+          style={{
+            backgroundColor: '#7038F8',
+            color: '#FFFFFF',
+            padding: '12px 24px',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'space-between',
+            flexWrap: 'wrap',
+            gap: '12px',
+            position: 'sticky',
+            top: 0,
+            zIndex: 1000,
+            boxShadow: '0 4px 16px rgba(112, 56, 248, 0.4)'
+          }}
+        >
+          <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+            <ShieldCheck size={20} />
+            <div>
+              <div style={{ fontSize: '0.86rem', fontWeight: 700 }}>
+                Admin Artwork Revision Mode: Order {editingOrder.orderReference} ({editingOrder.customerName})
+              </div>
+              <div style={{ fontSize: '0.72rem', opacity: 0.9 }}>
+                Original customer submission is permanently preserved in version history.
+              </div>
+            </div>
+          </div>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+            <button
+              type="button"
+              onClick={() => handleSaveDesign(false)}
+              style={{
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: '6px',
+                padding: '6px 14px',
+                borderRadius: '8px',
+                backgroundColor: '#FFFFFF',
+                color: '#7038F8',
+                fontWeight: 700,
+                fontSize: '0.78rem',
+                border: 'none',
+                cursor: 'pointer'
+              }}
+            >
+              <Save size={14} />
+              <span>Save & Publish to Order</span>
+            </button>
+            <a
+              href="/admin?tab=orders"
+              style={{
+                color: '#FFFFFF',
+                fontSize: '0.78rem',
+                textDecoration: 'underline',
+                fontWeight: 500
+              }}
+            >
+              Back to Orders
+            </a>
+          </div>
+        </div>
+      )}
+
       {/* ======================================================================
           1. TOP NAVIGATION BAR (Refined Floating Dark Glass)
           ====================================================================== */}
@@ -2531,8 +2654,8 @@ export default function Designer() {
               {/* Sole Primary Action: SlideCommit for Print Submission */}
               <div style={{ display: 'flex', justifyContent: 'center', marginTop: '6px' }}>
                 <SlideCommit
-                  label="Slide to send for print"
-                  doneLabel="Sent for Print"
+                  label={editingOrder ? "Slide to update order artwork" : "Slide to send for print"}
+                  doneLabel={editingOrder ? "Artwork Updated" : "Sent for Print"}
                   errorLabel="Submission failed"
                   onConfirm={() => handleSaveDesign(true)}
                   trackColor={isLight ? '#ede9fe' : '#191226'}

@@ -1456,7 +1456,17 @@ export const StorageEngine = {
     const index = list.findIndex(o => o.id === order.id);
     let saved;
     if (index >= 0) {
-      saved = normalizeOrderFinancials({ ...list[index], ...order, updatedAt: new Date().toISOString() });
+      const existing = list[index];
+      saved = normalizeOrderFinancials({
+        ...existing,
+        ...order,
+        originalDesign: existing.originalDesign || order.originalDesign || existing.design || order.design,
+        editedDesign: order.editedDesign !== undefined ? order.editedDesign : existing.editedDesign,
+        approvedVersion: order.approvedVersion || existing.approvedVersion || 'original',
+        editedAt: order.editedAt || existing.editedAt,
+        editedBy: order.editedBy || existing.editedBy,
+        updatedAt: new Date().toISOString()
+      });
       list[index] = saved;
     } else {
       const orderRef = order.orderReference || `FLC-ORD-${Math.floor(1000 + Math.random() * 9000)}`;
@@ -1464,6 +1474,11 @@ export const StorageEngine = {
         ...order,
         id: order.id || orderRef,
         orderReference: orderRef,
+        originalDesign: order.originalDesign || order.design,
+        editedDesign: order.editedDesign || null,
+        approvedVersion: order.approvedVersion || 'original',
+        editedAt: order.editedAt || null,
+        editedBy: order.editedBy || null,
         orderDate: order.orderDate || new Date().toISOString(),
         status: normalizeOrderStatus(order.status || 'design_submitted'),
         createdAt: order.createdAt || new Date().toISOString(),
@@ -1476,6 +1491,91 @@ export const StorageEngine = {
     return saved;
   },
 
+  /**
+   * Saves administrator modifications to a customer's card design artwork.
+   * Crucially retains the customer's original design in version history (originalDesign)
+   * while storing the modified artwork in editedDesign and updating the order in place
+   * without creating duplicate order records.
+   */
+  saveAdminOrderDesign: (orderId, updatedDesignConfig, adminUser = null, options = { publishToCustomer: true }) => {
+    const list = getLocal('orders', INITIAL_ORDERS);
+    const index = list.findIndex(o => o.id === orderId || o.orderReference === orderId);
+    if (index === -1) {
+      throw new Error(`Order with ID ${orderId} not found.`);
+    }
+
+    const order = list[index];
+    const originalDesign = order.originalDesign || JSON.parse(JSON.stringify(order.design || {
+      front: order.frontConfig || {},
+      back: order.backConfig || {},
+      customColors: order.customColors || {},
+      customerLogo: order.customerLogo,
+      flocardLogo: order.flocardLogo,
+      templateType: order.templateType,
+      edition: order.edition,
+      title: order.designTitle
+    }));
+
+    const editedDesign = JSON.parse(JSON.stringify(updatedDesignConfig));
+    const nowIso = new Date().toISOString();
+    const adminIdentifier = adminUser?.email || adminUser?.name || 'FLOCARDS Design Team';
+    const publish = options.publishToCustomer !== false;
+
+    const updatedOrder = normalizeOrderFinancials({
+      ...order,
+      originalDesign,
+      editedDesign,
+      approvedVersion: publish ? 'admin_edited' : (order.approvedVersion || 'original'),
+      editedAt: nowIso,
+      editedBy: adminIdentifier,
+      updatedAt: nowIso
+    });
+
+    if (publish) {
+      updatedOrder.design = JSON.parse(JSON.stringify(editedDesign));
+      if (editedDesign.edition) updatedOrder.edition = editedDesign.edition;
+      if (editedDesign.templateType) updatedOrder.templateType = editedDesign.templateType;
+      if (editedDesign.front) {
+        updatedOrder.frontConfig = editedDesign.front;
+        if (editedDesign.front.role) updatedOrder.role = editedDesign.front.role;
+        if (editedDesign.front.tagline) updatedOrder.tagline = editedDesign.front.tagline;
+        if (editedDesign.front.name) updatedOrder.customerName = editedDesign.front.name;
+      }
+      if (editedDesign.back) updatedOrder.backConfig = editedDesign.back;
+      if (editedDesign.customColors) updatedOrder.customColors = editedDesign.customColors;
+      if (editedDesign.customerLogo) updatedOrder.customerLogo = editedDesign.customerLogo;
+      if (editedDesign.flocardLogo) updatedOrder.flocardLogo = editedDesign.flocardLogo;
+      if (editedDesign.title) updatedOrder.designTitle = editedDesign.title;
+    }
+
+    list[index] = updatedOrder;
+    setLocal('orders', list);
+
+    // If order has a linked design in the designs library, keep its history in sync
+    if (order.designId) {
+      const designsList = getLocal('designs', INITIAL_DESIGNS);
+      const dIndex = designsList.findIndex(d => d.id === order.designId);
+      if (dIndex >= 0) {
+        const curD = designsList[dIndex];
+        designsList[dIndex] = {
+          ...curD,
+          originalDesign: curD.originalDesign || JSON.parse(JSON.stringify(curD)),
+          editedDesign,
+          approvedVersion: publish ? 'admin_edited' : (curD.approvedVersion || 'original'),
+          editedAt: nowIso,
+          editedBy: adminIdentifier,
+          ...(publish ? editedDesign : {}),
+          id: curD.id,
+          updatedAt: nowIso
+        };
+        setLocal('designs', designsList);
+      }
+    }
+
+    safeDispatchEvent('flocard_order_updated', updatedOrder);
+    return updatedOrder;
+  },
+
   createOrderFromDesign: (design, notes = '', customerUser = null) => {
     const orders = getLocal('orders', INITIAL_ORDERS);
     const existing = orders.find(o => o.designId === design.id);
@@ -1486,7 +1586,9 @@ export const StorageEngine = {
       const company = design.company || customerUser?.company || design.front?.company || existing.company || '';
       const logoUrl = design.customerLogo?.url || (typeof design.customerLogo === 'string' ? design.customerLogo : null) || design.front?.customLogo || existing.customerLogo;
 
+      existing.originalDesign = existing.originalDesign || JSON.parse(JSON.stringify(existing.design || design));
       existing.design = JSON.parse(JSON.stringify(design)); // Frozen snapshot of submitted design
+      existing.approvedVersion = existing.approvedVersion || 'original';
       existing.customerName = customerName;
       existing.customerEmail = email;
       existing.customerPhone = phone;
@@ -1517,6 +1619,11 @@ export const StorageEngine = {
       orderReference: orderRef,
       designId: design.id,
       design: JSON.parse(JSON.stringify(design)), // Frozen snapshot of submitted design
+      originalDesign: JSON.parse(JSON.stringify(design)), // Retained original customer submission
+      editedDesign: null,
+      approvedVersion: 'original',
+      editedAt: null,
+      editedBy: null,
       designTitle: design.title || (customerName ? `${customerName}'s Card Design` : 'Custom Card Design'),
       templateType: design.templateType || 'standard',
       edition: design.edition || 'purple',

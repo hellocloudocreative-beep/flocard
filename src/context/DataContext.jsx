@@ -466,6 +466,12 @@ export function DataProvider({ children }) {
     return updated;
   };
 
+  const saveAdminOrderDesign = (orderId, updatedDesignConfig, adminUser, options) => {
+    const updated = StorageEngine.saveAdminOrderDesign(orderId, updatedDesignConfig, adminUser, options);
+    refreshAll();
+    return updated;
+  };
+
   const updateOrderStatus = (params) => {
     const updated = StorageEngine.updateOrderStatus(params);
     refreshAll();
@@ -670,6 +676,7 @@ export function DataProvider({ children }) {
       updateDesignStatus,
       deleteDesign,
       saveOrder,
+      saveAdminOrderDesign,
       updateOrderStatus,
       deliverOrder,
       deleteOrder,

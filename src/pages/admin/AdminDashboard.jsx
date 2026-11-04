@@ -6652,26 +6652,48 @@ export default function AdminDashboard({ initialTab = 'overview', initialOrderId
 
             {/* Actions */}
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: '24px', flexWrap: 'wrap', gap: '12px' }}>
-              <button
-                type="button"
-                onClick={() => exportCardPDF(reviewModalDesign)}
-                style={{
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: '6px',
-                  padding: '10px 18px',
-                  borderRadius: '10px',
-                  border: 'var(--adm-card-border)',
-                  backgroundColor: 'var(--adm-card-bg)',
-                  color: 'var(--adm-text-primary)',
-                  fontWeight: 600,
-                  fontSize: '0.84rem',
-                  cursor: 'pointer'
-                }}
-              >
-                <Download size={16} />
-                <span>Export Print-Ready PDF</span>
-              </button>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
+                <button
+                  type="button"
+                  onClick={() => exportCardPDF(reviewModalDesign, { adminPrintMode: true })}
+                  style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '6px',
+                    padding: '10px 18px',
+                    borderRadius: '10px',
+                    border: '1px solid #7038F8',
+                    backgroundColor: 'rgba(112, 56, 248, 0.15)',
+                    color: 'var(--adm-text-primary)',
+                    fontWeight: 700,
+                    fontSize: '0.84rem',
+                    cursor: 'pointer'
+                  }}
+                  title="Download Admin Print PDF (Pure White Background with Black Text & Elements)"
+                >
+                  <Download size={16} color="#7038F8" />
+                  <span>Admin Print PDF (White & Black)</span>
+                </button>
+                <a
+                  href={`/designer?orderId=${reviewModalDesign.orderId || reviewModalDesign.id}&mode=admin_edit`}
+                  style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '6px',
+                    padding: '10px 16px',
+                    borderRadius: '10px',
+                    border: 'var(--adm-card-border)',
+                    backgroundColor: 'var(--adm-card-bg)',
+                    color: 'var(--adm-text-primary)',
+                    fontWeight: 600,
+                    fontSize: '0.84rem',
+                    textDecoration: 'none'
+                  }}
+                >
+                  <Edit2 size={15} />
+                  <span>Edit in 3D Studio</span>
+                </a>
+              </div>
 
               <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
                 <button

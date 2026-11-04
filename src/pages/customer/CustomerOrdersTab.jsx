@@ -127,6 +127,25 @@ export default function CustomerOrdersTab({ orders = [], onViewOrder }) {
                         >
                           {ed.name}
                         </span>
+                        {Boolean(order.approvedVersion === 'admin_edited' && order.editedDesign) && (
+                          <span
+                            style={{
+                              fontSize: '0.68rem',
+                              fontWeight: 700,
+                              padding: '2px 8px',
+                              borderRadius: '9999px',
+                              backgroundColor: 'rgba(112, 56, 248, 0.15)',
+                              color: 'var(--accent-purple)',
+                              border: '1px solid rgba(112, 56, 248, 0.3)',
+                              display: 'inline-flex',
+                              alignItems: 'center',
+                              gap: '4px'
+                            }}
+                          >
+                            <Sparkles size={11} />
+                            <span>Artwork updated by FLOCARDS design team</span>
+                          </span>
+                        )}
                       </div>
                       <div style={{ fontSize: '0.74rem', color: 'var(--text-muted)', display: 'flex', alignItems: 'center', gap: '6px', marginTop: '2px' }}>
                         <Calendar size={12} />
