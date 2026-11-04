@@ -58,6 +58,10 @@ export function normalizeCardDesign(source = {}, fallbackDesigns = []) {
     source.frontConfig?.customLogo ||
     source.front?.customLogo ||
     linkedDesign?.front?.customLogo ||
+    linkedDesign?.frontConfig?.customLogo ||
+    source.design?.customerLogo ||
+    source.design?.front?.customLogo ||
+    source.logo ||
     null
   );
   const customerLogoUrl = typeof customerLogoObj === 'string' ? customerLogoObj : customerLogoObj?.url || null;

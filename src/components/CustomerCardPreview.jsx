@@ -521,7 +521,7 @@ export default function CustomerCardPreview({
                     type="button"
                     onClick={handleDownloadTransparentLogo}
                     disabled={isExporting}
-                    title="Download Transparent Logo PNG (Alpha Channel)"
+                    title="ഡൗൺലോഡ് ട്രാൻസ്പരന്റ് ബിജി ലോഗോ (Auto Background Removal • Transparent PNG)"
                     style={{
                       display: 'inline-flex',
                       alignItems: 'center',
@@ -532,12 +532,12 @@ export default function CustomerCardPreview({
                       backgroundColor: isLight ? 'rgba(34, 197, 94, 0.1)' : 'rgba(34, 197, 94, 0.15)',
                       color: isLight ? '#15803D' : '#4ADE80',
                       fontSize: '0.7rem',
-                      fontWeight: 600,
+                      fontWeight: 700,
                       cursor: isExporting ? 'wait' : 'pointer'
                     }}
                   >
-                    <Sparkles size={11} />
-                    <span>Logo PNG</span>
+                    <Sparkles size={11} color="#10B981" />
+                    <span>ഡൗൺലോഡ് ട്രാൻസ്പരന്റ് ബിജി ലോഗോ</span>
                   </button>
                 )}
                 <button

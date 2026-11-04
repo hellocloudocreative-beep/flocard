@@ -53,9 +53,14 @@ export default function OrderPrintDownloadsPanel({
   const normalized = normalizeCardDesign(order);
   const { edition, templateType, config } = normalized;
   const customerLogoObj = config?.customerLogo;
-  const hasLogo = Boolean(customerLogoObj?.url);
-  const isSvgLogo = typeof customerLogoObj?.url === 'string' && (
-    customerLogoObj.url.includes('image/svg+xml') || customerLogoObj.url.endsWith('.svg')
+  const logoUrl = customerLogoObj?.url || customerLogoObj?.originalUrl || customerLogoObj?.transparentUrl ||
+    (typeof order.customerLogo === 'string' ? order.customerLogo : order.customerLogo?.url) ||
+    order.frontConfig?.customLogo || order.front?.customLogo ||
+    order.design?.front?.customLogo || order.design?.customerLogo?.url ||
+    (typeof order.design?.customerLogo === 'string' ? order.design?.customerLogo : null) || null;
+  const hasLogo = Boolean(logoUrl);
+  const isSvgLogo = typeof logoUrl === 'string' && (
+    logoUrl.includes('image/svg+xml') || logoUrl.endsWith('.svg')
   );
 
   const orderRef = order.orderReference || order.id || 'FLOCARD';
@@ -394,6 +399,40 @@ export default function OrderPrintDownloadsPanel({
               <span style={{ fontSize: '0.62rem', padding: '1px 5px', borderRadius: '4px', backgroundColor: '#FFFFFF', color: '#7038F8', fontWeight: 800 }}>PRINT STANDARD</span>
             </div>
             <div style={{ fontSize: '0.7rem', opacity: 0.9, marginTop: '2px' }}>Pure White BG • Black Text & Outlines • 3mm Bleed</div>
+          </div>
+        </button>
+
+        {/* Action 1b: Download Transparent BG Logo (Placed right next to PDF Download) */}
+        <button
+          type="button"
+          onClick={handleDownloadTransparentLogo}
+          disabled={isProcessing || !hasLogo}
+          title={hasLogo ? "ഡൗൺലോഡ് ട്രാൻസ്പരന്റ് ബിജി ലോഗോ (Auto Background Removal • Transparent PNG)" : "No customer logo uploaded in this order"}
+          style={{
+            display: 'flex',
+            alignItems: 'flex-start',
+            gap: '10px',
+            padding: '12px',
+            borderRadius: '10px',
+            border: isLight ? '2px solid #10B981' : '2px solid rgba(16, 185, 129, 0.45)',
+            background: isLight ? 'linear-gradient(135deg, #ECFDF5 0%, #D1FAE5 100%)' : 'linear-gradient(135deg, rgba(16, 185, 129, 0.2) 0%, rgba(5, 150, 105, 0.28) 100%)',
+            color: isLight ? '#065F46' : '#6EE7B7',
+            cursor: isProcessing ? 'wait' : (!hasLogo ? 'not-allowed' : 'pointer'),
+            textAlign: 'left',
+            boxShadow: '0 4px 14px rgba(16, 185, 129, 0.18)',
+            opacity: hasLogo ? 1 : 0.6,
+            position: 'relative'
+          }}
+        >
+          <Sparkles size={18} color="#10B981" style={{ flexShrink: 0, marginTop: '2px' }} />
+          <div>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+              <span style={{ fontSize: '0.82rem', fontWeight: 800 }}>ഡൗൺലോഡ് ട്രാൻസ്പരന്റ് ബിജി ലോഗോ</span>
+              <span style={{ fontSize: '0.62rem', padding: '1px 5px', borderRadius: '4px', backgroundColor: '#10B981', color: '#FFFFFF', fontWeight: 800 }}>AUTO BG REMOVAL</span>
+            </div>
+            <div style={{ fontSize: '0.7rem', opacity: 0.9, marginTop: '2px' }}>
+              {hasLogo ? 'Download Transparent BG Logo • 32-Bit Alpha PNG' : 'No customer logo uploaded'}
+            </div>
           </div>
         </button>
 
