@@ -185,11 +185,15 @@ export default function OrderPrintDownloadsPanel({
   const handleDownloadTransparentLogo = async () => {
     if (!hasLogo) return;
     setIsProcessing(true);
-    setActiveTask('Isolating logo & removing background...');
+    setActiveTask('Isolating logo & removing full background...');
     setErrorMessage('');
 
     try {
-      const result = await generateIsolatedLogoAsset(order, { format: 'transparent_png' });
+      const result = await generateIsolatedLogoAsset(order, {
+        format: 'transparent_png',
+        forceOpaqueRemoval: true,
+        preferOriginal: true
+      });
       if (!result.success) {
         throw new Error(result.error);
       }

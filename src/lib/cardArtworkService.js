@@ -327,7 +327,7 @@ export async function removeLogoBackground(imageSource, options = {}) {
   const data = imageData.data;
   const totalPixels = width * height;
 
-  // 1. Check if the image ALREADY has transparency
+  // 1. Check if the image ALREADY has significant authentic transparency (e.g. > 35% transparent)
   let transparentPixelCount = 0;
   for (let i = 3; i < data.length; i += 4) {
     if (data[i] < 240) {
@@ -336,7 +336,9 @@ export async function removeLogoBackground(imageSource, options = {}) {
   }
 
   const transparencyRatio = transparentPixelCount / totalPixels;
-  const alreadyTransparent = transparencyRatio > 0.015; // More than 1.5% already transparent
+  // A genuine isolated logo mark has alpha across a substantial fraction (>35%) of its canvas.
+  // Images with hairline border gaps or opaque gradient backgrounds must still undergo full background removal.
+  const alreadyTransparent = transparencyRatio > 0.35;
 
   if (alreadyTransparent && !forceOpaqueRemoval) {
     // Preserve existing authentic alpha channel
@@ -354,35 +356,53 @@ export async function removeLogoBackground(imageSource, options = {}) {
     };
   }
 
-  // 2. Sample boundary perimeter pixels to detect dominant background color
-  const samplePixels = [];
-  const stepX = Math.max(1, Math.floor(width / 16));
-  const stepY = Math.max(1, Math.floor(height / 16));
+  // 2. Comprehensive Boundary Perimeter Sampling
+  // Sample perimeter pixels all around borders to model background envelope (luminance & palette)
+  const borderSamples = [];
+  let sumBorderLum = 0;
+  let minBorderLum = 255;
+  let maxBorderLum = 0;
 
-  for (let x = 0; x < width; x += stepX) {
+  for (let x = 0; x < width; x += Math.max(1, Math.floor(width / 32))) {
     const topIdx = (0 * width + x) * 4;
     const botIdx = ((height - 1) * width + x) * 4;
-    samplePixels.push({ r: data[topIdx], g: data[topIdx + 1], b: data[topIdx + 2] });
-    samplePixels.push({ r: data[botIdx], g: data[botIdx + 1], b: data[botIdx + 2] });
+    [topIdx, botIdx].forEach(idx => {
+      const r = data[idx], g = data[idx + 1], b = data[idx + 2];
+      const lum = 0.299 * r + 0.587 * g + 0.114 * b;
+      borderSamples.push({ r, g, b, lum });
+      sumBorderLum += lum;
+      if (lum < minBorderLum) minBorderLum = lum;
+      if (lum > maxBorderLum) maxBorderLum = lum;
+    });
   }
-  for (let y = 0; y < height; y += stepY) {
+
+  for (let y = Math.max(1, Math.floor(height / 32)); y < height - 1; y += Math.max(1, Math.floor(height / 32))) {
     const leftIdx = (y * width + 0) * 4;
     const rightIdx = (y * width + (width - 1)) * 4;
-    samplePixels.push({ r: data[leftIdx], g: data[leftIdx + 1], b: data[leftIdx + 2] });
-    samplePixels.push({ r: data[rightIdx], g: data[rightIdx + 1], b: data[rightIdx + 2] });
+    [leftIdx, rightIdx].forEach(idx => {
+      const r = data[idx], g = data[idx + 1], b = data[idx + 2];
+      const lum = 0.299 * r + 0.587 * g + 0.114 * b;
+      borderSamples.push({ r, g, b, lum });
+      sumBorderLum += lum;
+      if (lum < minBorderLum) minBorderLum = lum;
+      if (lum > maxBorderLum) maxBorderLum = lum;
+    });
   }
+
+  const avgBorderLum = sumBorderLum / (borderSamples.length || 1);
+  const isDarkBg = avgBorderLum < 128;
 
   // Cluster boundary pixels to find dominant color
   let dominantBg = { r: 255, g: 255, b: 255 };
   let maxClusterCount = 0;
 
-  for (let i = 0; i < samplePixels.length; i++) {
-    const p1 = samplePixels[i];
+  for (let i = 0; i < borderSamples.length; i++) {
+    const p1 = borderSamples[i];
     let clusterCount = 0;
     let sumR = 0, sumG = 0, sumB = 0;
 
-    for (let j = 0; j < samplePixels.length; j++) {
-      const p2 = samplePixels[j];
+    for (let j = 0; j < borderSamples.length; j++) {
+      const p2 = borderSamples[j];
       const dr = p1.r - p2.r;
       const dg = p1.g - p2.g;
       const db = p1.b - p2.b;
@@ -404,13 +424,68 @@ export async function removeLogoBackground(imageSource, options = {}) {
     }
   }
 
-  const bgR = dominantBg.r;
-  const bgG = dominantBg.g;
-  const bgB = dominantBg.b;
+  // 3. Interior Foreground Sampling: assess luminance & chroma contrast peak
+  let maxIntLum = 0, minIntLum = 255;
+  const sampleStepX = Math.max(2, Math.floor(width / 40));
+  const sampleStepY = Math.max(2, Math.floor(height / 40));
+  for (let y = Math.floor(height * 0.1); y < Math.floor(height * 0.9); y += sampleStepY) {
+    for (let x = Math.floor(width * 0.1); x < Math.floor(width * 0.9); x += sampleStepX) {
+      const idx = (y * width + x) * 4;
+      const lum = 0.299 * data[idx] + 0.587 * data[idx + 1] + 0.114 * data[idx + 2];
+      if (lum > maxIntLum) maxIntLum = lum;
+      if (lum < minIntLum) minIntLum = lum;
+    }
+  }
 
-  // 3. Perform edge-aware color distance thresholding or flood fill
-  if (floodFill) {
+  const contrastSpan = isDarkBg ? (maxIntLum - avgBorderLum) : (avgBorderLum - minIntLum);
+
+  // 4. Intelligent Background Removal:
+  // If contrastSpan >= 35, the logo has distinct foreground contrast relative to the background/gradient.
+  // This cleanly and completely eliminates dark purple, black, or light gradient clouds and halos.
+  if (contrastSpan >= 35) {
+    let cutoffLow, cutoffHigh;
+    const effectiveFeather = Math.max(14, feather);
+
+    if (isDarkBg) {
+      // Dark background gradient (e.g. purple-to-black cloud) with bright/white logo
+      cutoffLow = Math.min(150, Math.max(avgBorderLum + 22, avgBorderLum + contrastSpan * 0.22));
+      cutoffHigh = Math.min(235, cutoffLow + effectiveFeather);
+
+      for (let i = 0; i < data.length; i += 4) {
+        const lum = 0.299 * data[i] + 0.587 * data[i + 1] + 0.114 * data[i + 2];
+        if (lum <= cutoffLow) {
+          data[i + 3] = 0; // 100% transparent: eliminates entire gradient
+        } else if (lum >= cutoffHigh) {
+          data[i + 3] = 255; // 100% opaque foreground logo
+        } else {
+          // Smooth anti-aliased sub-pixel transition
+          const alphaFactor = (lum - cutoffLow) / (cutoffHigh - cutoffLow);
+          data[i + 3] = Math.round(255 * alphaFactor);
+        }
+      }
+    } else {
+      // Light background gradient (e.g. white/grey gradient) with dark/colored logo
+      cutoffHigh = Math.max(110, Math.min(avgBorderLum - 22, avgBorderLum - contrastSpan * 0.22));
+      cutoffLow = Math.max(20, cutoffHigh - effectiveFeather);
+
+      for (let i = 0; i < data.length; i += 4) {
+        const lum = 0.299 * data[i] + 0.587 * data[i + 1] + 0.114 * data[i + 2];
+        if (lum >= cutoffHigh) {
+          data[i + 3] = 0; // 100% transparent: eliminates light gradient
+        } else if (lum <= cutoffLow) {
+          data[i + 3] = 255; // 100% opaque foreground logo
+        } else {
+          // Smooth anti-aliased sub-pixel transition
+          const alphaFactor = (cutoffHigh - lum) / (cutoffHigh - cutoffLow);
+          data[i + 3] = Math.round(255 * alphaFactor);
+        }
+      }
+    }
+  } else if (floodFill) {
     // Outer Connected Flood Fill: clears background starting strictly from boundaries
+    const bgR = dominantBg.r;
+    const bgG = dominantBg.g;
+    const bgB = dominantBg.b;
     const visited = new Uint8Array(totalPixels);
     const queue = [];
 
@@ -477,6 +552,9 @@ export async function removeLogoBackground(imageSource, options = {}) {
     }
   } else {
     // Global edge-aware color keying with smooth alpha feathering
+    const bgR = dominantBg.r;
+    const bgG = dominantBg.g;
+    const bgB = dominantBg.b;
     for (let i = 0; i < data.length; i += 4) {
       const r = data[i];
       const g = data[i + 1];
@@ -510,7 +588,7 @@ export async function removeLogoBackground(imageSource, options = {}) {
     removedBackground: true,
     width: canvas.width,
     height: canvas.height,
-    detectedBg: `rgb(${bgR}, ${bgG}, ${bgB})`
+    detectedBg: `rgb(${dominantBg.r}, ${dominantBg.g}, ${dominantBg.b})`
   };
 }
 
@@ -570,12 +648,17 @@ export async function generateIsolatedLogoAsset(designOrOrder, options = {}) {
   // Standard base badge size is 240px; scale applies customer's size percentage (50% - 200%)
   const scalePercent = typeof logoConfig.size === 'number' ? logoConfig.size : 100;
   const targetPx = Math.round(480 * (scalePercent / 100));
-  const sourceForTransparent = logoConfig.transparentUrl || logoUrl;
+  // Prefer original upload if available so the full background removal runs cleanly without persisting previous gradient halos
+  const sourceForTransparent = options.preferOriginal !== false && logoConfig.originalUrl
+    ? logoConfig.originalUrl
+    : (logoConfig.transparentUrl || logoUrl);
 
   try {
     const bgResult = await removeLogoBackground(sourceForTransparent, {
       tolerance: options.tolerance || 36,
       feather: options.feather || 16,
+      forceOpaqueRemoval: true,
+      trimMargins: true,
       targetWidth: Math.max(200, Math.min(1600, targetPx))
     });
 

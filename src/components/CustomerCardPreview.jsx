@@ -171,7 +171,11 @@ export default function CustomerCardPreview({
 
   const handleDownloadTransparentLogo = async () => {
     try {
-      const res = await generateIsolatedLogoAsset(targetDesignRecord, { format: 'transparent_png' });
+      const res = await generateIsolatedLogoAsset(targetDesignRecord, {
+        format: 'transparent_png',
+        forceOpaqueRemoval: true,
+        preferOriginal: true
+      });
       if (res.success && res.dataUrl) {
         downloadArtworkFile(res.dataUrl, res.fileName);
       }

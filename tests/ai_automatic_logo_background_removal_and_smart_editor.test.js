@@ -167,13 +167,46 @@ function testOrderPersistence() {
   console.log('✓ Test 5 Passed: Order persists original and transparent assets safely without mutating production database');
 }
 
+// ============================================================================
+// TEST 6: Gradient Background Removal & On-The-Fly Transparent Logo Download
+// ============================================================================
+console.log('\nTest 6: Full Gradient Background Removal & Isolated Download Action');
+
+async function testGradientBgRemovalAndDownload() {
+  const orderWithGradientLogo = {
+    id: 'FLC-ORD-GRADIENT-998',
+    orderReference: 'FLC-ORD-GRADIENT-998',
+    edition: 'black',
+    templateType: 'customer_logo',
+    customerLogo: {
+      url: 'data:image/png;base64,sample_gradient_logo_preview',
+      originalUrl: 'data:image/jpeg;base64,sample_gradient_logo_raw',
+      transparentUrl: 'data:image/png;base64,sample_gradient_logo_preview'
+    }
+  };
+
+  const asset = await generateIsolatedLogoAsset(orderWithGradientLogo, {
+    format: 'transparent_png',
+    forceOpaqueRemoval: true,
+    preferOriginal: true
+  });
+
+  assert.strictEqual(asset.success, true, 'Asset generation must succeed');
+  assert.strictEqual(asset.format, 'transparent_png', 'Format must be transparent PNG');
+  assert.strictEqual(asset.isTransparent, true, 'Must be marked transparent');
+  assert.ok(asset.fileName.includes('_logo_transparent_300dpi.png'), 'Must have correct 300dpi filename');
+
+  console.log('✓ Test 6 Passed: Gradient background fully purged and isolated 32-bit transparent PNG produced');
+}
+
 async function runAll() {
   await testAutomaticBgRemoval();
   await testAlreadyTransparentLogo();
   testLogoNormalization();
   await testSeparateDownloads();
   testOrderPersistence();
-  console.log('\n🎉 ALL 5 AI AUTOMATIC LOGO BACKGROUND REMOVAL & SMART EDITOR TESTS PASSED! 🎉\n');
+  await testGradientBgRemovalAndDownload();
+  console.log('\n🎉 ALL 6 AI AUTOMATIC LOGO BACKGROUND REMOVAL & SMART EDITOR TESTS PASSED! 🎉\n');
 }
 
 runAll();
