@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import { StorageEngine } from '../src/lib/storage.js';
-import { normalizeCardDesign } from '../src/components/CustomerCardPreview.jsx';
+import { normalizeCardDesign } from '../src/lib/cardArtworkService.js';
 
 console.log('--- STARTING BUG 1 & BUG 2 AUTOMATED INTEGRATION TESTS ---');
 

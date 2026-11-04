@@ -16,6 +16,7 @@ import { useData } from '../../../context/DataContext';
 import { uploadImage } from '../../../lib/uploadImage';
 import { queueWhatsAppNotification } from '../../../lib/whatsapp';
 import { removeLogoBackground } from '../../../lib/cardArtworkService';
+import SmartLogoEditorModal from '../../../components/designer/SmartLogoEditorModal';
 import {
   Layers,
   Type,
@@ -271,14 +272,17 @@ export default function AdminCardDesignStudio({ onAssignToOrder = null, initialD
 
   const normalizeCustomerLogo = (logo, fallbackUrl = null) => {
     if (!logo && !fallbackUrl) {
-      return { url: null, size: 100, posX: 0, posY: 0, showCircleBadge: true };
+      return { url: null, originalUrl: null, transparentUrl: null, size: 100, rotation: 0, posX: 0, posY: 0, showCircleBadge: true };
     }
     if (typeof logo === 'string') {
-      return { url: logo, size: 100, posX: 0, posY: 0, showCircleBadge: true };
+      return { url: logo, originalUrl: logo, transparentUrl: logo, size: 100, rotation: 0, posX: 0, posY: 0, showCircleBadge: true };
     }
     return {
       url: logo?.url || fallbackUrl || null,
+      originalUrl: logo?.originalUrl || logo?.url || fallbackUrl || null,
+      transparentUrl: logo?.transparentUrl || logo?.url || fallbackUrl || null,
       size: typeof logo?.size === 'number' ? logo.size : 100,
+      rotation: typeof logo?.rotation === 'number' ? logo.rotation : 0,
       posX: typeof logo?.posX === 'number' ? logo.posX : 0,
       posY: typeof logo?.posY === 'number' ? logo.posY : 0,
       showCircleBadge: logo?.showCircleBadge ?? true
@@ -288,6 +292,7 @@ export default function AdminCardDesignStudio({ onAssignToOrder = null, initialD
   const [customerLogo, setCustomerLogo] = useState(() =>
     normalizeCustomerLogo(initialDesign?.customerLogo, initialDesign?.front?.customLogo)
   );
+  const [showSmartLogoModal, setShowSmartLogoModal] = useState(false);
   const [isUploadingLogo, setIsUploadingLogo] = useState(false);
   const [isRemovingBg, setIsRemovingBg] = useState(false);
   const logoInputRef = useRef(null);
@@ -505,10 +510,25 @@ export default function AdminCardDesignStudio({ onAssignToOrder = null, initialD
           try { window.URL.revokeObjectURL(tempPreviewUrl); } catch {}
         }
 
-        setCustomerLogo(prev => ({ ...prev, url: uploadedUrl }));
-        setFrontConfig(prev => ({ ...prev, customLogo: uploadedUrl }));
+        let finalTransUrl = uploadedUrl;
+        try {
+          const bgRes = await removeLogoBackground(uploadedUrl, { forceOpaqueRemoval: false });
+          if (bgRes?.dataUrl) {
+            finalTransUrl = bgRes.dataUrl;
+          }
+        } catch (e) {
+          console.warn('[AdminStudio] Auto bg removal error:', e);
+        }
+
+        setCustomerLogo(prev => ({
+          ...prev,
+          url: finalTransUrl,
+          originalUrl: uploadedUrl,
+          transparentUrl: finalTransUrl
+        }));
+        setFrontConfig(prev => ({ ...prev, customLogo: finalTransUrl }));
         setTemplateType('customer_logo');
-        showToast('Logo uploaded and applied to card canvas.');
+        showToast('Logo uploaded and background automatically removed.');
       } else {
         // Revert temporary preview on failed URL generation
         if (tempPreviewUrl && tempPreviewUrl.startsWith('blob:') && typeof window !== 'undefined' && window.URL?.revokeObjectURL) {
@@ -2030,6 +2050,26 @@ export default function AdminCardDesignStudio({ onAssignToOrder = null, initialD
                         <Sparkles size={11} />
                         <span>{isRemovingBg ? '...' : 'Remove BG'}</span>
                       </button>
+                      <button
+                        type="button"
+                        onClick={() => setShowSmartLogoModal(true)}
+                        style={{
+                          padding: '4px 8px',
+                          background: '#7038F8',
+                          border: 'none',
+                          borderRadius: '6px',
+                          fontSize: '0.7rem',
+                          color: '#FFFFFF',
+                          cursor: 'pointer',
+                          display: 'flex',
+                          alignItems: 'center',
+                          gap: '4px',
+                          fontWeight: 700
+                        }}
+                      >
+                        <Sparkles size={11} />
+                        <span>Studio</span>
+                      </button>
                       <label style={{ padding: '4px 8px', background: 'rgba(168, 85, 247, 0.2)', border: '1px solid rgba(168, 85, 247, 0.4)', borderRadius: '6px', fontSize: '0.7rem', color: '#D8B4FE', cursor: isUploadingLogo ? 'not-allowed' : 'pointer' }}>
                         {isUploadingLogo ? '...' : 'Change'}
                         <input type="file" accept="image/png,image/jpeg,image/svg+xml,image/webp" onChange={handleLogoUpload} disabled={isUploadingLogo} style={{ display: 'none' }} />
@@ -2058,6 +2098,20 @@ export default function AdminCardDesignStudio({ onAssignToOrder = null, initialD
                   max="200"
                   value={customerLogo.size}
                   onChange={(e) => setCustomerLogo(prev => ({ ...prev, size: Number(e.target.value) }))}
+                  style={{ width: '100%', accentColor: '#A855F7' }}
+                />
+              </div>
+
+              <div>
+                <label style={{ fontSize: '0.78rem', color: '#B9AEC9', display: 'block', marginBottom: '6px' }}>
+                  Rotation ({customerLogo.rotation || 0}°)
+                </label>
+                <input
+                  type="range"
+                  min="-180"
+                  max="180"
+                  value={customerLogo.rotation || 0}
+                  onChange={(e) => setCustomerLogo(prev => ({ ...prev, rotation: Number(e.target.value) }))}
                   style={{ width: '100%', accentColor: '#A855F7' }}
                 />
               </div>
@@ -2379,6 +2433,21 @@ export default function AdminCardDesignStudio({ onAssignToOrder = null, initialD
           </div>
         </div>
       )}
+
+      {/* Smart AI Logo Background Remover & Editor Modal */}
+      <SmartLogoEditorModal
+        isOpen={showSmartLogoModal}
+        onClose={() => setShowSmartLogoModal(false)}
+        customerLogo={customerLogo}
+        onApplyLogo={(updatedConfig) => {
+          pushHistory({ frontConfig, backConfig, customColors, customerLogo, edition, templateType });
+          setCustomerLogo(updatedConfig);
+          setFrontConfig(prev => ({ ...prev, customLogo: updatedConfig.url }));
+          showToast('Smart logo edits applied to card canvas.');
+        }}
+        isLight={false}
+        cardEdition={edition}
+      />
 
       {/* Floating Toast Notification */}
       {statusToast && (

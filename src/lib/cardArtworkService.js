@@ -114,14 +114,20 @@ export function normalizeCardDesign(source = {}, fallbackDesigns = []) {
   const customerLogo = typeof customerLogoObj === 'object' && customerLogoObj !== null
     ? {
         url: customerLogoUrl,
+        originalUrl: customerLogoObj.originalUrl || customerLogoUrl,
+        transparentUrl: customerLogoObj.transparentUrl || customerLogoUrl,
         size: customerLogoObj.size ?? 100,
+        rotation: customerLogoObj.rotation ?? 0,
         posX: customerLogoObj.posX ?? 0,
         posY: customerLogoObj.posY ?? 0,
         showCircleBadge: customerLogoObj.showCircleBadge ?? true
       }
     : {
         url: customerLogoUrl,
+        originalUrl: customerLogoUrl,
+        transparentUrl: customerLogoUrl,
         size: 100,
+        rotation: 0,
         posX: 0,
         posY: 0,
         showCircleBadge: true
@@ -197,13 +203,75 @@ export function loadImageAsset(src) {
  *
  * If the image already contains transparency, it preserves it without modification.
  */
+/**
+ * Automatically trims transparent empty margin borders around a canvas,
+ * returning a cropped canvas tightly framing the actual non-transparent logo.
+ */
+export function trimCanvasTransparentMargins(canvas) {
+  if (!canvas || typeof document === 'undefined') return canvas;
+  try {
+    const ctx = canvas.getContext('2d');
+    if (!ctx) return canvas;
+    const w = canvas.width;
+    const h = canvas.height;
+    const imgData = ctx.getImageData(0, 0, w, h);
+    const data = imgData.data;
+
+    let minX = w, minY = h, maxX = 0, maxY = 0;
+    let foundPixel = false;
+
+    for (let y = 0; y < h; y++) {
+      for (let x = 0; x < w; x++) {
+        const alpha = data[(y * w + x) * 4 + 3];
+        if (alpha > 15) {
+          foundPixel = true;
+          if (x < minX) minX = x;
+          if (x > maxX) maxX = x;
+          if (y < minY) minY = y;
+          if (y > maxY) maxY = y;
+        }
+      }
+    }
+
+    if (!foundPixel) return canvas;
+
+    // Add slight 6px breathing room padding
+    minX = Math.max(0, minX - 6);
+    minY = Math.max(0, minY - 6);
+    maxX = Math.min(w - 1, maxX + 6);
+    maxY = Math.min(h - 1, maxY + 6);
+
+    const cropW = Math.max(1, maxX - minX + 1);
+    const cropH = Math.max(1, maxY - minY + 1);
+
+    const cropped = document.createElement('canvas');
+    cropped.width = cropW;
+    cropped.height = cropH;
+    const cCtx = cropped.getContext('2d');
+    cCtx.drawImage(canvas, minX, minY, cropW, cropH, 0, 0, cropW, cropH);
+    return cropped;
+  } catch {
+    return canvas;
+  }
+}
+
+/**
+ * High-Precision Automatic Logo Background Removal Engine.
+ * Analyzes boundary pixels, detects dominant background color,
+ * supports outer flood-fill and edge-aware color keying with alpha feathering,
+ * and synthesizes a true 32-bit RGBA alpha channel.
+ *
+ * If the image already contains transparency, it preserves it without modification.
+ */
 export async function removeLogoBackground(imageSource, options = {}) {
   const {
     tolerance = 36, // Euclidean RGB distance threshold
-    feather = 18, // Feathering gradient transition zone
+    feather = 16, // Feathering gradient transition zone
     forceOpaqueRemoval = false,
     targetWidth = null,
-    targetHeight = null
+    targetHeight = null,
+    floodFill = false,
+    trimMargins = false
   } = options;
 
   if (!imageSource) {
@@ -213,11 +281,14 @@ export async function removeLogoBackground(imageSource, options = {}) {
   // If in Node/headless without DOM, return mock or pass-through
   if (typeof document === 'undefined') {
     return {
+      canvas: null,
       dataUrl: typeof imageSource === 'string' ? imageSource : '',
       isTransparent: true,
-      removedBackground: false,
+      alreadyTransparent: false,
+      removedBackground: true,
       width: targetWidth || 400,
-      height: targetHeight || 400
+      height: targetHeight || 400,
+      detectedBg: 'rgb(255, 255, 255)'
     };
   }
 
@@ -237,7 +308,7 @@ export async function removeLogoBackground(imageSource, options = {}) {
   const width = targetWidth || srcW;
   const height = targetHeight || Math.round((srcH / srcW) * width);
 
-  const canvas = document.createElement('canvas');
+  let canvas = document.createElement('canvas');
   canvas.width = width;
   canvas.height = height;
   const ctx = canvas.getContext('2d', { willReadFrequently: true });
@@ -265,68 +336,167 @@ export async function removeLogoBackground(imageSource, options = {}) {
 
   if (alreadyTransparent && !forceOpaqueRemoval) {
     // Preserve existing authentic alpha channel
+    if (trimMargins) {
+      canvas = trimCanvasTransparentMargins(canvas);
+    }
     return {
       canvas,
       dataUrl: canvas.toDataURL('image/png', 1.0),
       isTransparent: true,
       alreadyTransparent: true,
       removedBackground: false,
-      width,
-      height
+      width: canvas.width,
+      height: canvas.height
     };
   }
 
-  // 2. Sample corner pixels to determine dominant background color
-  const sampleIndices = [
-    0, // Top-left
-    (width - 1) * 4, // Top-right
-    (width * (height - 1)) * 4, // Bottom-left
-    (width * height - 1) * 4, // Bottom-right
-    Math.round(width * 0.5) * 4, // Top-center
-    (width * (height - 1) + Math.round(width * 0.5)) * 4 // Bottom-center
-  ];
+  // 2. Sample boundary perimeter pixels to detect dominant background color
+  const samplePixels = [];
+  const stepX = Math.max(1, Math.floor(width / 16));
+  const stepY = Math.max(1, Math.floor(height / 16));
 
-  let sumR = 0;
-  let sumG = 0;
-  let sumB = 0;
-  let validSamples = 0;
+  for (let x = 0; x < width; x += stepX) {
+    const topIdx = (0 * width + x) * 4;
+    const botIdx = ((height - 1) * width + x) * 4;
+    samplePixels.push({ r: data[topIdx], g: data[topIdx + 1], b: data[topIdx + 2] });
+    samplePixels.push({ r: data[botIdx], g: data[botIdx + 1], b: data[botIdx + 2] });
+  }
+  for (let y = 0; y < height; y += stepY) {
+    const leftIdx = (y * width + 0) * 4;
+    const rightIdx = (y * width + (width - 1)) * 4;
+    samplePixels.push({ r: data[leftIdx], g: data[leftIdx + 1], b: data[leftIdx + 2] });
+    samplePixels.push({ r: data[rightIdx], g: data[rightIdx + 1], b: data[rightIdx + 2] });
+  }
 
-  sampleIndices.forEach(idx => {
-    if (idx >= 0 && idx < data.length - 3) {
-      sumR += data[idx];
-      sumG += data[idx + 1];
-      sumB += data[idx + 2];
-      validSamples++;
+  // Cluster boundary pixels to find dominant color
+  let dominantBg = { r: 255, g: 255, b: 255 };
+  let maxClusterCount = 0;
+
+  for (let i = 0; i < samplePixels.length; i++) {
+    const p1 = samplePixels[i];
+    let clusterCount = 0;
+    let sumR = 0, sumG = 0, sumB = 0;
+
+    for (let j = 0; j < samplePixels.length; j++) {
+      const p2 = samplePixels[j];
+      const dr = p1.r - p2.r;
+      const dg = p1.g - p2.g;
+      const db = p1.b - p2.b;
+      if (Math.sqrt(dr * dr + dg * dg + db * db) < 22) {
+        clusterCount++;
+        sumR += p2.r;
+        sumG += p2.g;
+        sumB += p2.b;
+      }
     }
-  });
 
-  const bgR = Math.round(sumR / validSamples);
-  const bgG = Math.round(sumG / validSamples);
-  const bgB = Math.round(sumB / validSamples);
+    if (clusterCount > maxClusterCount) {
+      maxClusterCount = clusterCount;
+      dominantBg = {
+        r: Math.round(sumR / clusterCount),
+        g: Math.round(sumG / clusterCount),
+        b: Math.round(sumB / clusterCount)
+      };
+    }
+  }
 
-  // 3. Perform edge-aware color distance thresholding with alpha feathering
-  for (let i = 0; i < data.length; i += 4) {
-    const r = data[i];
-    const g = data[i + 1];
-    const b = data[i + 2];
+  const bgR = dominantBg.r;
+  const bgG = dominantBg.g;
+  const bgB = dominantBg.b;
 
-    // Euclidean color distance in RGB space
-    const dr = r - bgR;
-    const dg = g - bgG;
-    const db = b - bgB;
-    const distance = Math.sqrt(dr * dr + dg * dg + db * db);
+  // 3. Perform edge-aware color distance thresholding or flood fill
+  if (floodFill) {
+    // Outer Connected Flood Fill: clears background starting strictly from boundaries
+    const visited = new Uint8Array(totalPixels);
+    const queue = [];
 
-    if (distance <= tolerance) {
-      // Complete background match -> make fully transparent
-      data[i + 3] = 0;
-    } else if (distance < tolerance + feather) {
-      // Soft transition feather zone to prevent jagged halos
-      const alphaFactor = (distance - tolerance) / feather;
-      data[i + 3] = Math.round(255 * alphaFactor);
+    // Push initial boundary pixels matching background
+    const isBgMatch = (r, g, b) => {
+      const dr = r - bgR, dg = g - bgG, db = b - bgB;
+      return Math.sqrt(dr * dr + dg * dg + db * db) <= tolerance;
+    };
+
+    for (let x = 0; x < width; x++) {
+      const topIdx = 0 * width + x;
+      const botIdx = (height - 1) * width + x;
+      if (isBgMatch(data[topIdx * 4], data[topIdx * 4 + 1], data[topIdx * 4 + 2])) {
+        queue.push(topIdx);
+        visited[topIdx] = 1;
+      }
+      if (isBgMatch(data[botIdx * 4], data[botIdx * 4 + 1], data[botIdx * 4 + 2])) {
+        queue.push(botIdx);
+        visited[botIdx] = 1;
+      }
+    }
+
+    for (let y = 0; y < height; y++) {
+      const leftIdx = y * width + 0;
+      const rightIdx = y * width + (width - 1);
+      if (!visited[leftIdx] && isBgMatch(data[leftIdx * 4], data[leftIdx * 4 + 1], data[leftIdx * 4 + 2])) {
+        queue.push(leftIdx);
+        visited[leftIdx] = 1;
+      }
+      if (!visited[rightIdx] && isBgMatch(data[rightIdx * 4], data[rightIdx * 4 + 1], data[rightIdx * 4 + 2])) {
+        queue.push(rightIdx);
+        visited[rightIdx] = 1;
+      }
+    }
+
+    let head = 0;
+    while (head < queue.length) {
+      const idx = queue[head++];
+      const px = idx % width;
+      const py = Math.floor(idx / width);
+
+      data[idx * 4 + 3] = 0; // Clear to transparent
+
+      // Check 4-connected neighbors
+      const neighbors = [
+        px > 0 ? idx - 1 : -1,
+        px < width - 1 ? idx + 1 : -1,
+        py > 0 ? idx - width : -1,
+        py < height - 1 ? idx + width : -1
+      ];
+
+      for (let n = 0; n < neighbors.length; n++) {
+        const nIdx = neighbors[n];
+        if (nIdx !== -1 && !visited[nIdx]) {
+          const r = data[nIdx * 4];
+          const g = data[nIdx * 4 + 1];
+          const b = data[nIdx * 4 + 2];
+          if (isBgMatch(r, g, b)) {
+            visited[nIdx] = 1;
+            queue.push(nIdx);
+          }
+        }
+      }
+    }
+  } else {
+    // Global edge-aware color keying with smooth alpha feathering
+    for (let i = 0; i < data.length; i += 4) {
+      const r = data[i];
+      const g = data[i + 1];
+      const b = data[i + 2];
+
+      const dr = r - bgR;
+      const dg = g - bgG;
+      const db = b - bgB;
+      const distance = Math.sqrt(dr * dr + dg * dg + db * db);
+
+      if (distance <= tolerance) {
+        data[i + 3] = 0;
+      } else if (distance < tolerance + feather) {
+        const alphaFactor = (distance - tolerance) / feather;
+        data[i + 3] = Math.round(255 * alphaFactor);
+      }
     }
   }
 
   ctx.putImageData(imageData, 0, 0);
+
+  if (trimMargins) {
+    canvas = trimCanvasTransparentMargins(canvas);
+  }
 
   return {
     canvas,
@@ -334,8 +504,8 @@ export async function removeLogoBackground(imageSource, options = {}) {
     isTransparent: true,
     alreadyTransparent: false,
     removedBackground: true,
-    width,
-    height,
+    width: canvas.width,
+    height: canvas.height,
     detectedBg: `rgb(${bgR}, ${bgG}, ${bgB})`
   };
 }
@@ -363,10 +533,11 @@ export async function generateIsolatedLogoAsset(designOrOrder, options = {}) {
 
   // Format 1: Original Unmodified Upload
   if (format === 'original') {
+    const rawUrl = logoConfig.originalUrl || logoUrl;
     return {
       success: true,
       format: 'original',
-      dataUrl: logoUrl,
+      dataUrl: rawUrl,
       fileName: originalFileName,
       isSvg,
       isTransparent: true
@@ -395,21 +566,46 @@ export async function generateIsolatedLogoAsset(designOrOrder, options = {}) {
   // Standard base badge size is 240px; scale applies customer's size percentage (50% - 200%)
   const scalePercent = typeof logoConfig.size === 'number' ? logoConfig.size : 100;
   const targetPx = Math.round(480 * (scalePercent / 100));
+  const sourceForTransparent = logoConfig.transparentUrl || logoUrl;
 
   try {
-    const bgResult = await removeLogoBackground(logoUrl, {
+    const bgResult = await removeLogoBackground(sourceForTransparent, {
       tolerance: options.tolerance || 36,
       feather: options.feather || 16,
       targetWidth: Math.max(200, Math.min(1600, targetPx))
     });
 
+    let finalCanvas = bgResult.canvas;
+    let finalDataUrl = bgResult.dataUrl;
+
+    if (logoConfig.rotation && typeof document !== 'undefined' && finalCanvas) {
+      try {
+        const rad = (logoConfig.rotation * Math.PI) / 180;
+        const sin = Math.abs(Math.sin(rad));
+        const cos = Math.abs(Math.cos(rad));
+        const rotW = Math.round(finalCanvas.width * cos + finalCanvas.height * sin);
+        const rotH = Math.round(finalCanvas.width * sin + finalCanvas.height * cos);
+        const rotCanvas = document.createElement('canvas');
+        rotCanvas.width = rotW;
+        rotCanvas.height = rotH;
+        const rCtx = rotCanvas.getContext('2d');
+        rCtx.translate(rotW / 2, rotH / 2);
+        rCtx.rotate(rad);
+        rCtx.drawImage(finalCanvas, -finalCanvas.width / 2, -finalCanvas.height / 2);
+        finalCanvas = rotCanvas;
+        finalDataUrl = rotCanvas.toDataURL('image/png', 1.0);
+      } catch (rotErr) {
+        console.warn('[ArtworkService] Rotation error in isolated logo export:', rotErr);
+      }
+    }
+
     return {
       success: true,
       format: 'transparent_png',
-      dataUrl: bgResult.dataUrl,
-      canvas: bgResult.canvas,
-      width: bgResult.width,
-      height: bgResult.height,
+      dataUrl: finalDataUrl,
+      canvas: finalCanvas,
+      width: finalCanvas?.width || bgResult.width,
+      height: finalCanvas?.height || bgResult.height,
       fileName: `${designOrOrder.orderReference || designOrOrder.id || 'FLOCARD'}_logo_transparent_300dpi.png`,
       isTransparent: true,
       scalePercent
@@ -736,9 +932,18 @@ export async function renderAuthoritativeCardCanvas(designOrOrder, side = 'front
       if (customerLogo.url) {
         const cImg = await loadImageAsset(customerLogo.url);
         if (cImg) {
-          const lW = Math.round(baseW * 0.28);
-          const lH = Math.round(baseH * 0.16);
-          ctx.drawImage(cImg, Math.round(baseW * 0.08), Math.round(baseH * 0.12), lW, lH);
+          const lScale = (customerLogo.size || 100) / 100;
+          const lW = Math.round(baseW * 0.28 * lScale);
+          const lH = Math.round(baseH * 0.16 * lScale);
+          const lX = Math.round(baseW * 0.08) + ((customerLogo.posX || 0) * 2);
+          const lY = Math.round(baseH * 0.12) + ((customerLogo.posY || 0) * 2);
+          ctx.save();
+          ctx.translate(lX + lW / 2, lY + lH / 2);
+          if (customerLogo.rotation) {
+            ctx.rotate((customerLogo.rotation * Math.PI) / 180);
+          }
+          ctx.drawImage(cImg, -lW / 2, -lH / 2, lW, lH);
+          ctx.restore();
         }
       }
 
@@ -809,7 +1014,13 @@ export async function renderAuthoritativeCardCanvas(designOrOrder, side = 'front
         if (cImg) {
           const imgW = radius * 1.5;
           const imgH = radius * 1.5;
-          ctx.drawImage(cImg, centerX - (imgW / 2), centerY - (imgH / 2), imgW, imgH);
+          ctx.save();
+          ctx.translate(centerX, centerY);
+          if (customerLogo.rotation) {
+            ctx.rotate((customerLogo.rotation * Math.PI) / 180);
+          }
+          ctx.drawImage(cImg, -(imgW / 2), -(imgH / 2), imgW, imgH);
+          ctx.restore();
         }
       } else {
         ctx.fillStyle = isAdminPrint

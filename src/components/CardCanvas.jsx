@@ -55,7 +55,10 @@ export default function CardCanvas({
   const rawLogo = config.customerLogo;
   const customerLogo = {
     url: typeof rawLogo === 'string' ? rawLogo : (rawLogo?.url || config.front?.customLogo || null),
+    originalUrl: (typeof rawLogo === 'object' && rawLogo?.originalUrl) || (typeof rawLogo === 'string' ? rawLogo : null),
+    transparentUrl: (typeof rawLogo === 'object' && rawLogo?.transparentUrl) || (typeof rawLogo === 'string' ? rawLogo : null),
     size: (typeof rawLogo === 'object' && typeof rawLogo?.size === 'number') ? rawLogo.size : 100, // percentage 50 - 200
+    rotation: (typeof rawLogo === 'object' && typeof rawLogo?.rotation === 'number') ? rawLogo.rotation : 0, // degrees -180 to 180
     posX: (typeof rawLogo === 'object' && typeof rawLogo?.posX === 'number') ? rawLogo.posX : 0, // offset in px
     posY: (typeof rawLogo === 'object' && typeof rawLogo?.posY === 'number') ? rawLogo.posY : 0,
     showCircleBadge: (typeof rawLogo === 'object' && rawLogo?.showCircleBadge !== undefined) ? rawLogo.showCircleBadge : true
@@ -466,9 +469,18 @@ export default function CardCanvas({
             const cImg = new Image();
             cImg.src = customerLogo.url;
             const drawT1Logo = () => {
-              const lW = Math.round(w * 0.28);
-              const lH = Math.round(h * 0.16);
-              ctx.drawImage(cImg, Math.round(w * 0.08), Math.round(h * 0.12), lW, lH);
+              const lScale = (customerLogo.size || 100) / 100;
+              const lW = Math.round(w * 0.28 * lScale);
+              const lH = Math.round(h * 0.16 * lScale);
+              const lX = Math.round(w * 0.08) + ((customerLogo.posX || 0) * 2);
+              const lY = Math.round(h * 0.12) + ((customerLogo.posY || 0) * 2);
+              ctx.save();
+              ctx.translate(lX + lW / 2, lY + lH / 2);
+              if (customerLogo.rotation) {
+                ctx.rotate((customerLogo.rotation * Math.PI) / 180);
+              }
+              ctx.drawImage(cImg, -(lW / 2), -(lH / 2), lW, lH);
+              ctx.restore();
             };
             if (cImg.complete && cImg.naturalWidth > 0) {
               drawT1Logo();
@@ -560,7 +572,13 @@ export default function CardCanvas({
             const drawT2Logo = () => {
               const imgW = radius * 1.5;
               const imgH = radius * 1.5;
-              ctx.drawImage(cImg, centerX - (imgW / 2), centerY - (imgH / 2), imgW, imgH);
+              ctx.save();
+              ctx.translate(centerX, centerY);
+              if (customerLogo.rotation) {
+                ctx.rotate((customerLogo.rotation * Math.PI) / 180);
+              }
+              ctx.drawImage(cImg, -(imgW / 2), -(imgH / 2), imgW, imgH);
+              ctx.restore();
             };
             if (cImg.complete && cImg.naturalWidth > 0) {
               drawT2Logo();
@@ -765,8 +783,9 @@ export default function CardCanvas({
                       alt="Customer Logo"
                       style={{
                         maxWidth: '100%',
-                        maxHeight: `${Math.round(width * 0.14)}px`,
-                        objectFit: 'contain'
+                        maxHeight: `${Math.round(width * 0.14 * (customerLogo.size / 100))}px`,
+                        objectFit: 'contain',
+                        transform: `translate(${customerLogo.posX}px, ${customerLogo.posY}px) rotate(${customerLogo.rotation || 0}deg)`
                       }}
                     />
                   </div>
@@ -987,7 +1006,7 @@ export default function CardCanvas({
                     position: 'absolute',
                     top: '50%',
                     left: '49%',
-                    transform: `translate(calc(-50% + ${customerLogo.posX}px), calc(-50% + ${customerLogo.posY}px))`,
+                    transform: `translate(calc(-50% + ${customerLogo.posX}px), calc(-50% + ${customerLogo.posY}px)) rotate(${customerLogo.rotation || 0}deg)`,
                     width: `${Math.round(width * 0.355 * (customerLogo.size / 100))}px`,
                     height: `${Math.round(width * 0.355 * (customerLogo.size / 100))}px`,
                     borderRadius: '50%',

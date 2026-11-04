@@ -52,16 +52,19 @@ import GradientASCII from '../components/GradientASCII';
 import SwipeToast from '../components/SwipeToast';
 import SlideCommit from '../components/SlideCommit';
 import OrderSummaryPrintModal from '../components/designer/OrderSummaryPrintModal';
+import SmartLogoEditorModal from '../components/designer/SmartLogoEditorModal';
 
 import { EDITIONS, TEMPLATES, BRAND } from '../lib/constants';
 import {
   exportCardPDF,
   downloadCanvasPNG,
   downloadBothSides,
+  downloadArtworkFile,
   createCombinedArtworkCanvas,
   copyCanvasToClipboard,
   removeLogoBackground
 } from '../lib/pdfExport';
+import { uploadImage } from '../lib/uploadImage';
 import { useData } from '../context/DataContext';
 import { useAuth } from '../context/AuthContext';
 import { useTheme } from '../context/ThemeContext';
@@ -404,12 +407,17 @@ export default function Designer() {
 
   // Customer Logo state
   const [customerLogo, setCustomerLogo] = useState({
-    url: existingDesign?.customerLogo?.url || existingDesign?.front?.customLogo || null,
+    url: existingDesign?.customerLogo?.url || (typeof existingDesign?.customerLogo === 'string' ? existingDesign.customerLogo : existingDesign?.front?.customLogo) || null,
+    originalUrl: existingDesign?.customerLogo?.originalUrl || existingDesign?.customerLogo?.url || (typeof existingDesign?.customerLogo === 'string' ? existingDesign.customerLogo : existingDesign?.front?.customLogo) || null,
+    transparentUrl: existingDesign?.customerLogo?.transparentUrl || existingDesign?.customerLogo?.url || (typeof existingDesign?.customerLogo === 'string' ? existingDesign.customerLogo : null),
     size: existingDesign?.customerLogo?.size ?? 100,
+    rotation: existingDesign?.customerLogo?.rotation ?? 0,
     posX: existingDesign?.customerLogo?.posX ?? 0,
     posY: existingDesign?.customerLogo?.posY ?? 0,
     showCircleBadge: existingDesign?.customerLogo?.showCircleBadge ?? true
   });
+  const [showSmartLogoModal, setShowSmartLogoModal] = useState(false);
+  const [isProcessingLogo, setIsProcessingLogo] = useState(false);
 
   // FLOCARD Logo state
   const [flocardLogo, setFlocardLogo] = useState({
@@ -527,14 +535,14 @@ export default function Designer() {
     notify(newTemplate === 'customer_logo' ? 'Custom Logo Design Layout' : 'Standard Design Layout', 'Card layout updated');
   };
 
-  // Upload logo
+  // Upload logo with Automatic AI Background Removal
   const handleCustomerLogoUpload = (e) => {
     const file = e.target.files?.[0];
     if (!file) return;
 
     const isImage = file.type.startsWith('image/') || /\.(png|jpe?g|svg|webp|gif|bmp|avif)$/i.test(file.name);
     if (!isImage) {
-      alert('Please upload a valid image file (PNG, SVG, JPG, or WEBP). Transparent PNG is recommended.');
+      alert('Please upload a valid image file (PNG, SVG, JPG, or WEBP).');
       return;
     }
 
@@ -543,14 +551,64 @@ export default function Designer() {
       return;
     }
 
+    setIsProcessingLogo(true);
+    notify('Processing Logo', 'Analyzing image & automatically removing background...');
+
     const reader = new FileReader();
-    reader.onload = () => {
-      const dataUrl = reader.result;
-      setCustomerLogo(prev => ({ ...prev, url: dataUrl }));
-      setFrontConfig(prev => ({ ...prev, customLogo: dataUrl }));
+    reader.onload = async () => {
+      const originalDataUrl = reader.result;
+      let finalTransparentUrl = originalDataUrl;
+      let isAlreadyTrans = false;
+
+      try {
+        const bgRes = await removeLogoBackground(originalDataUrl, {
+          tolerance: 36,
+          feather: 16,
+          forceOpaqueRemoval: false
+        });
+        if (bgRes && bgRes.dataUrl) {
+          finalTransparentUrl = bgRes.dataUrl;
+          isAlreadyTrans = Boolean(bgRes.alreadyTransparent);
+        }
+      } catch (err) {
+        console.warn('[Designer] Auto background removal error:', err);
+      }
+
+      const updatedLogoConfig = {
+        url: finalTransparentUrl,
+        originalUrl: originalDataUrl,
+        transparentUrl: finalTransparentUrl,
+        size: 100,
+        rotation: 0,
+        posX: 0,
+        posY: 0,
+        showCircleBadge: true
+      };
+
+      setCustomerLogo(updatedLogoConfig);
+      setFrontConfig(prev => ({ ...prev, customLogo: finalTransparentUrl }));
       setTemplateType('customer_logo');
       setSide('front');
-      notify('Logo Uploaded', 'Custom logo placed on card front');
+      setIsProcessingLogo(false);
+
+      if (isAlreadyTrans) {
+        notify('Transparent Logo Loaded', 'Authentic alpha channel preserved on card');
+      } else {
+        notify('✓ Background Removed!', 'High-quality transparent PNG placed on card');
+      }
+
+      // Background upload to Supabase Storage if user session exists
+      if (user?.id) {
+        try {
+          uploadImage(file, 'logo', user.id).then(publicOrigUrl => {
+            if (publicOrigUrl) {
+              setCustomerLogo(prev => ({ ...prev, originalUrl: publicOrigUrl }));
+            }
+          }).catch(console.warn);
+        } catch (e) {
+          console.warn('[Designer] Storage upload background catch:', e);
+        }
+      }
     };
     reader.readAsDataURL(file);
     e.target.value = '';
@@ -558,13 +616,18 @@ export default function Designer() {
 
   const [isRemovingLogoBg, setIsRemovingLogoBg] = useState(false);
   const handleRemoveLogoBg = async () => {
-    if (!customerLogo.url) return;
+    const sourceUrl = customerLogo.originalUrl || customerLogo.url;
+    if (!sourceUrl) return;
     setIsRemovingLogoBg(true);
-    notify('Processing Logo', 'Removing background and converting to transparent PNG...');
+    notify('Processing Logo', 'Removing background and synthesizing transparent PNG...');
     try {
-      const res = await removeLogoBackground(customerLogo.url, { forceOpaqueRemoval: true });
+      const res = await removeLogoBackground(sourceUrl, { forceOpaqueRemoval: true, tolerance: 38, feather: 16 });
       if (res && res.dataUrl) {
-        setCustomerLogo(prev => ({ ...prev, url: res.dataUrl }));
+        setCustomerLogo(prev => ({
+          ...prev,
+          url: res.dataUrl,
+          transparentUrl: res.dataUrl
+        }));
         setFrontConfig(prev => ({ ...prev, customLogo: res.dataUrl }));
         notify('Background Removed', 'Transparent logo applied to card');
       }
@@ -1648,11 +1711,12 @@ export default function Designer() {
 
               {/* Sub-drawer for Logo or QR when active */}
               {activeElementTab === 'logo' && (
-                <div style={{ marginTop: '12px', padding: '12px', background: isLight ? 'rgba(112, 56, 248, 0.06)' : 'rgba(255,255,255,0.03)', borderRadius: '10px', border: isLight ? '1px solid rgba(112, 56, 248, 0.15)' : 'none' }}>
+                <div style={{ marginTop: '12px', padding: '14px', background: isLight ? 'rgba(112, 56, 248, 0.06)' : 'rgba(255,255,255,0.03)', borderRadius: '12px', border: isLight ? '1px solid rgba(112, 56, 248, 0.15)' : '1px solid rgba(255, 255, 255, 0.08)' }}>
                   <input ref={customerLogoInputRef} type="file" accept="image/*" onChange={handleCustomerLogoUpload} style={{ display: 'none' }} />
                   <button
                     type="button"
                     onClick={() => customerLogoInputRef.current?.click()}
+                    disabled={isProcessingLogo}
                     style={{
                       width: '100%',
                       display: 'flex',
@@ -1666,47 +1730,178 @@ export default function Designer() {
                       color: isLight ? '#7038f8' : '#ffffff',
                       fontSize: '0.78rem',
                       fontWeight: 600,
-                      cursor: 'pointer'
+                      cursor: isProcessingLogo ? 'wait' : 'pointer'
                     }}
                   >
                     <Upload size={14} />
-                    <span>Upload Transparent PNG Logo</span>
+                    <span>{isProcessingLogo ? 'Processing & Removing BG...' : (customerLogo.url ? 'Replace Logo' : 'Upload Logo (Auto BG Removal)')}</span>
                   </button>
+
                   {customerLogo.url && (
-                    <div style={{ marginTop: '8px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                      <span style={{ fontSize: '0.7rem', color: '#22c55e' }}>✓ Logo placed</span>
-                      <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
+                    <div style={{ marginTop: '12px', display: 'flex', flexDirection: 'column', gap: '10px' }}>
+                      {/* Logo Preview & Smart Studio Trigger */}
+                      <div
+                        style={{
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'space-between',
+                          padding: '8px 10px',
+                          borderRadius: '8px',
+                          backgroundColor: isLight ? '#F8FAFC' : 'rgba(0,0,0,0.3)',
+                          border: isLight ? '1px solid #E2E8F0' : '1px solid rgba(255,255,255,0.08)'
+                        }}
+                      >
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                          <div
+                            style={{
+                              width: '38px',
+                              height: '38px',
+                              borderRadius: '6px',
+                              overflow: 'hidden',
+                              backgroundColor: '#1E142B',
+                              backgroundImage: `
+                                linear-gradient(45deg, #2d1f42 25%, transparent 25%),
+                                linear-gradient(-45deg, #2d1f42 25%, transparent 25%),
+                                linear-gradient(45deg, transparent 75%, #2d1f42 75%),
+                                linear-gradient(-45deg, transparent 75%, #2d1f42 75%)
+                              `,
+                              backgroundSize: '10px 10px',
+                              display: 'flex',
+                              alignItems: 'center',
+                              justifyContent: 'center',
+                              border: '1px solid rgba(255,255,255,0.1)'
+                            }}
+                          >
+                            <img src={customerLogo.url} alt="Logo" style={{ maxWidth: '90%', maxHeight: '90%', objectFit: 'contain' }} />
+                          </div>
+                          <div>
+                            <span style={{ fontSize: '0.72rem', color: '#10B981', fontWeight: 600, display: 'block' }}>
+                              ✓ Transparent Logo
+                            </span>
+                            <span style={{ fontSize: '0.64rem', color: '#94A3B8' }}>
+                              {customerLogo.size}% scale · {customerLogo.rotation || 0}°
+                            </span>
+                          </div>
+                        </div>
+
                         <button
                           type="button"
-                          onClick={handleRemoveLogoBg}
-                          disabled={isRemovingLogoBg}
+                          onClick={() => setShowSmartLogoModal(true)}
                           style={{
-                            background: 'rgba(34, 197, 94, 0.15)',
-                            border: '1px solid rgba(34, 197, 94, 0.35)',
-                            color: '#4ADE80',
-                            fontSize: '0.7rem',
-                            fontWeight: 600,
-                            padding: '2px 8px',
-                            borderRadius: '5px',
-                            cursor: isRemovingLogoBg ? 'wait' : 'pointer',
                             display: 'inline-flex',
                             alignItems: 'center',
-                            gap: '3px'
+                            gap: '4px',
+                            padding: '4px 10px',
+                            borderRadius: '6px',
+                            backgroundColor: '#7038F8',
+                            color: '#FFFFFF',
+                            border: 'none',
+                            fontSize: '0.72rem',
+                            fontWeight: 700,
+                            cursor: 'pointer',
+                            boxShadow: '0 2px 8px rgba(112, 56, 248, 0.4)'
                           }}
-                          title="Remove solid/white background from logo"
                         >
-                          <Sparkles size={11} />
-                          <span>{isRemovingLogoBg ? '...' : 'Remove BG'}</span>
+                          <Sparkles size={12} />
+                          <span>Smart Studio</span>
                         </button>
+                      </div>
+
+                      {/* Transform Sliders */}
+                      <div>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.7rem', color: subtextColor, marginBottom: '3px' }}>
+                          <span>Size ({customerLogo.size}%)</span>
+                          <span>Rot ({customerLogo.rotation || 0}°)</span>
+                        </div>
+                        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px' }}>
+                          <input
+                            type="range"
+                            min="50"
+                            max="200"
+                            value={customerLogo.size}
+                            onChange={(e) => setCustomerLogo(prev => ({ ...prev, size: Number(e.target.value) }))}
+                            style={{ width: '100%', accentColor: '#7038f8' }}
+                          />
+                          <input
+                            type="range"
+                            min="-180"
+                            max="180"
+                            value={customerLogo.rotation || 0}
+                            onChange={(e) => setCustomerLogo(prev => ({ ...prev, rotation: Number(e.target.value) }))}
+                            style={{ width: '100%', accentColor: '#7038f8' }}
+                          />
+                        </div>
+                      </div>
+
+                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                        <label style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '0.72rem', color: subtextColor, cursor: 'pointer' }}>
+                          <input
+                            type="checkbox"
+                            checked={customerLogo.showCircleBadge}
+                            onChange={(e) => setCustomerLogo(prev => ({ ...prev, showCircleBadge: e.target.checked }))}
+                            style={{ accentColor: '#7038f8' }}
+                          />
+                          <span>Circular Glass Badge</span>
+                        </label>
+
                         <button
                           type="button"
                           onClick={() => {
-                            setCustomerLogo(prev => ({ ...prev, url: null }));
+                            setCustomerLogo(prev => ({ ...prev, url: null, originalUrl: null, transparentUrl: null }));
                             setFrontConfig(prev => ({ ...prev, customLogo: null }));
                           }}
                           style={{ background: 'none', border: 'none', color: '#ef4444', fontSize: '0.7rem', cursor: 'pointer' }}
                         >
                           Remove
+                        </button>
+                      </div>
+
+                      {/* Direct 1-Click Downloads */}
+                      <div style={{ display: 'flex', gap: '8px', paddingTop: '4px', borderTop: isLight ? '1px solid #E2E8F0' : '1px solid rgba(255,255,255,0.06)' }}>
+                        <button
+                          type="button"
+                          onClick={() => downloadArtworkFile(customerLogo.transparentUrl || customerLogo.url, 'FLOCARD_Logo_Transparent_300DPI.png')}
+                          style={{
+                            flex: 1,
+                            background: isLight ? 'rgba(16, 185, 129, 0.08)' : 'rgba(16, 185, 129, 0.15)',
+                            border: '1px solid rgba(16, 185, 129, 0.3)',
+                            borderRadius: '6px',
+                            color: '#10B981',
+                            fontSize: '0.68rem',
+                            fontWeight: 600,
+                            padding: '4px 6px',
+                            cursor: 'pointer',
+                            display: 'inline-flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            gap: '4px'
+                          }}
+                        >
+                          <Download size={11} />
+                          <span>Transparent PNG</span>
+                        </button>
+
+                        <button
+                          type="button"
+                          onClick={() => downloadArtworkFile(customerLogo.originalUrl || customerLogo.url, 'FLOCARD_Logo_Original_Upload.png')}
+                          style={{
+                            flex: 1,
+                            background: isLight ? '#F1EEF8' : 'rgba(255,255,255,0.05)',
+                            border: isLight ? '1px solid #D8B4FE' : '1px solid rgba(255,255,255,0.1)',
+                            borderRadius: '6px',
+                            color: isLight ? '#475569' : '#CBD5E1',
+                            fontSize: '0.68rem',
+                            fontWeight: 600,
+                            padding: '4px 6px',
+                            cursor: 'pointer',
+                            display: 'inline-flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            gap: '4px'
+                          }}
+                        >
+                          <Download size={11} />
+                          <span>Original Logo</span>
                         </button>
                       </div>
                     </div>
@@ -2879,6 +3074,21 @@ export default function Designer() {
           </div>
         </div>
       )}
+
+      {/* Smart AI Logo Background Remover & Editor Modal */}
+      <SmartLogoEditorModal
+        isOpen={showSmartLogoModal}
+        onClose={() => setShowSmartLogoModal(false)}
+        customerLogo={customerLogo}
+        onApplyLogo={(updatedConfig) => {
+          setCustomerLogo(updatedConfig);
+          setFrontConfig(prev => ({ ...prev, customLogo: updatedConfig.url }));
+          notify('Logo Studio Updated', 'Transparent logo & geometry applied to card');
+        }}
+        onDownloadCardArtwork={handleDownloadBothSides}
+        isLight={isLight}
+        cardEdition={edition}
+      />
 
       {/* Order Summary & Print Request Modal */}
       <OrderSummaryPrintModal

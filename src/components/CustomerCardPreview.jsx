@@ -28,7 +28,7 @@ import {
 import { EDITIONS } from '../lib/constants';
 import { useData } from '../context/DataContext';
 import { useAuth } from '../context/AuthContext';
-import { exportCardPDF, downloadBothSides, generateCardPrintPDF, renderAuthoritativeCardCanvas } from '../lib/pdfExport';
+import { exportCardPDF, downloadBothSides, generateCardPrintPDF, renderAuthoritativeCardCanvas, generateIsolatedLogoAsset, downloadArtworkFile } from '../lib/pdfExport';
 import { normalizeCardDesign } from '../lib/cardArtworkService';
 
 export { normalizeCardDesign };
@@ -166,6 +166,28 @@ export default function CustomerCardPreview({
       alert('Unable to export artwork files.');
     } finally {
       setIsExporting(false);
+    }
+  };
+
+  const handleDownloadTransparentLogo = async () => {
+    try {
+      const res = await generateIsolatedLogoAsset(targetDesignRecord, { format: 'transparent_png' });
+      if (res.success && res.dataUrl) {
+        downloadArtworkFile(res.dataUrl, res.fileName);
+      }
+    } catch (e) {
+      console.warn('Failed to download transparent logo:', e);
+    }
+  };
+
+  const handleDownloadOriginalLogo = async () => {
+    try {
+      const res = await generateIsolatedLogoAsset(targetDesignRecord, { format: 'original' });
+      if (res.success && res.dataUrl) {
+        downloadArtworkFile(res.dataUrl, res.fileName);
+      }
+    } catch (e) {
+      console.warn('Failed to download original logo:', e);
     }
   };
 
@@ -494,6 +516,30 @@ export default function CustomerCardPreview({
             )}
             {(showExport || showControls) && (
               <div style={{ display: 'inline-flex', gap: '4px', marginLeft: '4px' }}>
+                {hasCustomLogo && (
+                  <button
+                    type="button"
+                    onClick={handleDownloadTransparentLogo}
+                    disabled={isExporting}
+                    title="Download Transparent Logo PNG (Alpha Channel)"
+                    style={{
+                      display: 'inline-flex',
+                      alignItems: 'center',
+                      gap: '4px',
+                      padding: '3px 8px',
+                      borderRadius: '6px',
+                      border: isLight ? '1px solid #BBF7D0' : '1px solid rgba(34, 197, 94, 0.3)',
+                      backgroundColor: isLight ? 'rgba(34, 197, 94, 0.1)' : 'rgba(34, 197, 94, 0.15)',
+                      color: isLight ? '#15803D' : '#4ADE80',
+                      fontSize: '0.7rem',
+                      fontWeight: 600,
+                      cursor: isExporting ? 'wait' : 'pointer'
+                    }}
+                  >
+                    <Sparkles size={11} />
+                    <span>Logo PNG</span>
+                  </button>
+                )}
                 <button
                   type="button"
                   onClick={handleExportPDF}
