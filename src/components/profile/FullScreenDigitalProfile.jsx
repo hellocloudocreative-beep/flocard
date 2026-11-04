@@ -514,7 +514,7 @@ export default function FullScreenDigitalProfile({
         {/* =========================================================================
             PART 3: ABOUT / LOCATION SECTION
             ========================================================================= */}
-        {secVis.about !== false && (
+        {secVis.about !== false && Boolean(p.company || p.location || p.address) && (
           <section
             className="flocard-profile-section flocard-about-section"
             style={{ padding: '24px 0', width: '100%' }}
@@ -522,89 +522,93 @@ export default function FullScreenDigitalProfile({
             <div
               style={{
                 display: 'grid',
-                gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))',
+                gridTemplateColumns: (p.company && (p.location || p.address)) ? 'repeat(auto-fit, minmax(240px, 1fr))' : '1fr',
                 gap: '14px'
               }}
             >
-              <div
-                style={{
-                  padding: '18px 20px',
-                  borderRadius: '16px',
-                  backgroundColor: isLight ? '#FFFFFF' : 'rgba(255,255,255,0.03)',
-                  border: `1px solid ${isLight ? 'rgba(0,0,0,0.06)' : 'rgba(255,255,255,0.06)'}`
-                }}
-              >
-                <div style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '0.74rem', textTransform: 'uppercase', fontWeight: 700, color: accentColor, marginBottom: '4px' }}>
-                  <Building2 size={14} />
-                  <span>Organization</span>
+              {p.company && (
+                <div
+                  style={{
+                    padding: '18px 20px',
+                    borderRadius: '16px',
+                    backgroundColor: isLight ? '#FFFFFF' : 'rgba(255,255,255,0.03)',
+                    border: `1px solid ${isLight ? 'rgba(0,0,0,0.06)' : 'rgba(255,255,255,0.06)'}`
+                  }}
+                >
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '0.74rem', textTransform: 'uppercase', fontWeight: 700, color: accentColor, marginBottom: '4px' }}>
+                    <Building2 size={14} />
+                    <span>Organization</span>
+                  </div>
+                  <div style={{ fontSize: '1rem', fontWeight: 700, color: isLight ? '#0F172A' : '#FFFFFF' }}>
+                    {p.company}
+                  </div>
                 </div>
-                <div style={{ fontSize: '1rem', fontWeight: 700, color: isLight ? '#0F172A' : '#FFFFFF' }}>
-                  {p.company || 'FLOCARDS'}
-                </div>
-              </div>
+              )}
 
-              <a
-                href={mapsLink || '#'}
-                target={mapsLink ? '_blank' : '_self'}
-                rel="noopener noreferrer"
-                onClick={e => { if (!mapsLink) e.preventDefault(); }}
-                title={mapsLink ? 'Click to open in Google Maps' : 'Location details'}
-                style={{
-                  display: 'block',
-                  padding: '18px 20px',
-                  borderRadius: '16px',
-                  backgroundColor: isLight ? '#FFFFFF' : 'rgba(255,255,255,0.03)',
-                  border: `1px solid ${isLight ? 'rgba(0,0,0,0.06)' : 'rgba(255,255,255,0.06)'}`,
-                  textDecoration: 'none',
-                  cursor: mapsLink ? 'pointer' : 'default',
-                  transition: 'all 0.2s ease',
-                  position: 'relative'
-                }}
-                onMouseEnter={e => {
-                  if (mapsLink) {
-                    e.currentTarget.style.borderColor = accentColor;
-                    e.currentTarget.style.transform = 'translateY(-2px)';
-                    e.currentTarget.style.boxShadow = `0 8px 24px ${accentColor}22`;
-                  }
-                }}
-                onMouseLeave={e => {
-                  if (mapsLink) {
-                    e.currentTarget.style.borderColor = isLight ? 'rgba(0,0,0,0.06)' : 'rgba(255,255,255,0.06)';
-                    e.currentTarget.style.transform = 'none';
-                    e.currentTarget.style.boxShadow = 'none';
-                  }
-                }}
-              >
-                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '4px' }}>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '0.74rem', textTransform: 'uppercase', fontWeight: 700, color: accentColor }}>
-                    <MapPin size={14} />
-                    <span>Location / Base</span>
+              {(p.location || p.address) && (
+                <a
+                  href={mapsLink || '#'}
+                  target={mapsLink ? '_blank' : '_self'}
+                  rel="noopener noreferrer"
+                  onClick={e => { if (!mapsLink) e.preventDefault(); }}
+                  title={mapsLink ? 'Click to open in Google Maps' : 'Location details'}
+                  style={{
+                    display: 'block',
+                    padding: '18px 20px',
+                    borderRadius: '16px',
+                    backgroundColor: isLight ? '#FFFFFF' : 'rgba(255,255,255,0.03)',
+                    border: `1px solid ${isLight ? 'rgba(0,0,0,0.06)' : 'rgba(255,255,255,0.06)'}`,
+                    textDecoration: 'none',
+                    cursor: mapsLink ? 'pointer' : 'default',
+                    transition: 'all 0.2s ease',
+                    position: 'relative'
+                  }}
+                  onMouseEnter={e => {
+                    if (mapsLink) {
+                      e.currentTarget.style.borderColor = accentColor;
+                      e.currentTarget.style.transform = 'translateY(-2px)';
+                      e.currentTarget.style.boxShadow = `0 8px 24px ${accentColor}22`;
+                    }
+                  }}
+                  onMouseLeave={e => {
+                    if (mapsLink) {
+                      e.currentTarget.style.borderColor = isLight ? 'rgba(0,0,0,0.06)' : 'rgba(255,255,255,0.06)';
+                      e.currentTarget.style.transform = 'none';
+                      e.currentTarget.style.boxShadow = 'none';
+                    }
+                  }}
+                >
+                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '4px' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '0.74rem', textTransform: 'uppercase', fontWeight: 700, color: accentColor }}>
+                      <MapPin size={14} />
+                      <span>Location / Base</span>
+                    </div>
+                    {mapsLink && (
+                      <span
+                        style={{
+                          display: 'inline-flex',
+                          alignItems: 'center',
+                          gap: '4px',
+                          fontSize: '0.75rem',
+                          fontWeight: 700,
+                          color: accentColor
+                        }}
+                      >
+                        <span>Directions</span>
+                        <ExternalLink size={12} />
+                      </span>
+                    )}
                   </div>
-                  {mapsLink && (
-                    <span
-                      style={{
-                        display: 'inline-flex',
-                        alignItems: 'center',
-                        gap: '4px',
-                        fontSize: '0.75rem',
-                        fontWeight: 700,
-                        color: accentColor
-                      }}
-                    >
-                      <span>Directions</span>
-                      <ExternalLink size={12} />
-                    </span>
+                  <div style={{ fontSize: '1rem', fontWeight: 700, color: isLight ? '#0F172A' : '#FFFFFF' }}>
+                    {p.location || p.address}
+                  </div>
+                  {p.address && p.location && p.address !== p.location && (
+                    <div style={{ fontSize: '0.8rem', color: isLight ? '#64748B' : '#94A3B8', marginTop: '4px', lineHeight: 1.4 }}>
+                      {p.address}
+                    </div>
                   )}
-                </div>
-                <div style={{ fontSize: '1rem', fontWeight: 700, color: isLight ? '#0F172A' : '#FFFFFF' }}>
-                  {p.location || p.address || 'Global'}
-                </div>
-                {p.address && p.location && p.address !== p.location && (
-                  <div style={{ fontSize: '0.8rem', color: isLight ? '#64748B' : '#94A3B8', marginTop: '4px', lineHeight: 1.4 }}>
-                    {p.address}
-                  </div>
-                )}
-              </a>
+                </a>
+              )}
             </div>
           </section>
         )}
@@ -628,6 +632,7 @@ export default function FullScreenDigitalProfile({
           <ServicesSection
             services={p.services}
             whatsapp={cleanWhatsapp}
+            email={p.email}
             onSelectServiceForBooking={(srvId) => setSelectedServiceIdForBooking(srvId)}
             accentColor={accentColor}
             glowColor={glowColor}

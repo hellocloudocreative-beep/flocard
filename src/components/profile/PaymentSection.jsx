@@ -23,12 +23,12 @@ export default function PaymentSection({
   const [generatedQr, setGeneratedQr] = useState('');
   const [isGeneratingQr, setIsGeneratingQr] = useState(false);
 
-  if (paymentConfig?.enabled === false) {
+  if (paymentConfig?.enabled === false || (!paymentConfig?.upiId && !paymentConfig?.qrUrl)) {
     return null;
   }
 
   const upiId = paymentConfig?.upiId || '';
-  const recipientName = paymentConfig?.recipientName || 'FLOCARDS Merchant';
+  const recipientName = paymentConfig?.recipientName || profile?.name || profile?.company || '';
   const instructions = paymentConfig?.instructions || '';
   const customQrUrl = paymentConfig?.qrUrl || '';
 

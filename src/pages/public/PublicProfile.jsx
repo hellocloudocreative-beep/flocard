@@ -24,12 +24,22 @@ export default function PublicProfile({ slug = 'alex' }) {
     const cleanSlug = (slug || '').trim().toLowerCase();
     const list = Array.isArray(profiles) ? profiles : [];
     const initialList = Array.isArray(INITIAL_PROFILES) ? INITIAL_PROFILES : [];
-    return (getProfileBySlug && getProfileBySlug(cleanSlug)) ||
-      list.find(p => p && p.slug && p.slug.trim().toLowerCase() === cleanSlug) ||
-      initialList.find(p => p && p.slug && p.slug.trim().toLowerCase() === cleanSlug) ||
-      ((cleanSlug === 'alex' || cleanSlug === 'akhil') ? (list.find(p => p && (p.id === 'prof_alex_001' || p.slug === 'alex')) || initialList[0] || list[0]) : null) ||
-      list[0] ||
-      initialList[0];
+
+    if (getProfileBySlug) {
+      const match = getProfileBySlug(cleanSlug);
+      if (match) return match;
+    }
+    const fromList = list.find(p => p && p.slug && p.slug.trim().toLowerCase() === cleanSlug);
+    if (fromList) return fromList;
+
+    const fromInit = initialList.find(p => p && p.slug && p.slug.trim().toLowerCase() === cleanSlug);
+    if (fromInit) return fromInit;
+
+    // Only allow demo fallback if explicitly requesting alex, akhil, or empty slug
+    if (cleanSlug === 'alex' || cleanSlug === 'akhil' || !cleanSlug) {
+      return list.find(p => p && (p.id === 'prof_alex_001' || p.slug === 'alex')) || initialList[0] || null;
+    }
+    return null;
   }, [getProfileBySlug, profiles, slug]);
 
   // Saved theme preference or visitor theme

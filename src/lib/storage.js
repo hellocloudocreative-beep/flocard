@@ -894,7 +894,7 @@ function getLocal(key, initial) {
       }
       localStorage.setItem(fullKey, JSON.stringify(initial));
       memoryCache.set(fullKey, JSON.stringify(initial));
-      return initial;
+      return JSON.parse(JSON.stringify(initial));
     }
     const parsed = JSON.parse(raw);
     memoryCache.set(fullKey, raw);
@@ -903,7 +903,7 @@ function getLocal(key, initial) {
     if (memoryCache.has(fullKey)) {
       try { return JSON.parse(memoryCache.get(fullKey)); } catch (_) {}
     }
-    return initial;
+    return JSON.parse(JSON.stringify(initial));
   }
 }
 
@@ -940,15 +940,15 @@ export const StorageEngine = {
   getProfiles: () => {
     const rawList = getLocal('profiles', INITIAL_PROFILES);
     const list = rawList.map(p => {
-      const init = INITIAL_PROFILES.find(ip => ip.id === p.id || ip.slug === p.slug) || INITIAL_PROFILES[0];
+      const init = INITIAL_PROFILES.find(ip => ip.id === p.id || ip.slug === p.slug) || {};
       return {
         ...init,
         ...p,
-        banner: p.banner || init.banner,
-        businessHours: p.businessHours || init.businessHours,
-        bookingConfig: p.bookingConfig || init.bookingConfig,
-        paymentConfig: p.paymentConfig || init.paymentConfig,
-        bankDetails: p.bankDetails || init.bankDetails,
+        banner: p.banner !== undefined ? p.banner : (init.banner || null),
+        businessHours: p.businessHours || init.businessHours || null,
+        bookingConfig: p.bookingConfig || init.bookingConfig || null,
+        paymentConfig: p.paymentConfig || init.paymentConfig || null,
+        bankDetails: p.bankDetails || init.bankDetails || null,
         videos: Array.isArray(p.videos) ? p.videos : (init.videos || []),
         storageQuotas: p.storageQuotas || init.storageQuotas || {
           maxGalleryImages: 20,
@@ -1580,10 +1580,10 @@ export const StorageEngine = {
     const orders = getLocal('orders', INITIAL_ORDERS);
     const existing = orders.find(o => o.designId === design.id);
     if (existing) {
-      const customerName = design.customerName || customerUser?.name || design.front?.name || existing.customerName || '';
-      const email = design.customerEmail || customerUser?.email || existing.customerEmail || '';
-      const phone = design.customerPhone || customerUser?.phone || existing.customerPhone || '';
-      const company = design.company || customerUser?.company || design.front?.company || existing.company || '';
+      const customerName = (design.customerName || customerUser?.name || design.front?.name || existing.customerName || '').trim();
+      const email = (design.customerEmail || customerUser?.email || existing.customerEmail || '').trim();
+      const phone = (design.customerPhone || customerUser?.phone || existing.customerPhone || '').trim();
+      const company = (design.company || customerUser?.company || design.front?.company || existing.company || '').trim();
       const logoUrl = design.customerLogo?.url || (typeof design.customerLogo === 'string' ? design.customerLogo : null) || design.front?.customLogo || existing.customerLogo;
 
       existing.originalDesign = existing.originalDesign || JSON.parse(JSON.stringify(existing.design || design));
@@ -1607,10 +1607,10 @@ export const StorageEngine = {
       return existing;
     }
 
-    const customerName = design.customerName || customerUser?.name || design.front?.name || '';
-    const email = design.customerEmail || customerUser?.email || (customerName ? `${customerName.toLowerCase().replace(/[^a-z0-9]/g, '')}@example.com` : '');
-    const phone = design.customerPhone || customerUser?.phone || '';
-    const company = design.company || customerUser?.company || design.front?.company || '';
+    const customerName = (design.customerName || customerUser?.name || design.front?.name || '').trim();
+    const email = (design.customerEmail || customerUser?.email || '').trim();
+    const phone = (design.customerPhone || customerUser?.phone || '').trim();
+    const company = (design.company || customerUser?.company || design.front?.company || '').trim();
     const logoUrl = design.customerLogo?.url || (typeof design.customerLogo === 'string' ? design.customerLogo : null) || design.front?.customLogo || null;
     const orderRef = `FLC-ORD-${Math.floor(1000 + Math.random() * 9000)}`;
 
@@ -1628,7 +1628,7 @@ export const StorageEngine = {
       templateType: design.templateType || 'standard',
       edition: design.edition || 'purple',
       customerId: design.customerId || customerUser?.id || `cust_${Date.now()}`,
-      customerName: customerName || 'Valued Client',
+      customerName: customerName || '',
       customerEmail: email,
       customerPhone: phone,
       company,
@@ -1753,7 +1753,7 @@ export const StorageEngine = {
     const now = Date.now();
     const customerEmail = (customerDetails.email || customerUser?.email || design.customerEmail || '').toLowerCase().trim();
     const customerPhone = (customerDetails.phone || customerUser?.phone || design.customerPhone || '').trim();
-    const customerName = (customerDetails.name || customerUser?.name || design.customerName || design.front?.name || '').trim();
+    const customerName = (design.front?.name || design.customerName || customerDetails.name || customerUser?.name || '').trim();
     const shippingAddress = (customerDetails.shippingAddress || customerDetails.address || design.shippingAddress || '').trim();
 
     // 1. Validate required customer and order fields
@@ -1942,9 +1942,9 @@ export const StorageEngine = {
         role: design.front?.role || '',
         company: newOrder.company || '',
         tagline: design.front?.tagline || '',
-        bio: `${customerName} • ${design.front?.role || 'Professional'}${newOrder.company ? ` at ${newOrder.company}` : ''}. Connect via my FLOCARD.`,
-        avatar: logoUrl || '',
-        logo: logoUrl || '',
+        bio: design.front?.tagline || '',
+        avatar: '', // Logo is NOT personal avatar; keep avatar empty until user uploads a photo
+        logo: logoUrl || '', // Only set if customer explicitly uploaded a logo
         phone: customerPhone || '',
         email: customerEmail || '',
         whatsapp: customerPhone ? customerPhone.replace(/[^0-9]/g, '') : '',
@@ -1981,8 +1981,8 @@ export const StorageEngine = {
         existingProfile.role = design.front.role;
         updated = true;
       }
-      if (!existingProfile.avatar && logoUrl) {
-        existingProfile.avatar = logoUrl;
+      if (!existingProfile.logo && logoUrl) {
+        existingProfile.logo = logoUrl;
         updated = true;
       }
       if (updated) {
@@ -2270,16 +2270,16 @@ export const StorageEngine = {
     const newProfile = {
       id: `prof_${Date.now()}`,
       userId: order.customerId,
-      name: order.customerName,
+      name: order.frontConfig?.name || order.customerName,
       slug: finalSlug,
-      role: order.role || order.frontConfig?.role || 'Executive',
-      company: order.company || 'FLOCARD Network',
-      tagline: order.tagline || order.frontConfig?.tagline || 'One Tap Every Connection',
-      bio: `${order.customerName} is a ${order.role || 'Professional'} at ${order.company || 'FLOCARD Network'}. Connect directly via my NFC digital business card.`,
-      avatar: order.customerLogo || null,
+      role: order.role || order.frontConfig?.role || '',
+      company: order.company || '',
+      tagline: order.tagline || order.frontConfig?.tagline || '',
+      bio: order.tagline || order.frontConfig?.tagline || '',
+      avatar: '',
       logo: order.customerLogo || null,
       phone: order.customerPhone || '',
-      email: order.customerEmail || `${finalSlug}@flocard.in`,
+      email: order.customerEmail || '',
       whatsapp: order.customerPhone ? order.customerPhone.replace(/[^0-9]/g, '') : '',
       location: order.shippingAddress || '',
       website: order.frontConfig?.website || order.backConfig?.website || '',
@@ -2292,20 +2292,8 @@ export const StorageEngine = {
         instagram: order.backConfig?.instagram || '',
         whatsapp: order.customerPhone ? order.customerPhone.replace(/[^0-9]/g, '') : ''
       },
-      services: [
-        { id: 's1', name: 'Strategic Consultation', desc: 'Direct corporate collaboration and identity integration.' },
-        { id: 's2', name: 'Executive Relations', desc: 'Organizational growth, technology solutions and partnerships.' }
-      ],
-      portfolio: [
-        {
-          id: `p_${Date.now()}_1`,
-          title: `${order.company || order.customerName} Official Brand Identity`,
-          category: 'Identity Showcase',
-          desc: 'Verified NFC smart business card and connected FLOCARD digital profile.',
-          image: order.customerLogo || '/assets/true_front_card.png',
-          link: `https://${finalSlug}.flocard.in`
-        }
-      ],
+      services: [],
+      portfolio: [],
       stats: { views: 0, saves: 0, shares: 0 },
       createdAt: new Date().toISOString()
     };

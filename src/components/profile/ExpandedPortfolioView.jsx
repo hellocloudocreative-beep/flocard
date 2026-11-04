@@ -303,64 +303,63 @@ export default function ExpandedPortfolioView({
               animate={reducedMotion ? {} : { opacity: 1, x: 0 }}
               transition={reducedMotion ? {} : { duration: 0.4, ease: 'easeOut' }}
             >
-              {/* 1. Studio / Brand Logo & Name Header (Top of card, centered) */}
-              <div
-            style={{
-              display: 'flex',
-              flexDirection: 'column',
-              alignItems: 'center',
-              marginBottom: '18px',
-              textAlign: 'center',
-              position: 'relative',
-              zIndex: 2
-            }}
-          >
-            {profile.logo ? (
-              <img
-                src={profile.logo}
-                alt={profile.company || 'Company Logo'}
-                style={{
-                  maxHeight: '44px',
-                  maxWidth: '220px',
-                  objectFit: 'contain',
-                  display: 'block',
-                  marginBottom: '6px'
-                }}
-              />
-            ) : (
-              <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '4px' }}>
-                <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke={accentColor} strokeWidth="1.8">
-                  <polygon points="12 2 2 7 12 12 22 7 12 2" />
-                  <polyline points="2 17 12 22 22 17" />
-                  <polyline points="2 12 12 17 22 12" />
-                </svg>
-                <span
+              {/* 1. Studio / Brand Logo & Name Header (Top of card, centered) - Only when logo, company, or tagline exists */}
+              {Boolean(profile.logo || profile.company || profile.tagline) && (
+                <div
                   style={{
-                    fontFamily: "var(--font-heading, 'Sora', sans-serif)",
-                    fontWeight: 800,
-                    fontSize: '0.96rem',
-                    letterSpacing: '0.12em',
-                    color: '#FFFFFF',
-                    textTransform: 'uppercase'
+                    display: 'flex',
+                    flexDirection: 'column',
+                    alignItems: 'center',
+                    marginBottom: '18px',
+                    textAlign: 'center',
+                    position: 'relative',
+                    zIndex: 2
                   }}
                 >
-                  {profile.company || 'ARCHIERIO'}
-                </span>
-              </div>
-            )}
-            <span
-              style={{
-                fontSize: '0.68rem',
-                letterSpacing: '0.14em',
-                color: '#D5C9E5',
-                textTransform: 'uppercase',
-                opacity: 0.85,
-                fontWeight: 600
-              }}
-            >
-              {profile.tagline || (profile.company ? 'DESIGN STUDIO' : 'DIGITAL IDENTITY')}
-            </span>
-          </div>
+                  {profile.logo && (
+                    <img
+                      src={profile.logo}
+                      alt={profile.company || 'Company Logo'}
+                      style={{
+                        maxHeight: '44px',
+                        maxWidth: '220px',
+                        objectFit: 'contain',
+                        display: 'block',
+                        marginBottom: '6px'
+                      }}
+                    />
+                  )}
+                  {profile.company && !profile.logo && (
+                    <span
+                      style={{
+                        fontFamily: "var(--font-heading, 'Sora', sans-serif)",
+                        fontWeight: 800,
+                        fontSize: '0.96rem',
+                        letterSpacing: '0.12em',
+                        color: '#FFFFFF',
+                        textTransform: 'uppercase',
+                        marginBottom: '4px'
+                      }}
+                    >
+                      {profile.company}
+                    </span>
+                  )}
+                  {profile.tagline && (
+                    <span
+                      style={{
+                        fontSize: '0.68rem',
+                        letterSpacing: '0.14em',
+                        color: '#D5C9E5',
+                        textTransform: 'uppercase',
+                        opacity: 0.85,
+                        fontWeight: 600
+                      }}
+                    >
+                      {profile.tagline}
+                    </span>
+                  )}
+                </div>
+              )}
 
           {/* 2. Centered Circular Avatar */}
           <div style={{ position: 'relative', marginBottom: '14px', zIndex: 2 }}>

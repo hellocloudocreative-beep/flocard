@@ -8,7 +8,7 @@
 
 import React, { useState } from 'react';
 import { motion } from 'motion/react';
-import { Sparkles } from 'lucide-react';
+import { User } from 'lucide-react';
 
 export default function ProfileAvatar({
   profile = {},
@@ -28,10 +28,19 @@ export default function ProfileAvatar({
   const avatarPosY = typeof profile?.avatarPosY === 'number' ? profile.avatarPosY : 50;
   const avatarZoom = typeof profile?.avatarZoom === 'number' ? profile.avatarZoom : 100;
 
-  // Never fallback to demo picture if profile has no picture!
-  // If profile has an avatar or logo, use that. Otherwise, use the gold FLOCARD badge.
-  const rawImage = profile?.avatar || profile?.logo;
+  // Never fallback to logo or demo picture: avatar is personal photo only
+  const rawImage = profile?.avatar;
   const hasValidImage = Boolean(rawImage && String(rawImage).trim() && !imgError);
+
+  const getInitials = (name) => {
+    if (!name || typeof name !== 'string') return '';
+    const parts = name.trim().split(/\s+/).filter(Boolean);
+    if (parts.length === 0) return '';
+    if (parts.length === 1) return parts[0].slice(0, 2).toUpperCase();
+    return (parts[0][0] + parts[parts.length - 1][0]).toUpperCase();
+  };
+
+  const initials = getInitials(profile?.name);
 
   const borderRadius = isCircle ? '50%' : `${Math.round(size * 0.24)}px`;
   const innerRadius = isCircle ? '50%' : `${Math.round(size * 0.21)}px`;
@@ -82,40 +91,42 @@ export default function ProfileAvatar({
           loading="eager"
         />
       ) : (
-        /* Consistent fallback: Premium Gold FLOCARD Identity Monogram */
+        /* Dynamic customer initials badge with theme gradient */
         <div
           style={{
             width: '100%',
             height: '100%',
             borderRadius: innerRadius,
-            background: 'linear-gradient(135deg, #ECC86A 0%, #C9972C 50%, #9C6B13 100%)',
+            background: `linear-gradient(135deg, ${accentColor}35 0%, ${glowColor}60 100%)`,
             display: 'flex',
             flexDirection: 'column',
             alignItems: 'center',
             justifyContent: 'center',
-            gap: `${Math.max(2, Math.round(size * 0.04))}px`,
-            boxShadow: 'inset 0 1px 3px rgba(255, 255, 255, 0.4)',
-            userSelect: 'none'
+            boxShadow: 'inset 0 1px 2px rgba(255, 255, 255, 0.25)',
+            userSelect: 'none',
+            border: '1px solid rgba(255, 255, 255, 0.2)'
           }}
         >
-          <Sparkles
-            size={Math.round(size * 0.22)}
-            color="#FFF4CE"
-            style={{ filter: 'drop-shadow(0 1px 2px rgba(0,0,0,0.3))' }}
-          />
-          <span
-            style={{
-              fontSize: `${Math.max(9, Math.round(size * 0.105))}px`,
-              fontWeight: 800,
-              letterSpacing: '0.08em',
-              textTransform: 'uppercase',
-              color: '#341D05',
-              fontFamily: 'var(--font-heading, Sora)',
-              textShadow: '0 1px 0 rgba(255, 255, 255, 0.3)'
-            }}
-          >
-            FLOCARD
-          </span>
+          {initials ? (
+            <span
+              style={{
+                fontSize: `${Math.max(14, Math.round(size * 0.36))}px`,
+                fontWeight: 800,
+                letterSpacing: '0.04em',
+                color: '#FFFFFF',
+                fontFamily: "var(--font-heading, 'Sora', sans-serif)",
+                textShadow: '0 2px 10px rgba(0, 0, 0, 0.5)'
+              }}
+            >
+              {initials}
+            </span>
+          ) : (
+            <User
+              size={Math.round(size * 0.44)}
+              color="#FFFFFF"
+              style={{ filter: 'drop-shadow(0 1px 3px rgba(0,0,0,0.4))', opacity: 0.85 }}
+            />
+          )}
         </div>
       )}
     </motion.div>

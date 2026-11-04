@@ -737,8 +737,8 @@ export default function AdminDashboard({ initialTab = 'overview', initialOrderId
     saveProfile({
       name: newProfForm.name,
       slug: newProfForm.slug.toLowerCase().replace(/[^a-z0-9_-]/g, ''),
-      role: newProfForm.role || 'Executive',
-      company: newProfForm.company || 'FLOCARD Network',
+      role: newProfForm.role || '',
+      company: newProfForm.company || '',
       location: newProfForm.location || '',
       theme: newProfForm.theme || 'purple',
       status: 'published',

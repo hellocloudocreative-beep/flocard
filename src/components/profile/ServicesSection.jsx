@@ -14,6 +14,7 @@ export default function ServicesSection({
   services = [],
   onSelectServiceForBooking = () => {},
   whatsapp = '',
+  email = '',
   accentColor = '#A855F7',
   glowColor = '#6B00FF',
   isLight = false
@@ -34,8 +35,8 @@ export default function ServicesSection({
       const msg = encodeURIComponent(`Hi, I saw your service "${service.title}" on your FLOCARD and would like to enquire.`);
       if (cleanWa) {
         window.open(`https://wa.me/${cleanWa}?text=${msg}`, '_blank', 'noopener,noreferrer');
-      } else {
-        window.location.href = `mailto:contact@flocard.in?subject=${encodeURIComponent(`Enquiry: ${service.title}`)}`;
+      } else if (email) {
+        window.location.href = `mailto:${email}?subject=${encodeURIComponent(`Enquiry: ${service.title}`)}`;
       }
     } else {
       // Default: trigger appointment booking

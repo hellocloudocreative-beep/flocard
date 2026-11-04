@@ -365,32 +365,34 @@ export default function CompactProfileCard({
               <span>{profile?.isVerified !== false ? 'FLOCARD Verified' : 'FLOCARD'}</span>
             </div>
 
-            <div
-              style={{
-                display: 'inline-flex',
-                alignItems: 'center',
-                gap: '6px',
-                fontSize: '0.74rem',
-                fontWeight: 600,
-                color: 'rgba(244, 244, 245, 0.9)',
-                background: 'rgba(255, 255, 255, 0.08)',
-                border: '1px solid rgba(255, 255, 255, 0.14)',
-                padding: '4px 10px',
-                borderRadius: '9999px',
-                backdropFilter: 'blur(8px)'
-              }}
-            >
-              <span
+            {profile?.company && (
+              <div
                 style={{
-                  width: '6px',
-                  height: '6px',
-                  borderRadius: '50%',
-                  backgroundColor: '#10B981',
-                  boxShadow: '0 0 8px #10B981'
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  gap: '6px',
+                  fontSize: '0.74rem',
+                  fontWeight: 600,
+                  color: 'rgba(244, 244, 245, 0.9)',
+                  background: 'rgba(255, 255, 255, 0.08)',
+                  border: '1px solid rgba(255, 255, 255, 0.14)',
+                  padding: '4px 10px',
+                  borderRadius: '9999px',
+                  backdropFilter: 'blur(8px)'
                 }}
-              />
-              <span>{profile?.company || 'NFC Active'}</span>
-            </div>
+              >
+                <span
+                  style={{
+                    width: '6px',
+                    height: '6px',
+                    borderRadius: '50%',
+                    backgroundColor: '#10B981',
+                    boxShadow: '0 0 8px #10B981'
+                  }}
+                />
+                <span>{profile.company}</span>
+              </div>
+            )}
           </div>
 
           {/* Center Area: Centered User Image & Profile Information */}
@@ -435,21 +437,23 @@ export default function CompactProfileCard({
                 textShadow: '0 2px 10px rgba(0, 0, 0, 0.6)'
               }}
             >
-              {profile?.name || 'YOUR NAME'}
+              {profile?.name || ''}
             </motion.h2>
 
-            {/* Role & Company */}
-            <div
-              style={{
-                fontSize: '0.94rem',
-                fontWeight: 600,
-                color: accentColor,
-                marginBottom: '6px',
-                textShadow: `0 0 14px ${accentColor}50`
-              }}
-            >
-              {profile?.role || profile?.tagline || 'YOUR ROLE / TAGLINE'}{profile?.company ? ` • ${profile.company}` : ''}
-            </div>
+            {/* Role & Company (Only if provided) */}
+            {Boolean(profile?.role || profile?.tagline || profile?.company) && (
+              <div
+                style={{
+                  fontSize: '0.94rem',
+                  fontWeight: 600,
+                  color: accentColor,
+                  marginBottom: '6px',
+                  textShadow: `0 0 14px ${accentColor}50`
+                }}
+              >
+                {[profile?.role || profile?.tagline, profile?.company].filter(Boolean).join(' • ')}
+              </div>
+            )}
 
             {/* Identity Badges (Email & Location Pills) */}
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', flexWrap: 'wrap', gap: '6px', marginBottom: '8px' }}>

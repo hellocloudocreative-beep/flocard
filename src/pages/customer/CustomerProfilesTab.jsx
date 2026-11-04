@@ -96,6 +96,7 @@ export default function CustomerProfilesTab({ profiles = [], customer, onSavePro
 
   // Image upload refs
   const avatarInputRef = useRef(null);
+  const logoInputRef = useRef(null);
   const bannerInputRef = useRef(null);
   const serviceInputRef = useRef(null);
   const portfolioInputRef = useRef(null);
@@ -137,18 +138,18 @@ export default function CustomerProfilesTab({ profiles = [], customer, onSavePro
       photoShape: profile.photoShape || 'circle',
       backgroundTypography: profile.backgroundTypography || 'FLOCARD',
       banner: {
-        enabled: true,
-        type: 'image',
-        url: '/assets/hero-bg.jpg',
-        height: 280,
-        zoom: 100,
-        positionX: 50,
-        positionY: 45,
-        gradientStart: '#2e1065',
-        gradientEnd: '#090514',
-        solidColor: '#1a0b2e',
-        overlayOpacity: 0.38,
-        overlayColor: '#08060D',
+        enabled: Boolean(profile.banner?.enabled),
+        type: profile.banner?.type || 'gradient',
+        url: profile.banner?.url || '',
+        height: profile.banner?.height || 280,
+        zoom: profile.banner?.zoom || 100,
+        positionX: profile.banner?.positionX ?? 50,
+        positionY: profile.banner?.positionY ?? 45,
+        gradientStart: profile.banner?.gradientStart || '#2e1065',
+        gradientEnd: profile.banner?.gradientEnd || '#090514',
+        solidColor: profile.banner?.solidColor || '#1a0b2e',
+        overlayOpacity: profile.banner?.overlayOpacity ?? 0.38,
+        overlayColor: profile.banner?.overlayColor || '#08060D',
         ...(profile.banner || {})
       },
       businessHours: {
@@ -160,27 +161,28 @@ export default function CustomerProfilesTab({ profiles = [], customer, onSavePro
         ...(profile.bookingConfig || {})
       },
       paymentConfig: {
-        enabled: true,
-        upiId: 'flocards@icici',
-        recipientName: profile.name || 'FLOCARDS Merchant',
-        qrUrl: '',
-        instructions: 'Scan with any UPI app (GPay, PhonePe, Paytm, BHIM) to pay securely.',
+        enabled: Boolean(profile.paymentConfig?.enabled),
+        upiId: profile.paymentConfig?.upiId || '',
+        recipientName: profile.paymentConfig?.recipientName || profile.name || '',
+        qrUrl: profile.paymentConfig?.qrUrl || '',
+        instructions: profile.paymentConfig?.instructions || 'Scan with any UPI app to pay securely.',
         ...(profile.paymentConfig || {})
       },
       bankDetails: {
-        enabled: false,
-        isPublic: false,
-        accountHolder: profile.company ? `${profile.company} PRIVATE LIMITED` : 'FLOCARDS DIGITAL SYSTEMS PRIVATE LIMITED',
-        bankName: 'HDFC Bank',
-        branch: 'Indiranagar, Bengaluru',
-        accountNumber: '50200084729103',
-        ifsc: 'HDFC0000123',
+        enabled: Boolean(profile.bankDetails?.enabled),
+        isPublic: Boolean(profile.bankDetails?.isPublic),
+        accountHolder: profile.bankDetails?.accountHolder || profile.name || profile.company || '',
+        bankName: profile.bankDetails?.bankName || '',
+        branch: profile.bankDetails?.branch || '',
+        accountNumber: profile.bankDetails?.accountNumber || '',
+        ifsc: profile.bankDetails?.ifsc || '',
         visibleFields: {
           accountHolder: true,
           bankName: true,
           branch: true,
           accountNumber: true,
-          ifsc: true
+          ifsc: true,
+          ...(profile.bankDetails?.visibleFields || {})
         },
         ...(profile.bankDetails || {})
       },
@@ -311,6 +313,40 @@ export default function CustomerProfilesTab({ profiles = [], customer, onSavePro
     } finally {
       setIsUploading(false);
       e.target.value = '';
+    }
+  };
+
+  // Upload Business Logo with Validation
+  const handleLogoUpload = async (e) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setUploadError('');
+
+    if (!file.type.startsWith('image/')) {
+      setUploadError('Invalid file type: Please select an image file (PNG, JPG, WebP, SVG).');
+      if (e.target) e.target.value = '';
+      return;
+    }
+
+    if (file.size > 8 * 1024 * 1024) {
+      setUploadError(`File too large (${(file.size / (1024 * 1024)).toFixed(1)}MB). Maximum allowed logo size is 8MB.`);
+      if (e.target) e.target.value = '';
+      return;
+    }
+
+    setIsUploading(true);
+    try {
+      const url = await uploadImage(file, 'logo', customer?.id || 'anon', formData);
+      setFormData(prev => ({
+        ...prev,
+        logo: url,
+        logoSizeBytes: file.size
+      }));
+    } catch (err) {
+      setUploadError(err.message || 'Logo upload failed.');
+    } finally {
+      setIsUploading(false);
+      if (e.target) e.target.value = '';
     }
   };
 
@@ -485,7 +521,7 @@ export default function CustomerProfilesTab({ profiles = [], customer, onSavePro
   // 14 Editor Navigation Sections definition
   const SECTIONS = [
     { id: 'basic', label: '1. Basic Information', icon: User },
-    { id: 'avatar', label: '2. Profile Picture', icon: CameraIcon },
+    { id: 'avatar', label: '2. Profile Picture & Logo', icon: CameraIcon },
     { id: 'banner', label: '3. Banner & Appearance', icon: ImageIcon },
     { id: 'contact', label: '4. Contact & Social Links', icon: Phone },
     { id: 'hours', label: '5. Business Hours', icon: Clock },
@@ -575,17 +611,37 @@ export default function CustomerProfilesTab({ profiles = [], customer, onSavePro
                 }}
               />
               <div style={{ position: 'absolute', bottom: '12px', left: '16px', display: 'flex', alignItems: 'center', gap: '12px' }}>
-                <img
-                  src={prof.avatar || 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=100&auto=format&fit=crop&q=80'}
-                  alt={prof.name}
-                  style={{
-                    width: '46px',
-                    height: '46px',
-                    borderRadius: prof.photoShape === 'rounded_rect' ? '12px' : '50%',
-                    border: '2px solid #FFFFFF',
-                    objectFit: 'cover'
-                  }}
-                />
+                {prof.avatar ? (
+                  <img
+                    src={prof.avatar}
+                    alt={prof.name}
+                    style={{
+                      width: '46px',
+                      height: '46px',
+                      borderRadius: prof.photoShape === 'rounded_rect' ? '12px' : '50%',
+                      border: '2px solid #FFFFFF',
+                      objectFit: 'cover'
+                    }}
+                  />
+                ) : (
+                  <div
+                    style={{
+                      width: '46px',
+                      height: '46px',
+                      borderRadius: prof.photoShape === 'rounded_rect' ? '12px' : '50%',
+                      border: '2px solid #FFFFFF',
+                      backgroundColor: 'var(--primary-purple, #6B004F)',
+                      color: '#FFFFFF',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      fontWeight: 700,
+                      fontSize: '0.95rem'
+                    }}
+                  >
+                    {((prof.name || 'P').trim().split(/\s+/).map(p => p[0]).slice(0, 2).join('')).toUpperCase()}
+                  </div>
+                )}
                 <div>
                   <div style={{ fontSize: '1rem', fontWeight: 800, color: '#FFFFFF', lineHeight: 1.2 }}>
                     {prof.name}
@@ -924,14 +980,14 @@ export default function CustomerProfilesTab({ profiles = [], customer, onSavePro
                   </div>
                 )}
 
-                {/* 2. PROFILE PICTURE */}
+                {/* 2. PROFILE PICTURE & BUSINESS LOGO */}
                 {editorSection === 'avatar' && (
                   <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap', gap: '8px' }}>
                       <div>
-                        <h4 style={{ margin: '0 0 4px', fontSize: '1.05rem', fontWeight: 800 }}>2. Profile Picture (Avatar)</h4>
+                        <h4 style={{ margin: '0 0 4px', fontSize: '1.05rem', fontWeight: 800 }}>2. Profile Picture &amp; Business Logo</h4>
                         <p style={{ margin: 0, fontSize: '0.82rem', color: 'var(--text-secondary)' }}>
-                          Click &amp; drag image inside the preview box to crop &amp; position. Adjust zoom with the slider below.
+                          Click &amp; drag photo inside the preview box to crop &amp; position. Adjust zoom with the slider below.
                         </p>
                       </div>
                       {formData.avatar && (
@@ -972,42 +1028,64 @@ export default function CustomerProfilesTab({ profiles = [], customer, onSavePro
                           backgroundColor: '#130d24'
                         }}
                       >
-                        <img
-                          src={formData.avatar || 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=400&auto=format&fit=crop&q=80'}
-                          alt="Avatar Preview"
-                          style={{
-                            width: '100%',
-                            height: '100%',
-                            objectFit: 'cover',
-                            objectPosition: `${formData.avatarPosX ?? 50}% ${formData.avatarPosY ?? 50}%`,
-                            transform: `scale(${(formData.avatarZoom || 100) / 100})`,
-                            transformOrigin: `${formData.avatarPosX ?? 50}% ${formData.avatarPosY ?? 50}%`,
-                            pointerEvents: 'none',
-                            userSelect: 'none',
-                            transition: isDraggingAvatar ? 'none' : 'transform 0.15s ease, object-position 0.15s ease'
-                          }}
-                        />
+                        {formData.avatar ? (
+                          <img
+                            src={formData.avatar}
+                            alt="Avatar Preview"
+                            style={{
+                              width: '100%',
+                              height: '100%',
+                              objectFit: 'cover',
+                              objectPosition: `${formData.avatarPosX ?? 50}% ${formData.avatarPosY ?? 50}%`,
+                              transform: `scale(${(formData.avatarZoom || 100) / 100})`,
+                              transformOrigin: `${formData.avatarPosX ?? 50}% ${formData.avatarPosY ?? 50}%`,
+                              pointerEvents: 'none',
+                              userSelect: 'none',
+                              transition: isDraggingAvatar ? 'none' : 'transform 0.15s ease, object-position 0.15s ease'
+                            }}
+                          />
+                        ) : (
+                          <div
+                            style={{
+                              width: '100%',
+                              height: '100%',
+                              display: 'flex',
+                              flexDirection: 'column',
+                              alignItems: 'center',
+                              justifyContent: 'center',
+                              gap: '6px',
+                              color: 'var(--text-muted)',
+                              padding: '12px',
+                              textAlign: 'center'
+                            }}
+                          >
+                            <CameraIcon size={32} style={{ opacity: 0.4 }} />
+                            <span style={{ fontSize: '0.72rem', fontWeight: 600 }}>No photo uploaded</span>
+                          </div>
+                        )}
                         {/* Interactive Pill */}
-                        <div
-                          style={{
-                            position: 'absolute',
-                            bottom: '8px',
-                            left: '50%',
-                            transform: 'translateX(-50%)',
-                            background: 'rgba(0, 0, 0, 0.72)',
-                            backdropFilter: 'blur(6px)',
-                            color: '#FFFFFF',
-                            fontSize: '0.65rem',
-                            fontWeight: 700,
-                            padding: '3px 9px',
-                            borderRadius: '9999px',
-                            whiteSpace: 'nowrap',
-                            pointerEvents: 'none',
-                            letterSpacing: '0.02em'
-                          }}
-                        >
-                          {isDraggingAvatar ? 'Dragging...' : '✋ Drag image'}
-                        </div>
+                        {formData.avatar && (
+                          <div
+                            style={{
+                              position: 'absolute',
+                              bottom: '8px',
+                              left: '50%',
+                              transform: 'translateX(-50%)',
+                              background: 'rgba(0, 0, 0, 0.72)',
+                              backdropFilter: 'blur(6px)',
+                              color: '#FFFFFF',
+                              fontSize: '0.65rem',
+                              fontWeight: 700,
+                              padding: '3px 9px',
+                              borderRadius: '9999px',
+                              whiteSpace: 'nowrap',
+                              pointerEvents: 'none',
+                              letterSpacing: '0.02em'
+                            }}
+                          >
+                            {isDraggingAvatar ? 'Dragging...' : '✋ Drag image'}
+                          </div>
+                        )}
                       </div>
 
                       {/* Upload and Reset Actions */}
@@ -1028,20 +1106,22 @@ export default function CustomerProfilesTab({ profiles = [], customer, onSavePro
                             style={{ gap: '6px' }}
                           >
                             <Upload size={14} />
-                            <span>{isUploading ? 'Uploading...' : 'Upload New Photo'}</span>
+                            <span>{isUploading ? 'Uploading...' : (formData.avatar ? 'Change Photo' : 'Upload Personal Photo')}</span>
                           </button>
-                          <button
-                            type="button"
-                            onClick={() => setFormData(prev => ({ ...prev, avatarZoom: 100, avatarPosX: 50, avatarPosY: 50 }))}
-                            className="btn btn-outline btn-sm"
-                            style={{ gap: '6px' }}
-                          >
-                            <RefreshCw size={13} />
-                            <span>Reset Crop</span>
-                          </button>
+                          {formData.avatar && (
+                            <button
+                              type="button"
+                              onClick={() => setFormData(prev => ({ ...prev, avatarZoom: 100, avatarPosX: 50, avatarPosY: 50 }))}
+                              className="btn btn-outline btn-sm"
+                              style={{ gap: '6px' }}
+                            >
+                              <RefreshCw size={13} />
+                              <span>Reset Crop</span>
+                            </button>
+                          )}
                         </div>
                         <span style={{ fontSize: '0.74rem', color: 'var(--text-muted)' }}>
-                          Formats: JPG, PNG, WebP, SVG. Max file size: 8MB. Recommended min 400x400px.
+                          Personal portrait / avatar. Formats: JPG, PNG, WebP, SVG. Max file size: 8MB.
                         </span>
 
                         {/* Shape Toggle */}
@@ -1077,52 +1157,147 @@ export default function CustomerProfilesTab({ profiles = [], customer, onSavePro
                       </div>
                     </div>
 
-                    {/* Sliders for Zoom, Horizontal X, Vertical Y */}
-                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '14px', background: 'rgba(255, 255, 255, 0.02)', padding: '16px', borderRadius: '12px', border: '1px solid var(--border-color)' }}>
-                      <div>
-                        <label style={{ fontSize: '0.78rem', fontWeight: 600, display: 'flex', justifyContent: 'space-between', marginBottom: '6px' }}>
-                          <span>Zoom / Scale</span>
-                          <span style={{ color: 'var(--accent-purple)' }}>{formData.avatarZoom || 100}%</span>
-                        </label>
-                        <input
-                          type="range"
-                          min="60"
-                          max="200"
-                          step="1"
-                          value={formData.avatarZoom || 100}
-                          onChange={(e) => setFormData(prev => ({ ...prev, avatarZoom: Number(e.target.value) }))}
-                          style={{ width: '100%', accentColor: 'var(--accent-purple)' }}
-                        />
+                    {/* Sliders for Zoom, Horizontal X, Vertical Y (Only active when avatar exists) */}
+                    {formData.avatar && (
+                      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '14px', background: 'rgba(255, 255, 255, 0.02)', padding: '16px', borderRadius: '12px', border: '1px solid var(--border-color)' }}>
+                        <div>
+                          <label style={{ fontSize: '0.78rem', fontWeight: 600, display: 'flex', justifyContent: 'space-between', marginBottom: '6px' }}>
+                            <span>Zoom / Scale</span>
+                            <span style={{ color: 'var(--accent-purple)' }}>{formData.avatarZoom || 100}%</span>
+                          </label>
+                          <input
+                            type="range"
+                            min="60"
+                            max="200"
+                            step="1"
+                            value={formData.avatarZoom || 100}
+                            onChange={(e) => setFormData(prev => ({ ...prev, avatarZoom: Number(e.target.value) }))}
+                            style={{ width: '100%', accentColor: 'var(--accent-purple)' }}
+                          />
+                        </div>
+
+                        <div>
+                          <label style={{ fontSize: '0.78rem', fontWeight: 600, display: 'flex', justifyContent: 'space-between', marginBottom: '6px' }}>
+                            <span>Horizontal Position (X)</span>
+                            <span style={{ color: 'var(--accent-purple)' }}>{formData.avatarPosX ?? 50}%</span>
+                          </label>
+                          <input
+                            type="range"
+                            min="0"
+                            max="100"
+                            value={formData.avatarPosX ?? 50}
+                            onChange={(e) => setFormData(prev => ({ ...prev, avatarPosX: Number(e.target.value) }))}
+                            style={{ width: '100%', accentColor: 'var(--accent-purple)' }}
+                          />
+                        </div>
+
+                        <div>
+                          <label style={{ fontSize: '0.78rem', fontWeight: 600, display: 'flex', justifyContent: 'space-between', marginBottom: '6px' }}>
+                            <span>Vertical Position (Y)</span>
+                            <span style={{ color: 'var(--accent-purple)' }}>{formData.avatarPosY ?? 50}%</span>
+                          </label>
+                          <input
+                            type="range"
+                            min="0"
+                            max="100"
+                            value={formData.avatarPosY ?? 50}
+                            onChange={(e) => setFormData(prev => ({ ...prev, avatarPosY: Number(e.target.value) }))}
+                            style={{ width: '100%', accentColor: 'var(--accent-purple)' }}
+                          />
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Business / Company Logo Subsection */}
+                    <div style={{ marginTop: '6px', borderTop: '1px solid var(--border-color)', paddingTop: '20px', display: 'flex', flexDirection: 'column', gap: '14px' }}>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap', gap: '8px' }}>
+                        <div>
+                          <h5 style={{ margin: '0 0 4px', fontSize: '1rem', fontWeight: 800 }}>Business / Company Logo</h5>
+                          <p style={{ margin: 0, fontSize: '0.8rem', color: 'var(--text-secondary)' }}>
+                            Transparent brand logo shown across your digital profiles and cards. If you don't have a logo, leave this empty — no placeholder or default icon will ever be displayed.
+                          </p>
+                        </div>
+                        {formData.logo && (
+                          <button
+                            type="button"
+                            onClick={() => setFormData(prev => ({ ...prev, logo: '' }))}
+                            className="btn btn-sm"
+                            style={{ color: '#EF4444', border: '1px solid rgba(239, 68, 68, 0.3)', background: 'rgba(239, 68, 68, 0.08)', gap: '6px' }}
+                          >
+                            <Trash2 size={13} />
+                            <span>Remove Logo</span>
+                          </button>
+                        )}
                       </div>
 
-                      <div>
-                        <label style={{ fontSize: '0.78rem', fontWeight: 600, display: 'flex', justifyContent: 'space-between', marginBottom: '6px' }}>
-                          <span>Horizontal Position (X)</span>
-                          <span style={{ color: 'var(--accent-purple)' }}>{formData.avatarPosX ?? 50}%</span>
-                        </label>
-                        <input
-                          type="range"
-                          min="0"
-                          max="100"
-                          value={formData.avatarPosX ?? 50}
-                          onChange={(e) => setFormData(prev => ({ ...prev, avatarPosX: Number(e.target.value) }))}
-                          style={{ width: '100%', accentColor: 'var(--accent-purple)' }}
-                        />
-                      </div>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '24px', flexWrap: 'wrap', background: 'rgba(255, 255, 255, 0.02)', padding: '18px', borderRadius: '14px', border: '1px solid var(--border-color)' }}>
+                        {/* Logo Preview with transparent checkerboard */}
+                        <div
+                          style={{
+                            width: '180px',
+                            height: '100px',
+                            borderRadius: '12px',
+                            border: '1px solid var(--border-color)',
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            padding: '12px',
+                            backgroundColor: '#1E172E',
+                            backgroundImage: 'linear-gradient(45deg, rgba(255,255,255,0.04) 25%, transparent 25%), linear-gradient(-45deg, rgba(255,255,255,0.04) 25%, transparent 25%), linear-gradient(45deg, transparent 75%, rgba(255,255,255,0.04) 75%), linear-gradient(-45deg, transparent 75%, rgba(255,255,255,0.04) 75%)',
+                            backgroundSize: '16px 16px',
+                            backgroundPosition: '0 0, 0 8px, 8px -8px, -8px 0px',
+                            flexShrink: 0
+                          }}
+                        >
+                          {formData.logo ? (
+                            <img
+                              src={formData.logo}
+                              alt="Company Logo Preview"
+                              style={{ maxWidth: '100%', maxHeight: '100%', objectFit: 'contain' }}
+                            />
+                          ) : (
+                            <span style={{ fontSize: '0.74rem', color: 'var(--text-muted)', textAlign: 'center', fontWeight: 600 }}>
+                              No logo uploaded
+                            </span>
+                          )}
+                        </div>
 
-                      <div>
-                        <label style={{ fontSize: '0.78rem', fontWeight: 600, display: 'flex', justifyContent: 'space-between', marginBottom: '6px' }}>
-                          <span>Vertical Position (Y)</span>
-                          <span style={{ color: 'var(--accent-purple)' }}>{formData.avatarPosY ?? 50}%</span>
-                        </label>
-                        <input
-                          type="range"
-                          min="0"
-                          max="100"
-                          value={formData.avatarPosY ?? 50}
-                          onChange={(e) => setFormData(prev => ({ ...prev, avatarPosY: Number(e.target.value) }))}
-                          style={{ width: '100%', accentColor: 'var(--accent-purple)' }}
-                        />
+                        {/* Logo Action Buttons */}
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', flex: 1, minWidth: '200px' }}>
+                          <input
+                            type="file"
+                            ref={logoInputRef}
+                            style={{ display: 'none' }}
+                            accept="image/*"
+                            onChange={handleLogoUpload}
+                          />
+                          <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap' }}>
+                            <button
+                              type="button"
+                              disabled={isUploading}
+                              onClick={() => logoInputRef.current?.click()}
+                              className="btn btn-primary btn-sm"
+                              style={{ gap: '6px' }}
+                            >
+                              <Upload size={14} />
+                              <span>{isUploading ? 'Uploading...' : (formData.logo ? 'Replace Logo' : 'Upload Business Logo')}</span>
+                            </button>
+                            {formData.logo && (
+                              <button
+                                type="button"
+                                onClick={() => setFormData(prev => ({ ...prev, logo: '' }))}
+                                className="btn btn-outline btn-sm"
+                                style={{ gap: '6px' }}
+                              >
+                                <Trash2 size={13} />
+                                <span>Remove</span>
+                              </button>
+                            )}
+                          </div>
+                          <span style={{ fontSize: '0.72rem', color: 'var(--text-muted)' }}>
+                            Supports PNG (transparent recommended), SVG, WebP, JPG. Max 8MB.
+                          </span>
+                        </div>
                       </div>
                     </div>
 
@@ -1214,21 +1389,38 @@ export default function CustomerProfilesTab({ profiles = [], customer, onSavePro
                     >
                       {/* Image Banner */}
                       {(formData.banner?.type === 'image' || !formData.banner?.type) && (
-                        <img
-                          src={formData.banner?.url || '/assets/hero-bg.jpg'}
-                          alt="Banner Preview"
-                          style={{
-                            width: '100%',
-                            height: '100%',
-                            objectFit: 'cover',
-                            objectPosition: `${formData.banner?.positionX ?? 50}% ${formData.banner?.positionY ?? 50}%`,
-                            transform: `scale(${(formData.banner?.zoom || 100) / 100})`,
-                            transformOrigin: `${formData.banner?.positionX ?? 50}% ${formData.banner?.positionY ?? 50}%`,
-                            pointerEvents: 'none',
-                            userSelect: 'none',
-                            transition: isDraggingBanner ? 'none' : 'transform 0.15s ease, object-position 0.15s ease'
-                          }}
-                        />
+                        formData.banner?.url ? (
+                          <img
+                            src={formData.banner.url}
+                            alt="Banner Preview"
+                            style={{
+                              width: '100%',
+                              height: '100%',
+                              objectFit: 'cover',
+                              objectPosition: `${formData.banner?.positionX ?? 50}% ${formData.banner?.positionY ?? 50}%`,
+                              transform: `scale(${(formData.banner?.zoom || 100) / 100})`,
+                              transformOrigin: `${formData.banner?.positionX ?? 50}% ${formData.banner?.positionY ?? 50}%`,
+                              pointerEvents: 'none',
+                              userSelect: 'none',
+                              transition: isDraggingBanner ? 'none' : 'transform 0.15s ease, object-position 0.15s ease'
+                            }}
+                          />
+                        ) : (
+                          <div
+                            style={{
+                              width: '100%',
+                              height: '100%',
+                              background: `linear-gradient(135deg, ${formData.banner?.gradientStart || '#2e1065'} 0%, ${formData.banner?.gradientEnd || '#090514'} 100%)`,
+                              display: 'flex',
+                              alignItems: 'center',
+                              justifyContent: 'center',
+                              color: 'rgba(255, 255, 255, 0.6)',
+                              fontSize: '0.85rem'
+                            }}
+                          >
+                            <span>No banner image uploaded (Theme gradient active)</span>
+                          </div>
+                        )
                       )}
 
                       {/* Video Banner */}
