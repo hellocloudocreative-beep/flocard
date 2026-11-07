@@ -2008,6 +2008,7 @@ export default function AdminDashboard({ initialTab = 'overview', initialOrderId
             {/* Localhost Safe Sandbox Status Indicator */}
             {isLocalEnvironment() && (
               <div
+                className="admin-sandbox-badge"
                 title="Local Sandbox Active: Any tests, orders, or status changes save strictly inside your local browser and never alter live flocard.in or Supabase. Live customers and orders are safely pulled for your testing."
                 style={{
                   display: 'inline-flex',
@@ -2023,8 +2024,8 @@ export default function AdminDashboard({ initialTab = 'overview', initialOrderId
                   whiteSpace: 'nowrap'
                 }}
               >
-                <span style={{ width: 7, height: 7, borderRadius: '50%', backgroundColor: '#3B82F6', boxShadow: '0 0 6px #3B82F6' }}></span>
-                <span>Local Sandbox (Isolated)</span>
+                <span style={{ width: 7, height: 7, borderRadius: '50%', backgroundColor: '#3B82F6', boxShadow: '0 0 6px #3B82F6', flexShrink: 0 }}></span>
+                <span className="admin-sandbox-text">Local Sandbox (Isolated)</span>
               </div>
             )}
 
@@ -2278,7 +2279,7 @@ export default function AdminDashboard({ initialTab = 'overview', initialOrderId
         )}
 
         {/* Dashboard Main Scrollable View */}
-        <div className="admin-main-content" style={{ padding: '28px 32px 48px', width: '100%', boxSizing: 'border-box' }}>
+        <div className={`admin-main-content ${activeTab === 'studio' ? 'studio-active' : ''}`} style={{ padding: '28px 32px 48px', width: '100%', boxSizing: 'border-box' }}>
           <AnimatePresence mode="wait">
             <motion.div
               key={activeTab}
@@ -2595,6 +2596,7 @@ export default function AdminDashboard({ initialTab = 'overview', initialOrderId
 
               {/* Revenue & Financial Performance Row */}
               <div
+                className="admin-financial-grid"
                 style={{
                   display: 'grid',
                   gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 220px), 1fr))',
@@ -9501,14 +9503,35 @@ export default function AdminDashboard({ initialTab = 'overview', initialOrderId
             box-sizing: border-box !important;
             max-width: 100% !important;
           }
+          .admin-main-content.studio-active {
+            padding: 0 0 20px 0 !important;
+          }
+          .admin-main-content.studio-active > div {
+            padding: 0 !important;
+            border-radius: 0 !important;
+            background: transparent !important;
+            box-shadow: none !important;
+            border: none !important;
+            max-width: 100% !important;
+          }
         }
         @media (max-width: 640px) {
           .admin-header {
-            padding: 10px 12px !important;
+            padding: 8px 10px !important;
             position: relative !important;
           }
+          .admin-page-title {
+            font-size: 0.98rem !important;
+            max-width: 140px !important;
+          }
           .admin-header-actions {
-            gap: 8px !important;
+            gap: 6px !important;
+          }
+          .admin-sandbox-badge {
+            padding: 4px 8px !important;
+          }
+          .admin-sandbox-text {
+            display: none !important;
           }
           .admin-header-search {
             display: none !important;
@@ -9531,6 +9554,11 @@ export default function AdminDashboard({ initialTab = 'overview', initialOrderId
             display: flex !important;
           }
           .admin-stats-grid {
+            grid-template-columns: repeat(2, 1fr) !important;
+            gap: 10px !important;
+            margin-bottom: 18px !important;
+          }
+          .admin-financial-grid {
             grid-template-columns: repeat(2, 1fr) !important;
             gap: 10px !important;
             margin-bottom: 18px !important;

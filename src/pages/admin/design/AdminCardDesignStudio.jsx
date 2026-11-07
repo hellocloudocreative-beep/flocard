@@ -234,6 +234,22 @@ export default function AdminCardDesignStudio({
   const [leftTab, setLeftTab] = useState('text');
   const [selectedThemeId, setSelectedThemeId] = useState('royal_ultraviolet');
 
+  // Responsive Mobile Viewport State
+  const [viewportWidth, setViewportWidth] = useState(typeof window !== 'undefined' ? window.innerWidth : 1200);
+  const isMobile = viewportWidth < 1024;
+  const isSmallMobile = viewportWidth < 640;
+
+  // Mobile View Mode: 'split' (preview + controls) | 'preview' (full card preview) | 'controls' (edit controls only)
+  const [mobileViewMode, setMobileViewMode] = useState('split');
+
+  useEffect(() => {
+    const handleResize = () => {
+      setViewportWidth(window.innerWidth);
+    };
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
+  }, []);
+
   // Active Card Side: 'front' | 'back'
   const [activeSide, setActiveSide] = useState('front');
   const [preview3D, setPreview3D] = useState(false);
@@ -1035,38 +1051,45 @@ export default function AdminCardDesignStudio({
     flocardLogo
   };
 
+  const effectiveMobileScale = isMobile
+    ? Math.min(0.85, Math.max(0.44, (viewportWidth - 28) / 580))
+    : 1;
+  const computedZoom = isMobile ? effectiveMobileScale * zoomLevel : zoomLevel;
+
   return (
     <div className="admin-studio-container" style={{
       display: 'flex',
       flexDirection: 'column',
-      height: 'calc(100vh - 80px)',
+      height: isMobile ? 'auto' : 'calc(100vh - 80px)',
+      minHeight: isMobile ? 'calc(100vh - 70px)' : 'auto',
       background: isLight ? '#F8FAFC' : '#090514',
       color: isLight ? '#0F172A' : '#FFFFFF',
       fontFamily: 'Inter, sans-serif',
-      overflow: 'hidden'
+      overflow: isMobile ? 'visible' : 'hidden'
     }}>
       {/* Studio Header Bar */}
       <div style={{
         display: 'flex',
-        alignItems: 'center',
+        flexDirection: isSmallMobile ? 'column' : 'row',
+        alignItems: isSmallMobile ? 'stretch' : 'center',
         justifyContent: 'space-between',
-        padding: '12px 24px',
+        padding: isMobile ? '8px 12px' : '12px 24px',
         background: isLight ? '#FFFFFF' : '#130B22',
         borderBottom: isLight ? '1px solid #E2E8F0' : '1px solid rgba(168, 85, 247, 0.2)',
         zIndex: 10,
-        flexWrap: 'wrap',
-        gap: '12px'
+        gap: '8px'
       }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '8px', minWidth: 0, flex: 1 }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '6px', minWidth: 0, flex: 1 }}>
             <span style={{
               background: 'linear-gradient(135deg, #A855F7, #6B00FF)',
-              padding: '6px 10px',
-              borderRadius: '8px',
-              fontSize: '0.75rem',
+              padding: isMobile ? '4px 7px' : '6px 10px',
+              borderRadius: '6px',
+              fontSize: '0.68rem',
               fontWeight: 800,
               letterSpacing: '0.05em',
-              color: '#FFFFFF'
+              color: '#FFFFFF',
+              flexShrink: 0
             }}>
               STUDIO
             </span>
@@ -1078,82 +1101,83 @@ export default function AdminCardDesignStudio({
                 background: 'transparent',
                 border: 'none',
                 color: isLight ? '#0F172A' : '#FFFFFF',
-                fontSize: '1.05rem',
+                fontSize: isMobile ? '0.9rem' : '1.05rem',
                 fontWeight: 700,
                 outline: 'none',
-                minWidth: '220px'
+                minWidth: 0,
+                width: '100%'
               }}
             />
           </div>
 
-          <div style={{ display: 'flex', gap: '6px', background: isLight ? '#F1F5F9' : '#1F1238', padding: '4px', borderRadius: '10px' }}>
+          <div style={{ display: 'flex', gap: '4px', background: isLight ? '#F1F5F9' : '#1F1238', padding: '3px', borderRadius: '8px', flexShrink: 0 }}>
             <button
               onClick={() => setActiveSide('front')}
               style={{
-                padding: '6px 14px',
-                borderRadius: '8px',
+                padding: isMobile ? '4px 10px' : '6px 14px',
+                borderRadius: '6px',
                 border: 'none',
-                fontSize: '0.8rem',
+                fontSize: isMobile ? '0.74rem' : '0.8rem',
                 fontWeight: 600,
                 cursor: 'pointer',
                 background: activeSide === 'front' ? '#7C3AED' : 'transparent',
                 color: activeSide === 'front' ? '#FFFFFF' : (isLight ? '#475569' : '#94A3B8')
               }}
             >
-              Front Artwork
+              {isSmallMobile ? 'Front' : 'Front Side'}
             </button>
             <button
               onClick={() => setActiveSide('back')}
               style={{
-                padding: '6px 14px',
-                borderRadius: '8px',
+                padding: isMobile ? '4px 10px' : '6px 14px',
+                borderRadius: '6px',
                 border: 'none',
-                fontSize: '0.8rem',
+                fontSize: isMobile ? '0.74rem' : '0.8rem',
                 fontWeight: 600,
                 cursor: 'pointer',
                 background: activeSide === 'back' ? '#7C3AED' : 'transparent',
                 color: activeSide === 'back' ? '#FFFFFF' : (isLight ? '#475569' : '#94A3B8')
               }}
             >
-              Back Artwork
+              {isSmallMobile ? 'Back' : 'Back Side'}
             </button>
           </div>
         </div>
 
         {/* Studio Actions: Prominent WhatsApp Order Creator */}
-        <div style={{ display: 'flex', alignItems: 'center', gap: '10px', flexWrap: 'wrap' }}>
-          <button
-            onClick={undo}
-            disabled={history.length === 0}
-            title="Undo (Ctrl+Z)"
-            style={{
-              background: '#1F1238',
-              border: '1px solid rgba(168, 85, 247, 0.2)',
-              color: history.length === 0 ? '#6B5E82' : '#FFFFFF',
-              padding: '8px',
-              borderRadius: '8px',
-              cursor: history.length === 0 ? 'not-allowed' : 'pointer'
-            }}
-          >
-            <Undo2 size={16} />
-          </button>
-          <button
-            onClick={redo}
-            disabled={future.length === 0}
-            title="Redo (Ctrl+Y)"
-            style={{
-              background: '#1F1238',
-              border: '1px solid rgba(168, 85, 247, 0.2)',
-              color: future.length === 0 ? '#6B5E82' : '#FFFFFF',
-              padding: '8px',
-              borderRadius: '8px',
-              cursor: future.length === 0 ? 'not-allowed' : 'pointer'
-            }}
-          >
-            <Redo2 size={16} />
-          </button>
-
-          <div style={{ height: '24px', width: '1px', background: 'rgba(168, 85, 247, 0.2)', margin: '0 4px' }} />
+        <div style={{ display: 'flex', alignItems: 'center', gap: '6px', flexShrink: 0, justifyContent: isSmallMobile ? 'space-between' : 'flex-end', width: isSmallMobile ? '100%' : 'auto' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
+            <button
+              onClick={undo}
+              disabled={history.length === 0}
+              title="Undo (Ctrl+Z)"
+              style={{
+                background: '#1F1238',
+                border: '1px solid rgba(168, 85, 247, 0.2)',
+                color: history.length === 0 ? '#6B5E82' : '#FFFFFF',
+                padding: isMobile ? '6px 8px' : '8px',
+                borderRadius: '7px',
+                cursor: history.length === 0 ? 'not-allowed' : 'pointer'
+              }}
+            >
+              <Undo2 size={isMobile ? 14 : 16} />
+            </button>
+            <button
+              onClick={redo}
+              disabled={future.length === 0}
+              title="Redo (Ctrl+Y)"
+              style={{
+                background: '#1F1238',
+                border: '1px solid rgba(168, 85, 247, 0.2)',
+                color: future.length === 0 ? '#6B5E82' : '#FFFFFF',
+                padding: isMobile ? '6px 8px' : '8px',
+                borderRadius: '7px',
+                cursor: history.length === 0 ? 'not-allowed' : 'pointer'
+              }}
+            >
+              <Redo2 size={isMobile ? 14 : 16} />
+            </button>
+          </div>
 
           {/* Quick Select Theme Button */}
           <button
@@ -1161,19 +1185,19 @@ export default function AdminCardDesignStudio({
             style={{
               display: 'flex',
               alignItems: 'center',
-              gap: '6px',
-              padding: '8px 14px',
-              borderRadius: '8px',
+              gap: '5px',
+              padding: isMobile ? '6px 10px' : '8px 14px',
+              borderRadius: '7px',
               background: leftTab === 'style' ? 'rgba(168, 85, 247, 0.25)' : '#1F1238',
               border: '1px solid rgba(168, 85, 247, 0.3)',
               color: '#D8B4FE',
-              fontSize: '0.84rem',
+              fontSize: isMobile ? '0.74rem' : '0.84rem',
               fontWeight: 600,
               cursor: 'pointer'
             }}
           >
-            <Palette size={15} />
-            <span>Select Themes</span>
+            <Palette size={isMobile ? 13 : 15} />
+            <span>Themes</span>
           </button>
 
           {/* Primary Action Button: Save or Create Order */}
@@ -1182,40 +1206,42 @@ export default function AdminCardDesignStudio({
             style={{
               display: 'flex',
               alignItems: 'center',
-              gap: '7px',
-              padding: '8px 18px',
-              borderRadius: '10px',
+              justifyContent: 'center',
+              gap: '6px',
+              padding: isMobile ? '6px 12px' : '8px 18px',
+              borderRadius: '8px',
               border: 'none',
               background: 'linear-gradient(135deg, #7C3AED, #6D28D9)',
               color: '#FFFFFF',
-              fontSize: '0.86rem',
+              fontSize: isMobile ? '0.78rem' : '0.86rem',
               fontWeight: 700,
               cursor: 'pointer',
               boxShadow: '0 4px 18px rgba(124, 58, 237, 0.35)',
-              transition: 'transform 0.15s ease'
+              transition: 'transform 0.15s ease',
+              flex: isSmallMobile ? 1 : 'none'
             }}
           >
-            <Package size={16} />
-            <span>{selectedOrderId ? 'Save & Update Order' : 'Create Card Order'}</span>
+            <Package size={isMobile ? 14 : 16} />
+            <span>{selectedOrderId ? (isSmallMobile ? 'Save Order' : 'Save & Update') : 'Create Order'}</span>
           </button>
 
           <button
             onClick={() => handleSaveDraft('draft')}
             style={{
-              display: 'flex',
+              display: isSmallMobile ? 'none' : 'flex',
               alignItems: 'center',
-              gap: '6px',
-              padding: '8px 12px',
-              fontSize: '0.82rem',
-              borderRadius: '8px',
+              gap: '5px',
+              padding: isMobile ? '6px 10px' : '8px 12px',
+              fontSize: isMobile ? '0.74rem' : '0.82rem',
+              borderRadius: '7px',
               background: '#1F1238',
               border: '1px solid rgba(168, 85, 247, 0.2)',
               color: '#B9AEC9',
               cursor: 'pointer'
             }}
           >
-            <Save size={14} />
-            <span>Save Draft</span>
+            <Save size={13} />
+            <span>Draft</span>
           </button>
         </div>
       </div>
@@ -1225,23 +1251,23 @@ export default function AdminCardDesignStudio({
         <div style={{
           background: 'linear-gradient(90deg, rgba(124, 58, 237, 0.25), rgba(79, 70, 229, 0.25))',
           borderBottom: '1px solid rgba(168, 85, 247, 0.3)',
-          padding: '8px 24px',
+          padding: isMobile ? '6px 12px' : '8px 24px',
           display: 'flex',
           alignItems: 'center',
           justifyContent: 'space-between',
-          fontSize: '0.82rem',
+          fontSize: isMobile ? '0.75rem' : '0.82rem',
           flexWrap: 'wrap',
-          gap: '8px',
+          gap: '6px',
           zIndex: 9
         }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-            <Package size={15} color="#C084FC" />
-            <span style={{ color: '#E9D5FF' }}>
-              Editing Active Order: <strong style={{ color: '#FFFFFF' }}>{selectedOrderId}</strong>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '6px', minWidth: 0, flex: 1 }}>
+            <Package size={14} color="#C084FC" style={{ flexShrink: 0 }} />
+            <span style={{ color: '#E9D5FF', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+              Order: <strong style={{ color: '#FFFFFF' }}>{selectedOrderId}</strong>
               {(waOrderForm.customerName || frontConfig.name) && ` · ${(waOrderForm.customerName || frontConfig.name)}`}
             </span>
           </div>
-          <div style={{ display: 'flex', gap: '10px', alignItems: 'center' }}>
+          <div style={{ display: 'flex', gap: '6px', alignItems: 'center', flexShrink: 0 }}>
             <button
               type="button"
               onClick={() => {
@@ -1253,13 +1279,13 @@ export default function AdminCardDesignStudio({
                 background: 'transparent',
                 border: '1px solid rgba(255,255,255,0.2)',
                 color: '#CBD5E1',
-                padding: '4px 10px',
+                padding: '3px 8px',
                 borderRadius: '6px',
-                fontSize: '0.74rem',
+                fontSize: '0.7rem',
                 cursor: 'pointer'
               }}
             >
-              Start New Order
+              New Order
             </button>
             <button
               type="button"
@@ -1268,34 +1294,122 @@ export default function AdminCardDesignStudio({
                 background: '#7C3AED',
                 border: 'none',
                 color: '#FFFFFF',
-                padding: '4px 14px',
+                padding: '3px 10px',
                 borderRadius: '6px',
-                fontSize: '0.74rem',
+                fontSize: '0.7rem',
                 fontWeight: 700,
                 cursor: 'pointer',
                 display: 'flex',
                 alignItems: 'center',
-                gap: '5px'
+                gap: '4px'
               }}
             >
-              <Save size={13} />
-              <span>Save &amp; Go to Orders</span>
+              <Save size={11} />
+              <span>Save &amp; Go</span>
             </button>
           </div>
         </div>
       )}
 
-      {/* 3-Panel Main Workspace */}
-      <div style={{ display: 'flex', flex: 1, overflow: 'hidden' }}>
+      {/* Mobile Mode Switcher Bar (< 1024px) */}
+      {isMobile && (
+        <div style={{
+          display: 'flex',
+          alignItems: 'center',
+          background: isLight ? '#F1F5F9' : '#160D26',
+          borderBottom: `1px solid ${isLight ? '#E2E8F0' : 'rgba(168, 85, 247, 0.25)'}`,
+          padding: '6px 10px',
+          gap: '6px',
+          zIndex: 8
+        }}>
+          <button
+            type="button"
+            onClick={() => setMobileViewMode('split')}
+            style={{
+              flex: 1,
+              padding: '7px 6px',
+              borderRadius: '8px',
+              border: 'none',
+              background: mobileViewMode === 'split' ? '#7C3AED' : 'transparent',
+              color: mobileViewMode === 'split' ? '#FFFFFF' : (isLight ? '#475569' : '#B9AEC9'),
+              fontSize: '0.74rem',
+              fontWeight: 700,
+              cursor: 'pointer',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              gap: '5px'
+            }}
+          >
+            <Sliders size={13} />
+            <span>Card + Edit</span>
+          </button>
+          <button
+            type="button"
+            onClick={() => setMobileViewMode('preview')}
+            style={{
+              flex: 1,
+              padding: '7px 6px',
+              borderRadius: '8px',
+              border: 'none',
+              background: mobileViewMode === 'preview' ? '#7C3AED' : 'transparent',
+              color: mobileViewMode === 'preview' ? '#FFFFFF' : (isLight ? '#475569' : '#B9AEC9'),
+              fontSize: '0.74rem',
+              fontWeight: 700,
+              cursor: 'pointer',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              gap: '5px'
+            }}
+          >
+            <Eye size={13} />
+            <span>Full 3D Card</span>
+          </button>
+          <button
+            type="button"
+            onClick={() => setMobileViewMode('controls')}
+            style={{
+              flex: 1,
+              padding: '7px 6px',
+              borderRadius: '8px',
+              border: 'none',
+              background: mobileViewMode === 'controls' ? '#7C3AED' : 'transparent',
+              color: mobileViewMode === 'controls' ? '#FFFFFF' : (isLight ? '#475569' : '#B9AEC9'),
+              fontSize: '0.74rem',
+              fontWeight: 700,
+              cursor: 'pointer',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              gap: '5px'
+            }}
+          >
+            <Edit3 size={13} />
+            <span>Controls Only</span>
+          </button>
+        </div>
+      )}
+
+      {/* Main Workspace (Responsive) */}
+      <div style={{
+        display: 'flex',
+        flexDirection: isMobile ? 'column' : 'row',
+        flex: 1,
+        overflowY: isMobile ? 'auto' : 'hidden',
+        overflowX: 'hidden'
+      }}>
         
         {/* LEFT PANEL: Intuitive Card Designer & Customer Details */}
         <div style={{
-          width: '330px',
+          display: (isMobile && mobileViewMode === 'preview') ? 'none' : 'flex',
+          order: (isMobile && mobileViewMode === 'split') ? 2 : 1,
+          width: isMobile ? '100%' : '330px',
           background: '#11091F',
-          borderRight: '1px solid rgba(168, 85, 247, 0.2)',
-          display: 'flex',
+          borderRight: isMobile ? 'none' : '1px solid rgba(168, 85, 247, 0.2)',
           flexDirection: 'column',
-          overflowY: 'auto'
+          overflowY: isMobile ? 'visible' : 'auto',
+          flexShrink: 0
         }}>
           {/* Sub-Tab Navigation Header (Matching Customer UI) */}
           <div style={{
@@ -1303,7 +1417,9 @@ export default function AdminCardDesignStudio({
             background: '#170D29',
             borderBottom: '1px solid rgba(168, 85, 247, 0.2)',
             padding: '4px',
-            gap: '2px'
+            gap: '2px',
+            width: '100%',
+            boxSizing: 'border-box'
           }}>
             {[
               { id: 'text', label: 'Text', icon: <Type size={14} /> },
@@ -2408,69 +2524,78 @@ export default function AdminCardDesignStudio({
 
         {/* CENTER PANEL: Canvas Workspace */}
         <div style={{
-          flex: 1,
-          display: 'flex',
+          display: (isMobile && mobileViewMode === 'controls') ? 'none' : 'flex',
+          order: (isMobile && mobileViewMode === 'split') ? 1 : 2,
+          flex: (isMobile && mobileViewMode === 'split') ? 'none' : 1,
+          height: (isMobile && mobileViewMode === 'split') ? '240px' : (isMobile ? 'calc(100vh - 180px)' : 'auto'),
           flexDirection: 'column',
           background: '#0B0616',
           position: 'relative',
-          overflow: 'hidden'
+          overflow: 'hidden',
+          borderBottom: (isMobile && mobileViewMode === 'split') ? '1px solid rgba(168, 85, 247, 0.2)' : 'none',
+          width: isMobile ? '100%' : 'auto'
         }}>
           {/* Canvas Floating Toolbar */}
           <div style={{
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'space-between',
-            padding: '12px 20px',
-            background: 'rgba(19, 11, 34, 0.75)',
+            padding: isMobile ? '6px 10px' : '12px 20px',
+            background: 'rgba(19, 11, 34, 0.85)',
             backdropFilter: 'blur(10px)',
             borderBottom: '1px solid rgba(168, 85, 247, 0.15)',
-            zIndex: 5
+            zIndex: 5,
+            gap: '6px'
           }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: isMobile ? '4px' : '8px' }}>
               <button
                 onClick={() => setZoomLevel(prev => Math.max(0.5, prev - 0.1))}
-                style={{ background: '#1F1238', border: '1px solid rgba(168, 85, 247, 0.2)', color: '#FFFFFF', padding: '6px', borderRadius: '6px', cursor: 'pointer' }}
+                style={{ background: '#1F1238', border: '1px solid rgba(168, 85, 247, 0.2)', color: '#FFFFFF', padding: isMobile ? '4px 6px' : '6px', borderRadius: '6px', cursor: 'pointer' }}
                 title="Zoom Out"
               >
-                <ZoomOut size={15} />
+                <ZoomOut size={isMobile ? 13 : 15} />
               </button>
-              <span style={{ fontSize: '0.8rem', color: '#B9AEC9', minWidth: '45px', textAlign: 'center' }}>
-                {Math.round(zoomLevel * 100)}%
+              <span style={{ fontSize: isMobile ? '0.72rem' : '0.8rem', color: '#B9AEC9', minWidth: isMobile ? '36px' : '45px', textAlign: 'center' }}>
+                {Math.round(computedZoom * 100)}%
               </span>
               <button
                 onClick={() => setZoomLevel(prev => Math.min(2, prev + 0.1))}
-                style={{ background: '#1F1238', border: '1px solid rgba(168, 85, 247, 0.2)', color: '#FFFFFF', padding: '6px', borderRadius: '6px', cursor: 'pointer' }}
+                style={{ background: '#1F1238', border: '1px solid rgba(168, 85, 247, 0.2)', color: '#FFFFFF', padding: isMobile ? '4px 6px' : '6px', borderRadius: '6px', cursor: 'pointer' }}
                 title="Zoom In"
               >
-                <ZoomIn size={15} />
+                <ZoomIn size={isMobile ? 13 : 15} />
               </button>
               <button
                 onClick={() => setZoomLevel(1)}
-                style={{ background: '#1F1238', border: '1px solid rgba(168, 85, 247, 0.2)', color: '#FFFFFF', padding: '6px 10px', borderRadius: '6px', fontSize: '0.75rem', cursor: 'pointer' }}
+                style={{ background: '#1F1238', border: '1px solid rgba(168, 85, 247, 0.2)', color: '#FFFFFF', padding: isMobile ? '4px 8px' : '6px 10px', borderRadius: '6px', fontSize: isMobile ? '0.7rem' : '0.75rem', cursor: 'pointer' }}
                 title="Fit to Screen"
               >
                 Reset
               </button>
             </div>
 
-            <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-              <label style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '0.78rem', color: '#B9AEC9', cursor: 'pointer' }}>
-                <input
-                  type="checkbox"
-                  checked={showGuides}
-                  onChange={(e) => setShowGuides(e.target.checked)}
-                />
-                Safe Area Guides
-              </label>
+            <div style={{ display: 'flex', alignItems: 'center', gap: isMobile ? '6px' : '10px' }}>
+              {!isSmallMobile && (
+                <>
+                  <label style={{ display: 'flex', alignItems: 'center', gap: '4px', fontSize: '0.74rem', color: '#B9AEC9', cursor: 'pointer' }}>
+                    <input
+                      type="checkbox"
+                      checked={showGuides}
+                      onChange={(e) => setShowGuides(e.target.checked)}
+                    />
+                    Guides
+                  </label>
 
-              <label style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '0.78rem', color: '#B9AEC9', cursor: 'pointer' }}>
-                <input
-                  type="checkbox"
-                  checked={showBleed}
-                  onChange={(e) => setShowBleed(e.target.checked)}
-                />
-                Bleed Zones
-              </label>
+                  <label style={{ display: 'flex', alignItems: 'center', gap: '4px', fontSize: '0.74rem', color: '#B9AEC9', cursor: 'pointer' }}>
+                    <input
+                      type="checkbox"
+                      checked={showBleed}
+                      onChange={(e) => setShowBleed(e.target.checked)}
+                    />
+                    Bleed
+                  </label>
+                </>
+              )}
 
               <button
                 onClick={() => setPreview3D(prev => !prev)}
@@ -2478,14 +2603,14 @@ export default function AdminCardDesignStudio({
                   background: preview3D ? '#7C3AED' : '#1F1238',
                   border: '1px solid rgba(168, 85, 247, 0.3)',
                   color: '#FFFFFF',
-                  padding: '6px 12px',
+                  padding: isMobile ? '4px 10px' : '6px 12px',
                   borderRadius: '6px',
-                  fontSize: '0.78rem',
+                  fontSize: isMobile ? '0.74rem' : '0.78rem',
                   fontWeight: 600,
                   cursor: 'pointer'
                 }}
               >
-                {preview3D ? '2D View' : '3D Orbit View'}
+                {preview3D ? '2D View' : '3D Orbit'}
               </button>
             </div>
           </div>
@@ -2496,11 +2621,11 @@ export default function AdminCardDesignStudio({
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'center',
-            padding: '30px',
-            overflow: 'auto'
+            padding: isMobile ? '6px' : '30px',
+            overflow: (isMobile && mobileViewMode === 'split') ? 'hidden' : 'auto'
           }}>
             <div style={{
-              transform: `scale(${zoomLevel})`,
+              transform: `scale(${computedZoom})`,
               transformOrigin: 'center center',
               transition: 'transform 0.15s ease-out'
             }}>
@@ -2535,10 +2660,11 @@ export default function AdminCardDesignStudio({
 
         {/* RIGHT PANEL: Selected Element Properties & Typography Inspector */}
         <div style={{
+          display: (isMobile || viewportWidth < 1150) ? 'none' : 'flex',
+          order: 3,
           width: '320px',
           background: '#11091F',
           borderLeft: '1px solid rgba(168, 85, 247, 0.2)',
-          display: 'flex',
           flexDirection: 'column',
           overflowY: 'auto',
           padding: '18px'
