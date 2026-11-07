@@ -196,7 +196,7 @@ export default function AppointmentBookingSection({
       }}
     >
       {/* Section Header */}
-      <div style={{ marginBottom: '22px' }}>
+      <div style={{ marginBottom: '20px' }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
           <div
             style={{
@@ -232,6 +232,64 @@ export default function AppointmentBookingSection({
           </div>
         </div>
       </div>
+
+      {/* Event Host / Author Capsule */}
+      {profile && (
+        <div
+          style={{
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'space-between',
+            padding: '12px 16px',
+            borderRadius: '14px',
+            backgroundColor: isLight ? '#FFFFFF' : 'rgba(255, 255, 255, 0.04)',
+            border: `1px solid ${isLight ? 'rgba(0, 0, 0, 0.08)' : 'rgba(255, 255, 255, 0.08)'}`,
+            marginBottom: '20px',
+            boxShadow: '0 2px 8px rgba(0,0,0,0.02)'
+          }}
+        >
+          <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+            <div
+              style={{
+                width: '36px',
+                height: '36px',
+                borderRadius: '50%',
+                backgroundColor: accentColor,
+                color: '#FFFFFF',
+                overflow: 'hidden',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                fontWeight: 700,
+                fontSize: '0.85rem'
+              }}
+            >
+              {profile.avatar ? (
+                <img src={profile.avatar} alt={profile.name} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+              ) : (
+                profile.name?.charAt(0) || 'H'
+              )}
+            </div>
+            <div>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                <span style={{ fontSize: '0.88rem', fontWeight: 700, color: isLight ? '#130B22' : '#FFFFFF' }}>
+                  {profile.name}
+                </span>
+                <span style={{ fontSize: '0.66rem', fontWeight: 700, padding: '1px 6px', borderRadius: '4px', backgroundColor: `${accentColor}20`, color: accentColor }}>
+                  HOST / AUTHOR
+                </span>
+              </div>
+              <div style={{ fontSize: '0.74rem', color: isLight ? '#64748B' : '#94A3B8' }}>
+                {profile.role ? `${profile.role}${profile.company ? ` • ${profile.company}` : ''}` : 'Verified Digital Profile'}
+              </div>
+            </div>
+          </div>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '5px', fontSize: '0.74rem', color: accentColor, fontWeight: 600 }}>
+            <Clock size={13} />
+            <span>{cfg.slotDurationMinutes || 30} mins</span>
+          </div>
+        </div>
+      )}
 
       {/* Confirmation State */}
       {bookingResult ? (
@@ -460,42 +518,83 @@ export default function AppointmentBookingSection({
             )}
           </div>
 
-          {/* Step 3: Optional Service Selection */}
+          {/* Step 3: Service / Consultation Selection Cards */}
           {publishedServices.length > 0 && (
-            <div style={{ marginBottom: '20px' }}>
+            <div style={{ marginBottom: '22px' }}>
               <label
                 style={{
-                  display: 'block',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'space-between',
                   fontSize: '0.84rem',
                   fontWeight: 700,
                   color: isLight ? '#130B22' : '#FFFFFF',
-                  marginBottom: '8px'
+                  marginBottom: '10px'
                 }}
               >
-                3. Consultation Topic / Service (Optional)
+                <span>3. Select Consultation Type</span>
+                <span style={{ fontSize: '0.72rem', color: isLight ? '#64748B' : '#94A3B8', fontWeight: 500 }}>
+                  Optional
+                </span>
               </label>
-              <select
-                value={selectedServiceId}
-                onChange={(e) => setSelectedServiceId(e.target.value)}
-                style={{
-                  width: '100%',
-                  padding: '12px 14px',
-                  borderRadius: '12px',
-                  border: `1px solid ${isLight ? 'rgba(0,0,0,0.12)' : 'rgba(255,255,255,0.12)'}`,
-                  backgroundColor: isLight ? '#FFFFFF' : '#130B22',
-                  color: isLight ? '#0F172A' : '#FFFFFF',
-                  fontSize: '0.88rem',
-                  outline: 'none',
-                  boxSizing: 'border-box'
-                }}
-              >
-                <option value="">General Meeting / Networking</option>
-                {publishedServices.map((srv) => (
-                  <option key={srv.id} value={srv.id}>
-                    {srv.title} {srv.price ? `(${srv.price})` : ''}
-                  </option>
-                ))}
-              </select>
+
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 180px), 1fr))', gap: '8px' }}>
+                <button
+                  type="button"
+                  onClick={() => setSelectedServiceId('')}
+                  style={{
+                    padding: '12px 14px',
+                    borderRadius: '12px',
+                    border: selectedServiceId === ''
+                      ? `2px solid ${accentColor}`
+                      : `1px solid ${isLight ? 'rgba(0,0,0,0.08)' : 'rgba(255,255,255,0.08)'}`,
+                    backgroundColor: selectedServiceId === ''
+                      ? (isLight ? `${accentColor}12` : `${accentColor}20`)
+                      : (isLight ? '#FFFFFF' : 'rgba(255,255,255,0.03)'),
+                    color: selectedServiceId === '' ? accentColor : (isLight ? '#1E293B' : '#E2E8F0'),
+                    cursor: 'pointer',
+                    textAlign: 'left',
+                    boxShadow: selectedServiceId === '' ? `0 0 12px ${accentColor}25` : 'none',
+                    transition: 'all 0.16s ease'
+                  }}
+                >
+                  <div style={{ fontSize: '0.84rem', fontWeight: 700 }}>General Consultation</div>
+                  <div style={{ fontSize: '0.72rem', color: isLight ? '#64748B' : '#94A3B8', marginTop: '2px' }}>
+                    Discussion &amp; networking
+                  </div>
+                </button>
+
+                {publishedServices.map((srv) => {
+                  const isSelected = selectedServiceId === srv.id;
+                  return (
+                    <button
+                      key={srv.id}
+                      type="button"
+                      onClick={() => setSelectedServiceId(srv.id)}
+                      style={{
+                        padding: '12px 14px',
+                        borderRadius: '12px',
+                        border: isSelected
+                          ? `2px solid ${accentColor}`
+                          : `1px solid ${isLight ? 'rgba(0,0,0,0.08)' : 'rgba(255,255,255,0.08)'}`,
+                        backgroundColor: isSelected
+                          ? (isLight ? `${accentColor}12` : `${accentColor}20`)
+                          : (isLight ? '#FFFFFF' : 'rgba(255,255,255,0.03)'),
+                        color: isSelected ? accentColor : (isLight ? '#1E293B' : '#E2E8F0'),
+                        cursor: 'pointer',
+                        textAlign: 'left',
+                        boxShadow: isSelected ? `0 0 12px ${accentColor}25` : 'none',
+                        transition: 'all 0.16s ease'
+                      }}
+                    >
+                      <div style={{ fontSize: '0.84rem', fontWeight: 700 }}>{srv.title}</div>
+                      <div style={{ fontSize: '0.72rem', color: isLight ? '#64748B' : '#94A3B8', marginTop: '2px' }}>
+                        {srv.price ? srv.price : 'Scheduled Session'}
+                      </div>
+                    </button>
+                  );
+                })}
+              </div>
             </div>
           )}
 

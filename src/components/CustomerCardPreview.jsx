@@ -308,7 +308,7 @@ export default function CustomerCardPreview({
 
           {(order?.id || order?.orderReference) && (
             <a
-              href={`/designer?orderId=${order.id || order.orderReference}&mode=admin_edit`}
+              href={`/admin/studio?orderId=${order.id || order.orderReference}`}
               style={{
                 display: 'inline-flex',
                 alignItems: 'center',
@@ -525,7 +525,7 @@ export default function CustomerCardPreview({
                     type="button"
                     onClick={handleDownloadTransparentLogo}
                     disabled={isExporting}
-                    title="ഡൗൺലോഡ് ട്രാൻസ്പരന്റ് ബിജി ലോഗോ (Auto Background Removal • Transparent PNG)"
+                    title="Download Transparent BG Logo (Auto Background Removal • Transparent PNG)"
                     style={{
                       display: 'inline-flex',
                       alignItems: 'center',
@@ -541,7 +541,7 @@ export default function CustomerCardPreview({
                     }}
                   >
                     <Sparkles size={11} color="#10B981" />
-                    <span>ഡൗൺലോഡ് ട്രാൻസ്പരന്റ് ബിജി ലോഗോ</span>
+                    <span>Download Transparent BG Logo</span>
                   </button>
                 )}
                 <button

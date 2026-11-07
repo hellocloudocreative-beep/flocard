@@ -6,7 +6,7 @@
    ========================================================================== */
 
 import { supabase, supabaseAdmin, isSupabaseConfigured } from './supabase.js';
-import { StorageEngine } from './storage.js';
+import { StorageEngine, isLocalEnvironment } from './storage.js';
 import { hasPermission } from './permissions.js';
 
 /**
@@ -168,7 +168,36 @@ export async function updateCardActivationStatus({ cardId, newStatus, reason = '
     activationHistory: [historyItem, ...(existingCard.activationHistory || [])]
   };
 
-  // 4. Update real Supabase database
+  // 4. In Local Development Sandbox, update local storage only to keep production database clean
+  if (isLocalEnvironment()) {
+    StorageEngine.saveCard(updatedCard);
+    recordAuditEntry({
+      cardId: existingCard.id,
+      cardCode: existingCard.cardCode,
+      action: `card.${newStatus}`,
+      previousStatus,
+      newStatus,
+      actorUser,
+      reason,
+      result: 'success',
+      details: `[Local Sandbox] ${actorName} changed card ${existingCard.cardCode} status to ${newStatus}.${reason ? ` Reason: ${reason}` : ''} (saved locally only)`
+    });
+
+    if (typeof window !== 'undefined') {
+      window.dispatchEvent(new CustomEvent('flocard_card_status_changed', {
+        detail: { card: updatedCard, previousStatus, newStatus, actorName, sandbox: true }
+      }));
+    }
+
+    return {
+      success: true,
+      card: updatedCard,
+      confirmedStatus: newStatus,
+      sandbox: true
+    };
+  }
+
+  // 4b. Update real Supabase database in Production
   if (isSupabaseConfigured && (supabaseAdmin || supabase)) {
     const dbClient = supabaseAdmin || supabase;
 

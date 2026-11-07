@@ -4,7 +4,7 @@
 
 export const BRAND = {
   name: 'FLOCARD',
-  tagline: 'One Tap. Every Connection.',
+  tagline: '',
   domain: 'flocard.in',
   supportEmail: 'contact@flocard.in',
   whatsapp: '919778278552',

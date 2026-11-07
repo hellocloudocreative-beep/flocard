@@ -1,6 +1,5 @@
 # FLOCARD — Premium NFC Business Card & Digital Identity Platform
 
-> **One Tap. Every Connection.**  
 > A complete, functional, premium website, interactive front-and-back card designer, digital identity profiles, and admin management platform.
 
 ---

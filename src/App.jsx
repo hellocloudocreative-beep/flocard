@@ -264,15 +264,23 @@ export default function App() {
     content = <AdminLogin />;
     showHeaderFooter = false;
   }
-  // 1c. Admin Platform: /admin, /admin/orders, /admin/orders/:id
+  // 1c. Admin Platform: /admin, /admin/orders, /admin/studio, /admin/orders/:id
   else if (path === '/admin' || path.startsWith('/admin/')) {
-    const subRoute = path.replace('/admin', '').replace(/^\//, '') || 'overview';
-    let initialTab = subRoute;
-    let initialOrderId = null;
-    if (subRoute.startsWith('orders/')) {
+    const searchParams = typeof window !== 'undefined' ? new URLSearchParams(window.location.search) : new URLSearchParams();
+    const cleanSub = path.replace('/admin', '').replace(/^\//, '');
+    let initialTab = cleanSub.split('/')[0] || searchParams.get('tab') || 'overview';
+    let initialOrderId = searchParams.get('orderId') || searchParams.get('id') || null;
+
+    if (cleanSub.startsWith('orders/')) {
       initialTab = 'orders';
-      initialOrderId = subRoute.replace('orders/', '');
+      initialOrderId = cleanSub.replace('orders/', '');
+    } else if (cleanSub.startsWith('studio/')) {
+      initialTab = 'studio';
+      initialOrderId = cleanSub.replace('studio/', '');
+    } else if (cleanSub === 'studio') {
+      initialTab = 'studio';
     }
+
     content = <ProtectedAdminRoute initialTab={initialTab} initialOrderId={initialOrderId} />;
     showHeaderFooter = false;
   }

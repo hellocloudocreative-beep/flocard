@@ -1063,7 +1063,7 @@ export default function ExpandedPortfolioView({
         {/* Signature Divider */}
         <div style={{ textAlign: 'center', marginTop: '28px', paddingTop: '18px', borderTop: '1px solid rgba(255, 255, 255, 0.08)' }}>
           <div style={{ fontSize: '0.74rem', color: '#D5C9E5', opacity: 0.7 }}>
-            Verified FLOCARD Digital Identity • One Tap Every Connection
+            Verified FLOCARD Digital Identity
           </div>
         </div>
             </motion.div>

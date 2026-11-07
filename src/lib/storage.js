@@ -15,6 +15,36 @@ function safeDispatchEvent(name, detail) {
 
 const STORAGE_KEY_PREFIX = 'flocard_data_v3_';
 
+/**
+ * Environment detection:
+ * Identifies whether code is executing in a local development/testing sandbox (localhost, 127.0.0.1, dev preview)
+ * vs the authoritative live production platform on flocard.in.
+ * 
+ * In Localhost Sandbox:
+ * - Reads/pulls existing live customers, profiles, orders, and cards from Supabase so local testing has full real context.
+ * - Any write/creation/update (creating test cards, editing orders, changing status) is saved ONLY in browser localStorage.
+ * - Zero writes are transmitted to production Supabase cloud, keeping flocard.in 100% clean and isolated.
+ */
+export const isLocalEnvironment = () => {
+  if (typeof window === 'undefined') return false;
+  const h = (window.location.hostname || '').toLowerCase();
+  return (
+    h === 'localhost' ||
+    h === '127.0.0.1' ||
+    h === '0.0.0.0' ||
+    h.endsWith('.local') ||
+    h.startsWith('192.168.') ||
+    h.startsWith('10.') ||
+    h.includes('webcontainer')
+  );
+};
+
+export const isProductionEnvironment = () => {
+  if (typeof window === 'undefined') return false;
+  const h = (window.location.hostname || '').toLowerCase();
+  return (h === 'flocard.in' || h === 'www.flocard.in' || (h.endsWith('.flocard.in') && !isLocalEnvironment()));
+};
+
 import { calculateOrderPricing, getInvoiceConfig, saveInvoiceConfig } from './orderPricing.js';
 
 
@@ -105,17 +135,12 @@ export const SIMPLE_REQUEST_STAGES = [
 
 export const ORDER_STAGES = [
   { key: 'new_order', label: 'New Request', step: 1, description: 'Order received and digital design submitted for print review.' },
-  { key: 'reviewing', label: 'Reviewing', step: 2, description: 'Print-ready vector assets, typography, and bleed margins under pre-press verification.' },
+  { key: 'reviewing', label: 'In Review', step: 2, description: 'Print-ready vector assets, typography, and bleed margins under pre-press verification.' },
   { key: 'approved', label: 'Approved', step: 3, description: 'Card design verified and approved for fulfillment.' },
-  { key: 'completed', label: 'Completed', step: 4, description: 'Card delivered to recipient and NFC redirect routing activated.' },
-  { key: 'design_review', label: 'Design Review', step: 2, description: 'Print-ready vector assets, typography, and bleed margins under pre-press verification.' },
-  { key: 'awaiting_confirmation', label: 'Awaiting Confirmation', step: 3, description: 'Order details and delivery address queued for WhatsApp confirmation with client.' },
-  { key: 'awaiting_payment', label: 'Awaiting Payment', step: 4, description: 'Card design verified. Invoice and payment settlement pending verification.' },
-  { key: 'payment_confirmed', label: 'Payment Confirmed', step: 5, description: 'Payment verified and confirmed by finance. Production order released.' },
-  { key: 'manufacturing', label: 'Manufacturing', step: 6, description: 'Card base CNC cut, custom foil/color applied, and NXP NTAG216 high-frequency chip embedded.' },
-  { key: 'quality_check', label: 'Quality Check', step: 7, description: 'Dual-frequency NFC transmission tested and surface finish inspected.' },
-  { key: 'dispatched', label: 'Dispatched', step: 8, description: 'Card packaged in presentation box and handed over to express courier.' },
-  { key: 'delivered', label: 'Delivered', step: 9, description: 'Card delivered to recipient and NFC redirect routing activated.' }
+  { key: 'manufacturing', label: 'Manufacturing', step: 4, description: 'Card base CNC cut, custom foil/color applied, and NXP NTAG216 high-frequency chip embedded.' },
+  { key: 'quality_check', label: 'Quality Check', step: 5, description: 'Dual-frequency NFC transmission tested and surface finish inspected.' },
+  { key: 'dispatched', label: 'Dispatched', step: 6, description: 'Card packaged in presentation box and handed over to express courier.' },
+  { key: 'delivered', label: 'Completed', step: 7, description: 'Card delivered to recipient and NFC redirect routing activated.' }
 ];
 
 export const EXCEPTION_STAGES = [
@@ -129,11 +154,13 @@ export const EXCEPTION_STAGES = [
 export function normalizeOrderStatus(status) {
   if (!status) return 'new_order';
   const s = String(status).toLowerCase().trim();
-  // Map simplified 5-stage workflow: New Request, Reviewing, Approved, Completed, Cancelled
   if (s === 'design_submitted' || s === 'new_request' || s === 'new_order' || s === 'pending' || s === 'draft' || s === 'submitted' || s === 'new') return 'new_order';
   if (s === 'reviewing' || s === 'design_review' || s === 'in_review' || s === 'processing' || s === 'awaiting_confirmation') return 'reviewing';
-  if (s === 'approved' || s === 'artwork_verified' || s === 'artwork_approved' || s === 'payment_confirmed' || s === 'awaiting_payment' || s === 'manufacturing' || s === 'shipped') return 'approved';
-  if (s === 'completed' || s === 'delivered' || s === 'dispatched' || s === 'quality_check') return 'completed';
+  if (s === 'approved' || s === 'artwork_verified' || s === 'artwork_approved' || s === 'payment_confirmed' || s === 'awaiting_payment') return 'approved';
+  if (s === 'manufacturing' || s === 'manufacturing_started' || s === 'production') return 'manufacturing';
+  if (s === 'quality_check' || s === 'quality_inspection') return 'quality_check';
+  if (s === 'dispatched' || s === 'shipped') return 'dispatched';
+  if (s === 'completed' || s === 'delivered') return 'delivered';
   if (s === 'cancelled' || s === 'rejected') return 'cancelled';
   return s;
 }
@@ -162,7 +189,7 @@ export const DEFAULT_DEMO_CONFIG = {
   email: 'contact@flocard.in',
   whatsapp: '919778278552',
   website: 'https://flocard.in',
-  bio: 'Pioneering connected NFC identity for executives and global tech pioneers. One tap. Every connection.',
+  bio: 'Pioneering connected NFC identity for executives and global tech pioneers.',
   cardEdition: 'purple',
   cardFinish: 'purple',
   socialLinks: {
@@ -182,7 +209,7 @@ export const INITIAL_PROFILES = [
     company: 'FLOCARDS',
     avatar: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=400&auto=format&fit=crop&q=80',
     location: 'Bengaluru, India',
-    bio: 'Pioneering connected NFC identity for executives and global tech pioneers. One tap. Every connection.',
+    bio: 'Pioneering connected NFC identity for executives and global tech pioneers.',
     phone: '+91 97782 78552',
     email: 'contact@flocard.in',
     whatsapp: '919778278552',
@@ -998,6 +1025,10 @@ export const StorageEngine = {
   },
   syncProfileToCloud: async (profile) => {
     if (!profile) return;
+    if (isLocalEnvironment()) {
+      console.info(`[Local Sandbox] Skipping cloud sync for profile "${profile.slug}". Saved to local browser storage only.`);
+      return;
+    }
     try {
       const { supabase, supabaseAdmin, isSupabaseConfigured } = await import('./supabase.js');
       if (!isSupabaseConfigured) return;
@@ -1180,6 +1211,10 @@ export const StorageEngine = {
   },
   syncCardToCloud: async (card) => {
     if (!card || !card.cardCode) return;
+    if (isLocalEnvironment()) {
+      console.info(`[Local Sandbox] Skipping cloud sync for card "${card.cardCode}". Saved to local browser storage only.`);
+      return;
+    }
     try {
       const { supabase, supabaseAdmin, isSupabaseConfigured } = await import('./supabase.js');
       if (!isSupabaseConfigured) return;
@@ -1275,6 +1310,10 @@ export const StorageEngine = {
   },
   syncDesignToCloud: async (design) => {
     if (!design) return;
+    if (isLocalEnvironment()) {
+      console.info(`[Local Sandbox] Skipping cloud sync for design "${design.id}". Saved to local browser storage only.`);
+      return;
+    }
     try {
       const { supabase, supabaseAdmin, isSupabaseConfigured } = await import('./supabase.js');
       if (!isSupabaseConfigured) return;
@@ -1998,9 +2037,13 @@ export const StorageEngine = {
       customerName
     );
 
-    // Asynchronously synchronize with Supabase orders table if available
+    // Asynchronously synchronize with Supabase orders table if available (in production only)
     (async () => {
       try {
+        if (isLocalEnvironment()) {
+          console.info(`[Local Sandbox] Skipping cloud upsert for order "${newOrder.orderReference}". Saved to local browser storage only.`);
+          return;
+        }
         const { supabase, supabaseAdmin, isSupabaseConfigured } = await import('./supabase.js');
         if (!isSupabaseConfigured) return;
         const client = supabaseAdmin || supabase;
@@ -2182,16 +2225,40 @@ export const StorageEngine = {
       actualActor?.name || 'Administrator'
     );
 
-    // Sync updated order status back to linked design in cloud
+    // Sync updated order status back to linked design in cloud (production only)
     try {
       const designs = getLocal('designs', INITIAL_DESIGNS);
       const linkedDesign = designs.find(d => d.orderId === order.id || d.id === order.designId);
       if (linkedDesign) {
         linkedDesign.printOrder = { ...order };
         setLocal('designs', designs);
-        StorageEngine.syncDesignToCloud(linkedDesign);
+        if (!isLocalEnvironment()) {
+          StorageEngine.syncDesignToCloud(linkedDesign);
+        }
       }
     } catch (_) {}
+
+    // In production, sync status directly to native Supabase orders table
+    if (!isLocalEnvironment()) {
+      (async () => {
+        try {
+          const { supabase, supabaseAdmin, isSupabaseConfigured } = await import('./supabase.js');
+          if (isSupabaseConfigured) {
+            const client = supabaseAdmin || supabase;
+            if (client) {
+              await client.from('orders').update({
+                status: targetStatus,
+                carrier_name: order.carrierName || null,
+                tracking_number: order.trackingNumber || null,
+                tracking_url: order.trackingUrl || null,
+                estimated_delivery_at: order.estimatedDeliveryAt || null,
+                updated_at: new Date().toISOString()
+              }).eq('order_reference', order.orderReference || order.id);
+            }
+          }
+        } catch (_) {}
+      })();
+    }
 
     // 5. Emit browser event for immediate realtime timeline updates
     if (typeof window !== 'undefined') {
@@ -2737,6 +2804,10 @@ export const StorageEngine = {
   },
   syncCustomerToCloud: async (cust) => {
     if (!cust || !cust.email) return;
+    if (isLocalEnvironment()) {
+      console.info(`[Local Sandbox] Skipping cloud sync for customer "${cust.email}". Saved to local browser storage only.`);
+      return;
+    }
     try {
       const { supabaseAdmin, isSupabaseConfigured } = await import('./supabase.js');
       if (!isSupabaseConfigured || !supabaseAdmin) return;

@@ -23,7 +23,7 @@ export function normalizeCardDesign(source = {}, fallbackDesigns = []) {
       templateType: 'standard',
       isLegacyFallback: true,
       config: {
-        front: { name: 'Valued Client', role: 'Executive', tagline: 'One Tap Every Connection' },
+        front: { name: 'Valued Client', role: 'Executive', tagline: '' },
         back: { qrUrl: 'https://flocard.in/p/your-name' },
         customColors: {},
         customerLogo: null,
@@ -94,8 +94,8 @@ export function normalizeCardDesign(source = {}, fallbackDesigns = []) {
     role: frontSource.role || source.role || (isLegacyFallback ? '' : 'Executive'),
     company: frontSource.company || source.company || linkedDesign?.company || (isLegacyFallback ? '' : 'FLOCARD'),
     details: frontSource.details || '',
-    tagline: frontSource.tagline || source.tagline || (isLegacyFallback ? '' : 'One Tap Every Connection'),
-    showTagline: frontSource.showTagline ?? true,
+    tagline: frontSource.tagline || source.tagline || '',
+    showTagline: frontSource.showTagline ?? Boolean(frontSource.tagline || source.tagline),
     showNfc: frontSource.showNfc ?? (edition !== 'metal'),
     nfcPosition: frontSource.nfcPosition || 'top-right',
     fontSize: frontSource.fontSize || 'medium',
@@ -198,6 +198,107 @@ export function loadImageAsset(src) {
     };
     img.src = src;
   });
+}
+
+/**
+ * Renders an image asset onto canvas as a clean, crisp solid black monochrome graphic.
+ * Handles:
+ * - Transparent PNGs/SVGs (fills all opaque/anti-aliased pixels with #000000 preserving alpha)
+ * - White/Light backgrounds (keys out background and renders logo mark in black)
+ * - Dark backgrounds (keys out background and renders light logo mark in black)
+ */
+export async function drawMonochromeBlackLogo(ctx, img, dx, dy, dw, dh, rotation = 0) {
+  if (!img) return;
+  const w = Math.max(1, Math.round(dw));
+  const h = Math.max(1, Math.round(dh));
+  const offCanvas = document.createElement('canvas');
+  offCanvas.width = w;
+  offCanvas.height = h;
+  const offCtx = offCanvas.getContext('2d');
+  if (!offCtx) return;
+
+  offCtx.drawImage(img, 0, 0, w, h);
+
+  let transformed = false;
+  try {
+    const imgData = offCtx.getImageData(0, 0, w, h);
+    const data = imgData.data;
+    const len = data.length;
+
+    // Check if image has transparency
+    let hasAlpha = false;
+    for (let i = 3; i < len; i += 4) {
+      if (data[i] < 240) {
+        hasAlpha = true;
+        break;
+      }
+    }
+
+    if (hasAlpha) {
+      // For images with transparent backgrounds:
+      // Any non-transparent pixel becomes pure black (#000000) preserving alpha!
+      for (let i = 0; i < len; i += 4) {
+        if (data[i + 3] > 10) {
+          data[i] = 0;
+          data[i + 1] = 0;
+          data[i + 2] = 0;
+        }
+      }
+      offCtx.putImageData(imgData, 0, 0);
+      transformed = true;
+    } else {
+      // For opaque images: determine if background is light or dark
+      let darkCount = 0;
+      let lightCount = 0;
+      for (let i = 0; i < len; i += 4) {
+        const lum = 0.299 * data[i] + 0.587 * data[i + 1] + 0.114 * data[i + 2];
+        if (lum < 128) darkCount++; else lightCount++;
+      }
+      const backgroundIsDark = darkCount > lightCount;
+      for (let i = 0; i < len; i += 4) {
+        const lum = 0.299 * data[i] + 0.587 * data[i + 1] + 0.114 * data[i + 2];
+        if (backgroundIsDark) {
+          // Dark background, light logo mark -> light becomes black, dark becomes transparent
+          if (lum > 100) {
+            data[i] = 0;
+            data[i + 1] = 0;
+            data[i + 2] = 0;
+            data[i + 3] = Math.min(255, Math.round((lum / 255) * 255));
+          } else {
+            data[i + 3] = 0;
+          }
+        } else {
+          // Light background, dark logo mark -> dark stays black, light becomes transparent
+          if (lum < 210) {
+            data[i] = 0;
+            data[i + 1] = 0;
+            data[i + 2] = 0;
+            data[i + 3] = Math.min(255, Math.round(((255 - lum) / 255) * 255));
+          } else {
+            data[i + 3] = 0;
+          }
+        }
+      }
+      offCtx.putImageData(imgData, 0, 0);
+      transformed = true;
+    }
+  } catch (err) {
+    console.warn('[ArtworkService] getImageData fallback in drawMonochromeBlackLogo:', err);
+  }
+
+  if (!transformed) {
+    offCtx.globalCompositeOperation = 'source-in';
+    offCtx.fillStyle = '#000000';
+    offCtx.fillRect(0, 0, w, h);
+  }
+
+  ctx.save();
+  ctx.translate(dx, dy);
+  if (rotation) {
+    ctx.rotate((rotation * Math.PI) / 180);
+  }
+  ctx.drawImage(offCanvas, -(w / 2), -(h / 2), w, h);
+  ctx.restore();
 }
 
 /**
@@ -1017,20 +1118,28 @@ export async function renderAuthoritativeCardCanvas(designOrOrder, side = 'front
 
       // Optional Customer Logo on top-left
       if (customerLogo.url) {
-        const cImg = await loadImageAsset(customerLogo.url);
+        const cImg = await loadImageAsset(customerLogo.transparentUrl || customerLogo.url);
         if (cImg) {
           const lScale = (customerLogo.size || 100) / 100;
           const lW = Math.round(baseW * 0.28 * lScale);
           const lH = Math.round(baseH * 0.16 * lScale);
           const lX = Math.round(baseW * 0.08) + ((customerLogo.posX || 0) * 2);
           const lY = Math.round(baseH * 0.12) + ((customerLogo.posY || 0) * 2);
-          ctx.save();
-          ctx.translate(lX + lW / 2, lY + lH / 2);
-          if (customerLogo.rotation) {
-            ctx.rotate((customerLogo.rotation * Math.PI) / 180);
+          const centerX = lX + lW / 2;
+          const centerY = lY + lH / 2;
+
+          const shouldRenderBlack = isAdminPrint || isWhite || solidBg === '#FFFFFF';
+          if (shouldRenderBlack) {
+            await drawMonochromeBlackLogo(ctx, cImg, centerX, centerY, lW, lH, customerLogo.rotation);
+          } else {
+            ctx.save();
+            ctx.translate(centerX, centerY);
+            if (customerLogo.rotation) {
+              ctx.rotate((customerLogo.rotation * Math.PI) / 180);
+            }
+            ctx.drawImage(cImg, -lW / 2, -lH / 2, lW, lH);
+            ctx.restore();
           }
-          ctx.drawImage(cImg, -lW / 2, -lH / 2, lW, lH);
-          ctx.restore();
         }
       }
 
@@ -1057,11 +1166,11 @@ export async function renderAuthoritativeCardCanvas(designOrOrder, side = 'front
         ctx.letterSpacing = '0px';
       }
 
-      if (front.showTagline) {
+      if (front.showTagline && front.tagline) {
         const tagY = baseH - 42;
         ctx.fillStyle = getTaglineFill(startX, tagY, 250, 19, colors.taglineColor);
         ctx.font = `400 19px "${front.taglineFontFamily || front.roleFontFamily || 'Inter'}", sans-serif`;
-        ctx.fillText(front.tagline || 'One Tap Every Connection', startX, tagY);
+        ctx.fillText(front.tagline, startX, tagY);
       }
     } else {
       // THEME 2 FRONT: Centered Customer Logo badge, NFC on right, Tagline
@@ -1069,12 +1178,12 @@ export async function renderAuthoritativeCardCanvas(designOrOrder, side = 'front
         drawVectorNfcSymbol(ctx, Math.round(baseW * 0.825), Math.round(baseH * 0.428), colors.nfcColor, Math.round(baseW * 0.076), edition, isAdminPrint);
       }
 
-      if (front.showTagline) {
+      if (front.showTagline && front.tagline) {
         const startX = Math.round(baseW * 0.08);
         const tagY = baseH - 48;
         ctx.fillStyle = getTaglineFill(startX, tagY, 250, 19, colors.taglineColor);
         ctx.font = `400 19px "${front.taglineFontFamily || front.roleFontFamily || 'Inter'}", sans-serif`;
-        ctx.fillText(front.tagline || 'One Tap Every Connection', startX, tagY);
+        ctx.fillText(front.tagline, startX, tagY);
       }
 
       // Customer Logo in Center with exact customer size, posX, posY
@@ -1086,10 +1195,13 @@ export async function renderAuthoritativeCardCanvas(designOrOrder, side = 'front
       const centerY = (baseH * 0.50) + (posY * 2);
       const radius = Math.round(baseW * 0.178 * sizeScale);
 
-      if (customerLogo.showCircleBadge !== false) {
-        ctx.strokeStyle = isAdminPrint
-          ? '#000000'
-          : isGold ? 'rgba(233, 199, 102, 0.45)' : 'rgba(255, 255, 255, 0.45)';
+      // Circle radius indicator is strictly for interactive UI editor scaling.
+      // NEVER render it in PDF exports, prepress downloads, or admin print artwork.
+      const isPdfExport = Boolean(options.isPdfExport || options.forPdf);
+      const shouldDrawCircleBadge = customerLogo.showCircleBadge && !isPdfExport && !isAdminPrint;
+
+      if (shouldDrawCircleBadge) {
+        ctx.strokeStyle = isGold ? 'rgba(233, 199, 102, 0.45)' : 'rgba(255, 255, 255, 0.45)';
         ctx.lineWidth = 3;
         ctx.beginPath();
         ctx.arc(centerX, centerY, radius, 0, Math.PI * 2);
@@ -1097,20 +1209,26 @@ export async function renderAuthoritativeCardCanvas(designOrOrder, side = 'front
       }
 
       if (customerLogo.url) {
-        const cImg = await loadImageAsset(customerLogo.url);
+        const cImg = await loadImageAsset(customerLogo.transparentUrl || customerLogo.url);
         if (cImg) {
           const imgW = radius * 1.5;
           const imgH = radius * 1.5;
-          ctx.save();
-          ctx.translate(centerX, centerY);
-          if (customerLogo.rotation) {
-            ctx.rotate((customerLogo.rotation * Math.PI) / 180);
+          const shouldRenderBlack = isAdminPrint || isWhite || solidBg === '#FFFFFF';
+
+          if (shouldRenderBlack) {
+            await drawMonochromeBlackLogo(ctx, cImg, centerX, centerY, imgW, imgH, customerLogo.rotation);
+          } else {
+            ctx.save();
+            ctx.translate(centerX, centerY);
+            if (customerLogo.rotation) {
+              ctx.rotate((customerLogo.rotation * Math.PI) / 180);
+            }
+            ctx.drawImage(cImg, -(imgW / 2), -(imgH / 2), imgW, imgH);
+            ctx.restore();
           }
-          ctx.drawImage(cImg, -(imgW / 2), -(imgH / 2), imgW, imgH);
-          ctx.restore();
         }
       } else {
-        ctx.fillStyle = isAdminPrint
+        ctx.fillStyle = (isAdminPrint || solidBg === '#FFFFFF')
           ? '#000000'
           : isGold
           ? createMetallicGradient(ctx, centerX - 80, centerY - 20, centerX + 80, centerY + 20, 'gold')
@@ -1287,7 +1405,8 @@ export async function generateCardPrintPDF(designOrOrder, options = {}) {
   if (shouldRenderFront) {
     const frontCanvas = await renderAuthoritativeCardCanvas(designOrOrder, 'front', {
       withBleed,
-      adminPrintMode: isAdminPrint
+      adminPrintMode: isAdminPrint,
+      isPdfExport: true
     });
     const frontData = frontCanvas.toDataURL ? frontCanvas.toDataURL('image/png', 1.0) : '';
 
@@ -1307,7 +1426,8 @@ export async function generateCardPrintPDF(designOrOrder, options = {}) {
     }
     const backCanvas = await renderAuthoritativeCardCanvas(designOrOrder, 'back', {
       withBleed,
-      adminPrintMode: isAdminPrint
+      adminPrintMode: isAdminPrint,
+      isPdfExport: true
     });
     const backData = backCanvas.toDataURL ? backCanvas.toDataURL('image/png', 1.0) : '';
 

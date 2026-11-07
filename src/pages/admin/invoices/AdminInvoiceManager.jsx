@@ -394,12 +394,14 @@ export default function AdminInvoiceManager({ initialOrderId = null }) {
     };
     setPreviewOrder(targetOrder);
     setPreviewActiveTab('preview');
+    const resolvedName = targetOrder.customerName || targetOrder.design?.front?.name || targetOrder.frontConfig?.name || targetOrder.customerDetails?.fullName || 'Customer Name';
+    const resolvedCompany = targetOrder.company || targetOrder.design?.front?.company || targetOrder.frontConfig?.company || targetOrder.customerDetails?.company || '';
     setAdminCustomDetails({
-      customerName: targetOrder.customerDetails?.fullName || targetOrder.customerName || 'Customer Name',
+      customerName: resolvedName,
       place: targetOrder.customerDetails?.city || targetOrder.city || 'Indiranagar, Bengaluru',
-      company: targetOrder.customerDetails?.company || targetOrder.company || '',
-      phone: targetOrder.customerDetails?.phone || targetOrder.customerPhone || '',
-      email: targetOrder.customerDetails?.email || targetOrder.customerEmail || '',
+      company: resolvedCompany,
+      phone: targetOrder.customerPhone || targetOrder.customerDetails?.phone || '',
+      email: targetOrder.customerEmail || targetOrder.customerDetails?.email || '',
       shippingAddress: targetOrder.customerDetails?.address
         ? `${targetOrder.customerDetails.address}, ${targetOrder.customerDetails.city || ''} ${targetOrder.customerDetails.postalCode || ''}`.trim()
         : (targetOrder.shippingAddress || 'Indiranagar, Bengaluru'),
@@ -411,8 +413,8 @@ export default function AdminInvoiceManager({ initialOrderId = null }) {
     const initialItems = [
       {
         id: 'admin-item-1',
-        title: `FLOCARD Smart NFC Card (${targetOrder.edition ? targetOrder.edition.charAt(0).toUpperCase() + targetOrder.edition.slice(1) : 'Purple'} Edition)`,
-        subtitle: 'Premium contactless business card embedded with NXP NTAG216 chip',
+        title: `FLOCARD Smart NFC Card (${targetOrder.edition ? targetOrder.edition.charAt(0).toUpperCase() + targetOrder.edition.slice(1) : 'Purple'} Edition) - ${resolvedName}`,
+        subtitle: `Custom personalized NFC card for ${resolvedName}`,
         hsn: '852352',
         qty: baseQty,
         rate: baseUnitPrice,
@@ -1177,7 +1179,7 @@ export default function AdminInvoiceManager({ initialOrderId = null }) {
                           {/* Customer Contact */}
                           <td style={{ padding: '14px 16px' }}>
                             <div style={{ fontWeight: 700, color: textPrimary }}>
-                              {order.customerDetails?.fullName || order.customerName || matchingCustomer?.name || 'Customer'}
+                              {order.customerName || order.design?.front?.name || order.frontConfig?.name || order.customerDetails?.fullName || matchingCustomer?.name || 'Customer'}
                             </div>
                             <div style={{ fontSize: '0.76rem', color: textMuted }}>
                               {order.customerDetails?.email || order.customerEmail || matchingCustomer?.email || '—'}
@@ -1377,7 +1379,7 @@ export default function AdminInvoiceManager({ initialOrderId = null }) {
                               {(order.customerDetails?.phone || matchingCustomer?.phone) && (
                                 <a
                                   href={`https://wa.me/${(order.customerDetails?.phone || matchingCustomer?.phone || '').replace(/[^0-9]/g, '')}?text=${encodeURIComponent(
-                                    `Hello ${order.customerDetails?.fullName || order.customerName || matchingCustomer?.name || 'Customer'},\nYour FLOCARDS order ${order.orderReference || order.id} invoice status: ${isEligible ? 'ASSIGNED & ACTIVE. You can now generate official tax invoices in your dashboard.' : 'UPDATED'}\nThank you!`
+                                    `Hello ${order.customerName || order.design?.front?.name || order.frontConfig?.name || order.customerDetails?.fullName || matchingCustomer?.name || 'Customer'},\nYour FLOCARDS order ${order.orderReference || order.id} invoice status: ${isEligible ? 'ASSIGNED & ACTIVE. You can now generate official tax invoices in your dashboard.' : 'UPDATED'}\nThank you!`
                                   )}`}
                                   target="_blank"
                                   rel="noopener noreferrer"

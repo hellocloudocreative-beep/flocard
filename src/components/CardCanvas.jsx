@@ -479,7 +479,23 @@ export default function CardCanvas({
               if (customerLogo.rotation) {
                 ctx.rotate((customerLogo.rotation * Math.PI) / 180);
               }
-              ctx.drawImage(cImg, -(lW / 2), -(lH / 2), lW, lH);
+              if (isAdminPrint) {
+                const off = document.createElement('canvas');
+                off.width = Math.max(1, Math.round(lW));
+                off.height = Math.max(1, Math.round(lH));
+                const oCtx = off.getContext('2d');
+                if (oCtx) {
+                  oCtx.drawImage(cImg, 0, 0, off.width, off.height);
+                  oCtx.globalCompositeOperation = 'source-in';
+                  oCtx.fillStyle = '#000000';
+                  oCtx.fillRect(0, 0, off.width, off.height);
+                  ctx.drawImage(off, -(lW / 2), -(lH / 2), lW, lH);
+                } else {
+                  ctx.drawImage(cImg, -(lW / 2), -(lH / 2), lW, lH);
+                }
+              } else {
+                ctx.drawImage(cImg, -(lW / 2), -(lH / 2), lW, lH);
+              }
               ctx.restore();
             };
             if (cImg.complete && cImg.naturalWidth > 0) {
@@ -491,14 +507,15 @@ export default function CardCanvas({
 
           // Name, Role, Details, Tagline on bottom-left with metallic shine
           const startX = Math.round(w * 0.08);
-          const nameY = front.details ? (h - 156) : (h - 142);
-          ctx.fillStyle = getNameFill(startX, nameY, 320, 44, colors.nameColor);
-          ctx.font = `${isGold || isPlatinum ? '600' : 'bold'} 44px "${front.fontFamily || 'Space Grotesk'}", sans-serif`;
+          const nameFontSize = front.fontSize === 'large' ? 58 : front.fontSize === 'small' ? 46 : 52;
+          const nameY = front.details ? (h - 165) : (h - 150);
+          ctx.fillStyle = getNameFill(startX, nameY, 360, nameFontSize, colors.nameColor);
+          ctx.font = `${isGold || isPlatinum ? '600' : 'bold'} ${nameFontSize}px "${front.fontFamily || 'Space Grotesk'}", sans-serif`;
           ctx.fillText((front.name || 'YOUR NAME').toUpperCase(), startX, nameY);
 
-          const roleY = front.details ? (h - 110) : (h - 92);
-          ctx.fillStyle = getRoleFill(startX, roleY, 260, 24, colors.roleColor);
-          ctx.font = `500 24px "${front.roleFontFamily || 'Inter'}", sans-serif`;
+          const roleY = front.details ? (h - 115) : (h - 96);
+          ctx.fillStyle = getRoleFill(startX, roleY, 300, 30, colors.roleColor);
+          ctx.font = `600 30px "${front.roleFontFamily || 'Inter'}", sans-serif`;
           ctx.letterSpacing = '8px';
           ctx.fillText((front.role || 'R O L E').toUpperCase(), startX, roleY);
           ctx.letterSpacing = '0px';
@@ -512,11 +529,11 @@ export default function CardCanvas({
             ctx.letterSpacing = '0px';
           }
 
-          if (front.showTagline) {
+          if (front.showTagline && front.tagline) {
             const tagY = h - 42;
             ctx.fillStyle = getTaglineFill(startX, tagY, 250, 19, colors.taglineColor);
             ctx.font = `400 19px "${front.taglineFontFamily || front.roleFontFamily || 'Inter'}", sans-serif`;
-            ctx.fillText(front.tagline || 'One Tap Every Connection', startX, tagY);
+            ctx.fillText(front.tagline, startX, tagY);
           }
         } else {
           // Back: FLOCARD logo top-left
@@ -545,12 +562,12 @@ export default function CardCanvas({
           }
 
           // Tagline bottom-left
-          if (front.showTagline) {
+          if (front.showTagline && front.tagline) {
             const startX = Math.round(w * 0.08);
             const tagY = h - 48;
             ctx.fillStyle = getTaglineFill(startX, tagY, 250, 19, colors.taglineColor);
             ctx.font = `400 19px "${front.taglineFontFamily || front.roleFontFamily || 'Inter'}", sans-serif`;
-            ctx.fillText(front.tagline || 'One Tap Every Connection', startX, tagY);
+            ctx.fillText(front.tagline, startX, tagY);
           }
 
           // Customer Logo in Center
@@ -558,7 +575,7 @@ export default function CardCanvas({
           const centerY = (h * 0.50) + (customerLogo.posY * 2);
           const radius = Math.round(w * 0.178 * (customerLogo.size / 100));
 
-          if (customerLogo.showCircleBadge) {
+          if (customerLogo.showCircleBadge && !isAdminPrint) {
             ctx.strokeStyle = isGold ? 'rgba(233, 199, 102, 0.45)' : 'rgba(255, 255, 255, 0.45)';
             ctx.lineWidth = 3;
             ctx.beginPath();
@@ -577,7 +594,23 @@ export default function CardCanvas({
               if (customerLogo.rotation) {
                 ctx.rotate((customerLogo.rotation * Math.PI) / 180);
               }
-              ctx.drawImage(cImg, -(imgW / 2), -(imgH / 2), imgW, imgH);
+              if (isAdminPrint) {
+                const off = document.createElement('canvas');
+                off.width = Math.max(1, Math.round(imgW));
+                off.height = Math.max(1, Math.round(imgH));
+                const oCtx = off.getContext('2d');
+                if (oCtx) {
+                  oCtx.drawImage(cImg, 0, 0, off.width, off.height);
+                  oCtx.globalCompositeOperation = 'source-in';
+                  oCtx.fillStyle = '#000000';
+                  oCtx.fillRect(0, 0, off.width, off.height);
+                  ctx.drawImage(off, -(imgW / 2), -(imgH / 2), imgW, imgH);
+                } else {
+                  ctx.drawImage(cImg, -(imgW / 2), -(imgH / 2), imgW, imgH);
+                }
+              } else {
+                ctx.drawImage(cImg, -(imgW / 2), -(imgH / 2), imgW, imgH);
+              }
               ctx.restore();
             };
             if (cImg.complete && cImg.naturalWidth > 0) {
@@ -614,14 +647,15 @@ export default function CardCanvas({
 
           // Name, Role, Details bottom-left with metallic shine
           const startX = Math.round(w * 0.08);
-          const nameY = front.details ? (h - 124) : (h - 110);
-          ctx.fillStyle = getNameFill(startX, nameY, 320, 44, colors.nameColor);
-          ctx.font = `${isGold || isPlatinum ? '600' : 'bold'} 44px "${front.fontFamily || 'Space Grotesk'}", sans-serif`;
+          const nameFontSize = front.fontSize === 'large' ? 58 : front.fontSize === 'small' ? 46 : 52;
+          const nameY = front.details ? (h - 132) : (h - 118);
+          ctx.fillStyle = getNameFill(startX, nameY, 360, nameFontSize, colors.nameColor);
+          ctx.font = `${isGold || isPlatinum ? '600' : 'bold'} ${nameFontSize}px "${front.fontFamily || 'Space Grotesk'}", sans-serif`;
           ctx.fillText((front.name || 'YOUR NAME').toUpperCase(), startX, nameY);
 
-          const roleY = front.details ? (h - 80) : (h - 65);
-          ctx.fillStyle = getRoleFill(startX, roleY, 260, 24, colors.roleColor);
-          ctx.font = `500 24px "${front.roleFontFamily || 'Inter'}", sans-serif`;
+          const roleY = front.details ? (h - 85) : (h - 68);
+          ctx.fillStyle = getRoleFill(startX, roleY, 300, 30, colors.roleColor);
+          ctx.font = `600 30px "${front.roleFontFamily || 'Inter'}", sans-serif`;
           ctx.letterSpacing = '8px';
           ctx.fillText((front.role || 'R O L E').toUpperCase(), startX, roleY);
           ctx.letterSpacing = '0px';
@@ -785,7 +819,8 @@ export default function CardCanvas({
                         maxWidth: '100%',
                         maxHeight: `${Math.round(width * 0.14 * (customerLogo.size / 100))}px`,
                         objectFit: 'contain',
-                        transform: `translate(${customerLogo.posX}px, ${customerLogo.posY}px) rotate(${customerLogo.rotation || 0}deg)`
+                        transform: `translate(${customerLogo.posX}px, ${customerLogo.posY}px) rotate(${customerLogo.rotation || 0}deg)`,
+                        filter: isAdminPrint ? 'brightness(0)' : 'none'
                       }}
                     />
                   </div>
@@ -805,9 +840,9 @@ export default function CardCanvas({
                     style={{
                       fontFamily: front.fontFamily ? `"${front.fontFamily}", sans-serif` : 'var(--font-display)',
                       fontSize: isCompact
-                        ? (front.fontSize === 'large' ? '1.15rem' : front.fontSize === 'small' ? '0.84rem' : '0.96rem')
-                        : (front.fontSize === 'large' ? '1.45rem' : front.fontSize === 'small' ? '1.1rem' : '1.26rem'),
-                      fontWeight: isGold || isPlatinum || isMetal ? 600 : 700,
+                        ? (front.fontSize === 'large' ? '1.38rem' : front.fontSize === 'small' ? '1.05rem' : '1.20rem')
+                        : (front.fontSize === 'large' ? '1.78rem' : front.fontSize === 'small' ? '1.34rem' : '1.54rem'),
+                      fontWeight: isGold || isPlatinum || isMetal ? 700 : 800,
                       letterSpacing: '0.04em',
                       lineHeight: 1.15,
                       ...getMetallicTextStyle(colors.nameColor, {}, 'name')
@@ -819,10 +854,10 @@ export default function CardCanvas({
                   <div
                     style={{
                       fontFamily: front.roleFontFamily ? `"${front.roleFontFamily}", sans-serif` : 'var(--font-sans)',
-                      fontSize: isCompact ? '0.52rem' : '0.72rem',
-                      letterSpacing: isMetal ? '0.38em' : '0.34em',
-                      fontWeight: 500,
-                      marginTop: isCompact ? '4px' : '6px',
+                      fontSize: isCompact ? '0.68rem' : '0.90rem',
+                      letterSpacing: isMetal ? '0.36em' : '0.32em',
+                      fontWeight: 600,
+                      marginTop: isCompact ? '5px' : '8px',
                       textTransform: 'uppercase',
                       ...getMetallicTextStyle(colors.roleColor, {}, 'role')
                     }}
@@ -847,7 +882,7 @@ export default function CardCanvas({
                     </div>
                   )}
 
-                  {front.showTagline && (
+                  {front.showTagline && front.tagline && (
                     <div
                       style={{
                         fontFamily: (front.taglineFontFamily || front.roleFontFamily) ? `"${front.taglineFontFamily || front.roleFontFamily}", sans-serif` : 'var(--font-sans)',
@@ -858,7 +893,7 @@ export default function CardCanvas({
                         ...getMetallicTextStyle(colors.taglineColor, {}, 'tagline')
                       }}
                     >
-                      {front.tagline || 'One Tap Every Connection'}
+                      {front.tagline}
                     </div>
                   )}
                 </div>
@@ -1010,11 +1045,11 @@ export default function CardCanvas({
                     width: `${Math.round(width * 0.355 * (customerLogo.size / 100))}px`,
                     height: `${Math.round(width * 0.355 * (customerLogo.size / 100))}px`,
                     borderRadius: '50%',
-                    border: customerLogo.showCircleBadge ? (isGold ? '1.5px solid rgba(233, 199, 102, 0.45)' : '1.5px solid rgba(255, 255, 255, 0.45)') : 'none',
+                    border: (customerLogo.showCircleBadge && !isAdminPrint) ? (isGold ? '1.5px solid rgba(233, 199, 102, 0.45)' : '1.5px solid rgba(255, 255, 255, 0.45)') : 'none',
                     display: 'flex',
                     alignItems: 'center',
                     justifyContent: 'center',
-                    background: customerLogo.showCircleBadge ? 'rgba(0, 0, 0, 0.45)' : 'transparent',
+                    background: (customerLogo.showCircleBadge && !isAdminPrint) ? 'rgba(0, 0, 0, 0.45)' : 'transparent',
                     zIndex: 3,
                     transition: 'all 0.15s ease'
                   }}
@@ -1027,7 +1062,8 @@ export default function CardCanvas({
                         width: '82%',
                         height: '82%',
                         objectFit: 'contain',
-                        display: 'block'
+                        display: 'block',
+                        filter: isAdminPrint ? 'brightness(0)' : 'none'
                       }}
                     />
                   ) : (
@@ -1046,7 +1082,7 @@ export default function CardCanvas({
                 </div>
 
                 {/* Front Bottom-Left: Tagline */}
-                {front.showTagline && (
+                {front.showTagline && front.tagline && (
                   <div
                     style={{
                       position: 'absolute',
@@ -1060,7 +1096,7 @@ export default function CardCanvas({
                       ...getMetallicTextStyle(colors.taglineColor, {}, 'tagline')
                     }}
                   >
-                    {front.tagline || 'One Tap Every Connection'}
+                    {front.tagline}
                   </div>
                 )}
               </>
@@ -1118,9 +1154,9 @@ export default function CardCanvas({
                     style={{
                       fontFamily: front.fontFamily ? `"${front.fontFamily}", sans-serif` : 'var(--font-display)',
                       fontSize: isCompact
-                        ? (front.fontSize === 'large' ? '1.15rem' : front.fontSize === 'small' ? '0.84rem' : '0.96rem')
-                        : (front.fontSize === 'large' ? '1.45rem' : front.fontSize === 'small' ? '1.1rem' : '1.26rem'),
-                      fontWeight: isGold || isPlatinum || isMetal ? 600 : 700,
+                        ? (front.fontSize === 'large' ? '1.38rem' : front.fontSize === 'small' ? '1.05rem' : '1.20rem')
+                        : (front.fontSize === 'large' ? '1.78rem' : front.fontSize === 'small' ? '1.34rem' : '1.54rem'),
+                      fontWeight: isGold || isPlatinum || isMetal ? 700 : 800,
                       letterSpacing: '0.04em',
                       lineHeight: 1.15,
                       ...getMetallicTextStyle(colors.nameColor, {}, 'name')
@@ -1132,10 +1168,10 @@ export default function CardCanvas({
                   <div
                     style={{
                       fontFamily: front.roleFontFamily ? `"${front.roleFontFamily}", sans-serif` : 'var(--font-sans)',
-                      fontSize: isCompact ? '0.52rem' : '0.72rem',
-                      letterSpacing: isMetal ? '0.38em' : '0.34em',
-                      fontWeight: 500,
-                      marginTop: isCompact ? '4px' : '6px',
+                      fontSize: isCompact ? '0.68rem' : '0.90rem',
+                      letterSpacing: isMetal ? '0.36em' : '0.32em',
+                      fontWeight: 600,
+                      marginTop: isCompact ? '5px' : '8px',
                       textTransform: 'uppercase',
                       ...getMetallicTextStyle(colors.roleColor, {}, 'role')
                     }}

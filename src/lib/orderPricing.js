@@ -12,7 +12,7 @@ export const DEFAULT_BUSINESS_DETAILS = {
   companyName: 'FLOCARDS SMART SYSTEMS',
   legalEntity: 'FLOCARDS TECHNOLOGIES PRIVATE LIMITED',
   brandName: 'FLOCARDS',
-  tagline: 'One Tap. Every Connection.',
+  tagline: '',
   domain: 'flocard.in',
   email: 'contact@flocard.in',
   phone: '+91 97782 78552',

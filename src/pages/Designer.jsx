@@ -367,8 +367,8 @@ export default function Designer() {
     return () => window.removeEventListener('scroll', handleScroll);
   }, []);
 
-  const BASE_CARD_WIDTH = 520;
-  const BASE_CARD_HEIGHT = Math.round(520 / 1.585); // 328px
+  const BASE_CARD_WIDTH = 560;
+  const BASE_CARD_HEIGHT = Math.round(560 / 1.585); // 353px
   const maxAvailableCardWidth = Math.max(260, Math.min(BASE_CARD_WIDTH, viewportWidth - (viewportWidth < 640 ? 40 : 80)));
   const fitScale = Math.min(1, maxAvailableCardWidth / BASE_CARD_WIDTH);
   const [mobileTab, setMobileTab] = useState('preview'); // 'preview' | 'customise' | 'specs'
@@ -434,8 +434,8 @@ export default function Designer() {
     name: existingDesign?.front?.name || defaultDisplayName,
     role: existingDesign?.front?.role || 'CEO & FOUNDER',
     details: existingDesign?.front?.details || '',
-    tagline: existingDesign?.front?.tagline || initialTagline || 'One Tap Every Connection',
-    showTagline: existingDesign?.front?.showTagline ?? true,
+    tagline: existingDesign?.front?.tagline || initialTagline || '',
+    showTagline: existingDesign?.front?.showTagline ?? Boolean(existingDesign?.front?.tagline || initialTagline),
     showNfc: true,
     nfcPosition: existingDesign?.front?.nfcPosition || 'top-right',
     showSubtext: false,
@@ -1585,11 +1585,11 @@ export default function Designer() {
               {/* Active Finishes Filtered by Admin */}
               <div style={{ display: 'grid', gridTemplateColumns: `repeat(${Math.max((activeEditionKeys.length || 5), 1)}, 1fr)`, gap: '8px' }}>
                 {[
-                  { id: 'platinum', name: 'Platinum', bg: 'linear-gradient(135deg, #e2e8f0 0%, #94a3b8 100%)', rim: '#cbd5e1' },
-                  { id: 'purple', name: 'Purple', bg: 'linear-gradient(135deg, #a855f7 0%, #6b21a8 100%)', rim: '#a855f7' },
-                  { id: 'gold', name: 'Gold', bg: 'linear-gradient(135deg, #facc15 0%, #a16207 100%)', rim: '#eab308' },
-                  { id: 'metal', name: 'Metal', bg: 'linear-gradient(135deg, #64748b 0%, #1e293b 100%)', rim: '#94a3b8' },
-                  { id: 'white', name: 'White', bg: 'linear-gradient(135deg, #ffffff 0%, #e2e8f0 100%)', rim: '#cbd5e1' }
+                  { id: 'platinum', name: 'Platinum', subtitle: 'Mirror Lustre', bg: 'linear-gradient(135deg, #e2e8f0 0%, #94a3b8 100%)', rim: '#cbd5e1' },
+                  { id: 'purple', name: 'Purple', subtitle: 'Signature Matte', bg: 'linear-gradient(135deg, #a855f7 0%, #6b21a8 100%)', rim: '#a855f7' },
+                  { id: 'gold', name: 'Gold', subtitle: 'Champagne Foil', bg: 'linear-gradient(135deg, #facc15 0%, #a16207 100%)', rim: '#eab308' },
+                  { id: 'metal', name: 'Metal', subtitle: 'Gunmetal Steel', bg: 'linear-gradient(135deg, #64748b 0%, #1e293b 100%)', rim: '#94a3b8' },
+                  { id: 'white', name: 'White', subtitle: 'Pearl Ceramic', bg: 'linear-gradient(135deg, #ffffff 0%, #e2e8f0 100%)', rim: '#cbd5e1' }
                 ].filter(swatch => activeEditionKeys.length === 0 || activeEditionKeys.includes(swatch.id)).map(swatch => {
                   const isSelected = edition === swatch.id;
                   return (
@@ -1598,33 +1598,40 @@ export default function Designer() {
                       type="button"
                       onClick={() => handleEditionChange(swatch.id)}
                       style={{
-                        background: 'transparent',
-                        border: 'none',
+                        background: isSelected
+                          ? (isLight ? 'rgba(112, 56, 248, 0.12)' : 'rgba(112, 56, 248, 0.22)')
+                          : (isLight ? 'rgba(0, 0, 0, 0.02)' : 'rgba(255, 255, 255, 0.03)'),
+                        border: isSelected
+                          ? '2px solid #7038f8'
+                          : `1px solid ${isLight ? 'rgba(112, 56, 248, 0.14)' : 'rgba(255, 255, 255, 0.08)'}`,
+                        borderRadius: '12px',
                         cursor: 'pointer',
                         display: 'flex',
                         flexDirection: 'column',
                         alignItems: 'center',
                         gap: '6px',
-                        padding: '6px 2px'
+                        padding: '10px 4px',
+                        boxShadow: isSelected ? '0 0 14px rgba(112, 56, 248, 0.35)' : 'none',
+                        transition: 'all 0.18s ease'
                       }}
                     >
                       <div
                         style={{
-                          width: '38px',
-                          height: '38px',
+                          width: '32px',
+                          height: '32px',
                           borderRadius: '50%',
                           background: swatch.bg,
-                          border: isSelected ? '2.5px solid #7038f8' : `1.5px solid rgba(255, 255, 255, 0.2)`,
-                          boxShadow: isSelected ? '0 0 14px rgba(112, 56, 248, 0.6), inset 0 2px 4px rgba(255,255,255,0.4)' : 'inset 0 2px 4px rgba(255,255,255,0.2)',
+                          border: isSelected ? '2px solid #7038f8' : `1.5px solid rgba(255, 255, 255, 0.3)`,
+                          boxShadow: isSelected ? '0 0 10px rgba(112, 56, 248, 0.5), inset 0 2px 4px rgba(255,255,255,0.4)' : 'inset 0 2px 4px rgba(255,255,255,0.2)',
                           transform: isSelected ? 'scale(1.08)' : 'scale(1)',
-                          transition: 'all 0.2s cubic-bezier(0.16, 1, 0.3, 1)'
+                          transition: 'all 0.18s ease'
                         }}
                       />
                       <span
                         style={{
-                          fontSize: '0.72rem',
-                          fontWeight: isSelected ? 700 : 500,
-                          color: isSelected ? (isLight ? '#7038f8' : '#ffffff') : (isLight ? '#64748b' : '#94a3b8')
+                          fontSize: '0.74rem',
+                          fontWeight: isSelected ? 700 : 600,
+                          color: isSelected ? (isLight ? '#7038f8' : '#ffffff') : (isLight ? '#334155' : '#D1D5DB')
                         }}
                       >
                         {swatch.name}

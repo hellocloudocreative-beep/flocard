@@ -23,8 +23,8 @@ export function ThemeProvider({ children }) {
         console.error('Error reading theme from localStorage:', e);
       }
     }
-    // Default is strictly Dark
-    return 'dark';
+    // Default theme is Light Mode
+    return 'light';
   });
 
   // Apply theme to document element and sync with meta tags

@@ -60,12 +60,12 @@ export default function AdminOrderManager({ initialOrderId = null }) {
   const isDark = themeContext ? themeContext.isDark : true;
   const isLight = !isDark;
 
-  const cardBg = isLight ? '#FFFFFF' : '#100B19';
-  const cardBorder = isLight ? '#E8E3EF' : '#2A1D3B';
-  const elevatedBg = isLight ? '#F7F6FA' : '#171022';
-  const textPrimary = isLight ? '#191522' : '#FFFFFF';
-  const textSecondary = isLight ? '#777184' : '#B8AEC8';
-  const textMuted = isLight ? '#9CA3AF' : '#7C728E';
+  const cardBg = isLight ? '#FFFFFF' : '#110C1D';
+  const cardBorder = isLight ? '#EDE6F8' : 'rgba(139, 92, 246, 0.22)';
+  const elevatedBg = isLight ? '#F7F3FD' : '#181126';
+  const textPrimary = isLight ? '#181126' : '#FFFFFF';
+  const textSecondary = isLight ? '#6E6285' : '#BCAED4';
+  const textMuted = isLight ? '#988AAE' : '#887B9E';
   const {
     orders = [],
     updateOrderStatus,
@@ -99,7 +99,7 @@ export default function AdminOrderManager({ initialOrderId = null }) {
     customerPhone: '',
     company: '',
     role: '',
-    tagline: 'One Tap Every Connection',
+    tagline: '',
     customerLogo: '', // Admin uploaded logo for card
     edition: 'purple',
     templateType: 'standard',
@@ -122,7 +122,7 @@ export default function AdminOrderManager({ initialOrderId = null }) {
       customerPhone: '',
       company: '',
       role: '',
-      tagline: 'One Tap Every Connection',
+      tagline: '',
       customerLogo: '',
       edition: 'purple',
       templateType: 'standard',
@@ -342,6 +342,16 @@ export default function AdminOrderManager({ initialOrderId = null }) {
       company: newOrderForm.company.trim(),
       role: newOrderForm.role.trim(),
       tagline: newOrderForm.tagline.trim(),
+      customerDetails: {
+        fullName: clientName,
+        email: clientEmail,
+        phone: clientPhone,
+        company: newOrderForm.company.trim(),
+        role: newOrderForm.role.trim() || 'Client',
+        address: newOrderForm.shippingAddress.trim()
+      },
+      hasInvoiceAddon: true,
+      invoiceEligible: true,
       customerLogo: logoConfig,
       flocardLogo: flocardLogoConfig,
       designId,
@@ -399,7 +409,7 @@ export default function AdminOrderManager({ initialOrderId = null }) {
         customerPhone: '',
         company: '',
         role: '',
-        tagline: 'One Tap Every Connection',
+        tagline: '',
         customerLogo: '',
         edition: 'purple',
         templateType: 'standard',
@@ -758,30 +768,40 @@ export default function AdminOrderManager({ initialOrderId = null }) {
 
           {/* Status Filter Chips */}
           <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap', alignItems: 'center' }}>
-            <span style={{ fontSize: '0.74rem', color: textMuted, fontWeight: 600, marginRight: '4px' }}>Stage:</span>
-            {['all', 'design_submitted', 'artwork_approved', 'manufacturing_started', 'quality_inspection', 'dispatched', 'delivered'].map((st) => {
-              const isActive = statusFilter === st;
-              const count = st === 'all' ? orders.length : orders.filter(o => normalizeOrderStatus(o.status) === st).length;
+            <span style={{ fontSize: '0.74rem', color: textMuted, fontWeight: 700, marginRight: '4px' }}>Stage:</span>
+            {[
+              { key: 'all', label: 'All Stages' },
+              { key: 'new_order', label: 'New Request' },
+              { key: 'reviewing', label: 'In Review' },
+              { key: 'approved', label: 'Approved' },
+              { key: 'manufacturing', label: 'Manufacturing' },
+              { key: 'quality_check', label: 'Quality Check' },
+              { key: 'dispatched', label: 'Dispatched' },
+              { key: 'delivered', label: 'Completed' }
+            ].map((st) => {
+              const isActive = statusFilter === st.key;
+              const count = st.key === 'all'
+                ? orders.length
+                : orders.filter(o => normalizeOrderStatus(o.status) === st.key).length;
               return (
                 <button
-                  key={st}
+                  key={st.key}
                   type="button"
-                  onClick={() => setStatusFilter(st)}
+                  onClick={() => setStatusFilter(st.key)}
                   style={{
-                    padding: '5px 10px',
+                    padding: '5px 11px',
                     borderRadius: '8px',
-                    border: isActive ? '1px solid #6B00FF' : `1px solid ${cardBorder}`,
-                    backgroundColor: isActive ? '#6B00FF' : elevatedBg,
+                    border: isActive ? '1px solid #8B5CF6' : `1px solid ${cardBorder}`,
+                    backgroundColor: isActive ? '#7C3AED' : elevatedBg,
                     color: isActive ? '#FFFFFF' : textSecondary,
                     fontSize: '0.72rem',
-                    fontWeight: 600,
+                    fontWeight: 700,
                     cursor: 'pointer',
-                    textTransform: 'capitalize',
-                    boxShadow: isActive ? '0 2px 8px rgba(107, 0, 255, 0.3)' : 'none',
+                    boxShadow: isActive ? '0 2px 10px rgba(124, 58, 237, 0.35)' : 'none',
                     transition: 'all 0.15s ease'
                   }}
                 >
-                  {st === 'all' ? `All Stages (${count})` : `${getOrderStageInfo(st).label} (${count})`}
+                  {st.label} ({count})
                 </button>
               );
             })}
@@ -792,15 +812,15 @@ export default function AdminOrderManager({ initialOrderId = null }) {
         <div className="admin-desktop-table" style={{ overflowX: 'auto' }}>
           <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left', fontSize: '0.82rem' }}>
             <thead>
-              <tr style={{ borderBottom: `1px solid ${cardBorder}`, color: textSecondary, fontSize: '0.72rem', textTransform: 'uppercase', fontWeight: 600 }}>
-                <th style={{ padding: '12px 14px' }}>Order Ref & Channel</th>
-                <th style={{ padding: '12px 14px' }}>Customer & Contact</th>
-                <th style={{ padding: '12px 14px' }}>Card Edition</th>
-                <th style={{ padding: '12px 14px' }}>Payment</th>
-                <th style={{ padding: '12px 14px' }}>Invoice Add-On</th>
-                <th style={{ padding: '12px 14px' }}>Fulfillment Stage</th>
-                <th style={{ padding: '12px 14px' }}>Carrier / Tracking</th>
-                <th style={{ padding: '12px 14px', textAlign: 'center' }}>Actions</th>
+              <tr style={{ borderBottom: `1px solid ${cardBorder}`, color: textSecondary, fontSize: '0.72rem', textTransform: 'uppercase', fontWeight: 700, letterSpacing: '0.04em' }}>
+                <th style={{ padding: '14px 14px' }}>Order Ref & Channel</th>
+                <th style={{ padding: '14px 14px' }}>Customer & Contact</th>
+                <th style={{ padding: '14px 14px' }}>Card Edition</th>
+                <th style={{ padding: '14px 14px' }}>Payment</th>
+                <th style={{ padding: '14px 14px' }}>Invoice</th>
+                <th style={{ padding: '14px 14px' }}>Stage</th>
+                <th style={{ padding: '14px 14px' }}>Tracking</th>
+                <th style={{ padding: '14px 14px', textAlign: 'right', minWidth: '270px' }}>Actions</th>
               </tr>
             </thead>
             <tbody>
@@ -820,18 +840,28 @@ export default function AdminOrderManager({ initialOrderId = null }) {
                 filteredOrders.map((order) => {
                   const normStatus = normalizeOrderStatus(order.status);
                   const stageInfo = getOrderStageInfo(normStatus);
-                  const isDelivered = normStatus === 'delivered';
-                  const isException = EXCEPTION_STAGES.some(s => s.key === normStatus);
                   const ed = EDITIONS[order.edition] || EDITIONS.purple;
-                  const isPaid = order.paymentStatus === 'payment_confirmed' || order.payment_status === 'payment_confirmed' || normStatus === 'payment_confirmed';
+                  const isPaid = order.paymentStatus === 'payment_confirmed' || order.payment_status === 'payment_confirmed' || order.paymentStatus === 'paid' || normStatus === 'payment_confirmed';
                   const hasInvoice = order.hasInvoiceAddon || order.has_invoice_addon || order.invoiceEligible || order.invoice_eligible;
 
+                  const stageStyles = {
+                    new_order: { bg: 'rgba(96, 165, 250, 0.16)', text: '#60A5FA', border: 'rgba(96, 165, 250, 0.35)' },
+                    reviewing: { bg: 'rgba(129, 140, 248, 0.16)', text: '#818CF8', border: 'rgba(129, 140, 248, 0.35)' },
+                    approved: { bg: 'rgba(6, 182, 212, 0.16)', text: '#06B6D4', border: 'rgba(6, 182, 212, 0.35)' },
+                    manufacturing: { bg: 'rgba(249, 115, 22, 0.16)', text: '#FB923C', border: 'rgba(249, 115, 22, 0.35)' },
+                    quality_check: { bg: isLight ? '#F5EEFF' : 'rgba(168, 85, 247, 0.16)', text: isLight ? '#6D28D9' : '#C084FC', border: isLight ? '#DDD6FE' : 'rgba(168, 85, 247, 0.35)' },
+                    dispatched: { bg: isLight ? '#EFF6FF' : 'rgba(56, 189, 248, 0.16)', text: isLight ? '#1D4ED8' : '#38BDF8', border: isLight ? '#BFDBFE' : 'rgba(56, 189, 248, 0.35)' },
+                    delivered: { bg: isLight ? '#DCFCE7' : 'rgba(16, 185, 129, 0.16)', text: isLight ? '#15803D' : '#34D399', border: isLight ? '#86EFAC' : 'rgba(16, 185, 129, 0.35)' },
+                    cancelled: { bg: isLight ? '#FEE2E2' : 'rgba(239, 68, 68, 0.16)', text: isLight ? '#B91C1C' : '#F87171', border: isLight ? '#FCA5A5' : 'rgba(239, 68, 68, 0.35)' }
+                  };
+                  const stStyle = stageStyles[normStatus] || stageStyles.new_order;
+
                   return (
-                    <tr key={order.id} style={{ borderBottom: `1px solid ${cardBorder}` }}>
+                    <tr key={order.id} style={{ borderBottom: `1px solid ${cardBorder}`, transition: 'background-color 0.15s ease' }}>
                       {/* Order Reference & Channel Source */}
-                      <td style={{ padding: '12px 14px' }}>
+                      <td style={{ padding: '14px 14px', verticalAlign: 'middle' }}>
                         <div style={{ display: 'flex', alignItems: 'center', gap: '6px', flexWrap: 'wrap' }}>
-                          <span style={{ fontFamily: 'monospace', fontWeight: 700, color: '#6B00FF' }}>
+                          <span style={{ fontFamily: 'monospace', fontWeight: 800, color: isLight ? '#6D28D9' : '#C084FC', fontSize: '0.84rem' }}>
                             {order.orderReference || order.id}
                           </span>
                           {order.source === 'whatsapp' ? (
@@ -840,11 +870,11 @@ export default function AdminOrderManager({ initialOrderId = null }) {
                                 display: 'inline-flex',
                                 alignItems: 'center',
                                 gap: '3px',
-                                padding: '2px 7px',
+                                padding: '2px 8px',
                                 borderRadius: '9999px',
                                 backgroundColor: isLight ? '#DCFCE7' : 'rgba(34, 197, 94, 0.15)',
-                                color: '#16a34a',
-                                border: `1px solid ${isLight ? '#86EFAC' : 'rgba(34, 197, 94, 0.3)'}`,
+                                color: isLight ? '#15803D' : '#4ADE80',
+                                border: `1px solid ${isLight ? '#86EFAC' : 'rgba(34, 197, 94, 0.35)'}`,
                                 fontSize: '0.68rem',
                                 fontWeight: 700
                               }}
@@ -859,11 +889,11 @@ export default function AdminOrderManager({ initialOrderId = null }) {
                                 display: 'inline-flex',
                                 alignItems: 'center',
                                 gap: '3px',
-                                padding: '2px 7px',
+                                padding: '2px 8px',
                                 borderRadius: '9999px',
-                                backgroundColor: isLight ? '#F3EEFF' : 'rgba(112, 56, 248, 0.15)',
-                                color: '#7038f8',
-                                border: `1px solid ${isLight ? '#DDD6FE' : 'rgba(112, 56, 248, 0.3)'}`,
+                                backgroundColor: isLight ? '#F3EEFF' : 'rgba(139, 92, 246, 0.15)',
+                                color: isLight ? '#7C3AED' : '#C084FC',
+                                border: `1px solid ${isLight ? '#DDD6FE' : 'rgba(139, 92, 246, 0.35)'}`,
                                 fontSize: '0.68rem',
                                 fontWeight: 700
                               }}
@@ -874,36 +904,39 @@ export default function AdminOrderManager({ initialOrderId = null }) {
                             </span>
                           )}
                         </div>
-                        <div style={{ fontSize: '0.7rem', color: textMuted, marginTop: '3px' }}>
+                        <div style={{ fontSize: '0.72rem', color: textMuted, marginTop: '3px' }}>
                           {new Date(order.orderDate || order.createdAt).toLocaleDateString()}
                         </div>
                       </td>
 
                       {/* Customer & Contact Details */}
-                      <td style={{ padding: '12px 14px' }}>
-                        <div style={{ fontWeight: 700, color: textPrimary }}>{order.customerName}</div>
-                        <div style={{ fontSize: '0.74rem', color: textSecondary }}>{order.customerEmail}</div>
+                      <td style={{ padding: '14px 14px', verticalAlign: 'middle' }}>
+                        <div style={{ fontWeight: 700, color: textPrimary, fontSize: '0.86rem' }}>
+                          {order.customerName || order.design?.front?.name || order.frontConfig?.name || 'Customer'}
+                        </div>
+                        <div style={{ fontSize: '0.74rem', color: textSecondary, marginTop: '2px' }}>{order.customerEmail}</div>
                         {order.customerPhone && (
-                          <div style={{ fontSize: '0.7rem', color: '#16a34a', display: 'flex', alignItems: 'center', gap: '3px', marginTop: '2px', fontWeight: 500 }}>
+                          <div style={{ fontSize: '0.72rem', color: isLight ? '#15803D' : '#4ADE80', display: 'flex', alignItems: 'center', gap: '3px', marginTop: '2px', fontWeight: 600 }}>
                             <Phone size={10} />
                             <span>{order.customerPhone}</span>
                           </div>
                         )}
-                        {order.company && <div style={{ fontSize: '0.7rem', color: '#6B00FF', fontWeight: 600, marginTop: '2px' }}>{order.company}</div>}
+                        {order.company && <div style={{ fontSize: '0.7rem', color: '#A855F7', fontWeight: 700, marginTop: '2px' }}>{order.company}</div>}
                       </td>
 
                       {/* Card Edition */}
-                      <td style={{ padding: '12px 14px' }}>
+                      <td style={{ padding: '14px 14px', verticalAlign: 'middle' }}>
                         <span
                           style={{
                             fontSize: '0.72rem',
                             fontWeight: 700,
-                            padding: '3px 8px',
+                            padding: '3px 9px',
                             borderRadius: '9999px',
                             backgroundColor: `${ed.accentColor}18`,
                             color: ed.accentColor,
-                            border: `1px solid ${ed.accentColor}33`,
-                            textTransform: 'capitalize'
+                            border: `1px solid ${ed.accentColor}35`,
+                            textTransform: 'capitalize',
+                            display: 'inline-block'
                           }}
                         >
                           {ed.name}
@@ -914,30 +947,31 @@ export default function AdminOrderManager({ initialOrderId = null }) {
                       </td>
 
                       {/* Payment Status */}
-                      <td style={{ padding: '12px 14px' }}>
+                      <td style={{ padding: '14px 14px', verticalAlign: 'middle' }}>
                         <span
                           style={{
                             fontSize: '0.72rem',
                             fontWeight: 700,
-                            padding: '3px 8px',
+                            padding: '3px 9px',
                             borderRadius: '9999px',
                             backgroundColor: isPaid ? (isLight ? '#DCFCE7' : 'rgba(34, 197, 94, 0.15)') : (isLight ? '#FEF3C7' : 'rgba(245, 158, 11, 0.15)'),
-                            color: isPaid ? '#16A34A' : '#D97706',
-                            border: `1px solid ${isPaid ? (isLight ? '#86EFAC' : 'rgba(34, 197, 94, 0.3)') : (isLight ? '#FDE68A' : 'rgba(245, 158, 11, 0.3)')}`,
+                            color: isPaid ? (isLight ? '#15803D' : '#4ADE80') : (isLight ? '#B45309' : '#FBBF24'),
+                            border: `1px solid ${isPaid ? (isLight ? '#86EFAC' : 'rgba(34, 197, 94, 0.35)') : (isLight ? '#FDE68A' : 'rgba(245, 158, 11, 0.35)')}`,
                             display: 'inline-flex',
                             alignItems: 'center',
-                            gap: '4px'
+                            gap: '4px',
+                            whiteSpace: 'nowrap'
                           }}
                         >
-                          ● {isPaid ? 'Payment Confirmed' : 'Payment Pending'}
+                          ● {isPaid ? 'Paid' : 'Payment Pending'}
                         </span>
-                        <div style={{ fontSize: '0.74rem', fontWeight: 700, color: textPrimary, marginTop: '3px' }}>
+                        <div style={{ fontSize: '0.8rem', fontWeight: 800, color: textPrimary, marginTop: '3px' }}>
                           ₹{Number(order.totalAmount || order.total_amount || 0).toLocaleString('en-IN')}
                         </div>
                       </td>
 
                       {/* Invoice Add-On Status */}
-                      <td style={{ padding: '12px 14px' }}>
+                      <td style={{ padding: '14px 14px', verticalAlign: 'middle' }}>
                         {hasInvoice ? (
                           <span
                             style={{
@@ -945,12 +979,13 @@ export default function AdminOrderManager({ initialOrderId = null }) {
                               fontWeight: 700,
                               padding: '2px 8px',
                               borderRadius: '6px',
-                              backgroundColor: isLight ? '#F3EEFF' : 'rgba(107, 0, 255, 0.15)',
-                              color: '#6B00FF',
-                              border: `1px solid ${isLight ? '#DDD6FE' : 'rgba(107, 0, 255, 0.3)'}`,
+                              backgroundColor: isLight ? '#F3EEFF' : 'rgba(139, 92, 246, 0.16)',
+                              color: isLight ? '#7C3AED' : '#C084FC',
+                              border: `1px solid ${isLight ? '#DDD6FE' : 'rgba(139, 92, 246, 0.35)'}`,
                               display: 'inline-flex',
                               alignItems: 'center',
-                              gap: '4px'
+                              gap: '4px',
+                              whiteSpace: 'nowrap'
                             }}
                           >
                             <Receipt size={11} />
@@ -962,30 +997,32 @@ export default function AdminOrderManager({ initialOrderId = null }) {
                       </td>
 
                       {/* Fulfillment Stage */}
-                      <td style={{ padding: '12px 14px' }}>
+                      <td style={{ padding: '14px 14px', verticalAlign: 'middle' }}>
                         <span
                           style={{
-                            fontSize: '0.74rem',
+                            fontSize: '0.72rem',
                             fontWeight: 700,
-                            padding: '3px 10px',
+                            padding: '3px 9px',
                             borderRadius: '9999px',
-                            backgroundColor: isDelivered ? (isLight ? '#ECFDF5' : 'rgba(16, 185, 129, 0.15)') : isException ? (isLight ? '#FEF2F2' : 'rgba(239, 68, 68, 0.15)') : (isLight ? '#F3EEFF' : 'rgba(107, 0, 255, 0.15)'),
-                            color: isDelivered ? '#059669' : isException ? '#DC2626' : '#6B00FF',
-                            border: `1px solid ${isDelivered ? (isLight ? '#A7F3D0' : 'rgba(16, 185, 129, 0.3)') : isException ? (isLight ? '#FECACA' : 'rgba(239, 68, 68, 0.3)') : (isLight ? '#DDD6FE' : 'rgba(107, 0, 255, 0.3)')}`,
+                            backgroundColor: stStyle.bg,
+                            color: stStyle.text,
+                            border: `1px solid ${stStyle.border}`,
                             display: 'inline-flex',
                             alignItems: 'center',
-                            gap: '4px'
+                            gap: '5px',
+                            whiteSpace: 'nowrap'
                           }}
                         >
-                          ● {stageInfo.label}
+                          <span style={{ width: '5px', height: '5px', borderRadius: '50%', backgroundColor: stStyle.text }} />
+                          <span>{stageInfo.label}</span>
                         </span>
                       </td>
 
                       {/* Carrier / Tracking */}
-                      <td style={{ padding: '12px 14px' }}>
+                      <td style={{ padding: '14px 14px', verticalAlign: 'middle' }}>
                         {order.trackingNumber ? (
                           <div>
-                            <div style={{ fontSize: '0.76rem', color: '#2563EB', fontWeight: 600 }}>
+                            <div style={{ fontSize: '0.76rem', color: '#60A5FA', fontWeight: 700, fontFamily: 'monospace' }}>
                               {order.trackingNumber}
                             </div>
                             <div style={{ fontSize: '0.7rem', color: textMuted }}>
@@ -999,14 +1036,35 @@ export default function AdminOrderManager({ initialOrderId = null }) {
                         )}
                       </td>
 
-                      {/* Actions */}
-                      <td style={{ padding: '12px 14px', textAlign: 'center' }}>
-                        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px', flexWrap: 'wrap' }}>
+                      {/* Actions Toolbar (Unified Inline Action Group) */}
+                      <td style={{ padding: '14px 14px', textAlign: 'right', verticalAlign: 'middle', whiteSpace: 'nowrap' }}>
+                        <div style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'flex-end', gap: '6px' }}>
                           <WhatsAppContactButton customerOrOrder={order} size="sm" />
                           <a
-                            href={`/designer?orderId=${order.id || order.orderReference}&mode=admin_edit`}
-                            className="btn btn-outline btn-xs"
-                            style={{ gap: '4px', textDecoration: 'none' }}
+                            href={`/admin?tab=studio&orderId=${order.id || order.orderReference}`}
+                            title="Edit Card Design in Admin Studio"
+                            style={{
+                              display: 'inline-flex',
+                              alignItems: 'center',
+                              gap: '4px',
+                              padding: '5px 10px',
+                              borderRadius: '8px',
+                              backgroundColor: isLight ? 'rgba(124, 58, 237, 0.08)' : 'rgba(139, 92, 246, 0.16)',
+                              border: `1px solid ${isLight ? 'rgba(124, 58, 237, 0.25)' : 'rgba(139, 92, 246, 0.35)'}`,
+                              color: isLight ? '#7C3AED' : '#C084FC',
+                              fontSize: '0.74rem',
+                              fontWeight: 700,
+                              textDecoration: 'none',
+                              transition: 'all 0.15s ease'
+                            }}
+                            onMouseEnter={e => {
+                              e.currentTarget.style.backgroundColor = isLight ? 'rgba(124, 58, 237, 0.18)' : 'rgba(139, 92, 246, 0.28)';
+                              e.currentTarget.style.color = isLight ? '#6D28D9' : '#FFFFFF';
+                            }}
+                            onMouseLeave={e => {
+                              e.currentTarget.style.backgroundColor = isLight ? 'rgba(124, 58, 237, 0.08)' : 'rgba(139, 92, 246, 0.16)';
+                              e.currentTarget.style.color = isLight ? '#7C3AED' : '#C084FC';
+                            }}
                           >
                             <Edit3 size={12} />
                             <span>Edit Design</span>
@@ -1014,8 +1072,30 @@ export default function AdminOrderManager({ initialOrderId = null }) {
                           <button
                             type="button"
                             onClick={() => handleOpenUpdateModal(order)}
-                            className="btn btn-primary btn-xs"
-                            style={{ gap: '4px' }}
+                            title="Update Fulfillment Stage & Tracking"
+                            style={{
+                              display: 'inline-flex',
+                              alignItems: 'center',
+                              gap: '4px',
+                              padding: '5px 12px',
+                              borderRadius: '8px',
+                              backgroundColor: '#7C3AED',
+                              border: '1px solid #8B5CF6',
+                              color: '#FFFFFF',
+                              fontSize: '0.74rem',
+                              fontWeight: 700,
+                              cursor: 'pointer',
+                              boxShadow: '0 2px 8px rgba(124, 58, 237, 0.35)',
+                              transition: 'all 0.15s ease'
+                            }}
+                            onMouseEnter={e => {
+                              e.currentTarget.style.backgroundColor = '#6D28D9';
+                              e.currentTarget.style.transform = 'translateY(-1px)';
+                            }}
+                            onMouseLeave={e => {
+                              e.currentTarget.style.backgroundColor = '#7C3AED';
+                              e.currentTarget.style.transform = 'none';
+                            }}
                           >
                             <Sliders size={12} />
                             <span>Update Status</span>
@@ -1164,7 +1244,7 @@ export default function AdminOrderManager({ initialOrderId = null }) {
 
                   <div style={{ display: 'flex', gap: '8px', width: '100%' }}>
                     <a
-                      href={`/designer?orderId=${order.id || order.orderReference}&mode=admin_edit`}
+                      href={`/admin/studio?orderId=${order.id || order.orderReference}`}
                       className="btn btn-outline btn-sm"
                       style={{ flex: 1, justifyContent: 'center', textDecoration: 'none', gap: '6px' }}
                     >
@@ -1209,7 +1289,7 @@ export default function AdminOrderManager({ initialOrderId = null }) {
             inset: 0,
             backgroundColor: 'rgba(0, 0, 0, 0.75)',
             backdropFilter: 'blur(8px)',
-            zIndex: 1000,
+            zIndex: 99999,
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'center',
@@ -1763,12 +1843,13 @@ export default function AdminOrderManager({ initialOrderId = null }) {
                     </label>
                     <span style={{ fontSize: '0.72rem', color: textMuted }}>Live Canvas Updated</span>
                   </div>
-                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '8px' }}>
+                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 86px), 1fr))', gap: '8px' }}>
                     {[
                       { key: 'purple', name: 'Purple', price: 1899, color: '#7038f8', border: '#905cfc' },
                       { key: 'gold', name: 'Gold', price: 2499, color: '#D4AF37', border: '#F5D061' },
                       { key: 'platinum', name: 'Platinum', price: 2199, color: '#94A3B8', border: '#CBD5E1' },
-                      { key: 'metal', name: 'Metal', price: 2999, color: '#475569', border: '#64748B' }
+                      { key: 'metal', name: 'Metal', price: 2999, color: '#475569', border: '#64748B' },
+                      { key: 'white', name: 'White', price: 1899, color: '#FFFFFF', border: '#E2E8F0' }
                     ].map(ed => {
                       const isSelected = newOrderForm.edition === ed.key;
                       return (
@@ -1786,11 +1867,12 @@ export default function AdminOrderManager({ initialOrderId = null }) {
                             display: 'flex',
                             flexDirection: 'column',
                             alignItems: 'center',
-                            gap: '3px',
+                            gap: '4px',
+                            boxShadow: isSelected ? `0 0 12px ${ed.color}33` : 'none',
                             transition: 'all 0.15s ease'
                           }}
                         >
-                          <div style={{ width: '12px', height: '12px', borderRadius: '50%', background: ed.color, boxShadow: isSelected ? `0 0 10px ${ed.color}` : 'none' }} />
+                          <div style={{ width: '16px', height: '16px', borderRadius: '50%', background: ed.color, border: ed.key === 'white' ? '1px solid #CBD5E1' : 'none', boxShadow: isSelected ? `0 0 10px ${ed.color}` : 'none' }} />
                           <span style={{ fontSize: '0.76rem', fontWeight: 700 }}>{ed.name}</span>
                           <span style={{ fontSize: '0.68rem', color: isSelected ? ed.border : textMuted }}>₹{ed.price.toLocaleString()}</span>
                         </button>
@@ -2143,7 +2225,7 @@ export default function AdminOrderManager({ initialOrderId = null }) {
                     </label>
                     <input
                       type="text"
-                      placeholder="One Tap Every Connection"
+                      placeholder="Card tagline (optional)"
                       value={newOrderForm.tagline}
                       onChange={(e) => setNewOrderForm({ ...newOrderForm, tagline: e.target.value })}
                       style={{ width: '100%', padding: '9px 12px', borderRadius: '8px', border: `1px solid ${cardBorder}`, background: elevatedBg, color: textPrimary, fontSize: '0.82rem', outline: 'none', boxSizing: 'border-box' }}
@@ -2301,7 +2383,7 @@ export default function AdminOrderManager({ initialOrderId = null }) {
                         name: newOrderForm.customerName.trim() || 'YOUR NAME',
                         role: newOrderForm.role.trim() || 'CEO & Founder',
                         company: newOrderForm.company.trim() || 'FLOCARD Enterprise',
-                        tagline: newOrderForm.tagline.trim() || 'One Tap Every Connection',
+                        tagline: newOrderForm.tagline.trim(),
                         customLogo: newOrderForm.customerLogo || null
                       },
                       back: {

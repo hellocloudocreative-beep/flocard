@@ -411,7 +411,7 @@ export default function OrderPrintDownloadsPanel({
           type="button"
           onClick={handleDownloadTransparentLogo}
           disabled={isProcessing || !hasLogo}
-          title={hasLogo ? "ഡൗൺലോഡ് ട്രാൻസ്പരന്റ് ബിജി ലോഗോ (Auto Background Removal • Transparent PNG)" : "No customer logo uploaded in this order"}
+          title={hasLogo ? "Download Transparent BG Logo (Auto Background Removal • Transparent PNG)" : "No customer logo uploaded in this order"}
           style={{
             display: 'flex',
             alignItems: 'flex-start',
@@ -431,7 +431,7 @@ export default function OrderPrintDownloadsPanel({
           <Sparkles size={18} color="#10B981" style={{ flexShrink: 0, marginTop: '2px' }} />
           <div>
             <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-              <span style={{ fontSize: '0.82rem', fontWeight: 800 }}>ഡൗൺലോഡ് ട്രാൻസ്പരന്റ് ബിജി ലോഗോ</span>
+              <span style={{ fontSize: '0.82rem', fontWeight: 800 }}>Download Transparent BG Logo</span>
               <span style={{ fontSize: '0.62rem', padding: '1px 5px', borderRadius: '4px', backgroundColor: '#10B981', color: '#FFFFFF', fontWeight: 800 }}>AUTO BG REMOVAL</span>
             </div>
             <div style={{ fontSize: '0.7rem', opacity: 0.9, marginTop: '2px' }}>
@@ -468,7 +468,7 @@ export default function OrderPrintDownloadsPanel({
         {/* Action 2b: Edit Design in 3D Studio (Admin Only) */}
         {isAdmin && (order?.id || order?.orderReference) && (
           <a
-            href={`/designer?orderId=${order.id || order.orderReference}&mode=admin_edit`}
+            href={`/admin/studio?orderId=${order.id || order.orderReference}`}
             style={{
               display: 'flex',
               alignItems: 'flex-start',

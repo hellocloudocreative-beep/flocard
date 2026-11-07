@@ -3,9 +3,11 @@ import { ArrowRight, Cpu, Droplets, ShieldCheck, ArrowLeft, Check, Sparkles } fr
 import Card3DPreview from '../components/Card3DPreview';
 import { EDITIONS } from '../lib/constants';
 import { useData } from '../context/DataContext';
+import { useTheme } from '../context/ThemeContext';
 import { formatCurrencyINR } from '../lib/storage';
 
 export default function CardDetail({ editionKey = 'purple' }) {
+  const { isLight } = useTheme();
   const fallbackEdition = EDITIONS[editionKey] || EDITIONS.purple;
   const { getProductByEdition } = useData();
   const product = getProductByEdition(editionKey) || fallbackEdition;
@@ -16,7 +18,9 @@ export default function CardDetail({ editionKey = 'purple' }) {
   const isPurple = editionKey === 'purple';
   const isWhite = editionKey === 'white';
 
-  const accentColor = isWhite ? '#CBD5E1' : isGold ? '#E9C766' : isPlatinum ? '#CBD5E1' : isMetal ? '#CBD5E1' : '#A855F7';
+  const accentColor = isLight
+    ? (isPurple ? '#6B00FF' : isGold ? '#B45309' : '#334155')
+    : (isWhite ? '#CBD5E1' : isGold ? '#E9C766' : isPlatinum ? '#CBD5E1' : isMetal ? '#CBD5E1' : '#A855F7');
 
   const formattedPrice = formatCurrencyINR(product.price);
   const formattedCompare = product.comparePrice && product.comparePrice > product.price
@@ -85,7 +89,7 @@ export default function CardDetail({ editionKey = 'purple' }) {
                 className="badge-tag"
                 style={{
                   backgroundColor: `${accentColor}22`,
-                  color: isPlatinum ? '#E2E8F0' : accentColor,
+                  color: isLight ? (isPurple ? '#6B00FF' : isGold ? '#B45309' : '#1E293B') : (isPlatinum ? '#E2E8F0' : accentColor),
                   border: `1px solid ${accentColor}44`,
                   borderRadius: '10px'
                 }}

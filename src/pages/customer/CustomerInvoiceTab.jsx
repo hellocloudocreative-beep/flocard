@@ -1455,7 +1455,7 @@ export default function CustomerInvoiceTab({ orders = [], customer = null }) {
                     FLOCARDS
                   </h1>
                   <div style={{ fontSize: '0.72rem', opacity: 0.85, marginTop: '2px' }}>
-                    One Tap Every Connection  |  Indiranagar, Bengaluru
+                    Indiranagar, Bengaluru
                   </div>
                 </div>
                 <div style={{ textAlign: logoPlacement === 'center' ? 'center' : 'right' }}>

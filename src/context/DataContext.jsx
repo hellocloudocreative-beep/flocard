@@ -244,6 +244,29 @@ export function DataProvider({ children }) {
                 localOrders[existOIdx] = { ...localOrders[existOIdx], ...po };
               }
             }
+
+            // Synthesize customer from design so customers from flocard.in are never lost
+            const custEmail = (fc.customerEmail || '').trim().toLowerCase();
+            if (custEmail) {
+              const currentCusts = StorageEngine.getCustomers();
+              const existC = currentCusts.find(c => (c.email && c.email.toLowerCase() === custEmail) || (fc.customerId && c.id === fc.customerId));
+              if (!existC) {
+                currentCusts.unshift({
+                  id: fc.customerId || `cust_${custEmail.replace(/[^a-z0-9]/g, '_')}`,
+                  name: fc.customerName || fc.name || custEmail.split('@')[0],
+                  email: custEmail,
+                  phone: fc.customerPhone || '',
+                  company: fc.company || '',
+                  role: 'customer',
+                  status: 'active',
+                  joinedDate: (cd.created_at || '').split('T')[0] || new Date().toISOString().split('T')[0],
+                  totalCards: 0,
+                  totalDesigns: 1
+                });
+                StorageEngine.saveLocalCustomers(currentCusts);
+                setCustomers(currentCusts);
+              }
+            }
           }
 
           if (designsUpdated) {
@@ -287,6 +310,29 @@ export function DataProvider({ children }) {
                 source: co.source || 'web_studio'
               });
               changed = true;
+            }
+
+            // Synthesize customer from cloud order if not present
+            const coEmail = (co.customer_email || '').trim().toLowerCase();
+            if (coEmail) {
+              const currentCusts = StorageEngine.getCustomers();
+              const existC = currentCusts.find(c => (c.email && c.email.toLowerCase() === coEmail) || (co.customer_id && c.id === co.customer_id));
+              if (!existC) {
+                currentCusts.unshift({
+                  id: co.customer_id || `cust_${coEmail.replace(/[^a-z0-9]/g, '_')}`,
+                  name: co.customer_name || coEmail.split('@')[0],
+                  email: coEmail,
+                  phone: co.customer_phone || '',
+                  company: co.company || '',
+                  role: 'customer',
+                  status: 'active',
+                  joinedDate: (co.created_at || '').split('T')[0] || new Date().toISOString().split('T')[0],
+                  totalCards: 0,
+                  totalDesigns: 0
+                });
+                StorageEngine.saveLocalCustomers(currentCusts);
+                setCustomers(currentCusts);
+              }
             }
           }
           if (changed) {

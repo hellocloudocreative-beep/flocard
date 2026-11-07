@@ -5,7 +5,7 @@
    and direct WhatsApp production queue integration.
    ========================================================================== */
 
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect, useRef } from 'react';
 import {
   X,
   CheckCircle2,
@@ -75,6 +75,40 @@ export default function OrderSummaryPrintModal({
   const [errorMessage, setErrorMessage] = useState('');
   const [submittedOrder, setSubmittedOrder] = useState(null);
   const [copiedRef, setCopiedRef] = useState(false);
+  const [cardPreviewWidth, setCardPreviewWidth] = useState(360);
+  const cardContainerRef = useRef(null);
+
+  useEffect(() => {
+    if (!isOpen) return;
+    const el = cardContainerRef.current;
+    if (!el) return;
+
+    const updateSize = () => {
+      const cw = el.clientWidth;
+      if (cw > 100) {
+        setCardPreviewWidth(Math.round(cw));
+      }
+    };
+    updateSize();
+
+    let ro = null;
+    if (typeof ResizeObserver !== 'undefined') {
+      ro = new ResizeObserver((entries) => {
+        for (const entry of entries) {
+          const w = entry.contentRect.width;
+          if (w > 100) {
+            setCardPreviewWidth(Math.round(w));
+          }
+        }
+      });
+      ro.observe(el);
+    }
+    window.addEventListener('resize', updateSize);
+    return () => {
+      if (ro) ro.disconnect();
+      window.removeEventListener('resize', updateSize);
+    };
+  }, [isOpen]);
 
   // Authoritative server-side pricing calculation
   const pricing = useMemo(() => {
@@ -174,11 +208,20 @@ export default function OrderSummaryPrintModal({
   };
 
   const combinedConfig = {
-    ...frontConfig,
-    ...backConfig,
-    customColors,
-    customerLogo,
-    flocardLogo
+    front: {
+      ...(design?.front || {}),
+      ...(design?.frontConfig || {}),
+      ...frontConfig
+    },
+    back: {
+      ...(design?.back || {}),
+      ...(design?.backConfig || {}),
+      ...backConfig
+    },
+    customColors: design?.customColors || customColors || {},
+    customerLogo: design?.customerLogo || customerLogo,
+    flocardLogo: design?.flocardLogo || flocardLogo,
+    templateType: design?.templateType || templateType
   };
 
   return (
@@ -477,22 +520,38 @@ export default function OrderSummaryPrintModal({
 
                     {/* Live Card Canvas Render */}
                     <div
+                      ref={cardContainerRef}
                       style={{
                         width: '100%',
-                        maxWidth: '340px',
+                        maxWidth: '380px',
                         aspectRatio: '85.6 / 54',
                         borderRadius: '12px',
                         overflow: 'hidden',
                         boxShadow: '0 12px 30px rgba(0, 0, 0, 0.5)',
-                        border: '1px solid rgba(255, 255, 255, 0.1)'
+                        border: isLight ? '1px solid #E2E8F0' : '1px solid rgba(255, 255, 255, 0.1)',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        position: 'relative'
                       }}
                     >
-                      <CardCanvas
-                        side={activeSide}
-                        templateType={templateType}
-                        edition={edition}
-                        config={combinedConfig}
-                      />
+                      <div
+                        style={{
+                          width: '560px',
+                          height: '353px',
+                          transform: `scale(${cardPreviewWidth / 560})`,
+                          transformOrigin: 'center center',
+                          flexShrink: 0
+                        }}
+                      >
+                        <CardCanvas
+                          side={activeSide}
+                          templateType={templateType}
+                          edition={edition}
+                          config={combinedConfig}
+                          width={560}
+                        />
+                      </div>
                     </div>
 
                     <div style={{ marginTop: '12px', textAlign: 'center' }}>
@@ -647,7 +706,7 @@ export default function OrderSummaryPrintModal({
                       />
                     </div>
 
-                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
+                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: '12px' }}>
                       <div>
                         <label style={{ fontSize: '0.74rem', fontWeight: 600, color: isLight ? '#64748B' : '#94A3B8', display: 'block', marginBottom: '4px' }}>
                           Phone / WhatsApp (Optional)
@@ -656,7 +715,7 @@ export default function OrderSummaryPrintModal({
                           type="tel"
                           value={customerPhone}
                           onChange={e => setCustomerPhone(e.target.value)}
-                          placeholder="+91 98765 43210 (Optional)"
+                          placeholder="+91 98765 43210"
                           className="form-input"
                           style={{ width: '100%' }}
                         />
@@ -706,7 +765,7 @@ export default function OrderSummaryPrintModal({
                       />
                     </div>
 
-                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '10px' }}>
+                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(90px, 1fr))', gap: '10px' }}>
                       <div>
                         <label style={{ fontSize: '0.74rem', fontWeight: 600, color: isLight ? '#64748B' : '#94A3B8', display: 'block', marginBottom: '4px' }}>
                           City

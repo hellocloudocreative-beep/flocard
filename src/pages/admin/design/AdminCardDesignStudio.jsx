@@ -13,6 +13,7 @@ import CardCanvas from '../../../components/CardCanvas';
 import Card3DPreview from '../../../components/Card3DPreview';
 import { EDITIONS, TEMPLATES, BRAND } from '../../../lib/constants';
 import { useData } from '../../../context/DataContext';
+import { useTheme } from '../../../context/ThemeContext';
 import { uploadImage } from '../../../lib/uploadImage';
 import { queueWhatsAppNotification } from '../../../lib/whatsapp';
 import { removeLogoBackground } from '../../../lib/cardArtworkService';
@@ -52,7 +53,14 @@ import {
   X,
   UserCheck,
   Users,
-  Search
+  Search,
+  Package,
+  AlignLeft,
+  AlignCenter,
+  AlignRight,
+  Upload,
+  Trash2,
+  Edit3
 } from 'lucide-react';
 
 const FONT_OPTIONS = [
@@ -201,7 +209,15 @@ export const PRESET_THEMES = [
   }
 ];
 
-export default function AdminCardDesignStudio({ onAssignToOrder = null, initialDesign = null }) {
+export default function AdminCardDesignStudio({
+  onAssignToOrder = null,
+  initialDesign = null,
+  initialDesignId = null,
+  initialDesignRecord = null,
+  initialOrderId = null,
+  onNavigateToOrders = null
+}) {
+  const { isDark, isLight } = useTheme();
   const {
     designs = [],
     saveDesign,
@@ -214,8 +230,8 @@ export default function AdminCardDesignStudio({ onAssignToOrder = null, initialD
     customers = []
   } = useData();
 
-  // Left Panel Sub-tab: 'whatsapp_order' | 'themes' | 'layers'
-  const [leftTab, setLeftTab] = useState('whatsapp_order');
+  // Left Panel Sub-tab: 'text' | 'logo' | 'qr' | 'style' | 'order'
+  const [leftTab, setLeftTab] = useState('text');
   const [selectedThemeId, setSelectedThemeId] = useState('royal_ultraviolet');
 
   // Active Card Side: 'front' | 'back'
@@ -233,9 +249,14 @@ export default function AdminCardDesignStudio({ onAssignToOrder = null, initialD
   const [edition, setEdition] = useState(initialDesign?.edition || 'purple');
   const [templateType, setTemplateType] = useState(initialDesign?.templateType || 'standard');
 
+  const [flocardLogo, setFlocardLogo] = useState({
+    size: initialDesign?.flocardLogo?.size ?? 100,
+    position: initialDesign?.flocardLogo?.position || (templateType === 'customer_logo' ? 'bottom-right' : 'top-left')
+  });
+
   const [frontConfig, setFrontConfig] = useState({
-    name: initialDesign?.front?.name || 'ALEX MORGAN',
-    role: initialDesign?.front?.role || 'FOUNDER & CEO',
+    name: initialDesign?.front?.name || 'FLOCARD ADMIN',
+    role: initialDesign?.front?.role || 'CEO & FOUNDER',
     company: initialDesign?.front?.company || 'FLOCARDS',
     details: initialDesign?.front?.details || 'CONNECTED IDENTITY SYSTEMS',
     tagline: initialDesign?.front?.tagline || 'Pioneering connected NFC identity for executives.',
@@ -310,12 +331,12 @@ export default function AdminCardDesignStudio({ onAssignToOrder = null, initialD
     qrCode: true
   });
 
-  // WhatsApp Customer Selection State
+  // Customer Selection State
   const [selectedWaCustomerId, setSelectedWaCustomerId] = useState(null);
   const [waCustomerSearch, setWaCustomerSearch] = useState('');
   const [isWaCustomerDropdownOpen, setIsWaCustomerDropdownOpen] = useState(false);
 
-  // WhatsApp Order Creation Form State (Two-way synced with card artwork)
+  // Order Form State (Two-way synced with card artwork)
   const edCurrent = EDITIONS[edition] || EDITIONS.purple;
   const [waOrderForm, setWaOrderForm] = useState({
     customerName: '',
@@ -327,6 +348,164 @@ export default function AdminCardDesignStudio({ onAssignToOrder = null, initialD
     shippingAddress: '',
     totalAmount: edCurrent.price || 2499
   });
+
+  // Auto-load existing design or order if initialDesignId, initialOrderId, initialDesignRecord, or URL params are given
+  useEffect(() => {
+    const urlParams = typeof window !== 'undefined' ? new URLSearchParams(window.location.search) : new URLSearchParams();
+    const targetOrderId = initialOrderId || urlParams.get('orderId');
+    const targetDesignId = initialDesignId || urlParams.get('designId') || urlParams.get('id');
+    const targetAnyId = targetOrderId || targetDesignId;
+
+    if (!targetAnyId && !initialDesignRecord && !initialDesign) return;
+
+    let matchedDesign = initialDesignRecord || initialDesign || null;
+    let matchedOrder = null;
+
+    // 1. Search in designs collection
+    if (!matchedDesign && designs && designs.length > 0 && targetAnyId) {
+      matchedDesign = designs.find(d =>
+        d.id === targetAnyId ||
+        d.id === targetDesignId ||
+        d.id === targetOrderId ||
+        d.orderId === targetAnyId ||
+        d.orderId === targetOrderId
+      );
+    }
+
+    // 2. Search in orders collection
+    if (orders && orders.length > 0 && targetAnyId) {
+      matchedOrder = orders.find(o =>
+        o.id === targetAnyId ||
+        o.orderReference === targetAnyId ||
+        o.id === targetOrderId ||
+        o.orderReference === targetOrderId ||
+        o.designId === targetAnyId ||
+        o.designId === targetDesignId ||
+        (matchedDesign && (o.designId === matchedDesign.id || o.id === matchedDesign.orderId))
+      );
+      if (!matchedDesign && matchedOrder?.design) {
+        matchedDesign = matchedOrder.design;
+      }
+    }
+
+    // 3. Fallback to StorageEngine if not yet in React context state
+    if (!matchedDesign && !matchedOrder && targetAnyId) {
+      try {
+        if (StorageEngine?.getDesignById) {
+          matchedDesign = StorageEngine.getDesignById(targetAnyId) || (targetDesignId ? StorageEngine.getDesignById(targetDesignId) : null);
+        }
+        if (!matchedDesign && StorageEngine?.getDesigns) {
+          const list = StorageEngine.getDesigns();
+          matchedDesign = list.find(d => d.id === targetAnyId || d.id === targetDesignId || d.orderId === targetAnyId);
+        }
+        if (StorageEngine?.getOrders) {
+          const oList = StorageEngine.getOrders();
+          matchedOrder = oList.find(o => o.id === targetAnyId || o.orderReference === targetAnyId || o.designId === targetAnyId);
+          if (!matchedDesign && matchedOrder?.design) {
+            matchedDesign = matchedOrder.design;
+          }
+        }
+      } catch (err) {
+        console.warn('[Studio] Storage fallback lookup error:', err);
+      }
+    }
+
+    const record = matchedDesign || matchedOrder;
+    if (!record) return;
+
+    // A. ID & Title
+    if (record.id) setDesignId(record.id);
+    const resolvedTitle = record.title || `${record.customerName || matchedOrder?.customerName || 'Customer'}'s Card Artwork`;
+    setDesignTitle(resolvedTitle);
+
+    // B. Order link
+    const ordRef = matchedOrder ? (matchedOrder.id || matchedOrder.orderReference) : (record.orderId || '');
+    if (ordRef) setSelectedOrderId(ordRef);
+
+    // C. Edition
+    const ed = record.edition || record.template || matchedOrder?.edition;
+    if (ed) setEdition(ed);
+
+    // D. Customer Logo & Template Type (CRITICAL FIX FOR LOGO NOT SHOWING)
+    const rawLogo =
+      record.customerLogo ||
+      record.front?.customLogo ||
+      record.frontConfig?.customLogo ||
+      matchedOrder?.customerLogo ||
+      matchedOrder?.design?.customerLogo ||
+      matchedOrder?.frontConfig?.customLogo ||
+      record.logoUrl ||
+      record.logo;
+
+    const normLogo = normalizeCustomerLogo(rawLogo);
+    const hasValidLogo = normLogo && !!normLogo.url;
+
+    if (hasValidLogo) {
+      setCustomerLogo(normLogo);
+      setTemplateType('customer_logo');
+    } else {
+      if (record.templateType) setTemplateType(record.templateType);
+      else if (matchedOrder?.templateType) setTemplateType(matchedOrder.templateType);
+    }
+
+    // E. Front Config (CRITICAL FIX FOR NAME / ROLE / COMPANY)
+    const fCfg = record.front || record.frontConfig || matchedOrder?.frontConfig || matchedOrder?.design?.front || {};
+    const cName = fCfg.name || record.customerName || record.name || matchedOrder?.customerName || '';
+    const cRole = fCfg.role || record.role || matchedOrder?.role || 'CEO & FOUNDER';
+    const cCompany = fCfg.company || record.company || matchedOrder?.company || 'FLOCARD';
+    const cTagline = fCfg.tagline || record.tagline || matchedOrder?.tagline || '';
+
+    setFrontConfig(prev => ({
+      ...prev,
+      ...fCfg,
+      name: cName || prev.name,
+      role: cRole || prev.role,
+      company: cCompany || prev.company,
+      tagline: cTagline || prev.tagline,
+      customLogo: hasValidLogo ? normLogo.url : (fCfg.customLogo || prev.customLogo || null)
+    }));
+
+    // F. Back Config
+    const bCfg = record.back || record.backConfig || matchedOrder?.backConfig || matchedOrder?.design?.back;
+    if (bCfg) {
+      setBackConfig(prev => ({
+        ...prev,
+        ...bCfg,
+        qrCode: {
+          ...prev.qrCode,
+          ...(bCfg.qrCode || {})
+        }
+      }));
+    }
+
+    // G. Custom Colors
+    const cColors = record.customColors || matchedOrder?.customColors || matchedOrder?.design?.customColors;
+    if (cColors) {
+      setCustomColors(prev => ({ ...prev, ...cColors }));
+    }
+
+    // H. Flocard Logo Config
+    if (record.flocardLogo || matchedOrder?.flocardLogo || matchedOrder?.design?.flocardLogo) {
+      setFlocardLogo(record.flocardLogo || matchedOrder?.flocardLogo || matchedOrder?.design?.flocardLogo);
+    }
+
+    // I. Order Form Details (waOrderForm)
+    setWaOrderForm({
+      customerName: cName || '',
+      customerPhone: record.customerPhone || record.phone || matchedOrder?.customerPhone || '',
+      customerEmail: record.customerEmail || record.email || matchedOrder?.customerEmail || '',
+      company: cCompany || '',
+      role: cRole || '',
+      tagline: cTagline || '',
+      shippingAddress: record.shippingAddress || record.address || matchedOrder?.shippingAddress || '',
+      totalAmount: record.totalAmount || matchedOrder?.totalAmount || EDITIONS[ed || 'purple']?.price || 2499
+    });
+
+    // J. Activate Editing Panel immediately
+    setLeftTab(hasValidLogo ? 'logo' : 'text');
+    setSelectedElement(hasValidLogo ? 'logo' : 'name');
+    showToast(`✓ Loaded design "${cName || resolvedTitle}" into Studio for editing.`);
+  }, [initialOrderId, initialDesignId, initialDesignRecord, initialDesign, orders, designs]);
 
   const handleSelectWaCustomer = (cust) => {
     setSelectedWaCustomerId(cust.id);
@@ -589,8 +768,8 @@ export default function AdminCardDesignStudio({ onAssignToOrder = null, initialD
     }
   };
 
-  // 1-Click WhatsApp Order Creation Action
-  const handleCreateWhatsAppOrder = (e) => {
+  // Create New Order OR Save Changes to Existing Active Order
+  const handleCreateOrUpdateOrder = (e) => {
     if (e && e.preventDefault) e.preventDefault();
 
     const clientName = (waOrderForm.customerName || frontConfig.name || '').trim();
@@ -598,22 +777,109 @@ export default function AdminCardDesignStudio({ onAssignToOrder = null, initialD
 
     if (!clientName) {
       showToast('Please enter the customer name.', 'error');
-      setLeftTab('whatsapp_order');
-      return;
-    }
-    if (!clientPhone) {
-      showToast('Please enter the customer WhatsApp phone number.', 'error');
-      setLeftTab('whatsapp_order');
+      setLeftTab('order');
       return;
     }
 
+    const edDetails = EDITIONS[edition] || EDITIONS.purple;
+    const finalAmount = Number(waOrderForm.totalAmount) || edDetails.price || 2499;
+
+    // A. Updating Existing Order
+    if (selectedOrderId) {
+      const existingOrder = orders.find(o => o.id === selectedOrderId || o.orderReference === selectedOrderId);
+      const customerId = existingOrder?.customerId || `cust_${Date.now()}`;
+      const dId = existingOrder?.designId || designId || `dsgn_${Date.now()}`;
+
+      const designRecord = {
+        id: dId,
+        orderId: selectedOrderId,
+        customerId,
+        customerName: clientName,
+        edition,
+        templateType: customerLogo.url ? 'customer_logo' : templateType,
+        front: {
+          ...frontConfig,
+          customLogo: customerLogo.url || frontConfig.customLogo || null
+        },
+        back: backConfig,
+        customColors,
+        customerLogo,
+        flocardLogo,
+        status: 'approved',
+        createdAt: existingOrder?.design?.createdAt || new Date().toISOString(),
+        updatedAt: new Date().toISOString()
+      };
+      saveDesign(designRecord);
+
+      if (saveCustomer && clientName) {
+        saveCustomer({
+          id: customerId,
+          name: clientName,
+          phone: clientPhone,
+          email: (waOrderForm.customerEmail || '').trim() || existingOrder?.customerEmail || `${clientName.toLowerCase().replace(/[^a-z0-9]/g, '') || 'client'}@flocard.in`,
+          company: (waOrderForm.company || frontConfig.company || '').trim(),
+          role: (waOrderForm.role || frontConfig.role || 'Client').trim(),
+          status: 'active',
+          updatedAt: new Date().toISOString()
+        });
+      }
+
+      const updatedOrder = {
+        ...(existingOrder || {}),
+        id: selectedOrderId,
+        orderReference: existingOrder?.orderReference || selectedOrderId,
+        customerName: clientName,
+        customerEmail: (waOrderForm.customerEmail || '').trim() || existingOrder?.customerEmail || `${clientName.toLowerCase().replace(/[^a-z0-9]/g, '') || 'client'}@flocard.in`,
+        customerPhone: clientPhone || existingOrder?.customerPhone || '',
+        company: (waOrderForm.company || frontConfig.company || '').trim(),
+        role: (waOrderForm.role || frontConfig.role || 'Executive').trim(),
+        tagline: (waOrderForm.tagline || frontConfig.tagline || '').trim(),
+        customerDetails: {
+          fullName: clientName,
+          email: (waOrderForm.customerEmail || '').trim() || existingOrder?.customerEmail || `${clientName.toLowerCase().replace(/[^a-z0-9]/g, '') || 'client'}@flocard.in`,
+          phone: clientPhone || existingOrder?.customerPhone || '',
+          company: (waOrderForm.company || frontConfig.company || '').trim(),
+          role: (waOrderForm.role || frontConfig.role || 'Executive').trim(),
+          address: (waOrderForm.shippingAddress || '').trim() || existingOrder?.shippingAddress || 'Direct Dispatch',
+          city: (waOrderForm.city || 'Indiranagar, Bengaluru'),
+          postalCode: (waOrderForm.pinCode || '560038')
+        },
+        hasInvoiceAddon: true,
+        invoiceEligible: true,
+        customerLogo,
+        flocardLogo,
+        designId: dId,
+        design: designRecord,
+        frontConfig: designRecord.front,
+        backConfig: designRecord.back,
+        customColors,
+        edition,
+        templateType: customerLogo.url ? 'customer_logo' : templateType,
+        totalAmount: finalAmount,
+        shippingAddress: (waOrderForm.shippingAddress || '').trim() || existingOrder?.shippingAddress || 'Direct Dispatch',
+        updatedAt: new Date().toISOString()
+      };
+
+      saveOrder(updatedOrder);
+      showToast(`✓ Order ${selectedOrderId} updated successfully! Redirecting to orders...`);
+
+      setTimeout(() => {
+        if (onNavigateToOrders) {
+          onNavigateToOrders();
+        } else {
+          window.location.href = '/admin?tab=orders';
+        }
+      }, 500);
+      return;
+    }
+
+    // B. Creating Brand New Order
     const orderRef = `FLC-ORD-${Math.floor(1000 + Math.random() * 9000)}`;
     const trackingToken = `tok_${Math.random().toString(36).substring(2, 12)}`;
     const customerId = `cust_${Date.now()}`;
     const dId = `dsgn_${Date.now()}`;
     const clientEmail = (waOrderForm.customerEmail || '').trim() || `${clientName.toLowerCase().replace(/[^a-z0-9]/g, '') || 'client'}@flocard.in`;
 
-    // 1. Save Card Design Record
     const designRecord = {
       id: dId,
       orderId: orderRef,
@@ -628,13 +894,13 @@ export default function AdminCardDesignStudio({ onAssignToOrder = null, initialD
       back: backConfig,
       customColors,
       customerLogo,
+      flocardLogo,
       status: 'approved',
       createdAt: new Date().toISOString(),
       updatedAt: new Date().toISOString()
     };
     saveDesign(designRecord);
 
-    // 2. Save / Register Customer Record
     if (saveCustomer) {
       saveCustomer({
         id: customerId,
@@ -643,20 +909,16 @@ export default function AdminCardDesignStudio({ onAssignToOrder = null, initialD
         email: clientEmail,
         company: (waOrderForm.company || frontConfig.company || '').trim(),
         role: (waOrderForm.role || frontConfig.role || 'Client').trim(),
-        source: 'whatsapp',
+        source: 'admin_studio',
         status: 'active',
         createdAt: new Date().toISOString()
       });
     }
 
-    // 3. Save Order Record
-    const edDetails = EDITIONS[edition] || EDITIONS.gold;
-    const finalAmount = Number(waOrderForm.totalAmount) || edDetails.price || 2499;
-
     const newOrder = {
       id: orderRef,
       orderReference: orderRef,
-      source: 'whatsapp',
+      source: 'admin_studio',
       customerId,
       customerName: clientName,
       customerEmail: clientEmail,
@@ -664,10 +926,22 @@ export default function AdminCardDesignStudio({ onAssignToOrder = null, initialD
       company: (waOrderForm.company || frontConfig.company || '').trim(),
       role: (waOrderForm.role || frontConfig.role || 'Executive').trim(),
       tagline: (waOrderForm.tagline || frontConfig.tagline || '').trim(),
+      customerDetails: {
+        fullName: clientName,
+        email: clientEmail,
+        phone: clientPhone,
+        company: (waOrderForm.company || frontConfig.company || '').trim(),
+        role: (waOrderForm.role || frontConfig.role || 'Executive').trim(),
+        address: (waOrderForm.shippingAddress || '').trim() || 'Direct Dispatch',
+        city: (waOrderForm.city || 'Indiranagar, Bengaluru'),
+        postalCode: (waOrderForm.pinCode || '560038')
+      },
+      hasInvoiceAddon: true,
+      invoiceEligible: true,
       customerLogo,
       flocardLogo,
       designId: dId,
-      design: designRecord, // Frozen snapshot of submitted artwork
+      design: designRecord,
       frontConfig: designRecord.front,
       backConfig: designRecord.back,
       customColors,
@@ -677,9 +951,9 @@ export default function AdminCardDesignStudio({ onAssignToOrder = null, initialD
       amountPaid: finalAmount,
       amountOutstanding: 0,
       paymentStatus: 'paid',
-      paymentMethod: 'upi',
+      paymentMethod: 'admin_entry',
       status: 'design_submitted',
-      shippingAddress: (waOrderForm.shippingAddress || '').trim() || 'Direct WhatsApp Dispatch',
+      shippingAddress: (waOrderForm.shippingAddress || '').trim() || 'Direct Dispatch',
       trackingToken,
       orderDate: new Date().toISOString(),
       createdAt: new Date().toISOString(),
@@ -687,29 +961,18 @@ export default function AdminCardDesignStudio({ onAssignToOrder = null, initialD
     };
 
     saveOrder(newOrder);
+    showToast(`✓ Order ${orderRef} created successfully! Redirecting to orders...`);
 
-    // 4. Automatically queue WhatsApp notification outbox
-    queueWhatsAppNotification(newOrder, 'order_confirmed').catch(err => {
-      console.error('WhatsApp auto-queue error:', err);
-    });
-
-    // 5. Construct live tracking link & direct WhatsApp click-to-chat URL
-    const trackingUrl = `https://flocard.in/track?ref=${encodeURIComponent(orderRef)}&token=${encodeURIComponent(trackingToken)}`;
-    const msgText = `Hello ${clientName}! ✨\n\nYour FLOCARDS order *${orderRef}* for the *${edDetails.name}* has been confirmed.\n\nWe have prepared your bespoke smart card design and queued precision laser manufacturing.\n\n🔍 View your live interactive 3D card proof & track fulfillment:\n👉 ${trackingUrl}\n\n— Team FLOCARDS\nhttps://flocard.in`;
-
-    const cleanPhone = clientPhone.replace(/[^0-9]/g, '');
-    const formattedPhone = cleanPhone.startsWith('91') || cleanPhone.length > 10 ? cleanPhone : `91${cleanPhone}`;
-    const waUrl = `https://wa.me/${formattedPhone}?text=${encodeURIComponent(msgText)}`;
-
-    setCreatedOrderResult({
-      order: newOrder,
-      trackingUrl,
-      waUrl,
-      messageText: msgText
-    });
-    setOrderSuccessModal(true);
-    showToast(`WhatsApp Order ${orderRef} created successfully!`);
+    setTimeout(() => {
+      if (onNavigateToOrders) {
+        onNavigateToOrders();
+      } else {
+        window.location.href = '/admin?tab=orders';
+      }
+    }, 500);
   };
+
+  const handleCreateWhatsAppOrder = handleCreateOrUpdateOrder;
 
   // Save Design Draft Action
   const handleSaveDraft = (status = 'draft') => {
@@ -768,7 +1031,8 @@ export default function AdminCardDesignStudio({ onAssignToOrder = null, initialD
     },
     back: backConfig,
     customColors,
-    customerLogo
+    customerLogo,
+    flocardLogo
   };
 
   return (
@@ -776,8 +1040,8 @@ export default function AdminCardDesignStudio({ onAssignToOrder = null, initialD
       display: 'flex',
       flexDirection: 'column',
       height: 'calc(100vh - 80px)',
-      background: '#090514',
-      color: '#FFFFFF',
+      background: isLight ? '#F8FAFC' : '#090514',
+      color: isLight ? '#0F172A' : '#FFFFFF',
       fontFamily: 'Inter, sans-serif',
       overflow: 'hidden'
     }}>
@@ -787,8 +1051,8 @@ export default function AdminCardDesignStudio({ onAssignToOrder = null, initialD
         alignItems: 'center',
         justifyContent: 'space-between',
         padding: '12px 24px',
-        background: '#130B22',
-        borderBottom: '1px solid rgba(168, 85, 247, 0.2)',
+        background: isLight ? '#FFFFFF' : '#130B22',
+        borderBottom: isLight ? '1px solid #E2E8F0' : '1px solid rgba(168, 85, 247, 0.2)',
         zIndex: 10,
         flexWrap: 'wrap',
         gap: '12px'
@@ -801,7 +1065,8 @@ export default function AdminCardDesignStudio({ onAssignToOrder = null, initialD
               borderRadius: '8px',
               fontSize: '0.75rem',
               fontWeight: 800,
-              letterSpacing: '0.05em'
+              letterSpacing: '0.05em',
+              color: '#FFFFFF'
             }}>
               STUDIO
             </span>
@@ -812,7 +1077,7 @@ export default function AdminCardDesignStudio({ onAssignToOrder = null, initialD
               style={{
                 background: 'transparent',
                 border: 'none',
-                color: '#FFFFFF',
+                color: isLight ? '#0F172A' : '#FFFFFF',
                 fontSize: '1.05rem',
                 fontWeight: 700,
                 outline: 'none',
@@ -821,7 +1086,7 @@ export default function AdminCardDesignStudio({ onAssignToOrder = null, initialD
             />
           </div>
 
-          <div style={{ display: 'flex', gap: '6px', background: '#1F1238', padding: '4px', borderRadius: '10px' }}>
+          <div style={{ display: 'flex', gap: '6px', background: isLight ? '#F1F5F9' : '#1F1238', padding: '4px', borderRadius: '10px' }}>
             <button
               onClick={() => setActiveSide('front')}
               style={{
@@ -832,7 +1097,7 @@ export default function AdminCardDesignStudio({ onAssignToOrder = null, initialD
                 fontWeight: 600,
                 cursor: 'pointer',
                 background: activeSide === 'front' ? '#7C3AED' : 'transparent',
-                color: '#FFFFFF'
+                color: activeSide === 'front' ? '#FFFFFF' : (isLight ? '#475569' : '#94A3B8')
               }}
             >
               Front Artwork
@@ -847,7 +1112,7 @@ export default function AdminCardDesignStudio({ onAssignToOrder = null, initialD
                 fontWeight: 600,
                 cursor: 'pointer',
                 background: activeSide === 'back' ? '#7C3AED' : 'transparent',
-                color: '#FFFFFF'
+                color: activeSide === 'back' ? '#FFFFFF' : (isLight ? '#475569' : '#94A3B8')
               }}
             >
               Back Artwork
@@ -892,14 +1157,14 @@ export default function AdminCardDesignStudio({ onAssignToOrder = null, initialD
 
           {/* Quick Select Theme Button */}
           <button
-            onClick={() => setLeftTab('themes')}
+            onClick={() => setLeftTab('style')}
             style={{
               display: 'flex',
               alignItems: 'center',
               gap: '6px',
               padding: '8px 14px',
               borderRadius: '8px',
-              background: leftTab === 'themes' ? 'rgba(168, 85, 247, 0.25)' : '#1F1238',
+              background: leftTab === 'style' ? 'rgba(168, 85, 247, 0.25)' : '#1F1238',
               border: '1px solid rgba(168, 85, 247, 0.3)',
               color: '#D8B4FE',
               fontSize: '0.84rem',
@@ -911,9 +1176,9 @@ export default function AdminCardDesignStudio({ onAssignToOrder = null, initialD
             <span>Select Themes</span>
           </button>
 
-          {/* Create WhatsApp Order Primary Button */}
+          {/* Primary Action Button: Save or Create Order */}
           <button
-            onClick={handleCreateWhatsAppOrder}
+            onClick={handleCreateOrUpdateOrder}
             style={{
               display: 'flex',
               alignItems: 'center',
@@ -921,17 +1186,17 @@ export default function AdminCardDesignStudio({ onAssignToOrder = null, initialD
               padding: '8px 18px',
               borderRadius: '10px',
               border: 'none',
-              background: 'linear-gradient(135deg, #25D366, #128C7E)',
+              background: 'linear-gradient(135deg, #7C3AED, #6D28D9)',
               color: '#FFFFFF',
               fontSize: '0.86rem',
               fontWeight: 700,
               cursor: 'pointer',
-              boxShadow: '0 4px 18px rgba(37, 211, 102, 0.35)',
+              boxShadow: '0 4px 18px rgba(124, 58, 237, 0.35)',
               transition: 'transform 0.15s ease'
             }}
           >
-            <MessageSquare size={16} />
-            <span>Create WhatsApp Order</span>
+            <Package size={16} />
+            <span>{selectedOrderId ? 'Save & Update Order' : 'Create Card Order'}</span>
           </button>
 
           <button
@@ -955,107 +1220,861 @@ export default function AdminCardDesignStudio({ onAssignToOrder = null, initialD
         </div>
       </div>
 
+      {/* Active Order Banner if editing */}
+      {selectedOrderId && (
+        <div style={{
+          background: 'linear-gradient(90deg, rgba(124, 58, 237, 0.25), rgba(79, 70, 229, 0.25))',
+          borderBottom: '1px solid rgba(168, 85, 247, 0.3)',
+          padding: '8px 24px',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'space-between',
+          fontSize: '0.82rem',
+          flexWrap: 'wrap',
+          gap: '8px',
+          zIndex: 9
+        }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+            <Package size={15} color="#C084FC" />
+            <span style={{ color: '#E9D5FF' }}>
+              Editing Active Order: <strong style={{ color: '#FFFFFF' }}>{selectedOrderId}</strong>
+              {(waOrderForm.customerName || frontConfig.name) && ` · ${(waOrderForm.customerName || frontConfig.name)}`}
+            </span>
+          </div>
+          <div style={{ display: 'flex', gap: '10px', alignItems: 'center' }}>
+            <button
+              type="button"
+              onClick={() => {
+                setSelectedOrderId('');
+                setDesignTitle('New Card Artwork');
+                showToast('Cleared active order link. Now creating a new order.');
+              }}
+              style={{
+                background: 'transparent',
+                border: '1px solid rgba(255,255,255,0.2)',
+                color: '#CBD5E1',
+                padding: '4px 10px',
+                borderRadius: '6px',
+                fontSize: '0.74rem',
+                cursor: 'pointer'
+              }}
+            >
+              Start New Order
+            </button>
+            <button
+              type="button"
+              onClick={handleCreateOrUpdateOrder}
+              style={{
+                background: '#7C3AED',
+                border: 'none',
+                color: '#FFFFFF',
+                padding: '4px 14px',
+                borderRadius: '6px',
+                fontSize: '0.74rem',
+                fontWeight: 700,
+                cursor: 'pointer',
+                display: 'flex',
+                alignItems: 'center',
+                gap: '5px'
+              }}
+            >
+              <Save size={13} />
+              <span>Save &amp; Go to Orders</span>
+            </button>
+          </div>
+        </div>
+      )}
+
       {/* 3-Panel Main Workspace */}
       <div style={{ display: 'flex', flex: 1, overflow: 'hidden' }}>
         
-        {/* LEFT PANEL: WhatsApp Order Creation & Theme Selector */}
+        {/* LEFT PANEL: Intuitive Card Designer & Customer Details */}
         <div style={{
-          width: '320px',
+          width: '330px',
           background: '#11091F',
           borderRight: '1px solid rgba(168, 85, 247, 0.2)',
           display: 'flex',
           flexDirection: 'column',
           overflowY: 'auto'
         }}>
-          {/* Sub-Tab Navigation Header */}
+          {/* Sub-Tab Navigation Header (Matching Customer UI) */}
           <div style={{
             display: 'flex',
             background: '#170D29',
             borderBottom: '1px solid rgba(168, 85, 247, 0.2)',
-            padding: '4px'
+            padding: '4px',
+            gap: '2px'
           }}>
-            <button
-              onClick={() => setLeftTab('whatsapp_order')}
-              style={{
-                flex: 1,
-                padding: '8px 6px',
-                borderRadius: '8px',
-                border: 'none',
-                fontSize: '0.76rem',
-                fontWeight: 700,
-                cursor: 'pointer',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                gap: '5px',
-                background: leftTab === 'whatsapp_order' ? '#25D366' : 'transparent',
-                color: leftTab === 'whatsapp_order' ? '#FFFFFF' : '#B9AEC9'
-              }}
-            >
-              <MessageSquare size={13} />
-              <span>WhatsApp Order</span>
-            </button>
-
-            <button
-              onClick={() => setLeftTab('themes')}
-              style={{
-                flex: 1,
-                padding: '8px 6px',
-                borderRadius: '8px',
-                border: 'none',
-                fontSize: '0.76rem',
-                fontWeight: 700,
-                cursor: 'pointer',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                gap: '5px',
-                background: leftTab === 'themes' ? '#7C3AED' : 'transparent',
-                color: leftTab === 'themes' ? '#FFFFFF' : '#B9AEC9'
-              }}
-            >
-              <Palette size={13} />
-              <span>Themes</span>
-            </button>
-
-            <button
-              onClick={() => setLeftTab('layers')}
-              style={{
-                flex: 1,
-                padding: '8px 6px',
-                borderRadius: '8px',
-                border: 'none',
-                fontSize: '0.76rem',
-                fontWeight: 700,
-                cursor: 'pointer',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                gap: '5px',
-                background: leftTab === 'layers' ? '#7C3AED' : 'transparent',
-                color: leftTab === 'layers' ? '#FFFFFF' : '#B9AEC9'
-              }}
-            >
-              <Layers size={13} />
-              <span>Layers</span>
-            </button>
+            {[
+              { id: 'text', label: 'Text', icon: <Type size={14} /> },
+              { id: 'logo', label: 'Logo', icon: <ImageIcon size={14} /> },
+              { id: 'qr', label: 'QR', icon: <QrCode size={14} /> },
+              { id: 'style', label: 'Style', icon: <Palette size={14} /> },
+              { id: 'order', label: 'Order', icon: <Package size={14} /> }
+            ].map((tab) => {
+              const isActive = leftTab === tab.id;
+              return (
+                <button
+                  key={tab.id}
+                  type="button"
+                  onClick={() => {
+                    setLeftTab(tab.id);
+                    if (tab.id === 'qr') setActiveSide('back');
+                    if (tab.id === 'text' || tab.id === 'logo') setActiveSide('front');
+                  }}
+                  style={{
+                    flex: 1,
+                    padding: '8px 2px',
+                    borderRadius: '8px',
+                    border: 'none',
+                    fontSize: '0.74rem',
+                    fontWeight: 700,
+                    cursor: 'pointer',
+                    display: 'flex',
+                    flexDirection: 'column',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    gap: '4px',
+                    background: isActive ? '#7C3AED' : 'transparent',
+                    color: isActive ? '#FFFFFF' : '#B9AEC9',
+                    transition: 'all 0.15s ease'
+                  }}
+                >
+                  {tab.icon}
+                  <span>{tab.label}</span>
+                </button>
+              );
+            })}
           </div>
 
-          {/* LEFT TAB 1: WHATSAPP DIRECT ORDER WORKFLOW */}
-          {leftTab === 'whatsapp_order' && (
+          {/* TAB 1: TEXT & TYPOGRAPHY */}
+          {leftTab === 'text' && (
+            <div style={{ padding: '16px', display: 'flex', flexDirection: 'column', gap: '14px' }}>
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                <label style={{ fontSize: '0.78rem', fontWeight: 700, color: '#A855F7', textTransform: 'uppercase' }}>
+                  Card Typography &amp; Text
+                </label>
+                <span style={{ fontSize: '0.7rem', color: '#94A3B8' }}>Front Side</span>
+              </div>
+
+              {/* Customer Name */}
+              <div>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '4px' }}>
+                  <label style={{ fontSize: '0.76rem', fontWeight: 600, color: '#D8B4FE' }}>Full Name *</label>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      const upper = (frontConfig.name || '').toUpperCase();
+                      setFrontConfig(prev => ({ ...prev, name: upper }));
+                      setWaOrderForm(prev => ({ ...prev, customerName: upper }));
+                    }}
+                    style={{ background: 'none', border: 'none', color: '#C084FC', fontSize: '0.68rem', cursor: 'pointer', padding: 0 }}
+                  >
+                    UPPERCASE
+                  </button>
+                </div>
+                <input
+                  type="text"
+                  value={frontConfig.name}
+                  onChange={(e) => {
+                    const val = e.target.value;
+                    setFrontConfig(prev => ({ ...prev, name: val }));
+                    setWaOrderForm(prev => ({ ...prev, customerName: val }));
+                  }}
+                  placeholder="e.g. ALEX MORGAN"
+                  style={{ width: '100%', padding: '8px 10px', borderRadius: '8px', background: '#1A0F2E', border: '1px solid rgba(168, 85, 247, 0.3)', color: '#FFFFFF', fontSize: '0.82rem', outline: 'none' }}
+                />
+                <div style={{ display: 'grid', gridTemplateColumns: '1.4fr 1fr', gap: '6px', marginTop: '6px' }}>
+                  <select
+                    value={frontConfig.fontFamily}
+                    onChange={(e) => setFrontConfig(prev => ({ ...prev, fontFamily: e.target.value }))}
+                    style={{ padding: '6px 8px', borderRadius: '6px', background: '#1A0F2E', border: '1px solid rgba(168, 85, 247, 0.25)', color: '#FFFFFF', fontSize: '0.75rem', outline: 'none' }}
+                  >
+                    {FONT_OPTIONS.map(f => <option key={f} value={f}>{f}</option>)}
+                  </select>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '4px', background: '#1A0F2E', padding: '2px 6px', borderRadius: '6px', border: '1px solid rgba(168, 85, 247, 0.25)' }}>
+                    <input
+                      type="color"
+                      value={customColors.nameColor || '#FFFFFF'}
+                      onChange={(e) => setCustomColors(prev => ({ ...prev, nameColor: e.target.value }))}
+                      style={{ width: '22px', height: '22px', border: 'none', borderRadius: '4px', cursor: 'pointer', background: 'transparent' }}
+                    />
+                    <span style={{ fontSize: '0.7rem', color: '#CBD5E1' }}>Color</span>
+                  </div>
+                </div>
+              </div>
+
+              {/* Role / Designation */}
+              <div>
+                <label style={{ fontSize: '0.76rem', fontWeight: 600, color: '#D8B4FE', display: 'block', marginBottom: '4px' }}>
+                  Role / Designation
+                </label>
+                <input
+                  type="text"
+                  value={frontConfig.role}
+                  onChange={(e) => {
+                    const val = e.target.value;
+                    setFrontConfig(prev => ({ ...prev, role: val }));
+                    setWaOrderForm(prev => ({ ...prev, role: val }));
+                  }}
+                  placeholder="e.g. FOUNDER & CEO"
+                  style={{ width: '100%', padding: '8px 10px', borderRadius: '8px', background: '#1A0F2E', border: '1px solid rgba(168, 85, 247, 0.3)', color: '#FFFFFF', fontSize: '0.82rem', outline: 'none' }}
+                />
+                <div style={{ display: 'grid', gridTemplateColumns: '1.4fr 1fr', gap: '6px', marginTop: '6px' }}>
+                  <select
+                    value={frontConfig.roleFontFamily || 'Inter'}
+                    onChange={(e) => setFrontConfig(prev => ({ ...prev, roleFontFamily: e.target.value }))}
+                    style={{ padding: '6px 8px', borderRadius: '6px', background: '#1A0F2E', border: '1px solid rgba(168, 85, 247, 0.25)', color: '#FFFFFF', fontSize: '0.75rem', outline: 'none' }}
+                  >
+                    {FONT_OPTIONS.map(f => <option key={f} value={f}>{f}</option>)}
+                  </select>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '4px', background: '#1A0F2E', padding: '2px 6px', borderRadius: '6px', border: '1px solid rgba(168, 85, 247, 0.25)' }}>
+                    <input
+                      type="color"
+                      value={customColors.roleColor || '#D8B4FE'}
+                      onChange={(e) => setCustomColors(prev => ({ ...prev, roleColor: e.target.value }))}
+                      style={{ width: '22px', height: '22px', border: 'none', borderRadius: '4px', cursor: 'pointer', background: 'transparent' }}
+                    />
+                    <span style={{ fontSize: '0.7rem', color: '#CBD5E1' }}>Color</span>
+                  </div>
+                </div>
+              </div>
+
+              {/* Company Name */}
+              <div>
+                <label style={{ fontSize: '0.76rem', fontWeight: 600, color: '#D8B4FE', display: 'block', marginBottom: '4px' }}>
+                  Company Name
+                </label>
+                <input
+                  type="text"
+                  value={frontConfig.company}
+                  onChange={(e) => {
+                    const val = e.target.value;
+                    setFrontConfig(prev => ({ ...prev, company: val }));
+                    setWaOrderForm(prev => ({ ...prev, company: val }));
+                  }}
+                  placeholder="e.g. FLOCARDS"
+                  style={{ width: '100%', padding: '8px 10px', borderRadius: '8px', background: '#1A0F2E', border: '1px solid rgba(168, 85, 247, 0.3)', color: '#FFFFFF', fontSize: '0.82rem', outline: 'none' }}
+                />
+              </div>
+
+              {/* Details / Subtitle */}
+              <div>
+                <label style={{ fontSize: '0.76rem', fontWeight: 600, color: '#D8B4FE', display: 'block', marginBottom: '4px' }}>
+                  Specialty / Details
+                </label>
+                <input
+                  type="text"
+                  value={frontConfig.details}
+                  onChange={(e) => setFrontConfig(prev => ({ ...prev, details: e.target.value }))}
+                  placeholder="e.g. CONNECTED IDENTITY SYSTEMS"
+                  style={{ width: '100%', padding: '8px 10px', borderRadius: '8px', background: '#1A0F2E', border: '1px solid rgba(168, 85, 247, 0.3)', color: '#FFFFFF', fontSize: '0.82rem', outline: 'none' }}
+                />
+              </div>
+
+              {/* Tagline */}
+              <div>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '4px' }}>
+                  <label style={{ fontSize: '0.76rem', fontWeight: 600, color: '#D8B4FE' }}>Tagline</label>
+                  <label style={{ display: 'flex', alignItems: 'center', gap: '4px', fontSize: '0.7rem', color: '#CBD5E1', cursor: 'pointer' }}>
+                    <input
+                      type="checkbox"
+                      checked={frontConfig.showTagline}
+                      onChange={(e) => setFrontConfig(prev => ({ ...prev, showTagline: e.target.checked }))}
+                      style={{ accentColor: '#7C3AED' }}
+                    />
+                    <span>Show</span>
+                  </label>
+                </div>
+                <input
+                  type="text"
+                  value={frontConfig.tagline}
+                  onChange={(e) => {
+                    const val = e.target.value;
+                    setFrontConfig(prev => ({ ...prev, tagline: val }));
+                    setWaOrderForm(prev => ({ ...prev, tagline: val }));
+                  }}
+                  placeholder="e.g. Bespoke Connected Cards"
+                  style={{ width: '100%', padding: '8px 10px', borderRadius: '8px', background: '#1A0F2E', border: '1px solid rgba(168, 85, 247, 0.3)', color: '#FFFFFF', fontSize: '0.82rem', outline: 'none' }}
+                />
+              </div>
+
+              {/* Text Alignment */}
+              <div>
+                <label style={{ fontSize: '0.76rem', fontWeight: 600, color: '#D8B4FE', display: 'block', marginBottom: '6px' }}>
+                  Text Alignment
+                </label>
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '6px' }}>
+                  {[
+                    { id: 'left', label: 'Left', icon: <AlignLeft size={14} /> },
+                    { id: 'center', label: 'Center', icon: <AlignCenter size={14} /> },
+                    { id: 'right', label: 'Right', icon: <AlignRight size={14} /> }
+                  ].map(align => (
+                    <button
+                      key={align.id}
+                      type="button"
+                      onClick={() => setFrontConfig(prev => ({ ...prev, alignment: align.id }))}
+                      style={{
+                        padding: '6px',
+                        borderRadius: '6px',
+                        border: frontConfig.alignment === align.id ? '1.5px solid #7C3AED' : '1px solid rgba(168, 85, 247, 0.2)',
+                        background: frontConfig.alignment === align.id ? 'rgba(124, 58, 237, 0.25)' : '#1A0F2E',
+                        color: frontConfig.alignment === align.id ? '#FFFFFF' : '#94A3B8',
+                        cursor: 'pointer',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        gap: '4px',
+                        fontSize: '0.74rem'
+                      }}
+                    >
+                      {align.icon}
+                      <span>{align.label}</span>
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              {/* Contactless NFC Icon Toggle */}
+              <div style={{ paddingTop: '8px', borderTop: '1px solid rgba(168, 85, 247, 0.2)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                <span style={{ fontSize: '0.76rem', color: '#D8B4FE' }}>Contactless NFC Symbol</span>
+                <label style={{ display: 'flex', alignItems: 'center', gap: '4px', fontSize: '0.72rem', color: '#CBD5E1', cursor: 'pointer' }}>
+                  <input
+                    type="checkbox"
+                    checked={frontConfig.showNfc}
+                    onChange={(e) => setFrontConfig(prev => ({ ...prev, showNfc: e.target.checked }))}
+                    style={{ accentColor: '#7C3AED' }}
+                  />
+                  <span>Display on Card</span>
+                </label>
+              </div>
+            </div>
+          )}
+
+          {/* TAB 2: LOGO CONTROLS */}
+          {leftTab === 'logo' && (
+            <div style={{ padding: '16px', display: 'flex', flexDirection: 'column', gap: '14px' }}>
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                <label style={{ fontSize: '0.78rem', fontWeight: 700, color: '#A855F7', textTransform: 'uppercase' }}>
+                  Logo &amp; Brand Emblem
+                </label>
+                <span style={{ fontSize: '0.7rem', color: '#94A3B8' }}>Front Side</span>
+              </div>
+
+              <input
+                ref={logoInputRef}
+                type="file"
+                accept="image/*"
+                onChange={handleLogoUpload}
+                style={{ display: 'none' }}
+              />
+
+              <button
+                type="button"
+                onClick={() => logoInputRef.current?.click()}
+                disabled={isUploadingLogo}
+                style={{
+                  width: '100%',
+                  padding: '12px',
+                  borderRadius: '10px',
+                  background: 'rgba(124, 58, 237, 0.2)',
+                  border: '1.5px dashed #7C3AED',
+                  color: '#FFFFFF',
+                  fontSize: '0.82rem',
+                  fontWeight: 600,
+                  cursor: isUploadingLogo ? 'wait' : 'pointer',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  gap: '8px'
+                }}
+              >
+                <Upload size={16} />
+                <span>{isUploadingLogo ? 'Uploading & Removing Background...' : (customerLogo.url ? 'Replace Logo' : 'Upload Client Logo')}</span>
+              </button>
+
+              {customerLogo.url ? (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+                  {/* Thumbnail & Quick Actions */}
+                  <div style={{
+                    padding: '10px 12px',
+                    borderRadius: '10px',
+                    background: '#1A0F2E',
+                    border: '1px solid rgba(168, 85, 247, 0.3)',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'space-between'
+                  }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                      <div style={{
+                        width: '42px',
+                        height: '42px',
+                        borderRadius: '8px',
+                        background: '#0F091C',
+                        backgroundImage: 'linear-gradient(45deg, #24163B 25%, transparent 25%), linear-gradient(-45deg, #24163B 25%, transparent 25%), linear-gradient(45deg, transparent 75%, #24163B 75%), linear-gradient(-45deg, transparent 75%, #24163B 75%)',
+                        backgroundSize: '8px 8px',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        overflow: 'hidden',
+                        border: '1px solid rgba(255,255,255,0.1)'
+                      }}>
+                        <img src={customerLogo.url} alt="Logo" style={{ maxWidth: '90%', maxHeight: '90%', objectFit: 'contain' }} />
+                      </div>
+                      <div>
+                        <span style={{ fontSize: '0.78rem', color: '#10B981', fontWeight: 700, display: 'block' }}>
+                          ✓ Logo Active
+                        </span>
+                        <span style={{ fontSize: '0.68rem', color: '#94A3B8' }}>
+                          {customerLogo.size}% scale · {customerLogo.rotation || 0}°
+                        </span>
+                      </div>
+                    </div>
+
+                    <button
+                      type="button"
+                      onClick={() => setShowSmartLogoModal(true)}
+                      style={{
+                        display: 'inline-flex',
+                        alignItems: 'center',
+                        gap: '4px',
+                        padding: '6px 12px',
+                        borderRadius: '6px',
+                        backgroundColor: '#7C3AED',
+                        color: '#FFFFFF',
+                        border: 'none',
+                        fontSize: '0.74rem',
+                        fontWeight: 700,
+                        cursor: 'pointer'
+                      }}
+                    >
+                      <Sparkles size={12} />
+                      <span>Smart Studio</span>
+                    </button>
+                  </div>
+
+                  {/* Sliders: Size & Rotation */}
+                  <div>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.72rem', color: '#CBD5E1', marginBottom: '4px' }}>
+                      <span>Size ({customerLogo.size}%)</span>
+                      <span>Rotation ({customerLogo.rotation || 0}°)</span>
+                    </div>
+                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px' }}>
+                      <input
+                        type="range"
+                        min="40"
+                        max="200"
+                        value={customerLogo.size}
+                        onChange={(e) => setCustomerLogo(prev => ({ ...prev, size: Number(e.target.value) }))}
+                        style={{ width: '100%', accentColor: '#7C3AED' }}
+                      />
+                      <input
+                        type="range"
+                        min="-180"
+                        max="180"
+                        value={customerLogo.rotation || 0}
+                        onChange={(e) => setCustomerLogo(prev => ({ ...prev, rotation: Number(e.target.value) }))}
+                        style={{ width: '100%', accentColor: '#7C3AED' }}
+                      />
+                    </div>
+                  </div>
+
+                  {/* Sliders: Offset X & Y */}
+                  <div>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.72rem', color: '#CBD5E1', marginBottom: '4px' }}>
+                      <span>Pos X ({customerLogo.posX || 0}px)</span>
+                      <span>Pos Y ({customerLogo.posY || 0}px)</span>
+                    </div>
+                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px' }}>
+                      <input
+                        type="range"
+                        min="-100"
+                        max="100"
+                        value={customerLogo.posX || 0}
+                        onChange={(e) => setCustomerLogo(prev => ({ ...prev, posX: Number(e.target.value) }))}
+                        style={{ width: '100%', accentColor: '#7C3AED' }}
+                      />
+                      <input
+                        type="range"
+                        min="-100"
+                        max="100"
+                        value={customerLogo.posY || 0}
+                        onChange={(e) => setCustomerLogo(prev => ({ ...prev, posY: Number(e.target.value) }))}
+                        style={{ width: '100%', accentColor: '#7C3AED' }}
+                      />
+                    </div>
+                  </div>
+
+                  {/* Circular Glass Badge Toggle & Actions */}
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', paddingTop: '4px' }}>
+                    <label style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '0.74rem', color: '#CBD5E1', cursor: 'pointer' }}>
+                      <input
+                        type="checkbox"
+                        checked={customerLogo.showCircleBadge}
+                        onChange={(e) => setCustomerLogo(prev => ({ ...prev, showCircleBadge: e.target.checked }))}
+                        style={{ accentColor: '#7C3AED' }}
+                      />
+                      <span>Circular Badge</span>
+                    </label>
+
+                    <button
+                      type="button"
+                      onClick={handleRemoveLogoBackground}
+                      disabled={isRemovingBg}
+                      style={{
+                        background: 'rgba(34, 197, 94, 0.15)',
+                        border: '1px solid rgba(34, 197, 94, 0.3)',
+                        color: '#4ADE80',
+                        padding: '4px 8px',
+                        borderRadius: '6px',
+                        fontSize: '0.7rem',
+                        fontWeight: 600,
+                        cursor: isRemovingBg ? 'wait' : 'pointer'
+                      }}
+                    >
+                      {isRemovingBg ? 'Cleaning...' : 'Clean BG'}
+                    </button>
+
+                    <button
+                      type="button"
+                      onClick={handleRemoveLogo}
+                      style={{ background: 'none', border: 'none', color: '#EF4444', fontSize: '0.72rem', cursor: 'pointer', fontWeight: 600 }}
+                    >
+                      Remove Logo
+                    </button>
+                  </div>
+
+                  {/* Template Type Toggle */}
+                  <div style={{ paddingTop: '8px', borderTop: '1px solid rgba(168, 85, 247, 0.2)' }}>
+                    <label style={{ fontSize: '0.74rem', color: '#D8B4FE', fontWeight: 600, display: 'block', marginBottom: '6px' }}>
+                      Card Layout Mode
+                    </label>
+                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '6px' }}>
+                      <button
+                        type="button"
+                        onClick={() => setTemplateType('standard')}
+                        style={{
+                          padding: '7px',
+                          borderRadius: '6px',
+                          fontSize: '0.74rem',
+                          border: templateType === 'standard' ? '1.5px solid #7C3AED' : '1px solid rgba(168, 85, 247, 0.2)',
+                          background: templateType === 'standard' ? 'rgba(124, 58, 237, 0.25)' : '#1A0F2E',
+                          color: templateType === 'standard' ? '#FFFFFF' : '#94A3B8',
+                          cursor: 'pointer'
+                        }}
+                      >
+                        Standard Card
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setTemplateType('customer_logo')}
+                        style={{
+                          padding: '7px',
+                          borderRadius: '6px',
+                          fontSize: '0.74rem',
+                          border: templateType === 'customer_logo' ? '1.5px solid #7C3AED' : '1px solid rgba(168, 85, 247, 0.2)',
+                          background: templateType === 'customer_logo' ? 'rgba(124, 58, 237, 0.25)' : '#1A0F2E',
+                          color: templateType === 'customer_logo' ? '#FFFFFF' : '#94A3B8',
+                          cursor: 'pointer'
+                        }}
+                      >
+                        Logo Centric
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              ) : (
+                <div style={{ padding: '16px', background: '#1A0F2E', borderRadius: '10px', textAlign: 'center', border: '1px solid rgba(168, 85, 247, 0.15)' }}>
+                  <p style={{ margin: 0, fontSize: '0.76rem', color: '#94A3B8' }}>
+                    No custom logo uploaded yet. Upload a company emblem, monogram, or brand mark above.
+                  </p>
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* TAB 3: QR CODE & DESTINATION */}
+          {leftTab === 'qr' && (
+            <div style={{ padding: '16px', display: 'flex', flexDirection: 'column', gap: '14px' }}>
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                <label style={{ fontSize: '0.78rem', fontWeight: 700, color: '#A855F7', textTransform: 'uppercase' }}>
+                  QR Code &amp; Back Details
+                </label>
+                <span style={{ fontSize: '0.7rem', color: '#94A3B8' }}>Back Side</span>
+              </div>
+
+              <div>
+                <label style={{ fontSize: '0.76rem', fontWeight: 600, color: '#D8B4FE', display: 'block', marginBottom: '4px' }}>
+                  Destination URL (NFC &amp; QR)
+                </label>
+                <input
+                  type="text"
+                  value={backConfig.qrUrl}
+                  onChange={(e) => setBackConfig(prev => ({ ...prev, qrUrl: e.target.value }))}
+                  placeholder="https://flocard.in/client"
+                  style={{ width: '100%', padding: '8px 10px', borderRadius: '8px', background: '#1A0F2E', border: '1px solid rgba(168, 85, 247, 0.3)', color: '#FFFFFF', fontSize: '0.82rem', outline: 'none' }}
+                />
+              </div>
+
+              <div>
+                <label style={{ fontSize: '0.76rem', fontWeight: 600, color: '#D8B4FE', display: 'block', marginBottom: '4px' }}>
+                  QR Subtext / Call-to-action
+                </label>
+                <input
+                  type="text"
+                  value={backConfig.subtext}
+                  onChange={(e) => setBackConfig(prev => ({ ...prev, subtext: e.target.value }))}
+                  placeholder="SCAN ME"
+                  style={{ width: '100%', padding: '8px 10px', borderRadius: '8px', background: '#1A0F2E', border: '1px solid rgba(168, 85, 247, 0.3)', color: '#FFFFFF', fontSize: '0.82rem', outline: 'none' }}
+                />
+              </div>
+
+              <div>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '4px' }}>
+                  <label style={{ fontSize: '0.76rem', fontWeight: 600, color: '#D8B4FE' }}>Specs / Feature Line</label>
+                  <label style={{ display: 'flex', alignItems: 'center', gap: '4px', fontSize: '0.7rem', color: '#CBD5E1', cursor: 'pointer' }}>
+                    <input
+                      type="checkbox"
+                      checked={backConfig.showNfcSpecs}
+                      onChange={(e) => setBackConfig(prev => ({ ...prev, showNfcSpecs: e.target.checked }))}
+                      style={{ accentColor: '#7C3AED' }}
+                    />
+                    <span>Show</span>
+                  </label>
+                </div>
+                <input
+                  type="text"
+                  value={backConfig.specsText}
+                  onChange={(e) => setBackConfig(prev => ({ ...prev, specsText: e.target.value }))}
+                  placeholder="NFC | PORTFOLIO | CONTACT | CONNECT"
+                  style={{ width: '100%', padding: '8px 10px', borderRadius: '8px', background: '#1A0F2E', border: '1px solid rgba(168, 85, 247, 0.3)', color: '#FFFFFF', fontSize: '0.82rem', outline: 'none' }}
+                />
+              </div>
+
+              <div>
+                <label style={{ fontSize: '0.76rem', fontWeight: 600, color: '#D8B4FE', display: 'block', marginBottom: '4px' }}>
+                  Short Brand URL
+                </label>
+                <input
+                  type="text"
+                  value={backConfig.brandUrl}
+                  onChange={(e) => setBackConfig(prev => ({ ...prev, brandUrl: e.target.value }))}
+                  placeholder="flocard.in/client"
+                  style={{ width: '100%', padding: '8px 10px', borderRadius: '8px', background: '#1A0F2E', border: '1px solid rgba(168, 85, 247, 0.3)', color: '#FFFFFF', fontSize: '0.82rem', outline: 'none' }}
+                />
+              </div>
+
+              <div>
+                <label style={{ fontSize: '0.76rem', fontWeight: 600, color: '#D8B4FE', display: 'block', marginBottom: '6px' }}>
+                  QR Code Accent Color
+                </label>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '8px', background: '#1A0F2E', padding: '6px 10px', borderRadius: '8px', border: '1px solid rgba(168, 85, 247, 0.3)' }}>
+                  <input
+                    type="color"
+                    value={customColors.qrColor || '#FFFFFF'}
+                    onChange={(e) => setCustomColors(prev => ({ ...prev, qrColor: e.target.value }))}
+                    style={{ width: '28px', height: '28px', border: 'none', borderRadius: '6px', cursor: 'pointer', background: 'transparent' }}
+                  />
+                  <span style={{ fontSize: '0.76rem', color: '#CBD5E1' }}>QR &amp; Icon Color</span>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* TAB 4: STYLE & EDITIONS */}
+          {leftTab === 'style' && (
             <div style={{ padding: '16px', display: 'flex', flexDirection: 'column', gap: '16px' }}>
+              <div>
+                <label style={{ fontSize: '0.78rem', fontWeight: 700, color: '#A855F7', textTransform: 'uppercase', display: 'block', marginBottom: '4px' }}>
+                  Curated Theme Presets
+                </label>
+                <p style={{ margin: '0 0 12px', fontSize: '0.72rem', color: '#B9AEC9' }}>
+                  1-Click to apply typography, accents, and finish to your current client card.
+                </p>
+
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                  {PRESET_THEMES.map((theme) => {
+                    const isSelected = selectedThemeId === theme.id && edition === theme.edition;
+                    return (
+                      <div
+                        key={theme.id}
+                        onClick={() => handleApplyTheme(theme)}
+                        style={{
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'space-between',
+                          padding: '10px 14px',
+                          borderRadius: '12px',
+                          background: theme.previewBg,
+                          border: isSelected ? `2px solid ${theme.accentColor}` : '1px solid rgba(255, 255, 255, 0.1)',
+                          cursor: 'pointer',
+                          boxShadow: isSelected ? `0 0 14px ${theme.accentColor}44` : 'none',
+                          transition: 'all 0.2s ease'
+                        }}
+                      >
+                        <div>
+                          <div style={{ fontWeight: 700, fontSize: '0.84rem', color: theme.accentColor }}>
+                            {theme.name}
+                          </div>
+                          <div style={{ fontSize: '0.7rem', color: '#D4D4D8', marginTop: '2px' }}>
+                            {theme.fontFamily} · {theme.edition.toUpperCase()} · {theme.templateType === 'customer_logo' ? 'Logo Front' : 'Standard'}
+                          </div>
+                        </div>
+
+                        <span
+                          style={{
+                            fontSize: '0.68rem',
+                            fontWeight: 700,
+                            padding: '2px 8px',
+                            borderRadius: '9999px',
+                            backgroundColor: 'rgba(255, 255, 255, 0.1)',
+                            color: theme.accentColor,
+                            border: `1px solid ${theme.accentColor}55`
+                          }}
+                        >
+                          {theme.badge}
+                        </span>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+
+              {/* Published Reusable Templates */}
+              {templates && templates.length > 0 && (
+                <div style={{ paddingTop: '14px', borderTop: '1px solid rgba(168, 85, 247, 0.2)' }}>
+                  <label style={{ fontSize: '0.78rem', fontWeight: 700, color: '#A855F7', textTransform: 'uppercase', display: 'block', marginBottom: '8px' }}>
+                    Custom Saved Templates
+                  </label>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+                    {templates.map((tmpl) => (
+                      <div
+                        key={tmpl.id}
+                        onClick={() => {
+                          pushHistory({ frontConfig, backConfig, customColors, customerLogo, edition, templateType });
+                          if (tmpl.edition) setEdition(tmpl.edition);
+                          if (tmpl.templateType) setTemplateType(tmpl.templateType);
+                          if (tmpl.front) setFrontConfig(prev => ({ ...prev, ...tmpl.front }));
+                          if (tmpl.back) setBackConfig(prev => ({ ...prev, ...tmpl.back }));
+                          if (tmpl.customColors) setCustomColors(tmpl.customColors);
+                          showToast(`Loaded template: ${tmpl.name}`);
+                        }}
+                        style={{
+                          padding: '8px 12px',
+                          borderRadius: '8px',
+                          background: '#1A0F2E',
+                          border: '1px solid rgba(168, 85, 247, 0.2)',
+                          fontSize: '0.8rem',
+                          color: '#FFFFFF',
+                          cursor: 'pointer',
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'space-between'
+                        }}
+                      >
+                        <span>{tmpl.name}</span>
+                        <span style={{ fontSize: '0.68rem', color: '#A855F7', textTransform: 'uppercase' }}>{tmpl.edition}</span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {/* Card Material & Finish Quick Selector */}
+              <div style={{ paddingTop: '16px', borderTop: '1px solid rgba(168, 85, 247, 0.2)' }}>
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '10px' }}>
+                  <label style={{ fontSize: '0.78rem', fontWeight: 700, color: '#A855F7', textTransform: 'uppercase' }}>
+                    Card Edition &amp; Finish
+                  </label>
+                  <span style={{ fontSize: '0.7rem', color: '#94A3B8' }}>{EDITIONS[edition]?.name}</span>
+                </div>
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '10px' }}>
+                  {Object.keys(EDITIONS).map((key) => {
+                    const ed = EDITIONS[key];
+                    const active = edition === key;
+                    const swatchBg = key === 'gold' ? 'linear-gradient(135deg, #FFF0A6 0%, #E9C766 50%, #C9972C 100%)'
+                      : key === 'platinum' ? 'linear-gradient(135deg, #FFFFFF 0%, #CBD5E1 50%, #94A3B8 100%)'
+                      : key === 'metal' ? 'linear-gradient(135deg, #64748B 0%, #334155 50%, #0F172A 100%)'
+                      : key === 'white' ? 'linear-gradient(135deg, #FFFFFF 0%, #F1F5F9 50%, #E2E8F0 100%)'
+                      : 'linear-gradient(135deg, #C084FC 0%, #A855F7 50%, #6B00FF 100%)';
+                    const ringColor = key === 'gold' ? '#E9C766' : key === 'platinum' ? '#CBD5E1' : key === 'white' ? '#FFFFFF' : '#A855F7';
+
+                    return (
+                      <button
+                        key={key}
+                        type="button"
+                        onClick={() => {
+                          pushHistory({ frontConfig, backConfig, customColors, customerLogo, edition, templateType });
+                          setEdition(key);
+                        }}
+                        style={{
+                          padding: '12px 10px',
+                          borderRadius: '12px',
+                          background: active
+                            ? 'linear-gradient(135deg, rgba(168, 85, 247, 0.22), rgba(107, 0, 255, 0.32))'
+                            : 'rgba(255, 255, 255, 0.03)',
+                          border: active ? `1.5px solid ${ringColor}` : '1px solid rgba(255, 255, 255, 0.08)',
+                          boxShadow: active ? `0 0 16px ${ringColor}33` : 'none',
+                          cursor: 'pointer',
+                          display: 'flex',
+                          flexDirection: 'column',
+                          alignItems: 'flex-start',
+                          gap: '8px',
+                          transition: 'all 0.18s ease',
+                          textAlign: 'left'
+                        }}
+                      >
+                        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', width: '100%' }}>
+                          <div
+                            style={{
+                              width: '24px',
+                              height: '24px',
+                              borderRadius: '50%',
+                              background: swatchBg,
+                              border: active ? `2px solid ${ringColor}` : '1.5px solid rgba(255, 255, 255, 0.3)',
+                              boxShadow: '0 2px 6px rgba(0,0,0,0.4)',
+                              flexShrink: 0
+                            }}
+                          />
+                          {active && (
+                            <span style={{ fontSize: '0.66rem', fontWeight: 700, padding: '2px 6px', borderRadius: '4px', background: ringColor, color: key === 'gold' || key === 'white' || key === 'platinum' ? '#000000' : '#FFFFFF' }}>
+                              ACTIVE
+                            </span>
+                          )}
+                        </div>
+                        <div>
+                          <div style={{ fontSize: '0.82rem', fontWeight: 700, color: active ? '#FFFFFF' : '#CBD5E1' }}>
+                            {ed.name}
+                          </div>
+                          <div style={{ fontSize: '0.70rem', color: '#94A3B8', marginTop: '2px' }}>
+                            ₹{ed.price?.toLocaleString('en-IN') || '2,199'}
+                          </div>
+                        </div>
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* TAB 5: ORDER & CUSTOMER DETAILS (ADMIN FIELDS) */}
+          {leftTab === 'order' && (
+            <div style={{ padding: '16px', display: 'flex', flexDirection: 'column', gap: '14px' }}>
               <div style={{
                 padding: '12px 14px',
                 borderRadius: '12px',
-                background: 'rgba(37, 211, 102, 0.1)',
-                border: '1px solid rgba(37, 211, 102, 0.3)'
+                background: selectedOrderId ? 'rgba(124, 58, 237, 0.15)' : 'rgba(56, 189, 248, 0.1)',
+                border: selectedOrderId ? '1px solid rgba(168, 85, 247, 0.4)' : '1px solid rgba(56, 189, 248, 0.3)'
               }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '8px', color: '#25D366', fontWeight: 700, fontSize: '0.84rem' }}>
-                  <MessageSquare size={16} />
-                  <span>Direct WhatsApp Client Booking</span>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '8px', color: selectedOrderId ? '#C084FC' : '#38BDF8', fontWeight: 700, fontSize: '0.84rem' }}>
+                  <Package size={16} />
+                  <span>{selectedOrderId ? `Order: ${selectedOrderId}` : 'Customer & Order Details'}</span>
                 </div>
                 <p style={{ margin: '4px 0 0', fontSize: '0.74rem', color: '#B9AEC9', lineHeight: 1.4 }}>
-                  Enter client information received via WhatsApp. Typing updates the card artwork in real-time.
+                  {selectedOrderId
+                    ? 'Updating details for this order. Changes sync to customer records and card artwork.'
+                    : 'Enter customer contact info and delivery details to create a new order directly.'}
                 </p>
               </div>
 
@@ -1066,7 +2085,7 @@ export default function AdminCardDesignStudio({ onAssignToOrder = null, initialD
                   <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '6px' }}>
                     <div style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '0.74rem', fontWeight: 600, color: '#D8B4FE' }}>
                       <Users size={13} color="#C084FC" />
-                      <span>Select Existing Customer (Optional)</span>
+                      <span>Select Existing Customer</span>
                     </div>
                     {selectedWaCustomerId && (
                       <button
@@ -1222,7 +2241,7 @@ export default function AdminCardDesignStudio({ onAssignToOrder = null, initialD
 
                 <div>
                   <label style={{ fontSize: '0.76rem', fontWeight: 600, color: '#D8B4FE', display: 'block', marginBottom: '4px' }}>
-                    Customer WhatsApp Phone *
+                    Phone Number
                   </label>
                   <input
                     type="text"
@@ -1357,182 +2376,16 @@ export default function AdminCardDesignStudio({ onAssignToOrder = null, initialD
                 </div>
               </div>
 
-              {/* Upload Logo Shortcut */}
-              <div>
-                <label style={{ fontSize: '0.76rem', fontWeight: 600, color: '#D8B4FE', display: 'block', marginBottom: '6px' }}>
-                  Client Logo Artwork
-                </label>
-
-                {customerLogo.url ? (
-                  <div style={{
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'space-between',
-                    padding: '10px 12px',
-                    background: '#1A0F2E',
-                    border: '1px solid rgba(168, 85, 247, 0.4)',
-                    borderRadius: '10px',
-                    gap: '12px'
-                  }}>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '10px', minWidth: 0 }}>
-                      <div style={{
-                        width: '38px',
-                        height: '38px',
-                        borderRadius: '8px',
-                        background: 'rgba(255, 255, 255, 0.08)',
-                        display: 'flex',
-                        alignItems: 'center',
-                        justifyContent: 'center',
-                        overflow: 'hidden',
-                        border: '1px solid rgba(255, 255, 255, 0.12)',
-                        flexShrink: 0
-                      }}>
-                        <img
-                          src={customerLogo.url}
-                          alt="Client Logo Preview"
-                          style={{ maxWidth: '100%', maxHeight: '100%', objectFit: 'contain' }}
-                          onError={(e) => {
-                            e.currentTarget.style.display = 'none';
-                          }}
-                        />
-                      </div>
-                      <div style={{ minWidth: 0 }}>
-                        <div style={{ fontSize: '0.78rem', fontWeight: 700, color: '#FFFFFF', display: 'flex', alignItems: 'center', gap: '6px' }}>
-                          <span style={{ whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>Client Logo</span>
-                          <span style={{ fontSize: '0.62rem', padding: '1px 6px', borderRadius: '4px', background: 'rgba(34, 197, 94, 0.2)', color: '#4ADE80', fontWeight: 600 }}>Active</span>
-                        </div>
-                        <div style={{ fontSize: '0.68rem', color: '#B9AEC9' }}>Applied to card canvas</div>
-                      </div>
-                    </div>
-
-                    <div style={{ display: 'flex', gap: '6px', flexShrink: 0 }}>
-                      <button
-                        type="button"
-                        onClick={handleRemoveLogoBackground}
-                        disabled={isUploadingLogo || isRemovingBg}
-                        title="Remove white/solid background and convert to transparent PNG"
-                        style={{
-                          padding: '6px 10px',
-                          background: 'rgba(34, 197, 94, 0.2)',
-                          border: '1px solid rgba(34, 197, 94, 0.4)',
-                          borderRadius: '6px',
-                          fontSize: '0.72rem',
-                          color: '#4ADE80',
-                          fontWeight: 600,
-                          cursor: (isUploadingLogo || isRemovingBg) ? 'not-allowed' : 'pointer',
-                          display: 'flex',
-                          alignItems: 'center',
-                          gap: '4px'
-                        }}
-                      >
-                        <Sparkles size={13} />
-                        <span>{isRemovingBg ? 'Removing...' : 'Remove BG'}</span>
-                      </button>
-
-                      <label style={{
-                        padding: '6px 10px',
-                        background: 'rgba(168, 85, 247, 0.2)',
-                        border: '1px solid rgba(168, 85, 247, 0.4)',
-                        borderRadius: '6px',
-                        fontSize: '0.72rem',
-                        color: '#D8B4FE',
-                        fontWeight: 600,
-                        cursor: isUploadingLogo ? 'not-allowed' : 'pointer',
-                        display: 'flex',
-                        alignItems: 'center',
-                        gap: '4px'
-                      }}>
-                        {isUploadingLogo ? (
-                          <RotateCw size={13} style={{ animation: 'spin 1s linear infinite' }} />
-                        ) : (
-                          <ImageIcon size={13} />
-                        )}
-                        <span>{isUploadingLogo ? 'Uploading...' : 'Change'}</span>
-                        <input
-                          type="file"
-                          accept="image/png,image/jpeg,image/svg+xml,image/webp"
-                          onChange={handleLogoUpload}
-                          disabled={isUploadingLogo}
-                          style={{ display: 'none' }}
-                        />
-                      </label>
-                      <button
-                        type="button"
-                        onClick={handleRemoveLogo}
-                        disabled={isUploadingLogo}
-                        title="Remove Client Logo"
-                        style={{
-                          padding: '6px 8px',
-                          background: 'rgba(239, 68, 68, 0.15)',
-                          border: '1px solid rgba(239, 68, 68, 0.3)',
-                          borderRadius: '6px',
-                          color: '#F87171',
-                          cursor: isUploadingLogo ? 'not-allowed' : 'pointer',
-                          display: 'flex',
-                          alignItems: 'center',
-                          justifyContent: 'center'
-                        }}
-                      >
-                        <X size={14} />
-                      </button>
-                    </div>
-                  </div>
-                ) : (
-                  <label style={{
-                    display: 'flex',
-                    flexDirection: 'column',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    gap: '6px',
-                    padding: '12px',
-                    background: '#1A0F2E',
-                    border: '1.5px dashed rgba(168, 85, 247, 0.4)',
-                    borderRadius: '10px',
-                    cursor: isUploadingLogo ? 'not-allowed' : 'pointer',
-                    transition: 'all 0.2s ease',
-                    opacity: isUploadingLogo ? 0.7 : 1
-                  }}>
-                    {isUploadingLogo ? (
-                      <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                        <RotateCw size={16} color="#A855F7" style={{ animation: 'spin 1s linear infinite' }} />
-                        <span style={{ fontSize: '0.78rem', color: '#D8B4FE', fontWeight: 600 }}>
-                          Uploading brand artwork to storage...
-                        </span>
-                      </div>
-                    ) : (
-                      <>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                          <ImageIcon size={16} color="#A855F7" />
-                          <span style={{ fontSize: '0.8rem', color: '#FFFFFF', fontWeight: 600 }}>
-                            Upload Client Logo
-                          </span>
-                        </div>
-                        <span style={{ fontSize: '0.68rem', color: '#B9AEC9' }}>
-                          PNG, JPG, SVG, WebP (Transparent PNG recommended, max 10MB)
-                        </span>
-                      </>
-                    )}
-                    <input
-                      type="file"
-                      accept="image/png,image/jpeg,image/svg+xml,image/webp"
-                      onChange={handleLogoUpload}
-                      disabled={isUploadingLogo}
-                      style={{ display: 'none' }}
-                    />
-                  </label>
-                )}
-              </div>
-
-              {/* Big Create Order Button */}
+              {/* Big Action Button */}
               <button
                 type="button"
-                onClick={handleCreateWhatsAppOrder}
+                onClick={handleCreateOrUpdateOrder}
                 style={{
                   width: '100%',
                   padding: '12px',
                   borderRadius: '10px',
                   border: 'none',
-                  background: 'linear-gradient(135deg, #25D366, #128C7E)',
+                  background: 'linear-gradient(135deg, #7C3AED, #6D28D9)',
                   color: '#FFFFFF',
                   fontSize: '0.9rem',
                   fontWeight: 700,
@@ -1541,210 +2394,13 @@ export default function AdminCardDesignStudio({ onAssignToOrder = null, initialD
                   alignItems: 'center',
                   justifyContent: 'center',
                   gap: '8px',
-                  boxShadow: '0 4px 16px rgba(37, 211, 102, 0.35)',
+                  boxShadow: '0 4px 16px rgba(124, 58, 237, 0.35)',
                   marginTop: '6px'
                 }}
               >
-                <MessageSquare size={18} />
-                <span>Create & Send via WhatsApp</span>
+                <CheckCircle2 size={18} />
+                <span>{selectedOrderId ? 'Save & Update Order' : 'Create Card Order'}</span>
               </button>
-            </div>
-          )}
-
-          {/* LEFT TAB 2: SELECT THEMES & PRESETS */}
-          {leftTab === 'themes' && (
-            <div style={{ padding: '16px', display: 'flex', flexDirection: 'column', gap: '16px' }}>
-              <div>
-                <label style={{ fontSize: '0.78rem', fontWeight: 700, color: '#A855F7', textTransform: 'uppercase', display: 'block', marginBottom: '4px' }}>
-                  Curated Theme Presets
-                </label>
-                <p style={{ margin: '0 0 12px', fontSize: '0.72rem', color: '#B9AEC9' }}>
-                  1-Click to apply typography, accents, and finish to your current client card.
-                </p>
-
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-                  {PRESET_THEMES.map((theme) => {
-                    const isSelected = selectedThemeId === theme.id && edition === theme.edition;
-                    return (
-                      <div
-                        key={theme.id}
-                        onClick={() => handleApplyTheme(theme)}
-                        style={{
-                          display: 'flex',
-                          alignItems: 'center',
-                          justifyContent: 'space-between',
-                          padding: '10px 14px',
-                          borderRadius: '12px',
-                          background: theme.previewBg,
-                          border: isSelected ? `2px solid ${theme.accentColor}` : '1px solid rgba(255, 255, 255, 0.1)',
-                          cursor: 'pointer',
-                          boxShadow: isSelected ? `0 0 14px ${theme.accentColor}44` : 'none',
-                          transition: 'all 0.2s ease'
-                        }}
-                      >
-                        <div>
-                          <div style={{ fontWeight: 700, fontSize: '0.84rem', color: theme.accentColor }}>
-                            {theme.name}
-                          </div>
-                          <div style={{ fontSize: '0.7rem', color: '#D4D4D8', marginTop: '2px' }}>
-                            {theme.fontFamily} · {theme.edition.toUpperCase()} · {theme.templateType === 'customer_logo' ? 'Logo Front' : 'Standard'}
-                          </div>
-                        </div>
-
-                        <span
-                          style={{
-                            fontSize: '0.68rem',
-                            fontWeight: 700,
-                            padding: '2px 8px',
-                            borderRadius: '9999px',
-                            backgroundColor: 'rgba(255, 255, 255, 0.1)',
-                            color: theme.accentColor,
-                            border: `1px solid ${theme.accentColor}55`
-                          }}
-                        >
-                          {theme.badge}
-                        </span>
-                      </div>
-                    );
-                  })}
-                </div>
-              </div>
-
-              {/* Published Reusable Templates */}
-              {templates && templates.length > 0 && (
-                <div style={{ paddingTop: '14px', borderTop: '1px solid rgba(168, 85, 247, 0.2)' }}>
-                  <label style={{ fontSize: '0.78rem', fontWeight: 700, color: '#A855F7', textTransform: 'uppercase', display: 'block', marginBottom: '8px' }}>
-                    Custom Saved Templates
-                  </label>
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
-                    {templates.map((tmpl) => (
-                      <div
-                        key={tmpl.id}
-                        onClick={() => {
-                          pushHistory({ frontConfig, backConfig, customColors, customerLogo, edition, templateType });
-                          if (tmpl.edition) setEdition(tmpl.edition);
-                          if (tmpl.templateType) setTemplateType(tmpl.templateType);
-                          if (tmpl.front) setFrontConfig(prev => ({ ...prev, ...tmpl.front }));
-                          if (tmpl.back) setBackConfig(prev => ({ ...prev, ...tmpl.back }));
-                          if (tmpl.customColors) setCustomColors(tmpl.customColors);
-                          showToast(`Loaded template: ${tmpl.name}`);
-                        }}
-                        style={{
-                          padding: '8px 12px',
-                          borderRadius: '8px',
-                          background: '#1A0F2E',
-                          border: '1px solid rgba(168, 85, 247, 0.2)',
-                          fontSize: '0.8rem',
-                          color: '#FFFFFF',
-                          cursor: 'pointer',
-                          display: 'flex',
-                          alignItems: 'center',
-                          justifyContent: 'space-between'
-                        }}
-                      >
-                        <span>{tmpl.name}</span>
-                        <span style={{ fontSize: '0.68rem', color: '#A855F7', textTransform: 'uppercase' }}>{tmpl.edition}</span>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              )}
-
-              {/* Card Material & Finish Quick Selector */}
-              <div style={{ paddingTop: '14px', borderTop: '1px solid rgba(168, 85, 247, 0.2)' }}>
-                <label style={{ fontSize: '0.78rem', fontWeight: 700, color: '#A855F7', textTransform: 'uppercase', display: 'block', marginBottom: '8px' }}>
-                  Material &amp; Finish
-                </label>
-                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '8px' }}>
-                  {Object.keys(EDITIONS).map((key) => {
-                    const ed = EDITIONS[key];
-                    const active = edition === key;
-                    return (
-                      <button
-                        key={key}
-                        onClick={() => {
-                          pushHistory({ frontConfig, backConfig, customColors, customerLogo, edition, templateType });
-                          setEdition(key);
-                        }}
-                        style={{
-                          padding: '10px 8px',
-                          borderRadius: '10px',
-                          background: active ? 'linear-gradient(135deg, rgba(168, 85, 247, 0.25), rgba(107, 0, 255, 0.35))' : '#1A0F2E',
-                          border: active ? '1.5px solid #A855F7' : '1px solid rgba(168, 85, 247, 0.15)',
-                          color: active ? '#FFFFFF' : '#B9AEC9',
-                          fontSize: '0.8rem',
-                          fontWeight: 600,
-                          cursor: 'pointer',
-                          textAlign: 'center'
-                        }}
-                      >
-                        {ed.name.split(' ')[0]}
-                      </button>
-                    );
-                  })}
-                </div>
-              </div>
-            </div>
-          )}
-
-          {/* LEFT TAB 3: LAYERS & ELEMENTS */}
-          {leftTab === 'layers' && (
-            <div style={{ padding: '16px', display: 'flex', flexDirection: 'column', gap: '16px' }}>
-              <div>
-                <label style={{ fontSize: '0.78rem', fontWeight: 700, color: '#A855F7', textTransform: 'uppercase', display: 'block', marginBottom: '8px' }}>
-                  Layers &amp; Elements
-                </label>
-
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
-                  {[
-                    { id: 'name', label: 'Customer Full Name', side: 'front' },
-                    { id: 'role', label: 'Executive Role', side: 'front' },
-                    { id: 'company', label: 'Company / Organization', side: 'front' },
-                    { id: 'tagline', label: 'Tagline & Bio', side: 'front' },
-                    { id: 'details', label: 'Additional Details', side: 'front' },
-                    { id: 'nfcIcon', label: 'Contactless NFC Symbol', side: 'front' },
-                    { id: 'logo', label: 'Brand Emblem / Logo', side: 'front' },
-                    { id: 'qrCode', label: 'Permanent QR Code', side: 'back' }
-                  ].map((layer) => {
-                    const isSelected = selectedElement === layer.id;
-                    const isVisible = layerVisibility[layer.id] ?? true;
-
-                    return (
-                      <div
-                        key={layer.id}
-                        onClick={() => {
-                          setSelectedElement(layer.id);
-                          if (layer.side !== activeSide) setActiveSide(layer.side);
-                        }}
-                        style={{
-                          display: 'flex',
-                          alignItems: 'center',
-                          justifyContent: 'space-between',
-                          padding: '8px 12px',
-                          borderRadius: '8px',
-                          background: isSelected ? '#261442' : '#170D29',
-                          border: isSelected ? '1px solid #A855F7' : '1px solid rgba(168, 85, 247, 0.1)',
-                          cursor: 'pointer'
-                        }}
-                      >
-                        <span style={{ fontSize: '0.82rem', color: isSelected ? '#FFFFFF' : '#C8BDDC', fontWeight: isSelected ? 600 : 400 }}>
-                          {layer.label}
-                        </span>
-                        <button
-                          type="button"
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            setLayerVisibility(prev => ({ ...prev, [layer.id]: !isVisible }));
-                          }}
-                          style={{ background: 'transparent', border: 'none', color: isVisible ? '#A855F7' : '#6B5E82', cursor: 'pointer', padding: 0 }}
-                        >
-                          {isVisible ? <Eye size={14} /> : <EyeOff size={14} />}
-                        </button>
-                      </div>
-                    );
-                  })}
-                </div>
-              </div>
             </div>
           )}
 
@@ -1851,7 +2507,13 @@ export default function AdminCardDesignStudio({ onAssignToOrder = null, initialD
               {preview3D ? (
                 <Card3DPreview
                   edition={edition}
-                  width={540}
+                  templateType={templateType}
+                  frontConfig={frontConfig}
+                  backConfig={backConfig}
+                  customColors={customColors}
+                  customerLogo={customerLogo}
+                  flocardLogo={flocardLogo}
+                  width={580}
                   allowFlip={true}
                 />
               ) : (
@@ -1863,7 +2525,7 @@ export default function AdminCardDesignStudio({ onAssignToOrder = null, initialD
                     config={fullConfig}
                     showGuides={showGuides}
                     showBleed={showBleed}
-                    width={540}
+                    width={580}
                   />
                 </div>
               )}
@@ -2445,7 +3107,7 @@ export default function AdminCardDesignStudio({ onAssignToOrder = null, initialD
           setFrontConfig(prev => ({ ...prev, customLogo: updatedConfig.url }));
           showToast('Smart logo edits applied to card canvas.');
         }}
-        isLight={false}
+        isLight={isLight}
         cardEdition={edition}
       />
 

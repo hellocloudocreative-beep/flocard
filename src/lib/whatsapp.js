@@ -365,7 +365,7 @@ export function createPrintOrderWhatsAppMessage(order) {
   const designName = order.designTitle || order.design?.title || `${customerName}'s Card`;
   const role = order.role || order.design?.front?.role || order.frontConfig?.role || '';
   const company = order.company || order.design?.company || order.frontConfig?.company || '';
-  const tagline = order.tagline || order.design?.front?.tagline || order.frontConfig?.tagline || 'One Tap. Every Connection.';
+  const tagline = order.tagline || order.design?.front?.tagline || order.frontConfig?.tagline || '';
   const templateName = order.templateType === 'customer_logo' ? 'Custom Logo Design (Pages 4–6)' : 'Standard FLOCARDS Design (Pages 1–3)';
   const total = order.totalAmount || order.pricing?.totalAmount || 1899;
   const hasInvoice = order.hasInvoiceAddon ? 'Included (Official Business Tax Invoice)' : 'Not requested';

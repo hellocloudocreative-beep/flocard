@@ -446,3 +446,70 @@ table {
   .print\:border-none { border: none !important; }
   .print\:shadow-none { box-shadow: none !important; }
 }
+
+/* ==========================================================================
+   LIGHT THEME SUPPORT FOR ADMIN SALES & LEDGER MODULE
+   ========================================================================== */
+html[data-theme="light"] .bg-\[\#080410\],
+html[data-theme="light"] .bg-\[\#0A0614\],
+html[data-theme="light"] .bg-\[\#0C0717\],
+html[data-theme="light"] .bg-\[\#0D0819\],
+html[data-theme="light"] .bg-\[\#10081C\],
+html[data-theme="light"] .bg-\[\#120B22\],
+html[data-theme="light"] .bg-\[\#140C26\],
+html[data-theme="light"] .bg-\[\#180F2E\] {
+  background-color: #FFFFFF !important;
+  border-color: #EDE6F8 !important;
+}
+
+html[data-theme="light"] .text-white {
+  color: #181126 !important;
+}
+
+html[data-theme="light"] .text-zinc-200,
+html[data-theme="light"] .text-zinc-300 {
+  color: #2D2240 !important;
+}
+
+html[data-theme="light"] .text-zinc-400 {
+  color: #6E6285 !important;
+}
+
+html[data-theme="light"] .text-zinc-500 {
+  color: #8E82A5 !important;
+}
+
+html[data-theme="light"] .text-purple-300,
+html[data-theme="light"] .text-purple-400 {
+  color: #7C3AED !important;
+}
+
+html[data-theme="light"] .text-purple-300\/70 {
+  color: #8B5CF6 !important;
+}
+
+html[data-theme="light"] .border-purple-500\/10,
+html[data-theme="light"] .border-purple-500\/15,
+html[data-theme="light"] .border-purple-500\/20,
+html[data-theme="light"] .border-purple-500\/30,
+html[data-theme="light"] .border-white\/5,
+html[data-theme="light"] .border-white\/10 {
+  border-color: #EDE6F8 !important;
+}
+
+html[data-theme="light"] .bg-white\/5,
+html[data-theme="light"] .bg-white\/10,
+html[data-theme="light"] .bg-white\/\[0\.02\],
+html[data-theme="light"] .bg-white\/\[0\.04\] {
+  background-color: #F8F5FD !important;
+}
+
+html[data-theme="light"] .hover\:bg-white\/5:hover,
+html[data-theme="light"] .hover\:bg-white\/\[0\.03\]:hover {
+  background-color: #F5EFFF !important;
+}
+
+html[data-theme="light"] .bg-purple-900\/20,
+html[data-theme="light"] .bg-purple-900\/10 {
+  background-color: #F5EFFE !important;
+}
