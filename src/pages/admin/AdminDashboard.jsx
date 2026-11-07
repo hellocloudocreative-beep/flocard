@@ -13,6 +13,7 @@
 import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import SlideCommit from '../../components/SlideCommit';
+import ProfileEditorModal from '../../components/profile/ProfileEditorModal';
 import {
   LayoutDashboard,
   Users,
@@ -892,7 +893,7 @@ export default function AdminDashboard({ initialTab = 'overview', initialOrderId
   const handleCreateProfile = (e) => {
     e.preventDefault();
     if (!newProfForm.name || !newProfForm.slug) return;
-    saveProfile({
+    const created = saveProfile({
       name: newProfForm.name,
       slug: newProfForm.slug.toLowerCase().replace(/[^a-z0-9_-]/g, ''),
       role: newProfForm.role || '',
@@ -905,6 +906,9 @@ export default function AdminDashboard({ initialTab = 'overview', initialOrderId
     });
     setNewProfileModal(false);
     setNewProfForm({ name: '', slug: '', role: '', company: '', theme: 'purple', location: '' });
+    if (created) {
+      setEditingProfile(created);
+    }
   };
 
   // Handle Assign Card
@@ -3169,9 +3173,19 @@ export default function AdminDashboard({ initialTab = 'overview', initialOrderId
                                 </span>
                               </td>
                               <td style={{ padding: '10px 8px', textAlign: 'right' }}>
-                                <a href={`/p/${p.slug}`} target="_blank" rel="noreferrer" style={{ color: '#6B00FF' }}>
-                                  <ExternalLink size={13} />
-                                </a>
+                                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-end', gap: '6px' }}>
+                                  <button
+                                    type="button"
+                                    onClick={() => setEditingProfile(p)}
+                                    title="Edit Digital Profile"
+                                    style={{ background: 'none', border: 'none', color: '#6B00FF', cursor: 'pointer', padding: '2px', display: 'inline-flex', alignItems: 'center' }}
+                                  >
+                                    <Edit2 size={13} />
+                                  </button>
+                                  <a href={`/p/${p.slug}`} target="_blank" rel="noreferrer" style={{ color: '#6B00FF', display: 'inline-flex', alignItems: 'center' }} title="Preview Profile">
+                                    <ExternalLink size={13} />
+                                  </a>
+                                </div>
                               </td>
                             </tr>
                           ))
@@ -7547,423 +7561,27 @@ export default function AdminDashboard({ initialTab = 'overview', initialOrderId
       )}
 
       {/* ====================================================================
-          MODAL: EDIT DIGITAL PROFILE
+          MODAL: EDIT DIGITAL PROFILE (FULL 14-SECTION PROFILE PLATFORM EDITOR)
           ==================================================================== */}
       {editingProfile && (
-        <div style={{ position: 'fixed', inset: 0, backgroundColor: 'rgba(8, 6, 13, 0.85)', backdropFilter: 'blur(4px)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000, padding: '20px' }}>
-          <div style={{ backgroundColor: 'var(--adm-card-bg)', borderRadius: '20px', width: '100%', maxWidth: '580px', padding: '28px', border: 'var(--adm-card-border)', maxHeight: '90vh', overflowY: 'auto' }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
-              <div>
-                <h3 style={{ margin: 0, fontSize: '1.2rem', fontWeight: 800, color: 'var(--adm-text-primary)' }}>Edit Digital Profile</h3>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginTop: '2px' }}>
-                  <button
-                    type="button"
-                    onClick={(e) => handleCopySlug(editingProfile.slug, e)}
-                    title="Click to copy public URL"
-                    style={{
-                      background: 'none',
-                      border: 'none',
-                      padding: 0,
-                      fontSize: '0.78rem',
-                      color: copiedSlug === editingProfile.slug ? '#10B981' : 'var(--adm-text-secondary)',
-                      cursor: 'pointer',
-                      display: 'inline-flex',
-                      alignItems: 'center',
-                      gap: '4px',
-                      fontFamily: 'monospace'
-                    }}
-                  >
-                    <span>flocard.in/p/{editingProfile.slug}</span>
-                    {copiedSlug === editingProfile.slug ? <Check size={12} color="#10B981" /> : <Copy size={12} style={{ opacity: 0.6 }} />}
-                    {copiedSlug === editingProfile.slug && <span style={{ fontSize: '0.7rem', fontWeight: 700 }}>Copied!</span>}
-                  </button>
-                  <a
-                    href={`/p/${editingProfile.slug}`}
-                    target="_blank"
-                    rel="noreferrer"
-                    style={{ fontSize: '0.74rem', color: '#6B00FF', fontWeight: 600, textDecoration: 'none', display: 'inline-flex', alignItems: 'center', gap: '3px' }}
-                  >
-                    <span>Preview Link ↗</span>
-                  </a>
-                </div>
-              </div>
-              <button type="button" onClick={() => setEditingProfile(null)} style={{ background: 'none', border: 'none', color: 'var(--adm-text-secondary)', cursor: 'pointer' }}>
-                <X size={18} />
-              </button>
-            </div>
-            <form onSubmit={handleUpdateProfile} style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
-              {/* Profile Avatar & Company Logo Uploads */}
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px', background: isDark ? 'rgba(255, 255, 255, 0.03)' : '#F8F6FC', padding: '12px', borderRadius: '12px', border: 'var(--adm-card-border)' }}>
-                {/* Avatar Upload */}
-                <div>
-                  <label style={{ display: 'block', fontSize: '0.74rem', fontWeight: 700, marginBottom: '6px', color: 'var(--adm-text-primary)' }}>Profile Avatar / Photo</label>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-                    <div style={{ width: '46px', height: '46px', minWidth: '46px', borderRadius: '50%', background: '#6B00FF', overflow: 'hidden', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#FFFFFF', fontWeight: 700 }}>
-                      {editingProfile.avatar ? (
-                        <img src={editingProfile.avatar} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
-                      ) : (
-                        (editingProfile.name || 'P').charAt(0)
-                      )}
-                    </div>
-                    <div>
-                      <input
-                        ref={avatarInputRef}
-                        type="file"
-                        accept="image/*"
-                        style={{ display: 'none' }}
-                        onChange={handleProfileAvatarUpload}
-                        disabled={isUploadingAvatar}
-                      />
-                      <button
-                        type="button"
-                        onClick={() => avatarInputRef.current?.click()}
-                        disabled={isUploadingAvatar}
-                        style={{ display: 'inline-flex', alignItems: 'center', gap: '4px', padding: '4px 10px', borderRadius: '6px', border: isDark ? '1px solid rgba(168, 85, 247, 0.4)' : '1px solid #DDD6FE', backgroundColor: isDark ? 'rgba(107, 0, 255, 0.2)' : 'var(--adm-card-bg)', color: isDark ? '#D8B4FE' : '#6B00FF', fontSize: '0.74rem', fontWeight: 600, cursor: isUploadingAvatar ? 'wait' : 'pointer' }}
-                      >
-                        <Upload size={12} />
-                        <span>{isUploadingAvatar ? 'Uploading...' : 'Upload'}</span>
-                      </button>
-                      {editingProfile.avatar && (
-                        <button
-                          type="button"
-                          onClick={() => setEditingProfile({ ...editingProfile, avatar: '' })}
-                          style={{ display: 'block', background: 'none', border: 'none', color: '#DC2626', fontSize: '0.68rem', cursor: 'pointer', marginTop: '2px', padding: 0 }}
-                        >
-                          Remove
-                        </button>
-                      )}
-                    </div>
-                  </div>
-                </div>
-
-                {/* Company Logo Upload */}
-                <div>
-                  <label style={{ display: 'block', fontSize: '0.74rem', fontWeight: 700, marginBottom: '6px', color: 'var(--adm-text-primary)' }}>Company / Brand Logo</label>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-                    <div style={{ width: '46px', height: '46px', minWidth: '46px', borderRadius: '8px', background: isDark ? 'rgba(255, 255, 255, 0.05)' : 'var(--adm-card-bg)', border: 'var(--adm-card-border)', overflow: 'hidden', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '4px' }}>
-                      {editingProfile.logo ? (
-                        <img src={editingProfile.logo} alt="" style={{ maxWidth: '100%', maxHeight: '100%', objectFit: 'contain' }} />
-                      ) : (
-                        <Building2 size={20} color="#9CA3AF" />
-                      )}
-                    </div>
-                    <div>
-                      <input
-                        ref={logoInputRef}
-                        type="file"
-                        accept="image/*"
-                        style={{ display: 'none' }}
-                        onChange={handleProfileLogoUpload}
-                        disabled={isUploadingLogo}
-                      />
-                      <button
-                        type="button"
-                        onClick={() => logoInputRef.current?.click()}
-                        disabled={isUploadingLogo}
-                        style={{ display: 'inline-flex', alignItems: 'center', gap: '4px', padding: '4px 10px', borderRadius: '6px', border: isDark ? '1px solid rgba(168, 85, 247, 0.4)' : '1px solid #DDD6FE', backgroundColor: isDark ? 'rgba(107, 0, 255, 0.2)' : 'var(--adm-card-bg)', color: isDark ? '#D8B4FE' : '#6B00FF', fontSize: '0.74rem', fontWeight: 600, cursor: isUploadingLogo ? 'wait' : 'pointer' }}
-                      >
-                        <Upload size={12} />
-                        <span>{isUploadingLogo ? 'Uploading...' : 'Upload'}</span>
-                      </button>
-                      {editingProfile.logo && (
-                        <button
-                          type="button"
-                          onClick={() => setEditingProfile({ ...editingProfile, logo: '' })}
-                          style={{ display: 'block', background: 'none', border: 'none', color: '#DC2626', fontSize: '0.68rem', cursor: 'pointer', marginTop: '2px', padding: 0 }}
-                        >
-                          Remove
-                        </button>
-                      )}
-                    </div>
-                  </div>
-                </div>
-              </div>
-
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
-                <div>
-                  <label style={{ display: 'block', fontSize: '0.78rem', fontWeight: 600, marginBottom: '4px', color: 'var(--adm-text-primary)' }}>Full Name</label>
-                  <input
-                    type="text"
-                    required
-                    value={editingProfile.name || ''}
-                    onChange={(e) => setEditingProfile({ ...editingProfile, name: e.target.value })}
-                    style={{ width: '100%', padding: '9px 12px', borderRadius: '8px', border: 'var(--adm-card-border)', fontSize: '0.84rem' }}
-                  />
-                </div>
-                <div>
-                  <label style={{ display: 'block', fontSize: '0.78rem', fontWeight: 600, marginBottom: '4px', color: 'var(--adm-text-primary)' }}>Public Slug</label>
-                  <input
-                    type="text"
-                    required
-                    value={editingProfile.slug || ''}
-                    onChange={(e) => setEditingProfile({ ...editingProfile, slug: e.target.value.toLowerCase().replace(/[^a-z0-9_-]/g, '') })}
-                    style={{ width: '100%', padding: '9px 12px', borderRadius: '8px', border: 'var(--adm-card-border)', fontSize: '0.84rem' }}
-                  />
-                </div>
-              </div>
-
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
-                <div>
-                  <label style={{ display: 'block', fontSize: '0.78rem', fontWeight: 600, marginBottom: '4px', color: 'var(--adm-text-primary)' }}>Role / Title</label>
-                  <input
-                    type="text"
-                    value={editingProfile.role || ''}
-                    onChange={(e) => setEditingProfile({ ...editingProfile, role: e.target.value })}
-                    style={{ width: '100%', padding: '9px 12px', borderRadius: '8px', border: 'var(--adm-card-border)', fontSize: '0.84rem' }}
-                  />
-                </div>
-                <div>
-                  <label style={{ display: 'block', fontSize: '0.78rem', fontWeight: 600, marginBottom: '4px', color: 'var(--adm-text-primary)' }}>Company</label>
-                  <input
-                    type="text"
-                    value={editingProfile.company || ''}
-                    onChange={(e) => setEditingProfile({ ...editingProfile, company: e.target.value })}
-                    style={{ width: '100%', padding: '9px 12px', borderRadius: '8px', border: 'var(--adm-card-border)', fontSize: '0.84rem' }}
-                  />
-                </div>
-              </div>
-
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
-                <div>
-                  <label style={{ display: 'block', fontSize: '0.78rem', fontWeight: 600, marginBottom: '4px', color: 'var(--adm-text-primary)' }}>Location / City</label>
-                  <input
-                    type="text"
-                    value={editingProfile.location || ''}
-                    onChange={(e) => setEditingProfile({ ...editingProfile, location: e.target.value })}
-                    placeholder="e.g. Bengaluru, India"
-                    style={{ width: '100%', padding: '9px 12px', borderRadius: '8px', border: 'var(--adm-card-border)', fontSize: '0.84rem' }}
-                  />
-                </div>
-                <div>
-                  <label style={{ display: 'block', fontSize: '0.78rem', fontWeight: 600, marginBottom: '4px', color: 'var(--adm-text-primary)' }}>Tagline</label>
-                  <input
-                    type="text"
-                    value={editingProfile.tagline || ''}
-                    onChange={(e) => setEditingProfile({ ...editingProfile, tagline: e.target.value })}
-                    style={{ width: '100%', padding: '9px 12px', borderRadius: '8px', border: 'var(--adm-card-border)', fontSize: '0.84rem' }}
-                  />
-                </div>
-              </div>
-
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
-                <div>
-                  <label style={{ display: 'block', fontSize: '0.78rem', fontWeight: 600, marginBottom: '4px', color: 'var(--adm-text-primary)' }}>Office / Street Address</label>
-                  <input
-                    type="text"
-                    value={editingProfile.address || ''}
-                    onChange={(e) => setEditingProfile({ ...editingProfile, address: e.target.value })}
-                    placeholder="e.g. Archierio Experience Center, HSR Layout"
-                    style={{ width: '100%', padding: '9px 12px', borderRadius: '8px', border: 'var(--adm-card-border)', fontSize: '0.84rem' }}
-                  />
-                </div>
-                <div>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '4px' }}>
-                    <label style={{ display: 'block', fontSize: '0.78rem', fontWeight: 600, color: 'var(--adm-text-primary)' }}>Google Maps URL / Directions</label>
-                    {resolveMapUrl(editingProfile) && (
-                      <a
-                        href={resolveMapUrl(editingProfile)}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        style={{ fontSize: '0.72rem', color: '#6B00FF', fontWeight: 700, textDecoration: 'none' }}
-                      >
-                        Test Map Link ↗
-                      </a>
-                    )}
-                  </div>
-                  <input
-                    type="url"
-                    value={editingProfile.mapsUrl || ''}
-                    onChange={(e) => setEditingProfile({ ...editingProfile, mapsUrl: e.target.value })}
-                    placeholder="https://maps.google.com/..."
-                    style={{ width: '100%', padding: '9px 12px', borderRadius: '8px', border: 'var(--adm-card-border)', fontSize: '0.84rem' }}
-                  />
-                </div>
-              </div>
-
-              <div>
-                <label style={{ display: 'block', fontSize: '0.78rem', fontWeight: 600, marginBottom: '4px', color: 'var(--adm-text-primary)' }}>Bio</label>
-                <textarea
-                  rows={3}
-                  value={editingProfile.bio || ''}
-                  onChange={(e) => setEditingProfile({ ...editingProfile, bio: e.target.value })}
-                  style={{ width: '100%', padding: '9px 12px', borderRadius: '8px', border: 'var(--adm-card-border)', fontSize: '0.84rem' }}
-                />
-              </div>
-
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
-                <div>
-                  <label style={{ display: 'block', fontSize: '0.78rem', fontWeight: 600, marginBottom: '4px', color: 'var(--adm-text-primary)' }}>Theme Style</label>
-                  <select
-                    value={editingProfile.theme || 'purple'}
-                    onChange={(e) => setEditingProfile({ ...editingProfile, theme: e.target.value })}
-                    style={{ width: '100%', padding: '9px 12px', borderRadius: '8px', border: 'var(--adm-card-border)', fontSize: '0.84rem' }}
-                  >
-                    <option value="purple">Obsidian Purple (Signature)</option>
-                    <option value="gold">24K Gold Foil</option>
-                    <option value="platinum">Brushed Platinum</option>
-                  </select>
-                </div>
-                <div>
-                  <label style={{ display: 'block', fontSize: '0.78rem', fontWeight: 600, marginBottom: '4px', color: 'var(--adm-text-primary)' }}>Publication Status</label>
-                  <select
-                    value={editingProfile.status || 'published'}
-                    onChange={(e) => setEditingProfile({ ...editingProfile, status: e.target.value })}
-                    style={{ width: '100%', padding: '9px 12px', borderRadius: '8px', border: 'var(--adm-card-border)', fontSize: '0.84rem' }}
-                  >
-                    <option value="published">Published (Live at /p/:slug)</option>
-                    <option value="draft">Draft (Private)</option>
-                    <option value="archived">Archived</option>
-                  </select>
-                </div>
-              </div>
-
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
-                <div>
-                  <label style={{ display: 'block', fontSize: '0.78rem', fontWeight: 600, marginBottom: '4px', color: 'var(--adm-text-primary)' }}>Phone Number</label>
-                  <input
-                    type="text"
-                    value={editingProfile.phone || ''}
-                    onChange={(e) => setEditingProfile({ ...editingProfile, phone: e.target.value })}
-                    style={{ width: '100%', padding: '9px 12px', borderRadius: '8px', border: 'var(--adm-card-border)', fontSize: '0.84rem' }}
-                  />
-                </div>
-                <div>
-                  <label style={{ display: 'block', fontSize: '0.78rem', fontWeight: 600, marginBottom: '4px', color: 'var(--adm-text-primary)' }}>Contact Email</label>
-                  <input
-                    type="email"
-                    value={editingProfile.email || ''}
-                    onChange={(e) => setEditingProfile({ ...editingProfile, email: e.target.value })}
-                    style={{ width: '100%', padding: '9px 12px', borderRadius: '8px', border: 'var(--adm-card-border)', fontSize: '0.84rem' }}
-                  />
-                </div>
-              </div>
-
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
-                <div>
-                  <label style={{ display: 'block', fontSize: '0.78rem', fontWeight: 600, marginBottom: '4px', color: 'var(--adm-text-primary)' }}>WhatsApp (digits with country code)</label>
-                  <input
-                    type="text"
-                    value={editingProfile.whatsapp || ''}
-                    onChange={(e) => setEditingProfile({ ...editingProfile, whatsapp: e.target.value })}
-                    placeholder="919876543210"
-                    style={{ width: '100%', padding: '9px 12px', borderRadius: '8px', border: 'var(--adm-card-border)', fontSize: '0.84rem' }}
-                  />
-                </div>
-                <div>
-                  <label style={{ display: 'block', fontSize: '0.78rem', fontWeight: 600, marginBottom: '4px', color: 'var(--adm-text-primary)' }}>Website URL</label>
-                  <input
-                    type="text"
-                    value={editingProfile.website || ''}
-                    onChange={(e) => setEditingProfile({ ...editingProfile, website: e.target.value })}
-                    placeholder="https://example.com"
-                    style={{ width: '100%', padding: '9px 12px', borderRadius: '8px', border: 'var(--adm-card-border)', fontSize: '0.84rem' }}
-                  />
-                </div>
-              </div>
-
-              {/* Portfolio / Work Showcase Projects */}
-              <div style={{ borderTop: 'var(--adm-card-border)', paddingTop: '14px' }}>
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '10px' }}>
-                  <label style={{ fontSize: '0.82rem', fontWeight: 700, color: 'var(--adm-text-primary)' }}>Portfolio Work Images & Projects</label>
-                  <input
-                    ref={workImagesInputRef}
-                    type="file"
-                    accept="image/*"
-                    multiple
-                    style={{ display: 'none' }}
-                    onChange={handleProfileWorkImagesUpload}
-                    disabled={isUploadingWorkImages}
-                  />
-                  <button
-                    type="button"
-                    onClick={() => workImagesInputRef.current?.click()}
-                    disabled={isUploadingWorkImages}
-                    style={{ display: 'inline-flex', alignItems: 'center', gap: '4px', padding: '5px 12px', borderRadius: '6px', backgroundColor: isDark ? 'rgba(107, 0, 255, 0.22)' : '#F3EEFF', color: isDark ? '#D8B4FE' : '#6B00FF', border: isDark ? '1px solid rgba(168, 85, 247, 0.35)' : '1px solid #DDD6FE', fontSize: '0.74rem', fontWeight: 700, cursor: isUploadingWorkImages ? 'wait' : 'pointer' }}
-                  >
-                    <Plus size={12} />
-                    <span>{isUploadingWorkImages ? 'Uploading images...' : 'Add Work Image'}</span>
-                  </button>
-                </div>
-
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', maxHeight: '180px', overflowY: 'auto' }}>
-                  {(editingProfile.portfolio || []).filter(p => p && !p._isBannerConfig).length === 0 ? (
-                    <div style={{ fontSize: '0.76rem', color: '#9CA3AF', fontStyle: 'italic', padding: '8px 0' }}>
-                      No work images added yet. Click &quot;Add Work Image&quot; to upload project images.
-                    </div>
-                  ) : (
-                    (editingProfile.portfolio || []).filter(p => p && !p._isBannerConfig).map((portItem, portIdx) => (
-                      <div key={portItem.id || portIdx} style={{ display: 'flex', alignItems: 'center', gap: '10px', padding: '8px 10px', borderRadius: '8px', background: isDark ? 'rgba(255, 255, 255, 0.03)' : '#F9F8FC', border: 'var(--adm-card-border)' }}>
-                        <div style={{ width: '44px', height: '44px', minWidth: '44px', borderRadius: '6px', background: isDark ? 'rgba(255, 255, 255, 0.06)' : '#E8E3EF', overflow: 'hidden' }}>
-                          {portItem.image ? (
-                            <img src={portItem.image} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
-                          ) : (
-                            <div style={{ width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#9CA3AF', fontSize: '0.65rem' }}>IMG</div>
-                          )}
-                        </div>
-                        <div style={{ flex: 1, minWidth: 0 }}>
-                          <input
-                            type="text"
-                            value={portItem.title || ''}
-                            onChange={(e) => {
-                              const bannerCfg = (editingProfile.portfolio || []).find(p => p && p._isBannerConfig);
-                              const clean = (editingProfile.portfolio || []).filter(p => p && !p._isBannerConfig);
-                              clean[portIdx] = { ...clean[portIdx], title: e.target.value };
-                              setEditingProfile({ ...editingProfile, portfolio: bannerCfg ? [bannerCfg, ...clean] : clean });
-                            }}
-                            placeholder="Project Title"
-                            style={{ width: '100%', padding: '4px 6px', fontSize: '0.78rem', fontWeight: 600, border: 'var(--adm-card-border)', borderRadius: '4px', marginBottom: '4px' }}
-                          />
-                          <input
-                            type="text"
-                            value={portItem.category || ''}
-                            onChange={(e) => {
-                              const bannerCfg = (editingProfile.portfolio || []).find(p => p && p._isBannerConfig);
-                              const clean = (editingProfile.portfolio || []).filter(p => p && !p._isBannerConfig);
-                              clean[portIdx] = { ...clean[portIdx], category: e.target.value };
-                              setEditingProfile({ ...editingProfile, portfolio: bannerCfg ? [bannerCfg, ...clean] : clean });
-                            }}
-                            placeholder="Category (e.g. Branding / Hardware)"
-                            style={{ width: '100%', padding: '3px 6px', fontSize: '0.72rem', border: 'var(--adm-card-border)', borderRadius: '4px' }}
-                          />
-                        </div>
-                        <button
-                          type="button"
-                          onClick={() => {
-                            const bannerCfg = (editingProfile.portfolio || []).find(p => p && p._isBannerConfig);
-                            const clean = (editingProfile.portfolio || []).filter(p => p && !p._isBannerConfig).filter((_, i) => i !== portIdx);
-                            setEditingProfile({ ...editingProfile, portfolio: bannerCfg ? [bannerCfg, ...clean] : clean });
-                          }}
-                          style={{ background: 'none', border: 'none', color: '#DC2626', cursor: 'pointer', padding: '4px' }}
-                          title="Delete project"
-                        >
-                          <Trash2 size={14} />
-                        </button>
-                      </div>
-                    ))
-                  )}
-                </div>
-              </div>
-
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: '16px', paddingTop: '14px', borderTop: 'var(--adm-divider)' }}>
-                <button
-                  type="button"
-                  onClick={() => handleDeleteProfile(editingProfile.id)}
-                  style={{ padding: '8px 14px', borderRadius: '8px', border: '1px solid #FEE2E2', backgroundColor: '#FEF2F2', color: '#DC4545', fontSize: '0.8rem', fontWeight: 600, cursor: 'pointer' }}
-                >
-                  Delete Profile
-                </button>
-                <div style={{ display: 'flex', gap: '8px' }}>
-                  <button type="button" onClick={() => setEditingProfile(null)} style={{ padding: '8px 16px', borderRadius: '8px', border: 'var(--adm-card-border)', background: 'none', fontSize: '0.8rem', cursor: 'pointer' }}>
-                    Cancel
-                  </button>
-                  <button type="submit" style={{ padding: '8px 20px', borderRadius: '8px', border: 'none', backgroundColor: '#6B00FF', color: '#FFFFFF', fontWeight: 600, fontSize: '0.8rem', cursor: 'pointer' }}>
-                    Save Changes
-                  </button>
-                </div>
-              </div>
-            </form>
-          </div>
-        </div>
+        <ProfileEditorModal
+          profile={editingProfile}
+          customer={user}
+          onClose={() => setEditingProfile(null)}
+          onSave={(saved) => {
+            setEditingProfile(null);
+            setFulfillmentToast({
+              title: 'Digital Profile Saved',
+              message: `Profile "${saved?.name || 'Changes'}" saved! Live at flocard.in/${saved?.slug || ''}`,
+              type: 'success'
+            });
+            setTimeout(() => setFulfillmentToast(null), 5000);
+          }}
+          onDelete={(id) => {
+            handleDeleteProfile(id);
+            setEditingProfile(null);
+          }}
+        />
       )}
 
       {/* ====================================================================
