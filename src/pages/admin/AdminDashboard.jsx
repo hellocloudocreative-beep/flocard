@@ -2889,8 +2889,8 @@ export default function AdminDashboard({ initialTab = 'overview', initialOrderId
                     </button>
                   </div>
 
-                  {/* Table */}
-                  <div style={{ overflowX: 'auto' }}>
+                  {/* Desktop Table View */}
+                  <div className="admin-desktop-table" style={{ overflowX: 'auto' }}>
                     <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left', fontSize: '0.82rem' }}>
                       <thead>
                         <tr style={{ borderBottom: 'var(--adm-divider)', color: 'var(--adm-text-secondary)', fontSize: '0.74rem', textTransform: 'uppercase' }}>
@@ -2951,6 +2951,64 @@ export default function AdminDashboard({ initialTab = 'overview', initialOrderId
                       </tbody>
                     </table>
                   </div>
+
+                  {/* Mobile Card View (Zero Horizontal Scrolling) */}
+                  <div className="admin-mobile-cards" style={{ display: 'none' }}>
+                    {auditLogs.length === 0 ? (
+                      <div style={{ padding: '24px 12px', textAlign: 'center', color: 'var(--adm-text-secondary)', fontSize: '0.82rem' }}>
+                        No recent activity recorded yet.
+                      </div>
+                    ) : (
+                      auditLogs.slice(0, 5).map((log) => (
+                        <div
+                          key={log.id}
+                          style={{
+                            backgroundColor: isDark ? 'rgba(255, 255, 255, 0.03)' : '#F8FAFC',
+                            border: 'var(--adm-card-border)',
+                            borderRadius: '12px',
+                            padding: '12px',
+                            display: 'flex',
+                            flexDirection: 'column',
+                            gap: '8px'
+                          }}
+                        >
+                          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '8px' }}>
+                            <span
+                              style={{
+                                display: 'inline-flex',
+                                alignItems: 'center',
+                                gap: '5px',
+                                fontSize: '0.72rem',
+                                fontWeight: 700,
+                                padding: '2px 8px',
+                                borderRadius: '6px',
+                                backgroundColor: log.type === 'Card Design' ? (isDark ? 'rgba(107, 0, 255, 0.2)' : '#F3EEFF') : log.type === 'Profile' ? (isDark ? 'rgba(37, 99, 235, 0.2)' : '#EEF6FF') : log.type === 'NFC Card' ? (isDark ? 'rgba(22, 163, 106, 0.2)' : '#EEFAF5') : (isDark ? 'rgba(234, 88, 12, 0.2)' : '#FFF7ED'),
+                                color: log.type === 'Card Design' ? (isDark ? '#C084FC' : '#6B00FF') : log.type === 'Profile' ? (isDark ? '#60A5FA' : '#2563EB') : log.type === 'NFC Card' ? (isDark ? '#4ADE80' : '#16A36A') : (isDark ? '#FB923C' : '#EA580C')
+                              }}
+                            >
+                              {log.type}
+                            </span>
+                            <span style={{ fontSize: '0.72rem', color: 'var(--adm-text-secondary)', fontWeight: 500 }}>
+                              {log.timeAgo}
+                            </span>
+                          </div>
+
+                          <div style={{ fontSize: '0.84rem', color: 'var(--adm-text-primary)', fontWeight: 500, lineHeight: 1.35, wordBreak: 'break-word' }}>
+                            {log.details}
+                          </div>
+
+                          <div style={{ display: 'flex', alignItems: 'center', gap: '8px', paddingTop: '6px', borderTop: 'var(--adm-divider)' }}>
+                            <div style={{ width: '22px', height: '22px', borderRadius: '50%', backgroundColor: '#6B00FF', color: '#FFFFFF', overflow: 'hidden', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '0.65rem', fontWeight: 700, flexShrink: 0 }}>
+                              {log.userAvatar ? <img src={log.userAvatar} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} /> : (log.userName?.charAt(0) || 'U')}
+                            </div>
+                            <span style={{ color: 'var(--adm-text-secondary)', fontWeight: 600, fontSize: '0.76rem' }}>
+                              {log.userName}
+                            </span>
+                          </div>
+                        </div>
+                      ))
+                    )}
+                  </div>
                 </div>
 
                 {/* Right: Pending Design Approvals */}
@@ -2991,8 +3049,8 @@ export default function AdminDashboard({ initialTab = 'overview', initialOrderId
                     </button>
                   </div>
 
-                  {/* Table */}
-                  <div style={{ overflowX: 'auto' }}>
+                  {/* Desktop Table View */}
+                  <div className="admin-desktop-table" style={{ overflowX: 'auto' }}>
                     <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left', fontSize: '0.82rem' }}>
                       <thead>
                         <tr style={{ borderBottom: 'var(--adm-divider)', color: 'var(--adm-text-secondary)', fontSize: '0.74rem', textTransform: 'uppercase' }}>
@@ -3075,6 +3133,91 @@ export default function AdminDashboard({ initialTab = 'overview', initialOrderId
                       </tbody>
                     </table>
                   </div>
+
+                  {/* Mobile Card View (Zero Horizontal Scrolling) */}
+                  <div className="admin-mobile-cards" style={{ display: 'none' }}>
+                    {designs.length === 0 ? (
+                      <div style={{ padding: '24px 12px', textAlign: 'center', color: 'var(--adm-text-secondary)' }}>
+                        <CheckCircle2 size={24} color="#16A36A" style={{ margin: '0 auto 8px', display: 'block' }} />
+                        <div style={{ fontWeight: 600, color: 'var(--adm-text-primary)', fontSize: '0.84rem' }}>No pending design approvals</div>
+                        <div style={{ fontSize: '0.74rem', marginTop: '2px' }}>All submitted card designs have been reviewed.</div>
+                      </div>
+                    ) : (
+                      designs.slice(0, 5).map((design) => (
+                        <div
+                          key={design.id}
+                          style={{
+                            backgroundColor: isDark ? 'rgba(255, 255, 255, 0.03)' : '#F8FAFC',
+                            border: 'var(--adm-card-border)',
+                            borderRadius: '12px',
+                            padding: '12px',
+                            display: 'flex',
+                            flexDirection: 'column',
+                            gap: '10px'
+                          }}
+                        >
+                          <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: '8px' }}>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '10px', minWidth: 0 }}>
+                              <div style={{ width: '34px', height: '34px', borderRadius: '50%', backgroundColor: '#6B00FF', color: '#FFFFFF', overflow: 'hidden', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '0.76rem', fontWeight: 700, flexShrink: 0 }}>
+                                {design.customerAvatar ? <img src={design.customerAvatar} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} /> : (design.customerName?.charAt(0) || 'C')}
+                              </div>
+                              <div style={{ minWidth: 0 }}>
+                                <div style={{ color: 'var(--adm-text-primary)', fontWeight: 700, fontSize: '0.86rem', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                                  {design.customerName}
+                                </div>
+                                <div style={{ color: 'var(--adm-text-secondary)', fontSize: '0.7rem', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                                  {design.customerEmail || 'customer@flocard.in'}
+                                </div>
+                              </div>
+                            </div>
+
+                            <span
+                              style={{
+                                fontSize: '0.68rem',
+                                fontWeight: 700,
+                                padding: '2px 8px',
+                                borderRadius: '9999px',
+                                backgroundColor: isDark ? 'rgba(107, 0, 255, 0.2)' : '#EDE9FE',
+                                color: '#6B00FF',
+                                flexShrink: 0
+                              }}
+                            >
+                              {design.template || 'Standard'}
+                            </span>
+                          </div>
+
+                          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', fontSize: '0.72rem', color: 'var(--adm-text-secondary)', padding: '5px 8px', borderRadius: '6px', backgroundColor: isDark ? 'rgba(0,0,0,0.2)' : '#FFFFFF', border: 'var(--adm-divider)' }}>
+                            <span style={{ fontFamily: 'monospace', fontWeight: 600 }}>{design.id}</span>
+                            <span>{design.submittedAt}</span>
+                          </div>
+
+                          <button
+                            type="button"
+                            onClick={() => setReviewModalDesign(design)}
+                            style={{
+                              width: '100%',
+                              padding: '8px 14px',
+                              borderRadius: '8px',
+                              border: 'none',
+                              backgroundColor: '#6B00FF',
+                              color: '#FFFFFF',
+                              fontSize: '0.78rem',
+                              fontWeight: 700,
+                              cursor: 'pointer',
+                              display: 'flex',
+                              alignItems: 'center',
+                              justifyContent: 'center',
+                              gap: '6px',
+                              boxShadow: '0 2px 6px rgba(107, 0, 255, 0.25)'
+                            }}
+                          >
+                            <Eye size={13} />
+                            <span>Review Design</span>
+                          </button>
+                        </div>
+                      ))
+                    )}
+                  </div>
                 </div>
               </div>
 
@@ -3125,7 +3268,8 @@ export default function AdminDashboard({ initialTab = 'overview', initialOrderId
                     </button>
                   </div>
 
-                  <div style={{ overflowX: 'auto' }}>
+                  {/* Desktop Table View */}
+                  <div className="admin-desktop-table" style={{ overflowX: 'auto' }}>
                     <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left', fontSize: '0.8rem' }}>
                       <thead>
                         <tr style={{ borderBottom: 'var(--adm-divider)', color: 'var(--adm-text-secondary)', fontSize: '0.72rem', textTransform: 'uppercase' }}>
@@ -3193,6 +3337,110 @@ export default function AdminDashboard({ initialTab = 'overview', initialOrderId
                       </tbody>
                     </table>
                   </div>
+
+                  {/* Mobile Card View (Zero Horizontal Scrolling) */}
+                  <div className="admin-mobile-cards" style={{ display: 'none' }}>
+                    {profiles.length === 0 ? (
+                      <div style={{ padding: '24px 12px', textAlign: 'center', color: 'var(--adm-text-secondary)', fontSize: '0.82rem' }}>
+                        No profiles created yet.
+                      </div>
+                    ) : (
+                      profiles.slice(0, 5).map((p) => (
+                        <div
+                          key={p.id}
+                          style={{
+                            backgroundColor: isDark ? 'rgba(255, 255, 255, 0.03)' : '#F8FAFC',
+                            border: 'var(--adm-card-border)',
+                            borderRadius: '12px',
+                            padding: '12px',
+                            display: 'flex',
+                            flexDirection: 'column',
+                            gap: '8px'
+                          }}
+                        >
+                          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '8px' }}>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', minWidth: 0 }}>
+                              <div style={{ width: '28px', height: '28px', borderRadius: '50%', backgroundColor: '#6B00FF', color: '#FFFFFF', overflow: 'hidden', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '0.72rem', fontWeight: 700, flexShrink: 0 }}>
+                                {p.avatar ? <img src={p.avatar} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} /> : p.name.charAt(0)}
+                              </div>
+                              <div style={{ minWidth: 0 }}>
+                                <div style={{ color: 'var(--adm-text-primary)', fontWeight: 700, fontSize: '0.84rem', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                                  {p.name}
+                                </div>
+                                <div style={{ color: 'var(--adm-text-secondary)', fontSize: '0.7rem', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                                  {p.company || p.role || 'Digital Identity'}
+                                </div>
+                              </div>
+                            </div>
+
+                            <span
+                              style={{
+                                fontSize: '0.68rem',
+                                fontWeight: 700,
+                                padding: '2px 8px',
+                                borderRadius: '9999px',
+                                backgroundColor: p.status === 'published' ? (isDark ? 'rgba(22, 163, 106, 0.2)' : '#EEFAF5') : p.status === 'pending' ? (isDark ? 'rgba(234, 88, 12, 0.2)' : '#FFF7ED') : (isDark ? 'rgba(100, 116, 139, 0.2)' : '#F1F5F9'),
+                                color: p.status === 'published' ? (isDark ? '#4ADE80' : '#16A36A') : p.status === 'pending' ? (isDark ? '#FB923C' : '#EA580C') : (isDark ? '#94A3B8' : '#64748B'),
+                                flexShrink: 0
+                              }}
+                            >
+                              ● {p.status === 'published' ? 'Published' : p.status === 'pending' ? 'Pending' : 'Draft'}
+                            </span>
+                          </div>
+
+                          <div style={{ fontSize: '0.72rem', color: '#6B00FF', fontFamily: 'monospace', fontWeight: 600, padding: '3px 6px', borderRadius: '4px', backgroundColor: isDark ? 'rgba(107, 0, 255, 0.12)' : '#F3EEFF' }}>
+                            flocard.in/p/{p.slug}
+                          </div>
+
+                          <div style={{ display: 'flex', gap: '8px', paddingTop: '2px' }}>
+                            <button
+                              type="button"
+                              onClick={() => setEditingProfile(p)}
+                              style={{
+                                flex: 1,
+                                padding: '6px 10px',
+                                borderRadius: '6px',
+                                border: '1px solid rgba(107, 0, 255, 0.25)',
+                                backgroundColor: '#F3EEFF',
+                                color: '#6B00FF',
+                                fontSize: '0.74rem',
+                                fontWeight: 700,
+                                cursor: 'pointer',
+                                display: 'inline-flex',
+                                alignItems: 'center',
+                                justifyContent: 'center',
+                                gap: '4px'
+                              }}
+                            >
+                              <Edit2 size={12} />
+                              <span>Edit</span>
+                            </button>
+                            <a
+                              href={`/p/${p.slug}`}
+                              target="_blank"
+                              rel="noreferrer"
+                              style={{
+                                padding: '6px 12px',
+                                borderRadius: '6px',
+                                border: 'var(--adm-card-border)',
+                                backgroundColor: 'var(--adm-card-bg)',
+                                color: 'var(--adm-text-primary)',
+                                fontSize: '0.74rem',
+                                fontWeight: 600,
+                                textDecoration: 'none',
+                                display: 'inline-flex',
+                                alignItems: 'center',
+                                gap: '4px'
+                              }}
+                            >
+                              <Eye size={12} />
+                              <span>Preview</span>
+                            </a>
+                          </div>
+                        </div>
+                      ))
+                    )}
+                  </div>
                 </div>
 
                 {/* 2. Recently Assigned NFC Cards */}
@@ -3233,7 +3481,8 @@ export default function AdminDashboard({ initialTab = 'overview', initialOrderId
                     </button>
                   </div>
 
-                  <div style={{ overflowX: 'auto' }}>
+                  {/* Desktop Table View */}
+                  <div className="admin-desktop-table" style={{ overflowX: 'auto' }}>
                     <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left', fontSize: '0.8rem' }}>
                       <thead>
                         <tr style={{ borderBottom: 'var(--adm-divider)', color: 'var(--adm-text-secondary)', fontSize: '0.72rem', textTransform: 'uppercase' }}>
@@ -3289,6 +3538,99 @@ export default function AdminDashboard({ initialTab = 'overview', initialOrderId
                         )}
                       </tbody>
                     </table>
+                  </div>
+
+                  {/* Mobile Card View (Zero Horizontal Scrolling) */}
+                  <div className="admin-mobile-cards" style={{ display: 'none' }}>
+                    {cards.length === 0 ? (
+                      <div style={{ padding: '24px 12px', textAlign: 'center', color: 'var(--adm-text-secondary)', fontSize: '0.82rem' }}>
+                        No NFC cards assigned yet.
+                      </div>
+                    ) : (
+                      cards.slice(0, 5).map((card) => (
+                        <div
+                          key={card.id}
+                          style={{
+                            backgroundColor: isDark ? 'rgba(255, 255, 255, 0.03)' : '#F8FAFC',
+                            border: 'var(--adm-card-border)',
+                            borderRadius: '12px',
+                            padding: '12px',
+                            display: 'flex',
+                            flexDirection: 'column',
+                            gap: '8px'
+                          }}
+                        >
+                          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '8px' }}>
+                            <span style={{ color: 'var(--adm-text-primary)', fontWeight: 700, fontFamily: 'monospace', fontSize: '0.82rem' }}>
+                              {card.cardCode}
+                            </span>
+                            <span
+                              style={{
+                                fontSize: '0.68rem',
+                                fontWeight: 700,
+                                padding: '2px 8px',
+                                borderRadius: '9999px',
+                                backgroundColor: card.status === 'active' ? (isDark ? 'rgba(22, 163, 106, 0.2)' : '#EEFAF5') : card.status === 'suspended' ? (isDark ? 'rgba(220, 69, 69, 0.2)' : '#FEF2F2') : (isDark ? 'rgba(100, 116, 139, 0.2)' : '#F1F5F9'),
+                                color: card.status === 'active' ? (isDark ? '#4ADE80' : '#16A36A') : card.status === 'suspended' ? (isDark ? '#F87171' : '#DC4545') : (isDark ? '#94A3B8' : '#64748B')
+                              }}
+                            >
+                              ● {card.status === 'active' ? 'Active' : card.status === 'suspended' ? 'Suspended' : 'Unassigned'}
+                            </span>
+                          </div>
+
+                          <div style={{ display: 'flex', flexDirection: 'column', gap: '2px', fontSize: '0.76rem' }}>
+                            <div style={{ color: 'var(--adm-text-primary)', fontWeight: 600 }}>{card.customerName || 'Unassigned'}</div>
+                            <div style={{ color: 'var(--adm-text-secondary)', fontSize: '0.72rem' }}>Profile: {card.profileName || card.profileSlug || '—'}</div>
+                          </div>
+
+                          <div style={{ display: 'flex', gap: '8px', paddingTop: '2px' }}>
+                            <button
+                              type="button"
+                              onClick={() => setEditingCard(card)}
+                              style={{
+                                flex: 1,
+                                padding: '6px 10px',
+                                borderRadius: '6px',
+                                border: '1px solid rgba(107, 0, 255, 0.25)',
+                                backgroundColor: '#F3EEFF',
+                                color: '#6B00FF',
+                                fontSize: '0.74rem',
+                                fontWeight: 700,
+                                cursor: 'pointer',
+                                display: 'inline-flex',
+                                alignItems: 'center',
+                                justifyContent: 'center',
+                                gap: '4px'
+                              }}
+                            >
+                              <Edit2 size={12} />
+                              <span>Manage</span>
+                            </button>
+                            <a
+                              href={`/t/${card.cardCode}`}
+                              target="_blank"
+                              rel="noreferrer"
+                              style={{
+                                padding: '6px 12px',
+                                borderRadius: '6px',
+                                border: 'var(--adm-card-border)',
+                                backgroundColor: 'var(--adm-card-bg)',
+                                color: 'var(--adm-text-primary)',
+                                fontSize: '0.74rem',
+                                fontWeight: 600,
+                                textDecoration: 'none',
+                                display: 'inline-flex',
+                                alignItems: 'center',
+                                gap: '4px'
+                              }}
+                            >
+                              <ExternalLink size={12} />
+                              <span>Test NFC</span>
+                            </a>
+                          </div>
+                        </div>
+                      ))
+                    )}
                   </div>
                 </div>
 
@@ -9112,14 +9454,27 @@ export default function AdminDashboard({ initialTab = 'overview', initialOrderId
             width: 100% !important;
             box-sizing: border-box !important;
           }
+          .admin-main-container {
+            width: 100% !important;
+            max-width: 100vw !important;
+            overflow-x: hidden !important;
+            min-width: 0 !important;
+          }
           .admin-main-content {
             padding: 12px 10px 48px !important;
+            width: 100% !important;
+            max-width: 100vw !important;
+            overflow-x: hidden !important;
+            box-sizing: border-box !important;
+            min-width: 0 !important;
           }
           .admin-main-content > div {
             padding: 16px 12px !important;
             border-radius: 14px !important;
             box-sizing: border-box !important;
+            width: 100% !important;
             max-width: 100% !important;
+            min-width: 0 !important;
           }
           .admin-main-content.studio-active {
             padding: 0 0 20px 0 !important;
@@ -9131,6 +9486,55 @@ export default function AdminDashboard({ initialTab = 'overview', initialOrderId
             box-shadow: none !important;
             border: none !important;
             max-width: 100% !important;
+          }
+          .admin-middle-grid,
+          .admin-bottom-grid {
+            grid-template-columns: 1fr !important;
+            gap: 16px !important;
+            margin-bottom: 18px !important;
+            width: 100% !important;
+            min-width: 0 !important;
+            max-width: 100% !important;
+            box-sizing: border-box !important;
+          }
+          .admin-middle-grid > div,
+          .admin-bottom-grid > div {
+            min-width: 0 !important;
+            max-width: 100% !important;
+            width: 100% !important;
+            box-sizing: border-box !important;
+            padding: 16px 14px !important;
+            border-radius: 14px !important;
+            overflow: hidden !important;
+          }
+          .admin-stats-grid {
+            grid-template-columns: repeat(2, 1fr) !important;
+            gap: 10px !important;
+            margin-bottom: 18px !important;
+            width: 100% !important;
+            min-width: 0 !important;
+            max-width: 100% !important;
+            box-sizing: border-box !important;
+          }
+          .admin-stats-grid > div {
+            min-width: 0 !important;
+            max-width: 100% !important;
+            box-sizing: border-box !important;
+            padding: 14px 12px !important;
+          }
+          .admin-financial-grid {
+            grid-template-columns: repeat(2, 1fr) !important;
+            gap: 10px !important;
+            margin-bottom: 18px !important;
+            width: 100% !important;
+            min-width: 0 !important;
+            max-width: 100% !important;
+            box-sizing: border-box !important;
+          }
+          .admin-financial-grid > div {
+            min-width: 0 !important;
+            max-width: 100% !important;
+            box-sizing: border-box !important;
           }
         }
         @media (max-width: 640px) {
