@@ -208,6 +208,13 @@ export default function AdminDashboard({ initialTab = 'overview', initialOrderId
       setActiveTab(initialTab);
     }
   }, [initialTab]);
+
+  // Automatically ensure live cloud sync when switching to key admin views
+  useEffect(() => {
+    if (syncCloudData && (activeTab === 'customers' || activeTab === 'orders' || activeTab === 'cards' || activeTab === 'overview')) {
+      syncCloudData();
+    }
+  }, [activeTab]);
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [mobileSearchOpen, setMobileSearchOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
@@ -2334,35 +2341,7 @@ export default function AdminDashboard({ initialTab = 'overview', initialOrderId
                     Here is your real-time financial, manufacturing, and operational snapshot for today.
                   </p>
                 </div>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '10px', flexWrap: 'wrap' }}>
-                  <button
-                    type="button"
-                    onClick={async () => {
-                      if (syncCloudData) {
-                        await syncCloudData();
-                        notify('Cloud Synced', 'All latest cards, designs, and orders fetched from Supabase');
-                      }
-                    }}
-                    disabled={isCloudSyncing}
-                    title="Fetch latest cards, designs, and orders from Supabase cloud across all devices"
-                    style={{
-                      padding: '8px 14px',
-                      borderRadius: '10px',
-                      border: 'var(--adm-card-border)',
-                      backgroundColor: 'var(--adm-card-bg)',
-                      color: 'var(--adm-text-primary)',
-                      fontSize: '0.82rem',
-                      fontWeight: 600,
-                      cursor: isCloudSyncing ? 'not-allowed' : 'pointer',
-                      display: 'inline-flex',
-                      alignItems: 'center',
-                      gap: '7px',
-                      transition: 'all 0.15s ease'
-                    }}
-                  >
-                    <RefreshCw size={14} color="#10B981" style={{ animation: isCloudSyncing ? 'spin 1s linear infinite' : 'none' }} />
-                    <span>{isCloudSyncing ? 'Syncing...' : 'Sync Cloud'}</span>
-                  </button>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
                   <button
                     type="button"
                     onClick={() => setActiveTab('studio')}

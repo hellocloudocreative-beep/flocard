@@ -114,6 +114,30 @@ export function DataProvider({ children }) {
             } else {
               localProfiles.push(mappedProfile);
             }
+
+            // Immediately synthesize customer from verified profile
+            if (cp.email && !cp.email.includes('flocard.in') && cp.role !== 'owner') {
+              const custEmail = cp.email.toLowerCase().trim();
+              const currentCusts = StorageEngine.getCustomers();
+              const existC = currentCusts.find(c => c.email && c.email.toLowerCase() === custEmail);
+              if (!existC) {
+                currentCusts.unshift({
+                  id: cp.user_id || cp.id || `cust_${custEmail.replace(/[^a-z0-9]/g, '_')}`,
+                  name: cp.name || custEmail.split('@')[0],
+                  email: custEmail,
+                  phone: cp.phone || '',
+                  company: cp.company || '',
+                  avatar: cp.avatar_url || '',
+                  role: 'customer',
+                  status: cp.status || 'active',
+                  joinedDate: (cp.created_at || '').split('T')[0] || new Date().toISOString().split('T')[0],
+                  totalCards: 0,
+                  totalDesigns: 0
+                });
+                StorageEngine.saveLocalCustomers(currentCusts);
+                setCustomers([...currentCusts]);
+              }
+            }
           }
           StorageEngine.saveLocalProfiles(localProfiles);
           setProfiles([...localProfiles]);
@@ -424,13 +448,25 @@ export function DataProvider({ children }) {
     window.addEventListener('storage', handleStorageChange);
     window.addEventListener('focus', handleWindowFocus);
 
-    // Fallback sync polling every 12 seconds for resilient cross-device data propagation
+    const handleVisibilityChange = () => {
+      if (typeof document !== 'undefined' && document.visibilityState === 'visible') {
+        syncCloudData();
+      }
+    };
+    if (typeof document !== 'undefined') {
+      document.addEventListener('visibilitychange', handleVisibilityChange);
+    }
+
+    // High-frequency background sync polling every 6 seconds for instantaneous cross-device data propagation
     const pollInterval = setInterval(() => {
       syncCloudData();
-    }, 12000);
+    }, 6000);
 
     return () => {
       clearInterval(pollInterval);
+      if (typeof document !== 'undefined') {
+        document.removeEventListener('visibilitychange', handleVisibilityChange);
+      }
       if (realtimeChannel) {
         import('../lib/supabase.js').then(({ supabase, supabaseAdmin }) => {
           const client = supabaseAdmin || supabase;
