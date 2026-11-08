@@ -712,7 +712,7 @@ export default function AdminSalesManager({ defaultTab = 'overview', initialOrde
           </div>
           <h1 className="text-2xl font-bold text-white tracking-tight">Sales Management & Product Ledger</h1>
           <p className="text-xs text-zinc-400 mt-1">
-            Accounting-grade double-entry ledger, product tracking, invoice generator, and physical NFC card telemetry.
+            Accounting-grade double-entry ledger, product tracking, financial analytics, and invoice generator.
           </p>
         </div>
 
@@ -784,7 +784,6 @@ export default function AdminSalesManager({ defaultTab = 'overview', initialOrde
           { id: 'overview', label: 'Sales Overview', icon: LayoutDashboardIcon },
           { id: 'ledger', label: 'Sales Ledger', icon: Receipt, badge: filteredOrders.length },
           { id: 'products', label: 'Product-wise Sales', icon: Layers, badge: productSalesMap.length },
-          { id: 'cards', label: 'Physical Card Tracking', icon: Radio },
           { id: 'analytics', label: 'Sales Analytics', icon: BarChart3 },
           { id: 'settings', label: 'Invoice Settings', icon: Settings }
         ].map(tab => {
@@ -963,7 +962,9 @@ export default function AdminSalesManager({ defaultTab = 'overview', initialOrde
                     >
                       <div className="flex items-center justify-between mb-2">
                         <div className="flex items-center gap-2.5">
-                          <img src={prod.image} alt={prod.name} className="w-8 h-5 object-cover rounded shadow" />
+                          <div className="w-7 h-7 rounded-lg bg-purple-500/10 border border-purple-500/20 flex items-center justify-center text-purple-400 shrink-0">
+                            <Layers className="w-3.5 h-3.5" />
+                          </div>
                           <div>
                             <div className="text-xs font-semibold text-white">{prod.name}</div>
                             <div className="text-[10px] text-zinc-400 font-mono">{prod.sku}</div>
@@ -1349,40 +1350,40 @@ export default function AdminSalesManager({ defaultTab = 'overview', initialOrde
               FLOCARD Hardware & Custom NFC Product Sales
             </h2>
             <p className="text-xs text-zinc-400 mt-0.5">
-              Product-level sales telemetry, unit volumes, discounts, net margins, and inventory status. Click any product card for its drilldown report.
+              Product sales summary, total units sold, gross revenue, net margin, and orders breakdown.
             </p>
           </div>
 
-          {/* Product Sales Cards Grid */}
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+          {/* Product Sales Cards Grid (Clean layout without images) */}
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-5">
             {productSalesMap.map(prod => (
               <div
                 key={prod.edition}
                 onClick={() => setDrilldownProduct(prod)}
                 className="rounded-2xl bg-[#0D0819] border border-purple-500/15 hover:border-purple-500/40 p-5 space-y-4 cursor-pointer transition-all hover:shadow-xl hover:shadow-purple-900/10 group"
               >
-                {/* Product Card Image & Badge */}
-                <div className="relative aspect-[16/10] rounded-xl overflow-hidden bg-black/40 border border-white/5">
-                  <img
-                    src={prod.image}
-                    alt={prod.name}
-                    className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
-                  />
-                  <div className="absolute top-2.5 right-2.5 px-2 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider bg-black/70 backdrop-blur-md text-purple-300 border border-purple-500/30">
+                {/* Header: Product Name, SKU & Badges */}
+                <div className="flex items-start justify-between gap-3 pb-3 border-b border-white/5">
+                  <div className="flex items-center gap-3">
+                    <div className="w-10 h-10 rounded-xl bg-purple-500/10 border border-purple-500/25 flex items-center justify-center text-purple-400 shrink-0">
+                      <Layers className="w-5 h-5" />
+                    </div>
+                    <div>
+                      <h3 className="text-sm font-bold text-white group-hover:text-purple-300 transition-colors">
+                        {prod.name}
+                      </h3>
+                      <p className="text-[11px] text-zinc-400 font-mono">{prod.sku} • {prod.variant}</p>
+                    </div>
+                  </div>
+                  <span className="inline-block px-2 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider bg-purple-500/10 text-purple-300 border border-purple-500/30 shrink-0">
                     {prod.stock > 10 ? `${prod.stock} In Stock` : `${prod.stock} Low Stock`}
-                  </div>
-                  <div className="absolute bottom-2.5 left-2.5 px-2 py-0.5 rounded bg-black/80 backdrop-blur-md text-[10px] font-mono text-zinc-300 border border-white/10">
-                    {prod.sku}
-                  </div>
+                  </span>
                 </div>
 
-                {/* Details */}
-                <div>
-                  <h3 className="text-sm font-bold text-white group-hover:text-purple-300 transition-colors">
-                    {prod.name}
-                  </h3>
-                  <p className="text-xs text-zinc-400">{prod.variant}</p>
-                  <p className="text-xs font-semibold text-purple-400 mt-1">₹{prod.price.toLocaleString('en-IN')} retail</p>
+                {/* Retail Price Banner */}
+                <div className="flex items-center justify-between text-xs">
+                  <span className="text-zinc-400">Retail Unit Price</span>
+                  <span className="font-bold text-emerald-400 font-mono">₹{prod.price.toLocaleString('en-IN')}</span>
                 </div>
 
                 {/* Metrics Breakdown Grid */}
@@ -1411,123 +1412,6 @@ export default function AdminSalesManager({ defaultTab = 'overview', initialOrde
                 </button>
               </div>
             ))}
-          </div>
-        </div>
-      )}
-
-      {/* =================================================================== */}
-      {/* 4. PHYSICAL CARD SALES TRACKING */}
-      {/* =================================================================== */}
-      {activeSection === 'cards' && (
-        <div className="space-y-6 animate-fadeIn">
-          <div>
-            <h2 className="text-base font-bold text-white flex items-center gap-2">
-              <Radio className="w-4 h-4 text-purple-400" />
-              Individual Physical NFC Card Tracking
-            </h2>
-            <p className="text-xs text-zinc-400 mt-0.5">
-              End-to-end hardware lifecycle: manufacturing status, assigned digital identity URLs, NFC UID, delivery, and tap activation.
-            </p>
-          </div>
-
-          <div className="rounded-2xl bg-[#0D0819] border border-purple-500/15 overflow-hidden shadow-2xl">
-            <div className="overflow-x-auto">
-              <table className="w-full text-left text-xs whitespace-nowrap">
-                <thead className="bg-[#140C26] text-zinc-300 font-semibold uppercase tracking-wider text-[10px] border-b border-purple-500/20">
-                  <tr>
-                    <th className="py-3 px-4">Card Serial / ID</th>
-                    <th className="py-3 px-4">NFC UID Chipset</th>
-                    <th className="py-3 px-4">Edition / Artwork</th>
-                    <th className="py-3 px-4">Linked Customer & Order</th>
-                    <th className="py-3 px-4 text-center">Production Status</th>
-                    <th className="py-3 px-4 text-center">Payment</th>
-                    <th className="py-3 px-4">Digital Profile Routing</th>
-                    <th className="py-3 px-4 text-center">Activation</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-white/5">
-                  {filteredOrders.map(order => {
-                    const cardCode = order.cardCode || `FLC-${String(order.edition || 'PUR').slice(0, 3).toUpperCase()}-${String(order.id || '0000').slice(-4)}`;
-                    const nfcUid = order.nfcUid || '04:7B:A2:1F:90:3C:80';
-                    const profileUrl = order.profileSlug ? `https://${order.profileSlug}.flocard.in` : null;
-
-                    return (
-                      <tr key={order.id} className="hover:bg-purple-500/5 transition-colors">
-                        <td className="py-3.5 px-4 font-mono font-bold text-purple-300">
-                          {cardCode}
-                        </td>
-                        <td className="py-3.5 px-4 font-mono text-[11px] text-zinc-400">
-                          {nfcUid}
-                        </td>
-                        <td className="py-3.5 px-4">
-                          <span className="capitalize font-semibold text-white">{order.edition}</span> NFC Card
-                          <span className="block text-[10px] text-zinc-500">{order.templateType || 'Standard'}</span>
-                        </td>
-                        <td className="py-3.5 px-4">
-                          <div className="font-semibold text-white">{order.customerName}</div>
-                          <div className="text-[10px] text-purple-400 font-mono">{order.orderReference || order.id}</div>
-                        </td>
-                        <td className="py-3.5 px-4 text-center">
-                          <span className="px-2.5 py-0.5 rounded-full text-[11px] font-semibold bg-white/5 text-zinc-300 border border-white/10 capitalize">
-                            {(order.status || 'processing').replace(/_/g, ' ')}
-                          </span>
-                        </td>
-                        <td className="py-3.5 px-4 text-center">
-                          {renderPaymentBadge(order.paymentStatus)}
-                        </td>
-                        <td className="py-3.5 px-4">
-                          {profileUrl ? (
-                            <button
-                              type="button"
-                              onClick={() => {
-                                const url = `https://flocard.in/p/${order.profileSlug}`;
-                                if (navigator.clipboard) {
-                                  navigator.clipboard.writeText(url);
-                                  setCopiedOrderSlug(order.profileSlug);
-                                  setTimeout(() => setCopiedOrderSlug(null), 2000);
-                                }
-                              }}
-                              title="Click to copy digital profile link"
-                              className="inline-flex items-center gap-1.5 text-xs text-purple-400 hover:text-purple-300 font-mono bg-transparent border-0 cursor-pointer p-0"
-                            >
-                              <span>flocard.in/p/{order.profileSlug}</span>
-                              {copiedOrderSlug === order.profileSlug ? (
-                                <span className="text-[10px] text-emerald-400 font-bold inline-flex items-center gap-0.5">
-                                  <Check className="w-3 h-3" /> Copied!
-                                </span>
-                              ) : (
-                                <Copy className="w-3 h-3 opacity-70" />
-                              )}
-                            </button>
-                          ) : (
-                            <span className="text-zinc-500 text-[11px]">Pending delivery</span>
-                          )}
-                        </td>
-                        <td className="py-3.5 px-4 text-center">
-                          {order.status === 'delivered' ? (
-                            <span className="inline-flex items-center gap-1 text-[11px] font-semibold text-emerald-400">
-                              <CheckCircle2 className="w-3.5 h-3.5" />
-                              Active Tap
-                            </span>
-                          ) : (
-                            <span className="text-[11px] text-zinc-500">
-                              Inactive
-                            </span>
-                          )}
-                        </td>
-                      </tr>
-                    );
-                  })}
-                  {filteredOrders.length === 0 && (
-                    <tr>
-                      <td colSpan={8} className="py-12 text-center text-zinc-500">
-                        No physical card records in the selected date range.
-                      </td>
-                    </tr>
-                  )}
-                </tbody>
-              </table>
-            </div>
           </div>
         </div>
       )}
@@ -1856,7 +1740,9 @@ export default function AdminSalesManager({ defaultTab = 'overview', initialOrde
           <div className="relative w-full max-w-4xl my-8 bg-[#0D0819] border border-purple-500/25 rounded-2xl shadow-2xl overflow-hidden text-white">
             <div className="flex items-center justify-between px-6 py-4 bg-[#140C26] border-b border-purple-500/20">
               <div className="flex items-center gap-3">
-                <img src={drilldownProduct.image} alt="" className="w-10 h-6 object-cover rounded shadow" />
+                <div className="w-9 h-9 rounded-xl bg-purple-500/15 border border-purple-500/30 flex items-center justify-center text-purple-400 shrink-0">
+                  <Layers className="w-4 h-4" />
+                </div>
                 <div>
                   <h3 className="text-sm font-bold text-white">{drilldownProduct.name}</h3>
                   <p className="text-[11px] text-purple-300 font-mono">{drilldownProduct.sku} • {drilldownProduct.variant}</p>
