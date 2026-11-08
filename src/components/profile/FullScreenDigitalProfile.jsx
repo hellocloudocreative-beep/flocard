@@ -46,6 +46,7 @@ import { resolveProfileLinks, DynamicLinkIcon } from '../../lib/socialLinkResolv
 import { resolveMapUrl } from '../../lib/constants';
 import { downloadVCard } from '../../lib/vcard';
 import { generateQrDataUrl, downloadQrPng, downloadQrSvg } from '../../lib/qr';
+import { getProfileTheme } from '../../lib/themeService';
 
 export default function FullScreenDigitalProfile({
   profile = {},
@@ -56,8 +57,9 @@ export default function FullScreenDigitalProfile({
   const [copiedLink, setCopiedLink] = useState(false);
   const [selectedServiceIdForBooking, setSelectedServiceIdForBooking] = useState(null);
 
-  const accentColor = p.accentColor || '#A855F7';
-  const glowColor = p.glowColor || '#6B00FF';
+  const activeTheme = useMemo(() => getProfileTheme(p.theme || p.cardFinish || p.edition), [p.theme, p.cardFinish, p.edition]);
+  const accentColor = p.accentColor || activeTheme.accentColor;
+  const glowColor = p.glowColor || activeTheme.glowColor;
   const photoShape = p.photoShape || 'circle';
   const isCircle = photoShape === 'circle';
 
@@ -124,7 +126,7 @@ export default function FullScreenDigitalProfile({
         width: '100%',
         maxWidth: '100vw',
         minHeight: '100vh',
-        backgroundColor: isLight ? '#F8F7FC' : '#08060D',
+        backgroundColor: isLight ? activeTheme.pageBgLight : activeTheme.pageBgDark,
         color: isLight ? '#0F172A' : '#FFFFFF',
         display: 'flex',
         flexDirection: 'column',
@@ -191,7 +193,7 @@ export default function FullScreenDigitalProfile({
               <div
                 style={{
                   padding: '4px',
-                  backgroundColor: isLight ? '#F8F7FC' : '#08060D',
+                  backgroundColor: isLight ? activeTheme.pageBgLight : activeTheme.pageBgDark,
                   borderRadius: isCircle ? '50%' : '26px',
                   boxShadow: `0 12px 36px rgba(0,0,0,0.4), 0 0 24px ${glowColor}30`,
                   display: 'inline-block'
@@ -215,12 +217,12 @@ export default function FullScreenDigitalProfile({
                     width: '30px',
                     height: '30px',
                     borderRadius: '50%',
-                    backgroundColor: glowColor,
-                    border: `3px solid ${isLight ? '#F8F7FC' : '#08060D'}`,
+                    backgroundColor: activeTheme.verifiedBadgeBg || glowColor,
+                    border: `3px solid ${isLight ? activeTheme.pageBgLight : activeTheme.pageBgDark}`,
                     display: 'flex',
                     alignItems: 'center',
                     justifyContent: 'center',
-                    color: '#FFFFFF',
+                    color: activeTheme.verifiedBadgeColor || '#FFFFFF',
                     boxShadow: `0 4px 12px ${glowColor}80`
                   }}
                   title="Verified FLOCARD Digital Profile"
@@ -245,8 +247,8 @@ export default function FullScreenDigitalProfile({
                 style={{
                   padding: '11px 22px',
                   borderRadius: '9999px',
-                  backgroundColor: accentColor,
-                  color: '#FFFFFF',
+                  backgroundColor: activeTheme.buttonBg || accentColor,
+                  color: activeTheme.buttonText || '#FFFFFF',
                   border: 'none',
                   fontWeight: 700,
                   fontSize: '0.86rem',
@@ -803,7 +805,7 @@ export default function FullScreenDigitalProfile({
                 style={{
                   padding: '16px 22px',
                   borderRadius: '16px',
-                  backgroundColor: isLight ? '#F1F5F9' : '#0F091C',
+                  backgroundColor: isLight ? '#F1F5F9' : activeTheme.cardBg,
                   border: `1px solid ${accentColor}30`,
                   textAlign: 'center'
                 }}

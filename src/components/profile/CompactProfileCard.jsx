@@ -45,7 +45,8 @@ export default function CompactProfileCard({
   onColorChange
 }) {
   const [activeFinish, setActiveFinish] = useState(
-    profile?.cardFinish ||
+    profile?.theme ||
+      profile?.cardFinish ||
       (profile?.edition === 'gold'
         ? 'gold'
         : profile?.edition === 'platinum' || profile?.edition === 'steel'
@@ -56,7 +57,9 @@ export default function CompactProfileCard({
   );
 
   useEffect(() => {
-    if (profile?.cardFinish) {
+    if (profile?.theme) {
+      setActiveFinish(profile.theme === 'platinum' ? 'steel' : profile.theme);
+    } else if (profile?.cardFinish) {
       setActiveFinish(profile.cardFinish);
     } else if (profile?.edition === 'gold') {
       setActiveFinish('gold');
@@ -67,27 +70,42 @@ export default function CompactProfileCard({
     } else {
       setActiveFinish('purple');
     }
-  }, [profile?.cardFinish, profile?.edition]);
+  }, [profile?.theme, profile?.cardFinish, profile?.edition]);
 
   const finishTints = {
     steel: '#E2E8F0',
+    platinum: '#E2E8F0',
     gold: '#E9C766',
     purple: '#A855F7',
-    metal: '#CBD5E1'
+    metal: '#CBD5E1',
+    rose_gold: '#F4B5A4',
+    emerald: '#10B981',
+    sapphire: '#38BDF8',
+    white: '#E9C766'
   };
 
   const finishGlows = {
     steel: '#64748B',
+    platinum: '#64748B',
     gold: '#C9972C',
     purple: profile?.glowColor || '#6B00FF',
-    metal: '#64748B'
+    metal: '#64748B',
+    rose_gold: '#C5624D',
+    emerald: '#059669',
+    sapphire: '#1D4ED8',
+    white: '#E9C766'
   };
 
   const finishAccents = {
     steel: '#94A3B8',
+    platinum: '#94A3B8',
     gold: '#E9C766',
     purple: profile?.accentColor || '#A855F7',
-    metal: '#CBD5E1'
+    metal: '#CBD5E1',
+    rose_gold: '#F4B5A4',
+    emerald: '#10B981',
+    sapphire: '#38BDF8',
+    white: '#E9C766'
   };
 
   const finishPortraitBgs = {

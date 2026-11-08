@@ -74,6 +74,7 @@ import { calculateProfileUsage, validateUploadQuota, DEFAULT_STORAGE_QUOTAS } fr
 import { validateUpiId, validateIfsc, validateBankDetails } from '../../lib/paymentValidator';
 import { resolveMapUrl } from '../../lib/constants';
 import FullScreenDigitalProfile from './FullScreenDigitalProfile';
+import { AVAILABLE_PROFILE_THEMES, getProfileTheme, applyThemeToProfile } from '../../lib/themeService';
 
 
 
@@ -115,16 +116,21 @@ export default function ProfileEditorModal({
 
   const buildInitialFormData = (p) => {
     if (!p) return {};
+    const initialThemeKey = p.theme || (p.edition === 'gold' ? 'gold' : p.edition === 'platinum' || p.edition === 'steel' ? 'platinum' : p.edition === 'metal' ? 'metal' : (p.cardFinish || 'purple'));
+    const resolvedTheme = getProfileTheme(initialThemeKey);
+
     return {
       ...p,
+      theme: resolvedTheme.id,
+      cardFinish: resolvedTheme.id === 'platinum' ? 'steel' : resolvedTheme.id,
+      edition: resolvedTheme.id,
       openingPreference: p.openingPreference || 'full',
-      cardFinish: p.cardFinish || (p.edition === 'gold' ? 'gold' : p.edition === 'platinum' || p.edition === 'steel' ? 'steel' : 'purple'),
-      cardColor: p.cardColor || '#A855F7',
-      gradientStart: p.gradientStart || '#130B22',
-      gradientMid: p.gradientMid || '#240F3E',
-      gradientEnd: p.gradientEnd || '#0B0813',
-      accentColor: p.accentColor || '#A855F7',
-      glowColor: p.glowColor || '#6B00FF',
+      cardColor: p.cardColor || resolvedTheme.accentColor,
+      gradientStart: p.gradientStart || resolvedTheme.bannerGradientStart,
+      gradientMid: p.gradientMid || resolvedTheme.bannerSolid,
+      gradientEnd: p.gradientEnd || resolvedTheme.bannerGradientEnd,
+      accentColor: p.accentColor || resolvedTheme.accentColor,
+      glowColor: p.glowColor || resolvedTheme.glowColor,
       creamHighlight: p.creamHighlight || '#F5EDE5',
       borderGlowIntensity: p.borderGlowIntensity || 'medium',
       photoShape: p.photoShape || 'circle',
@@ -536,22 +542,23 @@ export default function ProfileEditorModal({
     }
   };
 
-  // 14 Editor Navigation Sections definition
+  // 15 Editor Navigation Sections definition
   const SECTIONS = [
     { id: 'basic', label: '1. Basic Information', icon: User },
     { id: 'avatar', label: '2. Profile Picture & Logo', icon: CameraIcon },
-    { id: 'banner', label: '3. Banner & Appearance', icon: ImageIcon },
-    { id: 'contact', label: '4. Contact & Social Links', icon: Phone },
-    { id: 'hours', label: '5. Business Hours', icon: Clock },
-    { id: 'booking', label: '6. Appointment Booking', icon: Calendar },
-    { id: 'services', label: '7. Services Showcase', icon: Layers },
-    { id: 'portfolio', label: '8. Portfolio Gallery', icon: BriefcaseIcon },
-    { id: 'videos', label: '9. Videos', icon: Video },
-    { id: 'payments', label: '10. Payments & UPI', icon: CreditCard },
-    { id: 'bank', label: '11. Public Bank Details', icon: Landmark },
-    { id: 'qr', label: '12. QR Code Companion', icon: QrCode },
-    { id: 'usage', label: '13. Upload Usage & Quotas', icon: HardDrive },
-    { id: 'publishing', label: '14. Visibility & Publishing', icon: Globe }
+    { id: 'theme', label: '3. Theme & Card Finish', icon: Palette },
+    { id: 'banner', label: '4. Cover Banner & Media', icon: ImageIcon },
+    { id: 'contact', label: '5. Contact & Social Links', icon: Phone },
+    { id: 'hours', label: '6. Business Hours', icon: Clock },
+    { id: 'booking', label: '7. Appointment Booking', icon: Calendar },
+    { id: 'services', label: '8. Services Showcase', icon: Layers },
+    { id: 'portfolio', label: '9. Portfolio Gallery', icon: BriefcaseIcon },
+    { id: 'videos', label: '10. Videos', icon: Video },
+    { id: 'payments', label: '11. Payments & UPI', icon: CreditCard },
+    { id: 'bank', label: '12. Public Bank Details', icon: Landmark },
+    { id: 'qr', label: '13. QR Code Companion', icon: QrCode },
+    { id: 'usage', label: '14. Upload Usage & Quotas', icon: HardDrive },
+    { id: 'publishing', label: '15. Visibility & Publishing', icon: Globe }
   ];
 
 
@@ -1167,12 +1174,324 @@ export default function ProfileEditorModal({
                   </div>
                 )}
 
-                {/* 3. BANNER AND APPEARANCE */}
+                {/* 3. PROFILE THEME & CARD FINISH */}
+                {editorSection === 'theme' && (
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '22px' }}>
+                    <div>
+                      <h4 style={{ margin: '0 0 4px', fontSize: '1.05rem', fontWeight: 800 }}>3. Digital Profile Theme &amp; Card Finish</h4>
+                      <p style={{ margin: 0, fontSize: '0.82rem', color: 'var(--text-secondary)' }}>
+                        Select the luxury theme preset for your digital profile card and public identity page. Choosing an edition instantly synchronizes the champagne gold, platinum, or signature ultraviolet accents across your buttons, badges, avatar glows, and backgrounds.
+                      </p>
+                    </div>
+
+                    {/* Active Theme Highlight Banner */}
+                    {(() => {
+                      const curTheme = getProfileTheme(formData.theme || formData.cardFinish || formData.edition);
+                      return (
+                        <div
+                          style={{
+                            padding: '16px 20px',
+                            borderRadius: '16px',
+                            background: `linear-gradient(135deg, ${curTheme.cardBg} 0%, #15111E 100%)`,
+                            border: `1.5px solid ${curTheme.borderColor || curTheme.accentColor}`,
+                            boxShadow: `0 8px 30px ${curTheme.glowColor}25`,
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'space-between',
+                            flexWrap: 'wrap',
+                            gap: '14px'
+                          }}
+                        >
+                          <div style={{ display: 'flex', alignItems: 'center', gap: '14px' }}>
+                            <div
+                              style={{
+                                width: '44px',
+                                height: '44px',
+                                borderRadius: '12px',
+                                background: curTheme.swatchGradient,
+                                border: `1px solid ${curTheme.accentColor}60`,
+                                display: 'flex',
+                                alignItems: 'center',
+                                justifyContent: 'center',
+                                color: curTheme.buttonText,
+                                boxShadow: `0 4px 14px ${curTheme.glowColor}50`
+                              }}
+                            >
+                              <Sparkles size={20} />
+                            </div>
+                            <div>
+                              <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                                <span style={{ fontSize: '1.05rem', fontWeight: 800, color: '#FFFFFF' }}>{curTheme.name}</span>
+                                <span
+                                  style={{
+                                    fontSize: '0.7rem',
+                                    fontWeight: 700,
+                                    padding: '2px 8px',
+                                    borderRadius: '9999px',
+                                    backgroundColor: `${curTheme.accentColor}25`,
+                                    color: curTheme.accentColor,
+                                    border: `1px solid ${curTheme.accentColor}40`
+                                  }}
+                                >
+                                  {curTheme.badge}
+                                </span>
+                              </div>
+                              <div style={{ fontSize: '0.78rem', color: 'var(--text-secondary)', marginTop: '2px' }}>
+                                {curTheme.subtitle} • {curTheme.description}
+                              </div>
+                            </div>
+                          </div>
+
+                          <button
+                            type="button"
+                            onClick={() => setPreviewProfile(formData)}
+                            className="btn btn-sm"
+                            style={{
+                              backgroundColor: curTheme.accentColor,
+                              color: curTheme.buttonText,
+                              border: 'none',
+                              fontWeight: 700,
+                              gap: '6px'
+                            }}
+                          >
+                            <Eye size={14} />
+                            <span>Preview Theme</span>
+                          </button>
+                        </div>
+                      );
+                    })()}
+
+                    {/* Theme Presets Grid */}
+                    <div>
+                      <label style={{ fontSize: '0.82rem', fontWeight: 700, display: 'block', marginBottom: '10px', color: 'var(--text-primary)' }}>
+                        Available Card Edition Themes:
+                      </label>
+
+                      <div
+                        style={{
+                          display: 'grid',
+                          gridTemplateColumns: 'repeat(auto-fit, minmax(260px, 1fr))',
+                          gap: '14px'
+                        }}
+                      >
+                        {AVAILABLE_PROFILE_THEMES.map((theme) => {
+                          const isSelected = (formData.theme || formData.cardFinish || formData.edition) === theme.id ||
+                            (theme.id === 'platinum' && (formData.theme === 'steel' || formData.cardFinish === 'steel'));
+
+                          return (
+                            <div
+                              key={theme.id}
+                              onClick={() => setFormData(prev => applyThemeToProfile(prev, theme.id))}
+                              style={{
+                                padding: '16px',
+                                borderRadius: '16px',
+                                backgroundColor: isSelected ? 'rgba(255, 255, 255, 0.05)' : 'rgba(255, 255, 255, 0.02)',
+                                border: isSelected
+                                  ? `2px solid ${theme.accentColor}`
+                                  : '1px solid var(--border-color)',
+                                boxShadow: isSelected
+                                  ? `0 10px 30px ${theme.glowColor}35, 0 0 16px ${theme.accentColor}25`
+                                  : 'none',
+                                cursor: 'pointer',
+                                transition: 'all 0.18s ease',
+                                position: 'relative',
+                                display: 'flex',
+                                flexDirection: 'column',
+                                gap: '10px'
+                              }}
+                            >
+                              {/* Swatch & Selection Indicator */}
+                              <div
+                                style={{
+                                  height: '42px',
+                                  borderRadius: '10px',
+                                  background: theme.swatchGradient,
+                                  position: 'relative',
+                                  overflow: 'hidden',
+                                  border: `1px solid ${theme.accentColor}40`,
+                                  boxShadow: `inset 0 1px 0 rgba(255,255,255,0.2)`
+                                }}
+                              >
+                                {isSelected && (
+                                  <div
+                                    style={{
+                                      position: 'absolute',
+                                      top: '6px',
+                                      right: '6px',
+                                      width: '22px',
+                                      height: '22px',
+                                      borderRadius: '50%',
+                                      backgroundColor: theme.accentColor,
+                                      color: theme.buttonText,
+                                      display: 'flex',
+                                      alignItems: 'center',
+                                      justifyContent: 'center',
+                                      boxShadow: '0 2px 8px rgba(0,0,0,0.4)'
+                                    }}
+                                  >
+                                    <Check size={13} strokeWidth={3} />
+                                  </div>
+                                )}
+                              </div>
+
+                              {/* Title & Badge */}
+                              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '8px' }}>
+                                <span style={{ fontWeight: 800, fontSize: '0.94rem', color: isSelected ? theme.accentColor : '#FFFFFF' }}>
+                                  {theme.name}
+                                </span>
+                                <span
+                                  style={{
+                                    fontSize: '0.68rem',
+                                    fontWeight: 700,
+                                    padding: '2px 7px',
+                                    borderRadius: '6px',
+                                    backgroundColor: `${theme.accentColor}20`,
+                                    color: theme.accentColor
+                                  }}
+                                >
+                                  {theme.badge}
+                                </span>
+                              </div>
+
+                              <p style={{ margin: 0, fontSize: '0.76rem', color: 'var(--text-secondary)', lineHeight: 1.45 }}>
+                                {theme.description}
+                              </p>
+
+                              {/* Palette Swatches */}
+                              <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginTop: 'auto', paddingTop: '4px' }}>
+                                <div style={{ display: 'flex', alignItems: 'center', gap: '5px' }}>
+                                  <span style={{ width: '12px', height: '12px', borderRadius: '50%', backgroundColor: theme.accentColor, display: 'inline-block', border: '1px solid rgba(255,255,255,0.2)' }} />
+                                  <span style={{ fontSize: '0.7rem', color: 'var(--text-muted)' }}>Accent</span>
+                                </div>
+                                <div style={{ display: 'flex', alignItems: 'center', gap: '5px' }}>
+                                  <span style={{ width: '12px', height: '12px', borderRadius: '50%', backgroundColor: theme.glowColor, display: 'inline-block', border: '1px solid rgba(255,255,255,0.2)' }} />
+                                  <span style={{ fontSize: '0.7rem', color: 'var(--text-muted)' }}>Glow</span>
+                                </div>
+                                <div style={{ display: 'flex', alignItems: 'center', gap: '5px' }}>
+                                  <span style={{ width: '12px', height: '12px', borderRadius: '4px', backgroundColor: theme.cardBg, display: 'inline-block', border: '1px solid rgba(255,255,255,0.2)' }} />
+                                  <span style={{ fontSize: '0.7rem', color: 'var(--text-muted)' }}>Canvas</span>
+                                </div>
+                              </div>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    </div>
+
+                    {/* Fine-Tuning & Custom Accents */}
+                    <div
+                      style={{
+                        padding: '18px 20px',
+                        borderRadius: '16px',
+                        backgroundColor: 'rgba(255, 255, 255, 0.02)',
+                        border: '1px solid var(--border-color)',
+                        display: 'flex',
+                        flexDirection: 'column',
+                        gap: '16px'
+                      }}
+                    >
+                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '10px' }}>
+                        <div>
+                          <h5 style={{ margin: '0 0 3px', fontSize: '0.92rem', fontWeight: 800 }}>Custom Palette &amp; Glow Fine-Tuning</h5>
+                          <p style={{ margin: 0, fontSize: '0.76rem', color: 'var(--text-secondary)' }}>
+                            Override the theme preset colors or adjust border glow intensity.
+                          </p>
+                        </div>
+
+                        <button
+                          type="button"
+                          onClick={() => {
+                            const cur = getProfileTheme(formData.theme);
+                            setFormData(prev => ({
+                              ...prev,
+                              accentColor: cur.accentColor,
+                              glowColor: cur.glowColor
+                            }));
+                          }}
+                          className="btn btn-sm"
+                          style={{ fontSize: '0.74rem', gap: '5px' }}
+                        >
+                          <RefreshCw size={12} />
+                          <span>Reset to Theme Defaults</span>
+                        </button>
+                      </div>
+
+                      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '14px' }}>
+                        <div>
+                          <label style={{ fontSize: '0.78rem', fontWeight: 600, display: 'block', marginBottom: '6px' }}>Primary Accent Color</label>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                            <input
+                              type="color"
+                              value={formData.accentColor || '#A855F7'}
+                              onChange={e => setFormData({ ...formData, accentColor: e.target.value })}
+                              style={{ width: '38px', height: '38px', borderRadius: '8px', border: '1px solid var(--border-color)', cursor: 'pointer', background: 'none', padding: '2px' }}
+                            />
+                            <input
+                              type="text"
+                              value={formData.accentColor || '#A855F7'}
+                              onChange={e => setFormData({ ...formData, accentColor: e.target.value })}
+                              className="form-input"
+                              style={{ flex: 1, fontFamily: 'monospace', fontSize: '0.84rem' }}
+                            />
+                          </div>
+                        </div>
+
+                        <div>
+                          <label style={{ fontSize: '0.78rem', fontWeight: 600, display: 'block', marginBottom: '6px' }}>Glow &amp; Radiance Color</label>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                            <input
+                              type="color"
+                              value={formData.glowColor || '#6B00FF'}
+                              onChange={e => setFormData({ ...formData, glowColor: e.target.value })}
+                              style={{ width: '38px', height: '38px', borderRadius: '8px', border: '1px solid var(--border-color)', cursor: 'pointer', background: 'none', padding: '2px' }}
+                            />
+                            <input
+                              type="text"
+                              value={formData.glowColor || '#6B00FF'}
+                              onChange={e => setFormData({ ...formData, glowColor: e.target.value })}
+                              className="form-input"
+                              style={{ flex: 1, fontFamily: 'monospace', fontSize: '0.84rem' }}
+                            />
+                          </div>
+                        </div>
+
+                        <div>
+                          <label style={{ fontSize: '0.78rem', fontWeight: 600, display: 'block', marginBottom: '6px' }}>Border Glow Intensity</label>
+                          <select
+                            value={formData.borderGlowIntensity || 'medium'}
+                            onChange={e => setFormData({ ...formData, borderGlowIntensity: e.target.value })}
+                            className="form-input"
+                            style={{ width: '100%', height: '38px' }}
+                          >
+                            <option value="subtle">Subtle Minimal</option>
+                            <option value="medium">Medium Standard</option>
+                            <option value="high">High Luminous Foil</option>
+                          </select>
+                        </div>
+
+                        <div>
+                          <label style={{ fontSize: '0.78rem', fontWeight: 600, display: 'block', marginBottom: '6px' }}>Photo Silhouette Shape</label>
+                          <select
+                            value={formData.photoShape || 'circle'}
+                            onChange={e => setFormData({ ...formData, photoShape: e.target.value })}
+                            className="form-input"
+                            style={{ width: '100%', height: '38px' }}
+                          >
+                            <option value="circle">Circular (Classic)</option>
+                            <option value="rounded_rect">Rounded Square (Modern)</option>
+                          </select>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                )}
+
+                {/* 4. BANNER AND APPEARANCE */}
                 {editorSection === 'banner' && (
                   <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap', gap: '10px' }}>
                       <div>
-                        <h4 style={{ margin: '0 0 4px', fontSize: '1.05rem', fontWeight: 800 }}>3. Cover Banner &amp; Appearance</h4>
+                        <h4 style={{ margin: '0 0 4px', fontSize: '1.05rem', fontWeight: 800 }}>4. Cover Banner &amp; Appearance</h4>
                         <p style={{ margin: 0, fontSize: '0.82rem', color: 'var(--text-secondary)' }}>
                           Customizable top banner. Drag the image inside the preview box to position horizontal and vertical alignment.
                         </p>
@@ -1566,7 +1885,7 @@ export default function ProfileEditorModal({
                 {/* 4. CONTACT AND SOCIAL LINKS */}
                 {editorSection === 'contact' && (
                   <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
-                    <h4 style={{ margin: '0 0 4px', fontSize: '1.05rem', fontWeight: 800 }}>4. Contact and Social Links</h4>
+                    <h4 style={{ margin: '0 0 4px', fontSize: '1.05rem', fontWeight: 800 }}>5. Contact and Social Links</h4>
                     <p style={{ margin: '0 0 12px', fontSize: '0.82rem', color: 'var(--text-secondary)' }}>
                       Direct contact phone, WhatsApp, and social media links.
                     </p>
@@ -1681,7 +2000,7 @@ export default function ProfileEditorModal({
                   <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                       <div>
-                        <h4 style={{ margin: '0 0 4px', fontSize: '1.05rem', fontWeight: 800 }}>5. Business Hours</h4>
+                        <h4 style={{ margin: '0 0 4px', fontSize: '1.05rem', fontWeight: 800 }}>6. Business Hours</h4>
                         <p style={{ margin: 0, fontSize: '0.82rem', color: 'var(--text-secondary)' }}>
                           Configure daily opening and closing hours, closed days, and business timezone.
                         </p>
@@ -1815,7 +2134,7 @@ export default function ProfileEditorModal({
                   <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                       <div>
-                        <h4 style={{ margin: '0 0 4px', fontSize: '1.05rem', fontWeight: 800 }}>6. Appointment Booking</h4>
+                        <h4 style={{ margin: '0 0 4px', fontSize: '1.05rem', fontWeight: 800 }}>7. Appointment Booking</h4>
                         <p style={{ margin: 0, fontSize: '0.82rem', color: 'var(--text-secondary)' }}>
                           Configure consultation availability, slot durations, and review incoming bookings.
                         </p>
@@ -1991,7 +2310,7 @@ export default function ProfileEditorModal({
                   <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                       <div>
-                        <h4 style={{ margin: '0 0 4px', fontSize: '1.05rem', fontWeight: 800 }}>7. Services Showcase</h4>
+                        <h4 style={{ margin: '0 0 4px', fontSize: '1.05rem', fontWeight: 800 }}>8. Services Showcase</h4>
                         <p style={{ margin: 0, fontSize: '0.82rem', color: 'var(--text-secondary)' }}>
                           Add, edit, reorder, or hide the services you offer.
                         </p>
@@ -2134,7 +2453,7 @@ export default function ProfileEditorModal({
                   <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                       <div>
-                        <h4 style={{ margin: '0 0 4px', fontSize: '1.05rem', fontWeight: 800 }}>8. Portfolio Gallery</h4>
+                        <h4 style={{ margin: '0 0 4px', fontSize: '1.05rem', fontWeight: 800 }}>9. Portfolio Gallery</h4>
                         <p style={{ margin: 0, fontSize: '0.82rem', color: 'var(--text-secondary)' }}>
                           Showcase previous work, designs, and achievements in full-screen lightbox gallery.
                         </p>
@@ -2267,7 +2586,7 @@ export default function ProfileEditorModal({
                   <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                       <div>
-                        <h4 style={{ margin: '0 0 4px', fontSize: '1.05rem', fontWeight: 800 }}>9. Videos Section</h4>
+                        <h4 style={{ margin: '0 0 4px', fontSize: '1.05rem', fontWeight: 800 }}>10. Videos Section</h4>
                         <p style={{ margin: 0, fontSize: '0.82rem', color: 'var(--text-secondary)' }}>
                           Embed YouTube videos and YouTube Shorts directly on your public profile.
                         </p>
@@ -2351,12 +2670,12 @@ export default function ProfileEditorModal({
                   </div>
                 )}
 
-                {/* 10. PAYMENTS */}
+                {/* 11. PAYMENTS */}
                 {editorSection === 'payments' && (
                   <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                       <div>
-                        <h4 style={{ margin: '0 0 4px', fontSize: '1.05rem', fontWeight: 800 }}>10. Payments and UPI</h4>
+                        <h4 style={{ margin: '0 0 4px', fontSize: '1.05rem', fontWeight: 800 }}>11. Payments and UPI</h4>
                         <p style={{ margin: 0, fontSize: '0.82rem', color: 'var(--text-secondary)' }}>
                           Allow visitors and clients to pay you via UPI apps and QR code.
                         </p>
@@ -2424,12 +2743,12 @@ export default function ProfileEditorModal({
                   </div>
                 )}
 
-                {/* 11. PUBLIC BANK DETAILS */}
+                {/* 12. PUBLIC BANK DETAILS */}
                 {editorSection === 'bank' && (
                   <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                       <div>
-                        <h4 style={{ margin: '0 0 4px', fontSize: '1.05rem', fontWeight: 800 }}>11. Public Bank Settlement Details</h4>
+                        <h4 style={{ margin: '0 0 4px', fontSize: '1.05rem', fontWeight: 800 }}>12. Public Bank Settlement Details</h4>
                         <p style={{ margin: 0, fontSize: '0.82rem', color: 'var(--text-secondary)' }}>
                           Protected bank account information for NEFT/RTGS wire transfers.
                         </p>
@@ -2553,10 +2872,10 @@ export default function ProfileEditorModal({
                   </div>
                 )}
 
-                {/* 12. QR CODE */}
+                {/* 13. QR CODE */}
                 {editorSection === 'qr' && (
                   <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
-                    <h4 style={{ margin: '0 0 4px', fontSize: '1.05rem', fontWeight: 800 }}>12. Smart QR Code Companion</h4>
+                    <h4 style={{ margin: '0 0 4px', fontSize: '1.05rem', fontWeight: 800 }}>13. Smart QR Code Companion</h4>
                     <p style={{ margin: 0, fontSize: '0.82rem', color: 'var(--text-secondary)' }}>
                       High-resolution companion QR code pointing to your permanent canonical URL.
                     </p>
@@ -2603,10 +2922,10 @@ export default function ProfileEditorModal({
                   </div>
                 )}
 
-                {/* 13. UPLOAD USAGE */}
+                {/* 14. UPLOAD USAGE */}
                 {editorSection === 'usage' && (
                   <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
-                    <h4 style={{ margin: '0 0 4px', fontSize: '1.05rem', fontWeight: 800 }}>13. Upload Usage and Storage Quotas</h4>
+                    <h4 style={{ margin: '0 0 4px', fontSize: '1.05rem', fontWeight: 800 }}>14. Upload Usage and Storage Quotas</h4>
                     <p style={{ margin: 0, fontSize: '0.82rem', color: 'var(--text-secondary)' }}>
                       Real measured usage of images, videos, and storage on your account.
                     </p>
@@ -2651,10 +2970,10 @@ export default function ProfileEditorModal({
                   </div>
                 )}
 
-                {/* 14. PUBLISHING */}
+                {/* 15. PUBLISHING */}
                 {editorSection === 'publishing' && (
                   <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
-                    <h4 style={{ margin: '0 0 4px', fontSize: '1.05rem', fontWeight: 800 }}>14. Profile Visibility and Publishing</h4>
+                    <h4 style={{ margin: '0 0 4px', fontSize: '1.05rem', fontWeight: 800 }}>15. Profile Visibility and Publishing</h4>
                     <p style={{ margin: 0, fontSize: '0.82rem', color: 'var(--text-secondary)' }}>
                       Control live profile publication status and canonical slug.
                     </p>

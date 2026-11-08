@@ -14,6 +14,7 @@ import FullScreenDigitalProfile from '../../components/profile/FullScreenDigital
 import CardNav from '../../components/CardNav/CardNav';
 import { downloadVCard } from '../../lib/vcard';
 import { INITIAL_PROFILES } from '../../lib/storage';
+import { getProfileTheme } from '../../lib/themeService';
 
 export default function PublicProfile({ slug = 'alex' }) {
   const { getProfileBySlug, profiles } = useData();
@@ -96,8 +97,9 @@ export default function PublicProfile({ slug = 'alex' }) {
     );
   }
 
-  const glowColor = profile.glowColor || '#6B00FF';
-  const accentColor = profile.accentColor || '#A855F7';
+  const activeTheme = useMemo(() => getProfileTheme(profile.theme || profile.cardFinish || profile.edition), [profile.theme, profile.cardFinish, profile.edition]);
+  const glowColor = profile.glowColor || activeTheme.glowColor;
+  const accentColor = profile.accentColor || activeTheme.accentColor;
 
   const handleShare = () => {
     const url = typeof window !== 'undefined' ? window.location.href : `https://flocard.in/p/${profile.slug}`;
@@ -146,7 +148,7 @@ export default function PublicProfile({ slug = 'alex' }) {
         minHeight: '100vh',
         width: '100%',
         maxWidth: '100vw',
-        background: isLight ? '#F8F7FC' : '#08060D',
+        background: isLight ? activeTheme.pageBgLight : activeTheme.pageBgDark,
         display: 'flex',
         flexDirection: 'column',
         alignItems: 'center',
