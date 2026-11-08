@@ -22,6 +22,8 @@ export function DataProvider({ children }) {
   const [demoConfig, setDemoConfig] = useState(() => StorageEngine.getDemoConfig());
   const [invoiceSettings, setInvoiceSettings] = useState(() => StorageEngine.getInvoiceSettings());
   const [lastOrderUpdate, setLastOrderUpdate] = useState(null);
+  const [isCloudSyncing, setIsCloudSyncing] = useState(false);
+  const [lastCloudSyncTime, setLastCloudSyncTime] = useState(null);
 
   const refreshAll = () => {
     setProfiles(StorageEngine.getProfiles());
@@ -41,10 +43,17 @@ export function DataProvider({ children }) {
   // Comprehensive cloud synchronization for all shared resources across all admin accounts & devices
   const syncCloudData = async () => {
     try {
+      setIsCloudSyncing(true);
       const { supabase, supabaseAdmin, isSupabaseConfigured } = await import('../lib/supabase.js');
-      if (!isSupabaseConfigured) return;
+      if (!isSupabaseConfigured) {
+        setIsCloudSyncing(false);
+        return;
+      }
       const client = supabaseAdmin || supabase;
-      if (!client) return;
+      if (!client) {
+        setIsCloudSyncing(false);
+        return;
+      }
 
       // 1. Synchronize Profiles from Supabase
       try {
@@ -107,7 +116,7 @@ export function DataProvider({ children }) {
             }
           }
           StorageEngine.saveLocalProfiles(localProfiles);
-          setProfiles(localProfiles);
+          setProfiles([...localProfiles]);
         }
       } catch (err) {
         console.warn('[DataContext] Profiles cloud sync note:', err.message);
@@ -147,7 +156,7 @@ export function DataProvider({ children }) {
             }
           }
           StorageEngine.saveLocalCards(localCards);
-          setCards(localCards);
+          setCards([...localCards]);
         }
       } catch (err) {
         console.warn('[DataContext] NFC Cards cloud sync note:', err.message);
@@ -181,7 +190,7 @@ export function DataProvider({ children }) {
               }
             }
             StorageEngine.saveLocalCustomers(localCusts);
-            setCustomers(localCusts);
+            setCustomers([...localCusts]);
 
             // Auto-provision digital profile if customer doesn't have one yet
             const localProfs = StorageEngine.getProfiles();
@@ -223,7 +232,7 @@ export function DataProvider({ children }) {
             }
             if (profsChanged) {
               StorageEngine.saveLocalProfiles(localProfs);
-              setProfiles(localProfs);
+              setProfiles([...localProfs]);
             }
           }
         } catch (err) {
@@ -241,8 +250,8 @@ export function DataProvider({ children }) {
         if (!error && Array.isArray(cloudDesigns) && cloudDesigns.length > 0) {
           const localDesigns = StorageEngine.getDesigns();
           const localOrders = StorageEngine.getOrders();
-          let designsUpdated = false;
-          let ordersUpdated = false;
+          const currentCusts = StorageEngine.getCustomers();
+          let custsUpdated = false;
 
           for (const cd of cloudDesigns) {
             const fc = cd.front_config || {};
@@ -252,7 +261,7 @@ export function DataProvider({ children }) {
               id: localId,
               supabaseId: cd.id,
               title: cd.title || fc.title || 'Card Design',
-              edition: cd.edition || 'purple',
+              edition: fc.edition || cd.edition || 'purple',
               templateType: fc.templateType || 'standard',
               customerName: fc.customerName || fc.name || 'Valued Client',
               customerEmail: fc.customerEmail || '',
@@ -274,24 +283,43 @@ export function DataProvider({ children }) {
               localDesigns[existDIdx] = { ...localDesigns[existDIdx], ...mappedDesign };
             } else {
               localDesigns.unshift(mappedDesign);
-              designsUpdated = true;
             }
 
+            // Extract and reconstruct embedded Print Order across devices
             if (fc.printOrder) {
               const po = fc.printOrder;
               const existOIdx = localOrders.findIndex(o => o.id === po.id || o.orderReference === po.orderReference);
               if (existOIdx < 0) {
                 localOrders.unshift(po);
-                ordersUpdated = true;
               } else {
                 localOrders[existOIdx] = { ...localOrders[existOIdx], ...po };
               }
+            } else if (mappedDesign.orderId) {
+              const ordRef = mappedDesign.orderId;
+              const existOIdx = localOrders.findIndex(o => o.id === ordRef || o.orderReference === ordRef);
+              if (existOIdx < 0) {
+                localOrders.unshift({
+                  id: ordRef,
+                  orderReference: ordRef,
+                  designId: localId,
+                  designTitle: mappedDesign.title,
+                  customerName: mappedDesign.customerName,
+                  customerEmail: mappedDesign.customerEmail,
+                  customerPhone: mappedDesign.customerPhone,
+                  company: mappedDesign.company,
+                  edition: mappedDesign.edition,
+                  status: mappedDesign.status === 'approved' ? 'approved' : 'new_order',
+                  createdAt: cd.created_at,
+                  updatedAt: cd.updated_at || cd.created_at,
+                  totalAmount: 1899,
+                  source: 'web_studio'
+                });
+              }
             }
 
-            // Synthesize customer from design so customers from flocard.in are never lost
+            // Synthesize customer from design so customers from any device are never lost
             const custEmail = (fc.customerEmail || '').trim().toLowerCase();
             if (custEmail) {
-              const currentCusts = StorageEngine.getCustomers();
               const existC = currentCusts.find(c => (c.email && c.email.toLowerCase() === custEmail) || (fc.customerId && c.id === fc.customerId));
               if (!existC) {
                 currentCusts.unshift({
@@ -306,88 +334,29 @@ export function DataProvider({ children }) {
                   totalCards: 0,
                   totalDesigns: 1
                 });
-                StorageEngine.saveLocalCustomers(currentCusts);
-                setCustomers(currentCusts);
+                custsUpdated = true;
               }
             }
           }
 
-          if (designsUpdated) {
-            StorageEngine.saveLocalDesigns(localDesigns);
-            setDesigns(localDesigns);
+          if (custsUpdated) {
+            StorageEngine.saveLocalCustomers(currentCusts);
+            setCustomers([...currentCusts]);
           }
-          if (ordersUpdated) {
-            StorageEngine.saveLocalOrders(localOrders);
-            setOrders(localOrders);
-          }
+          StorageEngine.saveLocalDesigns(localDesigns);
+          setDesigns([...localDesigns]);
+          StorageEngine.saveLocalOrders(localOrders);
+          setOrders([...localOrders]);
         }
       } catch (err) {
         console.warn('[DataContext] Card designs cloud sync note:', err.message);
       }
 
-      // 5. Check if native orders table exists and query it as well
-      try {
-        const { data: cloudOrders, error: ordErr } = await client
-          .from('orders')
-          .select('*')
-          .order('created_at', { ascending: false });
-        if (!ordErr && Array.isArray(cloudOrders) && cloudOrders.length > 0) {
-          const localOrders = StorageEngine.getOrders();
-          let changed = false;
-          for (const co of cloudOrders) {
-            const ordRef = co.order_reference || co.id;
-            const exist = localOrders.some(o => o.id === ordRef || o.orderReference === ordRef);
-            if (!exist) {
-              localOrders.unshift({
-                id: ordRef,
-                orderReference: ordRef,
-                customerName: co.customer_name,
-                customerEmail: co.customer_email,
-                customerPhone: co.customer_phone,
-                company: co.company,
-                status: co.status || 'new_order',
-                shippingAddress: co.shipping_address,
-                totalAmount: Number(co.total_amount) || 1899,
-                createdAt: co.created_at,
-                updatedAt: co.updated_at,
-                source: co.source || 'web_studio'
-              });
-              changed = true;
-            }
-
-            // Synthesize customer from cloud order if not present
-            const coEmail = (co.customer_email || '').trim().toLowerCase();
-            if (coEmail) {
-              const currentCusts = StorageEngine.getCustomers();
-              const existC = currentCusts.find(c => (c.email && c.email.toLowerCase() === coEmail) || (co.customer_id && c.id === co.customer_id));
-              if (!existC) {
-                currentCusts.unshift({
-                  id: co.customer_id || `cust_${coEmail.replace(/[^a-z0-9]/g, '_')}`,
-                  name: co.customer_name || coEmail.split('@')[0],
-                  email: coEmail,
-                  phone: co.customer_phone || '',
-                  company: co.company || '',
-                  role: 'customer',
-                  status: 'active',
-                  joinedDate: (co.created_at || '').split('T')[0] || new Date().toISOString().split('T')[0],
-                  totalCards: 0,
-                  totalDesigns: 0
-                });
-                StorageEngine.saveLocalCustomers(currentCusts);
-                setCustomers(currentCusts);
-              }
-            }
-          }
-          if (changed) {
-            StorageEngine.saveLocalOrders(localOrders);
-            setOrders(localOrders);
-          }
-        }
-      } catch (_) {}
-
-      refreshAll();
+      setLastCloudSyncTime(new Date());
     } catch (err) {
       console.warn('[DataContext] Cloud sync error:', err.message);
+    } finally {
+      setIsCloudSyncing(false);
     }
   };
 
@@ -762,6 +731,9 @@ export function DataProvider({ children }) {
       recordOrderRefund,
       recordFinancialAdjustment,
       refreshAll,
+      syncCloudData,
+      isCloudSyncing,
+      lastCloudSyncTime,
       saveProfile,
       deleteProfile,
       saveCard,

@@ -1223,15 +1223,26 @@ export const StorageEngine = {
 
       const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
       const rawStatus = (card.status || 'in_stock').toLowerCase();
-      const dbStatus = rawStatus === 'disabled' ? 'revoked' : (rawStatus === 'pending' ? 'in_stock' : rawStatus);
-      const validEditions = ['purple', 'gold', 'platinum', 'custom', 'white', 'metal'];
-      const edition = validEditions.includes(card.edition) ? card.edition : 'purple';
+      // Supabase nfc_cards check constraint strictly requires: 'in_stock', 'active', or 'revoked'
+      let dbStatus = 'in_stock';
+      if (rawStatus === 'active') {
+        dbStatus = 'active';
+      } else if (rawStatus === 'revoked' || rawStatus === 'disabled' || rawStatus === 'suspended') {
+        dbStatus = 'revoked';
+      } else {
+        // 'unassigned', 'in_stock', 'pending', etc. map to 'in_stock'
+        dbStatus = 'in_stock';
+      }
+
+      // Supabase nfc_cards check constraint strictly allows: 'purple', 'gold', 'platinum', 'custom'
+      const rawEdition = (card.edition || 'purple').toLowerCase();
+      const dbEdition = ['purple', 'gold', 'platinum', 'custom'].includes(rawEdition) ? rawEdition : 'custom';
 
       const payload = {
-        card_code: card.cardCode,
+        card_code: card.cardCode.trim(),
         chip_type: card.chipType || 'NXP NTAG216 (888 Bytes)',
         batch: card.batch || 'Batch-A',
-        edition,
+        edition: dbEdition,
         profile_slug: card.profileSlug ? card.profileSlug.trim() : null,
         status: dbStatus,
         tap_count: typeof card.tapCount === 'number' ? card.tapCount : 0,
@@ -1245,7 +1256,12 @@ export const StorageEngine = {
         payload.id = card.id;
       }
 
-      await client.from('nfc_cards').upsert(payload, { onConflict: 'card_code' });
+      const { error: upsertErr } = await client.from('nfc_cards').upsert(payload, { onConflict: 'card_code' });
+      if (upsertErr) {
+        console.warn('[StorageSync] Supabase nfc_cards upsert warning:', upsertErr.message);
+      } else {
+        console.info(`[StorageSync] NFC Card "${card.cardCode}" synced to Supabase successfully (${dbStatus}).`);
+      }
     } catch (err) {
       console.warn('[StorageSync] Supabase nfc_cards sync note:', err.message);
     }
@@ -1309,12 +1325,16 @@ export const StorageEngine = {
     setLocal('orders', orders);
   },
   syncDesignToCloud: async (design) => {
-    if (!design) return;
+    if (!design) return null;
+    if (isLocalEnvironment()) {
+      console.info(`[Local Sandbox] Skipping cloud sync for design "${design.title || design.id}". Saved to local browser storage only.`);
+      return null;
+    }
     try {
       const { supabase, supabaseAdmin, isSupabaseConfigured } = await import('./supabase.js');
-      if (!isSupabaseConfigured) return;
+      if (!isSupabaseConfigured) return null;
       const client = supabaseAdmin || supabase;
-      if (!client) return;
+      if (!client) return null;
 
       const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
       let cloudId = design.supabaseId;
@@ -1332,12 +1352,17 @@ export const StorageEngine = {
         }
       }
 
-      const validEdition = ['purple', 'gold', 'platinum', 'custom'].includes(design.edition)
-        ? design.edition
-        : 'purple';
-      const validStatus = ['draft', 'submitted', 'approved', 'rejected'].includes(design.status)
-        ? design.status
-        : 'submitted';
+      // Supabase check constraint strictly requires: 'purple', 'gold', 'platinum', 'custom'
+      const rawEdition = (design.edition || 'purple').toLowerCase();
+      const validEdition = ['purple', 'gold', 'platinum', 'custom'].includes(rawEdition)
+        ? rawEdition
+        : 'custom';
+
+      // Supabase check constraint strictly requires: 'draft', 'submitted', 'in_review', 'approved', 'rejected', 'printed'
+      const rawStatus = (design.status || 'submitted').toLowerCase();
+      const validStatus = ['draft', 'submitted', 'in_review', 'approved', 'rejected', 'printed'].includes(rawStatus)
+        ? rawStatus
+        : (rawStatus === 'completed' ? 'printed' : 'submitted');
 
       const payload = {
         id: cloudId,
@@ -1347,6 +1372,7 @@ export const StorageEngine = {
         front_config: {
           ...(design.front || {}),
           _localId: design.id,
+          edition: design.edition || validEdition,
           title: design.title || '',
           customerName: design.customerName || design.front?.name || '',
           customerEmail: design.customerEmail || '',
@@ -1367,7 +1393,12 @@ export const StorageEngine = {
         payload.user_id = design.customerId;
       }
 
-      await client.from('card_designs').upsert(payload, { onConflict: 'id' });
+      const { error: upsertErr } = await client.from('card_designs').upsert(payload, { onConflict: 'id' });
+      if (upsertErr) {
+        console.warn('[StorageSync] Supabase card_designs upsert warning:', upsertErr.message);
+      } else {
+        console.info(`[StorageSync] Card Design "${design.title || design.id}" synced to Supabase successfully (${validStatus}).`);
+      }
 
       // Update local design with supabaseId if generated
       if (design.supabaseId !== cloudId) {
@@ -1379,8 +1410,10 @@ export const StorageEngine = {
           setLocal('designs', list);
         }
       }
+      return cloudId;
     } catch (err) {
       console.warn('[StorageSync] Supabase card_designs sync note:', err.message);
+      return null;
     }
   },
   getDesignById: (id) => {
