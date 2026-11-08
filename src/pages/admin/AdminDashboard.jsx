@@ -86,7 +86,7 @@ import { useTheme } from '../../context/ThemeContext';
 import Card3DPreview from '../../components/Card3DPreview';
 import CompactProfileCard from '../../components/profile/CompactProfileCard';
 import { uploadImage } from '../../lib/uploadImage';
-import { getSupabaseStatus } from '../../lib/supabase';
+import { getSupabaseStatus, isSupabaseConfigured } from '../../lib/supabase';
 import { exportCardPDF } from '../../lib/pdfExport';
 import { compressImage } from '../../lib/imageCompression';
 import { formatCurrencyINR, ORDER_STAGES, EXCEPTION_STAGES, getOrderStageInfo, normalizeOrderStatus, isLocalEnvironment } from '../../lib/storage';

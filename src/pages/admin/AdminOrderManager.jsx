@@ -668,143 +668,268 @@ export default function AdminOrderManager({ initialOrderId = null }) {
       {/* Main Table Container */}
       <div
         style={{
-          padding: '24px',
+          padding: 'clamp(14px, 3vw, 24px)',
           backgroundColor: cardBg,
           borderRadius: '16px',
           border: `1px solid ${cardBorder}`,
-          boxShadow: '0 2px 8px rgba(0, 0, 0, 0.02)'
+          boxShadow: '0 2px 8px rgba(0, 0, 0, 0.02)',
+          boxSizing: 'border-box',
+          overflow: 'hidden'
         }}
       >
-        {/* Controls: Search, + Add Order Button & Filter Chips */}
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '14px', marginBottom: '20px' }}>
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '12px' }}>
-            {/* Search Input & + Add Order Action */}
-            <div style={{ display: 'flex', alignItems: 'center', gap: '10px', flexWrap: 'wrap', flex: 1 }}>
-              <div style={{ position: 'relative', width: '280px', maxWidth: '100%' }}>
-                <Search size={15} style={{ position: 'absolute', left: '12px', top: '50%', transform: 'translateY(-50%)', color: textSecondary }} />
-                <input
-                  type="text"
-                  value={searchQuery}
-                  onChange={e => setSearchQuery(e.target.value)}
-                  placeholder="Search reference, customer, phone..."
-                  style={{
-                    width: '100%',
-                    paddingLeft: '34px',
-                    paddingRight: '12px',
-                    paddingTop: '8px',
-                    paddingBottom: '8px',
-                    fontSize: '0.82rem',
-                    borderRadius: '8px',
-                    border: `1px solid ${cardBorder}`,
-                    backgroundColor: elevatedBg,
-                    color: textPrimary,
-                    outline: 'none',
-                    boxSizing: 'border-box'
-                  }}
-                />
-              </div>
-
-              {/* Add Order Button */}
-              <button
-                type="button"
-                onClick={handleOpenAddOrderModal}
+        {/* Controls: Search, + Add Order Button & Filter Panel */}
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '14px', marginBottom: '22px' }}>
+          {/* Top Row: Search Input & Add Order Action */}
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '12px', width: '100%' }}>
+            <div style={{ position: 'relative', flex: '1 1 240px', minWidth: '200px', maxWidth: '100%' }}>
+              <Search size={15} style={{ position: 'absolute', left: '12px', top: '50%', transform: 'translateY(-50%)', color: textSecondary, pointerEvents: 'none' }} />
+              <input
+                type="text"
+                value={searchQuery}
+                onChange={e => setSearchQuery(e.target.value)}
+                placeholder="Search reference, customer, phone..."
                 style={{
-                  display: 'inline-flex',
-                  alignItems: 'center',
-                  gap: '6px',
-                  padding: '8px 16px',
-                  borderRadius: '8px',
-                  background: 'linear-gradient(135deg, #7038f8 0%, #905cfc 100%)',
-                  border: 'none',
-                  color: '#ffffff',
-                  fontSize: '0.8rem',
-                  fontWeight: 700,
-                  cursor: 'pointer',
-                  boxShadow: '0 2px 10px rgba(112, 56, 248, 0.35)',
-                  transition: 'transform 0.15s ease'
+                  width: '100%',
+                  paddingLeft: '36px',
+                  paddingRight: searchQuery ? '32px' : '12px',
+                  paddingTop: '9px',
+                  paddingBottom: '9px',
+                  fontSize: '0.84rem',
+                  borderRadius: '10px',
+                  border: `1px solid ${cardBorder}`,
+                  backgroundColor: elevatedBg,
+                  color: textPrimary,
+                  outline: 'none',
+                  boxSizing: 'border-box'
                 }}
-              >
-                <Plus size={15} />
-                <span>Add Order (WhatsApp / Web)</span>
-              </button>
+              />
+              {searchQuery && (
+                <button
+                  type="button"
+                  onClick={() => setSearchQuery('')}
+                  style={{
+                    position: 'absolute',
+                    right: '10px',
+                    top: '50%',
+                    transform: 'translateY(-50%)',
+                    background: 'none',
+                    border: 'none',
+                    color: textSecondary,
+                    cursor: 'pointer',
+                    display: 'flex',
+                    alignItems: 'center',
+                    padding: '2px'
+                  }}
+                  title="Clear search"
+                >
+                  <X size={14} />
+                </button>
+              )}
             </div>
 
-            {/* Source Channel Filter Chips */}
-            <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-              <span style={{ fontSize: '0.74rem', color: textMuted, fontWeight: 600, marginRight: '4px' }}>Channel:</span>
-              {[
-                { key: 'all', label: `All (${orders.length})` },
-                { key: 'whatsapp', label: `WhatsApp (${whatsappOrders.length})`, icon: MessageCircle, color: '#16a34a' },
-                { key: 'website', label: `Website (${websiteOrders.length})`, icon: Globe, color: '#7038f8' }
-              ].map((src) => {
-                const isActive = sourceFilter === src.key;
-                const Icon = src.icon;
-                return (
-                  <button
-                    key={src.key}
-                    type="button"
-                    onClick={() => setSourceFilter(src.key)}
-                    style={{
-                      display: 'inline-flex',
-                      alignItems: 'center',
-                      gap: '4px',
-                      padding: '5px 10px',
-                      borderRadius: '8px',
-                      border: isActive ? `1px solid ${src.color || '#6B00FF'}` : `1px solid ${cardBorder}`,
-                      backgroundColor: isActive ? (src.color ? `${src.color}15` : '#6B00FF15') : elevatedBg,
-                      color: isActive ? (src.color || '#6B00FF') : textSecondary,
-                      fontSize: '0.74rem',
-                      fontWeight: isActive ? 700 : 500,
-                      cursor: 'pointer'
-                    }}
-                  >
-                    {Icon && <Icon size={12} />}
-                    <span>{src.label}</span>
-                  </button>
-                );
-              })}
-            </div>
+            {/* Add Order Button */}
+            <button
+              type="button"
+              onClick={handleOpenAddOrderModal}
+              style={{
+                display: 'inline-flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                gap: '8px',
+                padding: '9px 18px',
+                borderRadius: '10px',
+                background: 'linear-gradient(135deg, #7038f8 0%, #905cfc 100%)',
+                border: 'none',
+                color: '#ffffff',
+                fontSize: '0.82rem',
+                fontWeight: 700,
+                cursor: 'pointer',
+                boxShadow: '0 3px 12px rgba(112, 56, 248, 0.35)',
+                transition: 'all 0.16s ease',
+                flexShrink: 0
+              }}
+            >
+              <Plus size={16} />
+              <span>Add Order (WhatsApp / Web)</span>
+            </button>
           </div>
 
-          {/* Status Filter Chips */}
-          <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap', alignItems: 'center' }}>
-            <span style={{ fontSize: '0.74rem', color: textMuted, fontWeight: 700, marginRight: '4px' }}>Stage:</span>
-            {[
-              { key: 'all', label: 'All Stages' },
-              { key: 'new_order', label: 'New Request' },
-              { key: 'reviewing', label: 'In Review' },
-              { key: 'approved', label: 'Approved' },
-              { key: 'manufacturing', label: 'Manufacturing' },
-              { key: 'quality_check', label: 'Quality Check' },
-              { key: 'dispatched', label: 'Dispatched' },
-              { key: 'delivered', label: 'Completed' }
-            ].map((st) => {
-              const isActive = statusFilter === st.key;
-              const count = st.key === 'all'
-                ? orders.length
-                : orders.filter(o => normalizeOrderStatus(o.status) === st.key).length;
-              return (
-                <button
-                  key={st.key}
-                  type="button"
-                  onClick={() => setStatusFilter(st.key)}
+          {/* Unified Filter Card Container */}
+          <div
+            style={{
+              padding: '14px 16px',
+              borderRadius: '14px',
+              backgroundColor: elevatedBg,
+              border: `1px solid ${cardBorder}`,
+              display: 'flex',
+              flexDirection: 'column',
+              gap: '12px'
+            }}
+          >
+            {/* Filter Header & Channel Segmented Bar */}
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '10px' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
+                <span style={{ fontSize: '0.74rem', color: textMuted, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.04em' }}>
+                  Channel:
+                </span>
+
+                <div
                   style={{
-                    padding: '5px 11px',
-                    borderRadius: '8px',
-                    border: isActive ? '1px solid #8B5CF6' : `1px solid ${cardBorder}`,
-                    backgroundColor: isActive ? '#7C3AED' : elevatedBg,
-                    color: isActive ? '#FFFFFF' : textSecondary,
-                    fontSize: '0.72rem',
-                    fontWeight: 700,
-                    cursor: 'pointer',
-                    boxShadow: isActive ? '0 2px 10px rgba(124, 58, 237, 0.35)' : 'none',
-                    transition: 'all 0.15s ease'
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    backgroundColor: isLight ? 'rgba(0,0,0,0.06)' : 'rgba(0,0,0,0.4)',
+                    padding: '3px',
+                    borderRadius: '9999px',
+                    border: `1px solid ${cardBorder}`,
+                    maxWidth: '100%',
+                    overflowX: 'auto'
                   }}
                 >
-                  {st.label} ({count})
+                  {[
+                    { key: 'all', label: `All (${orders.length})` },
+                    { key: 'whatsapp', label: `WhatsApp (${whatsappOrders.length})`, icon: MessageCircle, color: '#16a34a' },
+                    { key: 'website', label: `Website (${websiteOrders.length})`, icon: Globe, color: '#7038f8' }
+                  ].map((src) => {
+                    const isActive = sourceFilter === src.key;
+                    const Icon = src.icon;
+                    return (
+                      <button
+                        key={src.key}
+                        type="button"
+                        onClick={() => setSourceFilter(src.key)}
+                        style={{
+                          display: 'inline-flex',
+                          alignItems: 'center',
+                          gap: '5px',
+                          padding: '5px 12px',
+                          borderRadius: '9999px',
+                          border: 'none',
+                          backgroundColor: isActive ? (src.color ? `${src.color}` : '#7038f8') : 'transparent',
+                          color: isActive ? '#FFFFFF' : textSecondary,
+                          fontSize: '0.74rem',
+                          fontWeight: isActive ? 700 : 500,
+                          cursor: 'pointer',
+                          transition: 'all 0.16s ease',
+                          boxShadow: isActive ? '0 2px 8px rgba(0,0,0,0.2)' : 'none',
+                          whiteSpace: 'nowrap'
+                        }}
+                      >
+                        {Icon && <Icon size={12} />}
+                        <span>{src.label}</span>
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+
+              {/* Reset active filters button if any filter is active */}
+              {(statusFilter !== 'all' || sourceFilter !== 'all' || searchQuery) && (
+                <button
+                  type="button"
+                  onClick={() => {
+                    setStatusFilter('all');
+                    setSourceFilter('all');
+                    setSearchQuery('');
+                  }}
+                  style={{
+                    padding: '4px 10px',
+                    borderRadius: '6px',
+                    border: `1px solid ${cardBorder}`,
+                    backgroundColor: 'transparent',
+                    color: textMuted,
+                    fontSize: '0.72rem',
+                    fontWeight: 600,
+                    cursor: 'pointer',
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    gap: '4px'
+                  }}
+                >
+                  <RotateCw size={11} />
+                  <span>Reset Filters</span>
                 </button>
-              );
-            })}
+              )}
+            </div>
+
+            {/* Stage Selector Bar: Unified Segmented Track */}
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '8px' }}>
+                <span style={{ fontSize: '0.74rem', color: textMuted, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.04em' }}>
+                  Stage:
+                </span>
+                <span style={{ fontSize: '0.72rem', color: textSecondary }}>
+                  Showing {filteredOrders.length} of {orders.length}
+                </span>
+              </div>
+
+              {/* Smooth Horizontal Segmented Pill Track with Touch Momentum */}
+              <div
+                style={{
+                  display: 'flex',
+                  gap: '6px',
+                  overflowX: 'auto',
+                  paddingBottom: '4px',
+                  paddingTop: '2px',
+                  scrollbarWidth: 'none',
+                  msOverflowStyle: 'none',
+                  WebkitOverflowScrolling: 'touch'
+                }}
+              >
+                {[
+                  { key: 'all', label: 'All Stages' },
+                  { key: 'new_order', label: 'New Request' },
+                  { key: 'reviewing', label: 'In Review' },
+                  { key: 'approved', label: 'Approved' },
+                  { key: 'manufacturing', label: 'Manufacturing' },
+                  { key: 'quality_check', label: 'Quality Check' },
+                  { key: 'dispatched', label: 'Dispatched' },
+                  { key: 'delivered', label: 'Completed' }
+                ].map((st) => {
+                  const isActive = statusFilter === st.key;
+                  const count = st.key === 'all'
+                    ? orders.length
+                    : orders.filter(o => normalizeOrderStatus(o.status) === st.key).length;
+                  return (
+                    <button
+                      key={st.key}
+                      type="button"
+                      onClick={() => setStatusFilter(st.key)}
+                      style={{
+                        padding: '6px 12px',
+                        borderRadius: '8px',
+                        border: isActive ? '1px solid #8B5CF6' : `1px solid ${cardBorder}`,
+                        backgroundColor: isActive ? '#7C3AED' : (isLight ? '#FFFFFF' : 'rgba(255,255,255,0.04)'),
+                        color: isActive ? '#FFFFFF' : textSecondary,
+                        fontSize: '0.74rem',
+                        fontWeight: isActive ? 700 : 600,
+                        cursor: 'pointer',
+                        whiteSpace: 'nowrap',
+                        flexShrink: 0,
+                        boxShadow: isActive ? '0 2px 10px rgba(124, 58, 237, 0.35)' : 'none',
+                        transition: 'all 0.16s ease',
+                        display: 'inline-flex',
+                        alignItems: 'center',
+                        gap: '6px'
+                      }}
+                    >
+                      <span>{st.label}</span>
+                      <span
+                        style={{
+                          fontSize: '0.68rem',
+                          padding: '1px 6px',
+                          borderRadius: '9999px',
+                          backgroundColor: isActive ? 'rgba(255,255,255,0.25)' : 'rgba(0,0,0,0.12)',
+                          color: isActive ? '#FFFFFF' : textMuted,
+                          fontWeight: 700
+                        }}
+                      >
+                        {count}
+                      </span>
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
           </div>
         </div>
 
