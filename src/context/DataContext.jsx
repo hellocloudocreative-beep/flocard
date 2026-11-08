@@ -182,6 +182,49 @@ export function DataProvider({ children }) {
             }
             StorageEngine.saveLocalCustomers(localCusts);
             setCustomers(localCusts);
+
+            // Auto-provision digital profile if customer doesn't have one yet
+            const localProfs = StorageEngine.getProfiles();
+            let profsChanged = false;
+            for (const u of userData.users) {
+              const uEmail = (u.email || '').toLowerCase().trim();
+              const uName = u.user_metadata?.name || u.user_metadata?.full_name || uEmail.split('@')[0];
+              const uSlug = uName.toLowerCase().replace(/[^a-z0-9]/g, '');
+              const hasProf = localProfs.some(p => 
+                (p.email && p.email.toLowerCase().trim() === uEmail) || 
+                (p.userId && p.userId === u.id) ||
+                (p.slug && p.slug.toLowerCase() === uSlug)
+              );
+              if (!hasProf && uSlug) {
+                localProfs.push({
+                  id: `prof_${u.id}`,
+                  userId: u.id,
+                  slug: uSlug,
+                  name: uName,
+                  email: uEmail,
+                  role: 'Executive & Member',
+                  company: u.user_metadata?.company || 'FLOCARDS Member',
+                  tagline: 'Contactless Digital Profile & NFC Identity',
+                  bio: 'Connect seamlessly with my verified FLOCARDS smart identity.',
+                  avatar: u.user_metadata?.avatar_url || u.user_metadata?.picture || '',
+                  avatar_url: u.user_metadata?.avatar_url || u.user_metadata?.picture || '',
+                  theme: 'gold',
+                  phone: u.phone || u.user_metadata?.phone || '',
+                  whatsapp: '',
+                  website: `flocard.in/p/${uSlug}`,
+                  status: 'active',
+                  views_count: 0,
+                  save_count: 0,
+                  vcard_enabled: true,
+                  updatedAt: u.created_at || new Date().toISOString()
+                });
+                profsChanged = true;
+              }
+            }
+            if (profsChanged) {
+              StorageEngine.saveLocalProfiles(localProfs);
+              setProfiles(localProfs);
+            }
           }
         } catch (err) {
           console.warn('[DataContext] Customer cloud sync note:', err.message);
