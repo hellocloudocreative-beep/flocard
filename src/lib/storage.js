@@ -2842,29 +2842,120 @@ export const StorageEngine = {
     setLocal('customers', customers);
   },
   syncCustomerToCloud: async (cust) => {
-    if (!cust || !cust.email) return;
+    if (!cust) return null;
     if (isLocalEnvironment()) {
-      console.info(`[Local Sandbox] Skipping cloud sync for customer "${cust.email}". Saved to local browser storage only.`);
-      return;
+      console.info(`[Local Sandbox] Skipping cloud sync for customer "${cust.name || cust.email}". Saved to local browser storage only.`);
+      return cust;
     }
     try {
-      const { supabaseAdmin, isSupabaseConfigured } = await import('./supabase.js');
-      if (!isSupabaseConfigured || !supabaseAdmin) return;
+      const { supabase, supabaseAdmin, isSupabaseConfigured } = await import('./supabase.js');
+      if (!isSupabaseConfigured || !supabaseAdmin) return cust;
+      const client = supabaseAdmin || supabase;
+      if (!client) return cust;
 
       const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
-      if (cust.id && uuidRegex.test(cust.id)) {
-        await supabaseAdmin.auth.admin.updateUserById(cust.id, {
-          user_metadata: {
-            name: cust.name,
-            company: cust.company,
-            phone: cust.phone,
-            role: cust.role || 'customer',
-            status: cust.status || 'active'
+      const cleanEmail = cust.email ? String(cust.email).toLowerCase().trim() : '';
+      let userId = (cust.id && uuidRegex.test(cust.id)) ? cust.id : null;
+
+      // 1. If email is provided, check if user already exists in Supabase Auth
+      if (cleanEmail) {
+        try {
+          const { data: usersData } = await supabaseAdmin.auth.admin.listUsers();
+          const existing = usersData?.users?.find(u => u.email?.toLowerCase().trim() === cleanEmail);
+          if (existing) {
+            userId = existing.id;
           }
-        });
+        } catch (authListErr) {
+          console.warn('[StorageSync] listUsers note:', authListErr.message);
+        }
+
+        const userMetadata = {
+          name: cust.name || cleanEmail.split('@')[0],
+          full_name: cust.name || cleanEmail.split('@')[0],
+          company: cust.company || '',
+          phone: cust.phone || '',
+          role: cust.role || 'customer',
+          status: cust.status || 'active'
+        };
+
+        if (!userId) {
+          try {
+            const { data: createData, error: createErr } = await supabaseAdmin.auth.admin.createUser({
+              email: cleanEmail,
+              email_confirm: true,
+              user_metadata: userMetadata
+            });
+            if (!createErr && createData?.user) {
+              userId = createData.user.id;
+            } else if (createErr) {
+              console.info('[StorageSync] Note on createUser:', createErr.message);
+            }
+          } catch (createErr) {
+            console.warn('[StorageSync] createUser note:', createErr.message);
+          }
+        } else {
+          try {
+            await supabaseAdmin.auth.admin.updateUserById(userId, { user_metadata: userMetadata });
+          } catch (updateErr) {
+            console.warn('[StorageSync] updateUserById note:', updateErr.message);
+          }
+        }
       }
+
+      // 2. Generate a valid UUID if user still lacks one
+      if (!userId) {
+        if (typeof crypto !== 'undefined' && crypto.randomUUID) {
+          userId = crypto.randomUUID();
+        } else {
+          userId = 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, (c) => {
+            const r = (Math.random() * 16) | 0;
+            const v = c === 'x' ? r : (r & 0x3) | 0x8;
+            return v.toString(16);
+          });
+        }
+      }
+
+      cust.id = userId;
+
+      // 3. Update localStorage customer with authoritative UUID
+      const list = getLocal('customers', INITIAL_CUSTOMERS);
+      const idx = list.findIndex(c => (userId && c.id === userId) || (cleanEmail && c.email && c.email.toLowerCase().trim() === cleanEmail));
+      if (idx >= 0) {
+        list[idx] = { ...list[idx], ...cust, id: userId };
+        setLocal('customers', list);
+      }
+
+      // 4. Upsert into public.profiles in Supabase to trigger realtime push to all open devices
+      const userSlug = (cust.name || (cleanEmail ? cleanEmail.split('@')[0] : 'client'))
+        .toLowerCase()
+        .replace(/[^a-z0-9]/g, '') || `cust${Date.now()}`;
+
+      const profilePayload = {
+        id: userId,
+        user_id: userId,
+        slug: userSlug,
+        name: cust.name || 'Valued Customer',
+        email: cleanEmail || `${userSlug}@client.flocard.in`,
+        phone: cust.phone || '',
+        company: cust.company || '',
+        role: 'customer',
+        status: cust.status || 'active',
+        theme: 'purple',
+        updated_at: new Date().toISOString()
+      };
+
+      const { error: profErr } = await client.from('profiles').upsert(profilePayload, { onConflict: 'id' });
+      if (profErr) {
+        console.warn('[StorageSync] Supabase profile upsert warning:', profErr.message);
+        throw new Error(profErr.message);
+      } else {
+        console.info(`[StorageSync] Customer "${cust.name}" (${userId}) synced to Supabase Cloud.`);
+      }
+
+      return cust;
     } catch (err) {
-      console.warn('[StorageSync] Supabase customer sync note:', err.message);
+      console.warn('[StorageSync] Supabase customer sync error:', err.message);
+      throw err;
     }
   },
   saveCustomer: (cust) => {
@@ -2892,10 +2983,12 @@ export const StorageEngine = {
     setLocal('customers', list);
     StorageEngine.addAuditLog('Customer', `Customer record saved: ${cust.name || 'New Customer'}`, 'You');
     // Asynchronously synchronize with Supabase cloud
-    StorageEngine.syncCustomerToCloud(saved);
+    StorageEngine.syncCustomerToCloud(saved).catch(e => {
+      console.warn('[StorageSync] Background customer sync note:', e.message);
+    });
     return saved;
   },
-  deleteCustomer: (id) => {
+  deleteCustomer: async (id) => {
     const list = getLocal('customers', INITIAL_CUSTOMERS).filter(c => c.id !== id && c.email !== id);
     setLocal('customers', list);
 
@@ -2918,6 +3011,23 @@ export const StorageEngine = {
     setLocal('invoices', invoices);
 
     StorageEngine.addAuditLog('Customer', `Customer record and associated orders deleted: ${id}`, 'You');
+
+    // Delete from Supabase Auth and Profiles if valid UUID
+    try {
+      const { supabase, supabaseAdmin, isSupabaseConfigured } = await import('./supabase.js');
+      if (isSupabaseConfigured && (supabaseAdmin || supabase)) {
+        const client = supabaseAdmin || supabase;
+        const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+        if (uuidRegex.test(id)) {
+          if (supabaseAdmin && supabaseAdmin.auth && supabaseAdmin.auth.admin) {
+            await supabaseAdmin.auth.admin.deleteUser(id).catch(() => {});
+          }
+          await client.from('profiles').delete().eq('id', id).catch(() => {});
+        }
+      }
+    } catch (e) {
+      console.warn('[StorageSync] Delete customer cloud error:', e.message);
+    }
   },
 
   // Card Templates

@@ -115,28 +115,33 @@ export function DataProvider({ children }) {
               localProfiles.push(mappedProfile);
             }
 
-            // Immediately synthesize customer from verified profile
-            if (cp.email && !cp.email.includes('flocard.in') && cp.role !== 'owner') {
-              const custEmail = cp.email.toLowerCase().trim();
+            // Immediately synthesize and update customer from verified profile
+            const isCustomerProfile = cp.role === 'customer' || (!cp.email?.includes('flocard.in') && cp.role !== 'owner');
+            if (isCustomerProfile && cp.name) {
+              const custId = cp.id || cp.user_id;
+              const custEmail = (cp.email || '').toLowerCase().trim();
               const currentCusts = StorageEngine.getCustomers();
-              const existC = currentCusts.find(c => c.email && c.email.toLowerCase() === custEmail);
-              if (!existC) {
-                currentCusts.unshift({
-                  id: cp.user_id || cp.id || `cust_${custEmail.replace(/[^a-z0-9]/g, '_')}`,
-                  name: cp.name || custEmail.split('@')[0],
-                  email: custEmail,
-                  phone: cp.phone || '',
-                  company: cp.company || '',
-                  avatar: cp.avatar_url || '',
-                  role: 'customer',
-                  status: cp.status || 'active',
-                  joinedDate: (cp.created_at || '').split('T')[0] || new Date().toISOString().split('T')[0],
-                  totalCards: 0,
-                  totalDesigns: 0
-                });
-                StorageEngine.saveLocalCustomers(currentCusts);
-                setCustomers([...currentCusts]);
+              const existIdx = currentCusts.findIndex(c => (custId && c.id === custId) || (custEmail && c.email && c.email.toLowerCase().trim() === custEmail));
+              const mappedFromProfile = {
+                id: custId,
+                name: cp.name,
+                email: custEmail,
+                phone: cp.phone || '',
+                company: cp.company || '',
+                avatar: cp.avatar_url || '',
+                role: 'customer',
+                status: cp.status || 'active',
+                joinedDate: (cp.created_at || '').split('T')[0] || new Date().toISOString().split('T')[0],
+                totalCards: 0,
+                totalDesigns: 0
+              };
+              if (existIdx >= 0) {
+                currentCusts[existIdx] = { ...currentCusts[existIdx], ...mappedFromProfile };
+              } else {
+                currentCusts.unshift(mappedFromProfile);
               }
+              StorageEngine.saveLocalCustomers(currentCusts);
+              setCustomers([...currentCusts]);
             }
           }
           StorageEngine.saveLocalProfiles(localProfiles);
@@ -656,14 +661,21 @@ export function DataProvider({ children }) {
     return res;
   };
 
-  const saveCustomer = (customer) => {
+  const saveCustomer = async (customer) => {
     const updated = StorageEngine.saveCustomer(customer);
     refreshAll();
-    return updated;
+    try {
+      const synced = await StorageEngine.syncCustomerToCloud(updated);
+      refreshAll();
+      return synced || updated;
+    } catch (err) {
+      refreshAll();
+      throw err;
+    }
   };
 
-  const deleteCustomer = (id) => {
-    StorageEngine.deleteCustomer(id);
+  const deleteCustomer = async (id) => {
+    await StorageEngine.deleteCustomer(id);
     refreshAll();
   };
 

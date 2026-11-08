@@ -883,20 +883,30 @@ export default function AdminDashboard({ initialTab = 'overview', initialOrderId
   };
 
   // Handle Create Customer
-  const handleCreateCustomer = (e) => {
+  const handleCreateCustomer = async (e) => {
     e.preventDefault();
     if (!newCustForm.name || !newCustForm.email) return;
-    saveCustomer({
-      name: newCustForm.name,
-      email: newCustForm.email,
-      phone: newCustForm.phone || '+91 90000 00000',
-      company: newCustForm.company || 'Enterprise Partner',
-      totalCards: 0,
-      totalDesigns: 0,
-      status: 'active'
-    });
-    setNewCustomerModal(false);
-    setNewCustForm({ name: '', email: '', phone: '', company: '' });
+    try {
+      await saveCustomer({
+        name: newCustForm.name.trim(),
+        email: newCustForm.email.trim(),
+        phone: newCustForm.phone || '+91 90000 00000',
+        company: newCustForm.company || 'Enterprise Partner',
+        totalCards: 0,
+        totalDesigns: 0,
+        status: 'active'
+      });
+      setNewCustomerModal(false);
+      setNewCustForm({ name: '', email: '', phone: '', company: '' });
+      setFulfillmentToast({
+        title: 'Customer Created',
+        message: `Customer ${newCustForm.name} saved and synced across all devices.`,
+        type: 'success'
+      });
+      setTimeout(() => setFulfillmentToast(null), 4000);
+    } catch (err) {
+      console.error('Error creating customer:', err);
+    }
   };
 
   // Handle Create Profile
@@ -959,15 +969,15 @@ export default function AdminDashboard({ initialTab = 'overview', initialOrderId
   };
 
   // Handle Edit/Save Customer
-  const handleUpdateCustomer = (e) => {
+  const handleUpdateCustomer = async (e) => {
     e.preventDefault();
     if (!editingCustomer) return;
     try {
-      saveCustomer(editingCustomer);
+      await saveCustomer(editingCustomer);
       setEditingCustomer(null);
       setFulfillmentToast({
         title: 'Customer Updated',
-        message: `Customer record for ${editingCustomer.name || editingCustomer.email} updated.`,
+        message: `Customer record for ${editingCustomer.name || editingCustomer.email} updated and synced across all devices.`,
         type: 'success'
       });
       setTimeout(() => setFulfillmentToast(null), 4000);
@@ -982,9 +992,9 @@ export default function AdminDashboard({ initialTab = 'overview', initialOrderId
     }
   };
 
-  const handleDeleteCustomer = (id) => {
-    if (window.confirm('Are you sure you want to delete this customer? This will remove their profile record.')) {
-      deleteCustomer(id);
+  const handleDeleteCustomer = async (id) => {
+    if (window.confirm('Are you sure you want to delete this customer? This will remove their record across all devices.')) {
+      await deleteCustomer(id);
       if (editingCustomer?.id === id) setEditingCustomer(null);
     }
   };
@@ -7635,11 +7645,11 @@ export default function AdminDashboard({ initialTab = 'overview', initialOrderId
       <AddCustomerModal
         isOpen={newCustomerModal}
         onClose={() => setNewCustomerModal(false)}
-        onSaveCustomer={(newCust) => {
-          saveCustomer(newCust);
+        onSaveCustomer={async (newCust) => {
+          await saveCustomer(newCust);
           setFulfillmentToast({
             title: 'Customer Added!',
-            message: `Customer ${newCust.name} has been added successfully.`
+            message: `Customer ${newCust.name} has been added and synced across all devices.`
           });
           setTimeout(() => setFulfillmentToast(null), 4000);
         }}

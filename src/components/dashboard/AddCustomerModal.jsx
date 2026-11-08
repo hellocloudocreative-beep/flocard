@@ -32,7 +32,7 @@ export default function AddCustomerModal({
 
   if (!isOpen) return null;
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
     setError('');
 
@@ -66,7 +66,6 @@ export default function AddCustomerModal({
 
     try {
       const newCust = {
-        id: `cust_${Date.now()}`,
         name: trimmedName,
         email: trimmedEmail || '',
         phone: trimmedPhone || '',
@@ -78,7 +77,7 @@ export default function AddCustomerModal({
         createdAt: new Date().toISOString()
       };
 
-      onSaveCustomer(newCust);
+      await onSaveCustomer(newCust);
       onClose();
       // Reset form
       setName('');
@@ -88,7 +87,7 @@ export default function AddCustomerModal({
       setCompany('');
       setNotes('');
     } catch (err) {
-      setError(err.message || 'Failed to create customer record.');
+      setError(err.message || 'Failed to create customer record in database.');
     } finally {
       setIsSubmitting(false);
     }
