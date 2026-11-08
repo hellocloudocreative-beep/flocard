@@ -10,6 +10,11 @@ export default function Card3DPreview({
   edition = 'purple',
   templateType = 'standard',
   config = {},
+  frontConfig = null,
+  backConfig = null,
+  customColors = null,
+  customerLogo = null,
+  flocardLogo = null,
   width = 440,
   initialSide = 'front',
   side: controlledSide,
@@ -22,6 +27,21 @@ export default function Card3DPreview({
   className = '',
   adminPrintMode = false
 }) {
+  const effectiveConfig = {
+    front: frontConfig || config?.front || {},
+    back: backConfig || config?.back || {},
+    customerLogo: customerLogo !== null ? customerLogo : (config?.customerLogo || null),
+    flocardLogo: flocardLogo !== null ? flocardLogo : (config?.flocardLogo || null),
+    customColors: customColors || config?.customColors || {},
+    templateType: templateType || config?.templateType || 'standard',
+    ...config
+  };
+  if (customerLogo !== null) effectiveConfig.customerLogo = customerLogo;
+  if (flocardLogo !== null) effectiveConfig.flocardLogo = flocardLogo;
+  if (frontConfig !== null) effectiveConfig.front = frontConfig;
+  if (backConfig !== null) effectiveConfig.back = backConfig;
+  if (customColors !== null) effectiveConfig.customColors = customColors;
+
   const [internalSide, setInternalSide] = useState(initialSide);
   const activeSide = controlledSide !== undefined ? controlledSide : internalSide;
   const cardRef = useRef(null);
@@ -136,9 +156,9 @@ export default function Card3DPreview({
         >
           <CardCanvas
             side="front"
-            templateType={config.templateType || templateType}
+            templateType={effectiveConfig.templateType || templateType}
             edition={edition}
-            config={config}
+            config={effectiveConfig}
             width={effectiveWidth}
             showGuides={showGuides}
             showBleed={showBleed}
@@ -159,9 +179,9 @@ export default function Card3DPreview({
         >
           <CardCanvas
             side="back"
-            templateType={config.templateType || templateType}
+            templateType={effectiveConfig.templateType || templateType}
             edition={edition}
-            config={config}
+            config={effectiveConfig}
             width={effectiveWidth}
             showGuides={showGuides}
             showBleed={showBleed}

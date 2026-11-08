@@ -67,6 +67,7 @@ export default function SmartLogoEditorModal({
   const [brushSize, setBrushSize] = useState(24); // 4px to 80px
   const [isDrawing, setIsDrawing] = useState(false);
   const [cursorPos, setCursorPos] = useState({ x: -100, y: -100, visible: false });
+  const lastPointRef = useRef(null);
 
   // Canvases & History
   const editCanvasRef = useRef(null);
@@ -261,7 +262,7 @@ export default function SmartLogoEditorModal({
   // Helper to map client coordinates to canvas internal coordinates
   const getCanvasCoords = (e) => {
     const canvas = editCanvasRef.current;
-    if (!canvas) return { x: 0, y: 0 };
+    if (!canvas) return { x: 0, y: 0, viewportX: -100, viewportY: -100 };
     const rect = canvas.getBoundingClientRect();
     const scaleX = canvas.width / rect.width;
     const scaleY = canvas.height / rect.height;
@@ -273,15 +274,37 @@ export default function SmartLogoEditorModal({
       clientY = e.touches[0].clientY;
     }
 
+    const container = containerRef.current || canvas.parentElement;
+    const cRect = container ? container.getBoundingClientRect() : rect;
+
     return {
       x: (clientX - rect.left) * scaleX,
       y: (clientY - rect.top) * scaleY,
-      viewportX: clientX - rect.left,
-      viewportY: clientY - rect.top
+      viewportX: clientX - cRect.left,
+      viewportY: clientY - cRect.top
     };
   };
 
-  // Draw Stroke (Erase or Restore)
+  // Helper to draw single brush circle at a coordinate
+  const drawAtPoint = (ctx, origCanvas, x, y, radius) => {
+    if (activeBrush === 'erase') {
+      ctx.save();
+      ctx.globalCompositeOperation = 'destination-out';
+      ctx.beginPath();
+      ctx.arc(x, y, radius, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.restore();
+    } else if (activeBrush === 'restore') {
+      ctx.save();
+      ctx.beginPath();
+      ctx.arc(x, y, radius, 0, Math.PI * 2);
+      ctx.clip();
+      ctx.drawImage(origCanvas, 0, 0, ctx.canvas.width, ctx.canvas.height);
+      ctx.restore();
+    }
+  };
+
+  // Draw Stroke (Erase or Restore) with continuous linear interpolation
   const drawStroke = (x, y) => {
     const editCanvas = editCanvasRef.current;
     const origCanvas = originalCanvasRef.current;
@@ -292,29 +315,41 @@ export default function SmartLogoEditorModal({
     const scaleFactor = editCanvas.width / (editCanvas.clientWidth || editCanvas.width);
     const radius = Math.max(2, brushSize * 0.5 * scaleFactor);
 
-    if (activeBrush === 'erase') {
-      // Erase: clear to transparent
-      ctx.save();
-      ctx.globalCompositeOperation = 'destination-out';
-      ctx.beginPath();
-      ctx.arc(x, y, radius, 0, Math.PI * 2);
-      ctx.fill();
-      ctx.restore();
-    } else if (activeBrush === 'restore') {
-      // Restore: copy pixels from originalCanvas
-      ctx.save();
-      ctx.beginPath();
-      ctx.arc(x, y, radius, 0, Math.PI * 2);
-      ctx.clip();
-      ctx.drawImage(origCanvas, 0, 0, editCanvas.width, editCanvas.height);
-      ctx.restore();
+    if (!lastPointRef.current) {
+      drawAtPoint(ctx, origCanvas, x, y, radius);
+    } else {
+      const prev = lastPointRef.current;
+      const dist = Math.hypot(x - prev.x, y - prev.y);
+      const step = Math.max(1, radius * 0.3);
+      const steps = Math.ceil(dist / step);
+      for (let i = 1; i <= steps; i++) {
+        const t = i / steps;
+        const ix = prev.x + (x - prev.x) * t;
+        const iy = prev.y + (y - prev.y) * t;
+        drawAtPoint(ctx, origCanvas, ix, iy, radius);
+      }
     }
+    lastPointRef.current = { x, y };
   };
+
+  // Global pointer up listener to guarantee strokes finish cleanly
+  useEffect(() => {
+    const handleGlobalPointerUp = () => {
+      if (isDrawing) {
+        setIsDrawing(false);
+        lastPointRef.current = null;
+        pushHistorySnapshot();
+      }
+    };
+    window.addEventListener('pointerup', handleGlobalPointerUp);
+    return () => window.removeEventListener('pointerup', handleGlobalPointerUp);
+  }, [isDrawing]);
 
   const handlePointerDown = (e) => {
     if (activeTab !== 'manual_brush' || viewMode !== 'transparent') return;
     setIsDrawing(true);
     const coords = getCanvasCoords(e);
+    lastPointRef.current = null;
     drawStroke(coords.x, coords.y);
   };
 
@@ -328,6 +363,7 @@ export default function SmartLogoEditorModal({
   const handlePointerUp = () => {
     if (isDrawing) {
       setIsDrawing(false);
+      lastPointRef.current = null;
       pushHistorySnapshot();
     }
   };
@@ -336,6 +372,7 @@ export default function SmartLogoEditorModal({
     setCursorPos((prev) => ({ ...prev, visible: false }));
     if (isDrawing) {
       setIsDrawing(false);
+      lastPointRef.current = null;
       pushHistorySnapshot();
     }
   };
@@ -694,6 +731,7 @@ export default function SmartLogoEditorModal({
               ) : (
                 /* Transparent Editable Canvas View */
                 <div
+                  ref={containerRef}
                   style={{
                     position: 'relative',
                     maxWidth: '85%',
@@ -701,10 +739,13 @@ export default function SmartLogoEditorModal({
                     display: 'flex',
                     alignItems: 'center',
                     justifyContent: 'center',
-                    cursor: activeTab === 'manual_brush' ? 'crosshair' : 'default'
+                    cursor: activeTab === 'manual_brush' ? 'crosshair' : 'default',
+                    touchAction: 'none',
+                    userSelect: 'none'
                   }}
                   onPointerDown={handlePointerDown}
                   onPointerMove={handlePointerMove}
+                  onPointerUp={handlePointerUp}
                   onPointerLeave={handlePointerLeave}
                 >
                   <canvas

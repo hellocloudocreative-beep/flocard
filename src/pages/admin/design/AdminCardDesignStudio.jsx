@@ -2633,6 +2633,7 @@ export default function AdminCardDesignStudio({
                 <Card3DPreview
                   edition={edition}
                   templateType={templateType}
+                  config={fullConfig}
                   frontConfig={frontConfig}
                   backConfig={backConfig}
                   customColors={customColors}

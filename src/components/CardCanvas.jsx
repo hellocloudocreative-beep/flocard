@@ -122,8 +122,11 @@ export default function CardCanvas({
     if (isMetal) {
       if (element === 'name') {
         return {
+          display: 'inline-block',
+          maxWidth: '100%',
           color: '#FFFFFF',
           background: 'linear-gradient(180deg, #FFFFFF 0%, #F1F5F9 55%, #CBD5E1 100%)',
+          backgroundClip: 'text',
           WebkitBackgroundClip: 'text',
           WebkitTextFillColor: 'transparent',
           filter: 'drop-shadow(0 1px 2px rgba(0, 0, 0, 0.95))',
@@ -158,8 +161,11 @@ export default function CardCanvas({
     if (isGold) {
       if (element === 'name') {
         return {
+          display: 'inline-block',
+          maxWidth: '100%',
           color: '#E9C766', // Solid champagne gold fallback for unsupported background-clip
           background: 'linear-gradient(100deg, #FFF0A6 0%, #E9C766 35%, #C9972C 70%, #FFE8A0 100%)',
+          backgroundClip: 'text',
           WebkitBackgroundClip: 'text',
           WebkitTextFillColor: 'transparent',
           filter: 'drop-shadow(0 1px 1.5px rgba(0, 0, 0, 0.9))',
@@ -195,8 +201,11 @@ export default function CardCanvas({
     if (isPlatinum) {
       if (element === 'name') {
         return {
+          display: 'inline-block',
+          maxWidth: '100%',
           color: '#E2E8F0', // Solid platinum silver fallback
           background: 'linear-gradient(100deg, #FFFFFF 0%, #F1F5F9 25%, #CBD5E1 55%, #94A3B8 80%, #FFFFFF 100%)',
+          backgroundClip: 'text',
           WebkitBackgroundClip: 'text',
           WebkitTextFillColor: 'transparent',
           filter: 'drop-shadow(0 1px 1.5px rgba(0, 0, 0, 0.9))',
@@ -679,6 +688,8 @@ export default function CardCanvas({
   }, [side, templateType, edition, front, back, colors, customerLogo, flocardLogo, qrDataUrl]);
 
   const isCompact = width < 350;
+  const displayName = (front.name && front.name.trim().length > 0) ? front.name.trim() : 'YOUR NAME';
+  const displayRole = (front.role && front.role.trim().length > 0) ? front.role.trim() : 'CEO & FOUNDER';
 
   return (
     <div
@@ -845,10 +856,11 @@ export default function CardCanvas({
                       fontWeight: isGold || isPlatinum || isMetal ? 700 : 800,
                       letterSpacing: '0.04em',
                       lineHeight: 1.15,
+                      wordBreak: 'break-word',
                       ...getMetallicTextStyle(colors.nameColor, {}, 'name')
                     }}
                   >
-                    {front.name || 'YOUR NAME'}
+                    {displayName}
                   </div>
 
                   <div
@@ -862,7 +874,7 @@ export default function CardCanvas({
                       ...getMetallicTextStyle(colors.roleColor, {}, 'role')
                     }}
                   >
-                    {front.role || 'R O L E'}
+                    {displayRole}
                   </div>
 
                   {front.details && (
@@ -1159,10 +1171,11 @@ export default function CardCanvas({
                       fontWeight: isGold || isPlatinum || isMetal ? 700 : 800,
                       letterSpacing: '0.04em',
                       lineHeight: 1.15,
+                      wordBreak: 'break-word',
                       ...getMetallicTextStyle(colors.nameColor, {}, 'name')
                     }}
                   >
-                    {front.name || 'YOUR NAME'}
+                    {displayName}
                   </div>
 
                   <div
@@ -1176,7 +1189,7 @@ export default function CardCanvas({
                       ...getMetallicTextStyle(colors.roleColor, {}, 'role')
                     }}
                   >
-                    {front.role || 'R O L E'}
+                    {displayRole}
                   </div>
 
                   {front.details && (
