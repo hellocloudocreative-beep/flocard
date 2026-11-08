@@ -471,8 +471,9 @@ export default function Home() {
               const accentColor = product.accentColor || (isGold ? '#E9C766' : isPurple ? '#A855F7' : isWhite ? '#FFFFFF' : '#CBD5E1');
               const formattedPrice = formatCurrencyINR(product.price);
               const formattedCompare = product.comparePrice && product.comparePrice > product.price ? formatCurrencyINR(product.comparePrice) : null;
-              const hasBadge = !!(product.featured || product.featuredBadge || isPurple);
-              const badgeText = product.featuredBadge || (isPurple ? 'Most Popular' : 'Featured Edition');
+              // Only Purple Edition displays the Signature & Most Popular badge; removed Minimalist Tech, Luxury Choice, etc.
+              const hasBadge = isPurple;
+              const badgeText = 'Signature & Most Popular';
 
               return (
                 <div
