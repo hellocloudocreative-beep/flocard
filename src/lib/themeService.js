@@ -10,7 +10,9 @@ export const PROFILE_THEMES = {
   gold: {
     id: 'gold',
     name: 'Gold Edition',
-    badge: 'Luxury 24K',
+    badge: '👑 PRO LUXURY',
+    isPremium: true,
+    price: '₹1,999',
     subtitle: 'Champagne Gold & Charcoal',
     description: 'Near-black charcoal canvas adorned with refined champagne gold typography and radiant metallic glow.',
     accentColor: '#E9C766',

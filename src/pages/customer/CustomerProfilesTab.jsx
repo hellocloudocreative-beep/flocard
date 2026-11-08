@@ -326,21 +326,26 @@ export default function CustomerProfilesTab({ profiles = [], customer, onSavePro
           <div
             style={{
               flex: 1,
+              height: '100%',
+              minHeight: 0,
               overflowY: 'auto',
+              WebkitOverflowScrolling: 'touch',
+              touchAction: 'pan-y',
               display: 'flex',
               justifyContent: 'center',
-              backgroundColor: '#08060D'
+              backgroundColor: '#08060D',
+              position: 'relative'
             }}
           >
             <div
               style={{
-                width: previewDevice === 'mobile' ? '410px' : '100%',
-                maxWidth: previewDevice === 'mobile' ? '410px' : '100%',
-                margin: previewDevice === 'mobile' ? '24px auto' : '0 auto',
-                borderRadius: previewDevice === 'mobile' ? '32px' : 0,
-                border: previewDevice === 'mobile' ? '4px solid #334155' : 'none',
-                overflow: 'hidden',
-                boxShadow: previewDevice === 'mobile' ? '0 20px 60px rgba(0,0,0,0.8)' : 'none'
+                width: previewDevice === 'mobile' ? 'min(100%, 420px)' : '100%',
+                maxWidth: previewDevice === 'mobile' ? 'min(100%, 420px)' : '100%',
+                margin: previewDevice === 'mobile' ? '16px auto 40px' : '0 auto',
+                borderRadius: previewDevice === 'mobile' ? '24px' : 0,
+                border: previewDevice === 'mobile' ? '3px solid rgba(255,255,255,0.15)' : 'none',
+                boxShadow: previewDevice === 'mobile' ? '0 20px 60px rgba(0,0,0,0.8)' : 'none',
+                minHeight: '100%'
               }}
             >
               <FullScreenDigitalProfile

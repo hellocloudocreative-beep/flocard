@@ -1310,10 +1310,6 @@ export const StorageEngine = {
   },
   syncDesignToCloud: async (design) => {
     if (!design) return;
-    if (isLocalEnvironment()) {
-      console.info(`[Local Sandbox] Skipping cloud sync for design "${design.id}". Saved to local browser storage only.`);
-      return;
-    }
     try {
       const { supabase, supabaseAdmin, isSupabaseConfigured } = await import('./supabase.js');
       if (!isSupabaseConfigured) return;
@@ -1526,6 +1522,15 @@ export const StorageEngine = {
       list.unshift(saved);
     }
     setLocal('orders', list);
+    try {
+      const designsList = getLocal('designs', INITIAL_DESIGNS);
+      const linkedD = designsList.find(d => d.id === saved.designId || d.orderId === saved.id || d.orderId === saved.orderReference);
+      if (linkedD) {
+        linkedD.printOrder = { ...saved };
+        setLocal('designs', designsList);
+        StorageEngine.syncDesignToCloud(linkedD);
+      }
+    } catch (_) {}
     safeDispatchEvent('flocard_order_updated', saved);
     return saved;
   },
@@ -1593,10 +1598,10 @@ export const StorageEngine = {
     // If order has a linked design in the designs library, keep its history in sync
     if (order.designId) {
       const designsList = getLocal('designs', INITIAL_DESIGNS);
-      const dIndex = designsList.findIndex(d => d.id === order.designId);
+      const dIndex = designsList.findIndex(d => d.id === order.designId || d.orderId === order.id);
       if (dIndex >= 0) {
         const curD = designsList[dIndex];
-        designsList[dIndex] = {
+        const updatedD = {
           ...curD,
           originalDesign: curD.originalDesign || JSON.parse(JSON.stringify(curD)),
           editedDesign,
@@ -1605,9 +1610,12 @@ export const StorageEngine = {
           editedBy: adminIdentifier,
           ...(publish ? editedDesign : {}),
           id: curD.id,
+          printOrder: updatedOrder,
           updatedAt: nowIso
         };
+        designsList[dIndex] = updatedD;
         setLocal('designs', designsList);
+        StorageEngine.syncDesignToCloud(updatedD);
       }
     }
 
@@ -2232,9 +2240,7 @@ export const StorageEngine = {
       if (linkedDesign) {
         linkedDesign.printOrder = { ...order };
         setLocal('designs', designs);
-        if (!isLocalEnvironment()) {
-          StorageEngine.syncDesignToCloud(linkedDesign);
-        }
+        StorageEngine.syncDesignToCloud(linkedDesign);
       }
     } catch (_) {}
 

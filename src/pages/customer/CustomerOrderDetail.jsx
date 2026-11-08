@@ -28,7 +28,6 @@ import { useData } from '../../context/DataContext';
 import { ORDER_STAGES, EXCEPTION_STAGES, getOrderStageInfo, normalizeOrderStatus } from '../../lib/storage';
 import { EDITIONS, BRAND } from '../../lib/constants';
 import CustomerCardPreview from '../../components/CustomerCardPreview';
-import OrderPrintDownloadsPanel from '../../components/admin/OrderPrintDownloadsPanel';
 
 export default function CustomerOrderDetail({ orderId, onBack }) {
   const { user } = useAuth();
@@ -402,15 +401,6 @@ export default function CustomerOrderDetail({ orderId, onBack }) {
               designId={order.designId}
               edition={order.edition}
               interactive={true}
-            />
-          </div>
-
-          {/* Customer Artwork & Print Asset Downloads (Verified for Order Owner) */}
-          <div style={{ marginBottom: '20px' }}>
-            <OrderPrintDownloadsPanel
-              order={order}
-              isLight={false}
-              isAdmin={false}
             />
           </div>
 

@@ -6,9 +6,9 @@
 import { createClient } from '@supabase/supabase-js';
 
 const env = (typeof import.meta !== 'undefined' && import.meta.env) || (typeof process !== 'undefined' && process.env) || {};
-const supabaseUrl = env.VITE_SUPABASE_URL || '';
-const supabaseAnonKey = env.VITE_SUPABASE_ANON_KEY || '';
-const supabaseServiceKey = env.VITE_SUPABASE_SERVICE_KEY || '';
+const supabaseUrl = env.VITE_SUPABASE_URL || 'https://ekycoxwtwratujezngep.supabase.co';
+const supabaseAnonKey = env.VITE_SUPABASE_ANON_KEY || 'sb_publishable_pRBMelXBW_aM-VO6nqcnEA_4IG1ApsG';
+const supabaseServiceKey = env.VITE_SUPABASE_SERVICE_KEY || 'sb_secret_DVTVdCekywmyjn0IYLj1Fg_Y7ty8nbG';
 
 export const isSupabaseConfigured = Boolean(supabaseUrl && supabaseAnonKey);
 

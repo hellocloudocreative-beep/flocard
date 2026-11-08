@@ -412,7 +412,13 @@ export function DataProvider({ children }) {
     window.addEventListener('storage', handleStorageChange);
     window.addEventListener('focus', handleWindowFocus);
 
+    // Fallback sync polling every 12 seconds for resilient cross-device data propagation
+    const pollInterval = setInterval(() => {
+      syncCloudData();
+    }, 12000);
+
     return () => {
+      clearInterval(pollInterval);
       if (realtimeChannel) {
         import('../lib/supabase.js').then(({ supabase, supabaseAdmin }) => {
           const client = supabaseAdmin || supabase;

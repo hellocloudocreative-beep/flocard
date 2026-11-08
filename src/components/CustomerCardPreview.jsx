@@ -67,16 +67,26 @@ export default function CustomerCardPreview({
   const effectiveIsAdmin = forcedIsAdmin !== null ? Boolean(forcedIsAdmin) : authIsAdmin;
 
   const hasEditedVersion = Boolean(order?.editedDesign);
-  const isApprovedAdminEdited = Boolean(order?.approvedVersion === 'admin_edited' && order?.editedDesign);
+  const hasAdminChanges = Boolean(
+    order?.editedDesign ||
+    (order?.design && order?.originalDesign && JSON.stringify(order.design) !== JSON.stringify(order.originalDesign)) ||
+    order?.approvedVersion === 'admin_edited'
+  );
 
   // Version view state:
   // Admin: 'original' | 'admin_print' | 'edited'
-  // Customer: 'approved' | 'original'
+  // Customer: 'current' | 'original'
   const [versionView, setVersionView] = useState(() => {
     if (effectiveIsAdmin) return 'original';
-    if (isApprovedAdminEdited) return 'approved';
-    return 'original';
+    return 'current';
   });
+
+  // Re-sync customer version view to latest when order updates
+  useEffect(() => {
+    if (!effectiveIsAdmin) {
+      setVersionView('current');
+    }
+  }, [order?.updatedAt, order?.editedAt, effectiveIsAdmin]);
 
   const activeFallbackDesigns = fallbackDesigns && fallbackDesigns.length > 0 ? fallbackDesigns : contextDesigns;
   const [side, setSide] = useState('front');
@@ -89,17 +99,26 @@ export default function CustomerCardPreview({
   // Resolve target design based on versionView
   const targetDesignRecord = useMemo(() => {
     if (!order) return design;
-    if (versionView === 'original') {
-      return order.originalDesign || order.design || order;
+    if (effectiveIsAdmin) {
+      if (versionView === 'original') {
+        return order.originalDesign || order.design || order;
+      }
+      if (versionView === 'edited' || versionView === 'approved') {
+        return order.editedDesign || order.design || order;
+      }
+      if (versionView === 'admin_print') {
+        return order.editedDesign || order.design || order.originalDesign || order;
+      }
+    } else {
+      // Customer view
+      if (versionView === 'original') {
+        return order.originalDesign || order.design || order;
+      }
+      // 'current' view: show authoritative edited/latest design
+      return order.editedDesign || order.design || order.originalDesign || order;
     }
-    if (versionView === 'edited' || versionView === 'approved') {
-      return order.editedDesign || order.design || order;
-    }
-    if (versionView === 'admin_print') {
-      return order.editedDesign || order.originalDesign || order.design || order;
-    }
-    return order.design || order;
-  }, [order, design, versionView]);
+    return order.editedDesign || order.design || order;
+  }, [order, design, versionView, effectiveIsAdmin]);
 
   const isAdminPrintMode = versionView === 'admin_print';
 
@@ -331,7 +350,7 @@ export default function CustomerCardPreview({
       )}
 
       {/* Customer Dashboard Update Banner */}
-      {!effectiveIsAdmin && isApprovedAdminEdited && (
+      {!effectiveIsAdmin && hasAdminChanges && (
         <div
           style={{
             display: 'flex',
@@ -358,19 +377,19 @@ export default function CustomerCardPreview({
           <div style={{ display: 'inline-flex', padding: '2px', borderRadius: '6px', backgroundColor: isLight ? '#E5DDF2' : 'rgba(0, 0, 0, 0.25)' }}>
             <button
               type="button"
-              onClick={() => setVersionView('approved')}
+              onClick={() => setVersionView('current')}
               style={{
                 padding: '3px 8px',
                 borderRadius: '4px',
                 border: 'none',
-                backgroundColor: versionView === 'approved' ? '#7038F8' : 'transparent',
-                color: versionView === 'approved' ? '#FFFFFF' : (isLight ? '#4C1D95' : '#CBD5E1'),
+                backgroundColor: versionView === 'current' ? '#7038F8' : 'transparent',
+                color: versionView === 'current' ? '#FFFFFF' : (isLight ? '#4C1D95' : '#CBD5E1'),
                 fontSize: '0.7rem',
                 cursor: 'pointer',
                 fontWeight: 600
               }}
             >
-              Approved Version
+              Updated Artwork
             </button>
             <button
               type="button"
@@ -518,7 +537,7 @@ export default function CustomerCardPreview({
                 <span>Custom Logo</span>
               </span>
             )}
-            {(showExport || showControls) && (
+            {effectiveIsAdmin && (showExport || showControls) && (
               <div style={{ display: 'inline-flex', gap: '4px', marginLeft: '4px' }}>
                 {hasCustomLogo && (
                   <button

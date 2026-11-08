@@ -92,6 +92,7 @@ export default function ProfileEditorModal({
   const [saveSuccess, setSaveSuccess] = useState(false);
   const [previewProfile, setPreviewProfile] = useState(null);
   const [previewDevice, setPreviewDevice] = useState('desktop'); // 'desktop' | 'mobile'
+  const [showGoldUpgradeModal, setShowGoldUpgradeModal] = useState(false);
 
   const [uploadError, setUploadError] = useState('');
   const [isUploading, setIsUploading] = useState(false);
@@ -1278,17 +1279,28 @@ export default function ProfileEditorModal({
                           const isSelected = (formData.theme || formData.cardFinish || formData.edition) === theme.id ||
                             (theme.id === 'platinum' && (formData.theme === 'steel' || formData.cardFinish === 'steel'));
 
+                          const isGoldTier = Boolean(formData.isGoldUnlocked || formData.isPremium);
+                          const isLocked = theme.isPremium && !isGoldTier;
+
                           return (
                             <div
                               key={theme.id}
-                              onClick={() => setFormData(prev => applyThemeToProfile(prev, theme.id))}
+                              onClick={() => {
+                                if (isLocked) {
+                                  setShowGoldUpgradeModal(true);
+                                  return;
+                                }
+                                setFormData(prev => applyThemeToProfile(prev, theme.id));
+                              }}
                               style={{
                                 padding: '16px',
                                 borderRadius: '16px',
                                 backgroundColor: isSelected ? 'rgba(255, 255, 255, 0.05)' : 'rgba(255, 255, 255, 0.02)',
                                 border: isSelected
                                   ? `2px solid ${theme.accentColor}`
-                                  : '1px solid var(--border-color)',
+                                  : isLocked
+                                    ? '1px dashed rgba(233, 199, 102, 0.4)'
+                                    : '1px solid var(--border-color)',
                                 boxShadow: isSelected
                                   ? `0 10px 30px ${theme.glowColor}35, 0 0 16px ${theme.accentColor}25`
                                   : 'none',
@@ -1332,6 +1344,27 @@ export default function ProfileEditorModal({
                                     <Check size={13} strokeWidth={3} />
                                   </div>
                                 )}
+                                {isLocked && (
+                                  <div
+                                    style={{
+                                      position: 'absolute',
+                                      top: '6px',
+                                      left: '8px',
+                                      display: 'flex',
+                                      alignItems: 'center',
+                                      gap: '4px',
+                                      backgroundColor: 'rgba(0,0,0,0.75)',
+                                      padding: '2px 8px',
+                                      borderRadius: '6px',
+                                      color: '#E9C766',
+                                      fontSize: '0.65rem',
+                                      fontWeight: 800,
+                                      backdropFilter: 'blur(4px)'
+                                    }}
+                                  >
+                                    <span>👑 PRO UPGRADE</span>
+                                  </div>
+                                )}
                               </div>
 
                               {/* Title & Badge */}
@@ -1345,11 +1378,12 @@ export default function ProfileEditorModal({
                                     fontWeight: 700,
                                     padding: '2px 7px',
                                     borderRadius: '6px',
-                                    backgroundColor: `${theme.accentColor}20`,
-                                    color: theme.accentColor
+                                    backgroundColor: isLocked ? 'rgba(233, 199, 102, 0.15)' : `${theme.accentColor}20`,
+                                    color: isLocked ? '#E9C766' : theme.accentColor,
+                                    border: isLocked ? '1px solid rgba(233, 199, 102, 0.3)' : 'none'
                                   }}
                                 >
-                                  {theme.badge}
+                                  {isLocked ? '₹1,999 PRO' : theme.badge}
                                 </span>
                               </div>
 
@@ -3136,27 +3170,170 @@ export default function ProfileEditorModal({
           <div
             style={{
               flex: 1,
+              height: '100%',
+              minHeight: 0,
               overflowY: 'auto',
+              WebkitOverflowScrolling: 'touch',
+              touchAction: 'pan-y',
               display: 'flex',
               justifyContent: 'center',
-              backgroundColor: '#08060D'
+              backgroundColor: '#08060D',
+              position: 'relative'
             }}
           >
             <div
               style={{
-                width: previewDevice === 'mobile' ? '410px' : '100%',
-                maxWidth: previewDevice === 'mobile' ? '410px' : '100%',
-                margin: previewDevice === 'mobile' ? '24px auto' : '0 auto',
-                borderRadius: previewDevice === 'mobile' ? '32px' : 0,
-                border: previewDevice === 'mobile' ? '4px solid #334155' : 'none',
-                overflow: 'hidden',
-                boxShadow: previewDevice === 'mobile' ? '0 20px 60px rgba(0,0,0,0.8)' : 'none'
+                width: previewDevice === 'mobile' ? 'min(100%, 420px)' : '100%',
+                maxWidth: previewDevice === 'mobile' ? 'min(100%, 420px)' : '100%',
+                margin: previewDevice === 'mobile' ? '16px auto 40px' : '0 auto',
+                borderRadius: previewDevice === 'mobile' ? '24px' : 0,
+                border: previewDevice === 'mobile' ? '3px solid rgba(255,255,255,0.15)' : 'none',
+                boxShadow: previewDevice === 'mobile' ? '0 20px 60px rgba(0,0,0,0.8)' : 'none',
+                minHeight: '100%'
               }}
             >
               <FullScreenDigitalProfile
                 profile={previewProfile}
                 isLight={previewProfile.themeMode === 'light'}
               />
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Luxury 24K Gold Edition Paywall Modal */}
+      {showGoldUpgradeModal && (
+        <div
+          style={{
+            position: 'fixed',
+            inset: 0,
+            backgroundColor: 'rgba(5, 3, 10, 0.85)',
+            backdropFilter: 'blur(12px)',
+            zIndex: 3500,
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            padding: '20px'
+          }}
+        >
+          <div
+            style={{
+              width: '100%',
+              maxWidth: '480px',
+              backgroundColor: '#0C0B0A',
+              border: '2px solid rgba(233, 199, 102, 0.45)',
+              borderRadius: '24px',
+              padding: '28px',
+              boxShadow: '0 25px 80px rgba(0,0,0,0.9), 0 0 40px rgba(201, 151, 44, 0.25)',
+              color: '#FFFFFF',
+              position: 'relative'
+            }}
+          >
+            <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '14px' }}>
+              <div
+                style={{
+                  width: '44px',
+                  height: '44px',
+                  borderRadius: '12px',
+                  background: 'linear-gradient(135deg, #E9C766 0%, #C9972C 100%)',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  color: '#0C0B0A',
+                  fontSize: '1.4rem'
+                }}
+              >
+                👑
+              </div>
+              <div>
+                <h3 style={{ margin: 0, fontSize: '1.25rem', fontWeight: 800, color: '#E9C766', fontFamily: 'var(--font-heading, Sora)' }}>
+                  Unlock 24K Gold Edition
+                </h3>
+                <span style={{ fontSize: '0.8rem', color: '#C5A059', fontWeight: 600 }}>
+                  Exclusive Executive Identity Tier • ₹1,999 One-Time
+                </span>
+              </div>
+            </div>
+
+            <p style={{ fontSize: '0.86rem', color: '#CBD5E1', lineHeight: '1.5', margin: '0 0 20px 0' }}>
+              The 24K Gold Edition is handcrafted with near-black charcoal obsidian textures, metallic champagne typography, and an executive VIP profile seal.
+            </p>
+
+            <div
+              style={{
+                backgroundColor: 'rgba(233, 199, 102, 0.06)',
+                border: '1px solid rgba(233, 199, 102, 0.2)',
+                borderRadius: '14px',
+                padding: '16px',
+                marginBottom: '24px',
+                display: 'flex',
+                flexDirection: 'column',
+                gap: '10px',
+                fontSize: '0.82rem'
+              }}
+            >
+              <div style={{ display: 'flex', alignItems: 'center', gap: '8px', color: '#FFF0A6' }}>
+                <Check size={16} color="#E9C766" strokeWidth={3} />
+                <span>24K Champagne Gold typography & metallic accents</span>
+              </div>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '8px', color: '#FFF0A6' }}>
+                <Check size={16} color="#E9C766" strokeWidth={3} />
+                <span>Obsidian luxury backdrop with golden radiant reflections</span>
+              </div>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '8px', color: '#FFF0A6' }}>
+                <Check size={16} color="#E9C766" strokeWidth={3} />
+                <span>Executive Verified 24K Crown Seal on live web link</span>
+              </div>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '8px', color: '#FFF0A6' }}>
+                <Check size={16} color="#E9C766" strokeWidth={3} />
+                <span>Instant profile synchronization across iOS & Android</span>
+              </div>
+            </div>
+
+            <div style={{ display: 'flex', gap: '12px', justifyContent: 'flex-end' }}>
+              <button
+                type="button"
+                onClick={() => setShowGoldUpgradeModal(false)}
+                style={{
+                  padding: '10px 18px',
+                  borderRadius: '10px',
+                  border: '1px solid rgba(255,255,255,0.15)',
+                  backgroundColor: 'transparent',
+                  color: '#94A3B8',
+                  fontSize: '0.85rem',
+                  fontWeight: 600,
+                  cursor: 'pointer'
+                }}
+              >
+                Maybe Later
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  setFormData(prev => ({
+                    ...applyThemeToProfile(prev, 'gold'),
+                    isGoldUnlocked: true,
+                    isPremium: true
+                  }));
+                  setShowGoldUpgradeModal(false);
+                }}
+                style={{
+                  padding: '10px 22px',
+                  borderRadius: '10px',
+                  border: 'none',
+                  background: 'linear-gradient(135deg, #E9C766 0%, #C9972C 100%)',
+                  color: '#0C0B0A',
+                  fontSize: '0.88rem',
+                  fontWeight: 800,
+                  cursor: 'pointer',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '8px',
+                  boxShadow: '0 4px 16px rgba(201, 151, 44, 0.4)'
+                }}
+              >
+                <span>Confirm & Activate 24K Gold</span>
+              </button>
             </div>
           </div>
         </div>
