@@ -425,6 +425,8 @@ html[data-theme="light"] {
 button {
   font-family: inherit;
   color: inherit;
+  background-color: transparent;
+  border: none;
 }
 
 .btn-primary {

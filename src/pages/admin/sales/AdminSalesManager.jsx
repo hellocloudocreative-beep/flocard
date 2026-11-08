@@ -731,14 +731,19 @@ export default function AdminSalesManager({ defaultTab = 'overview', initialOrde
           ].map(p => (
             <button
               key={p.id}
+              type="button"
               onClick={() => {
                 setDatePreset(p.id);
                 setCurrentPage(1);
               }}
+              style={{
+                backgroundColor: datePreset === p.id ? '#9333ea' : 'transparent',
+                color: datePreset === p.id ? '#ffffff' : '#a1a1aa'
+              }}
               className={`px-3 py-1.5 text-xs font-medium rounded-lg transition-all ${
                 datePreset === p.id
                   ? 'bg-purple-600 text-white shadow-md shadow-purple-600/30'
-                  : 'text-zinc-400 hover:text-white hover:bg-white/5'
+                  : 'bg-transparent text-zinc-400 hover:text-white hover:bg-white/5'
               }`}
             >
               {p.label}
@@ -788,11 +793,17 @@ export default function AdminSalesManager({ defaultTab = 'overview', initialOrde
           return (
             <button
               key={tab.id}
+              type="button"
               onClick={() => setActiveSection(tab.id)}
+              style={{
+                backgroundColor: isActive ? 'rgba(147, 51, 234, 0.2)' : 'transparent',
+                borderColor: isActive ? 'rgba(168, 85, 247, 0.4)' : 'transparent',
+                color: isActive ? '#d8b4fe' : '#a1a1aa'
+              }}
               className={`flex items-center gap-2 px-4 py-2.5 text-xs font-semibold rounded-xl transition-all whitespace-nowrap ${
                 isActive
                   ? 'bg-purple-600/20 text-purple-300 border border-purple-500/40 shadow-lg shadow-purple-600/10'
-                  : 'text-zinc-400 hover:text-white hover:bg-white/5 border border-transparent'
+                  : 'bg-transparent text-zinc-400 hover:text-white hover:bg-white/5 border border-transparent'
               }`}
             >
               <Icon className="w-4 h-4 text-purple-400" />

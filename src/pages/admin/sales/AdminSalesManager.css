@@ -4,6 +4,14 @@
    for Sales Overview, Ledger, Product Sales, Physical Card Tracking & Invoices.
    ========================================================================== */
 
+/* Button Reset: Ensure zero browser-default white buttonface */
+button {
+  background-color: transparent;
+  border: none;
+  font-family: inherit;
+  color: inherit;
+}
+
 /* Layout & Flexbox */
 .flex { display: flex; }
 .inline-flex { display: inline-flex; }
