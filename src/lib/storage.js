@@ -893,6 +893,24 @@ export function formatCurrencyINR(amount) {
 // In-memory fallback cache for SSR and Node test environments
 const memoryCache = new Map();
 
+// Helper to communicate with server-side cloud sync API (runs with full administrative privileges without browser Origin restrictions)
+async function callCloudSyncApi(action, payload = {}) {
+  if (typeof window === 'undefined') return null;
+  try {
+    const res = await fetch('/api/cloud-sync', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ action, ...payload })
+    });
+    if (res.ok) {
+      return await res.json();
+    }
+  } catch (err) {
+    console.warn(`[CloudSync API] ${action} request note:`, err.message);
+  }
+  return null;
+}
+
 // Helper to read and write from localStorage with in-memory & sessionStorage fallback
 function getLocal(key, initial) {
   const fullKey = STORAGE_KEY_PREFIX + key;
@@ -1083,6 +1101,12 @@ export const StorageEngine = {
         payload.user_id = profile.user_id;
       }
 
+      // Try serverless sync endpoint first (runs on backend without browser Origin restrictions)
+      try {
+        const apiRes = await callCloudSyncApi('syncProfile', { profile: payload });
+        if (apiRes && apiRes.success) return;
+      } catch (_) {}
+
       let { error } = await client.from('profiles').upsert(payload, { onConflict: 'slug' });
       if (error && error.code === '23503' && payload.user_id) {
         delete payload.user_id;
@@ -1253,6 +1277,12 @@ export const StorageEngine = {
         payload.id = card.id;
       }
 
+      // Try serverless sync endpoint first (runs on backend without browser Origin restrictions)
+      try {
+        const apiRes = await callCloudSyncApi('syncCard', { card: payload });
+        if (apiRes && apiRes.success) return;
+      } catch (_) {}
+
       const { error: upsertErr } = await client.from('nfc_cards').upsert(payload, { onConflict: 'card_code' });
       if (upsertErr) {
         console.warn('[StorageSync] Supabase nfc_cards upsert warning:', upsertErr.message);
@@ -1385,6 +1415,12 @@ export const StorageEngine = {
       if (design.customerId && uuidRegex.test(design.customerId)) {
         payload.user_id = design.customerId;
       }
+
+      // Try serverless sync endpoint first (runs on backend without browser Origin restrictions)
+      try {
+        const apiRes = await callCloudSyncApi('syncDesign', { design: payload });
+        if (apiRes && apiRes.success) return cloudId;
+      } catch (_) {}
 
       let { error: upsertErr } = await client.from('card_designs').upsert(payload, { onConflict: 'id' });
       if (upsertErr && upsertErr.code === '23503' && payload.user_id) {
@@ -2835,65 +2871,33 @@ export const StorageEngine = {
   },
   syncCustomerToCloud: async (cust) => {
     if (!cust) return null;
+    // 1. Primary: Serverless cloud sync API (runs on backend with full privileges, zero browser Origin/secret restrictions)
     try {
-      const { supabase, supabaseAdmin, isSupabaseConfigured } = await import('./supabase.js');
-      if (!isSupabaseConfigured) return cust;
-      const client = supabaseAdmin || supabase;
-      if (!client) return cust;
+      const serverResult = await callCloudSyncApi('syncCustomer', { customer: cust });
+      if (serverResult && serverResult.success && serverResult.customer) {
+        const syncedCust = serverResult.customer;
+        const list = getLocal('customers', INITIAL_CUSTOMERS);
+        const idx = list.findIndex(c => c.id === syncedCust.id || (c.email && syncedCust.email && c.email.toLowerCase().trim() === syncedCust.email.toLowerCase().trim()));
+        if (idx >= 0) {
+          list[idx] = { ...list[idx], ...syncedCust };
+          setLocal('customers', list);
+        }
+        return syncedCust;
+      }
+    } catch (apiErr) {
+      console.warn('[StorageSync] Cloud sync API note:', apiErr.message);
+    }
+
+    // 2. Fallback: Direct client sync
+    try {
+      const { supabase, isSupabaseConfigured } = await import('./supabase.js');
+      if (!isSupabaseConfigured || !supabase) return cust;
+      const client = supabase;
 
       const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
       const cleanEmail = cust.email ? String(cust.email).toLowerCase().trim() : '';
       let userId = (cust.id && uuidRegex.test(cust.id)) ? cust.id : null;
-      let isRealAuthUser = false;
 
-      // 1. If email is provided and supabaseAdmin is available, check/create user in Supabase Auth
-      if (cleanEmail && supabaseAdmin && supabaseAdmin.auth && supabaseAdmin.auth.admin) {
-        try {
-          const { data: usersData } = await supabaseAdmin.auth.admin.listUsers();
-          const existing = usersData?.users?.find(u => u.email?.toLowerCase().trim() === cleanEmail);
-          if (existing) {
-            userId = existing.id;
-            isRealAuthUser = true;
-          }
-        } catch (authListErr) {
-          console.warn('[StorageSync] listUsers note:', authListErr.message);
-        }
-
-        const userMetadata = {
-          name: cust.name || cleanEmail.split('@')[0],
-          full_name: cust.name || cleanEmail.split('@')[0],
-          company: cust.company || '',
-          phone: cust.phone || '',
-          role: cust.role || 'customer',
-          status: cust.status || 'active'
-        };
-
-        if (!userId) {
-          try {
-            const { data: createData, error: createErr } = await supabaseAdmin.auth.admin.createUser({
-              email: cleanEmail,
-              email_confirm: true,
-              user_metadata: userMetadata
-            });
-            if (!createErr && createData?.user) {
-              userId = createData.user.id;
-              isRealAuthUser = true;
-            } else if (createErr) {
-              console.info('[StorageSync] Note on createUser:', createErr.message);
-            }
-          } catch (createErr) {
-            console.warn('[StorageSync] createUser note:', createErr.message);
-          }
-        } else {
-          try {
-            await supabaseAdmin.auth.admin.updateUserById(userId, { user_metadata: userMetadata });
-          } catch (updateErr) {
-            console.warn('[StorageSync] updateUserById note:', updateErr.message);
-          }
-        }
-      }
-
-      // 2. Generate a valid UUID if user still lacks one
       if (!userId) {
         if (typeof crypto !== 'undefined' && crypto.randomUUID) {
           userId = crypto.randomUUID();
@@ -2908,7 +2912,7 @@ export const StorageEngine = {
 
       cust.id = userId;
 
-      // 3. Update localStorage customer with authoritative UUID
+      // Update localStorage customer with authoritative UUID
       const list = getLocal('customers', INITIAL_CUSTOMERS);
       const idx = list.findIndex(c => (userId && c.id === userId) || (cleanEmail && c.email && c.email.toLowerCase().trim() === cleanEmail));
       if (idx >= 0) {
@@ -2916,34 +2920,16 @@ export const StorageEngine = {
         setLocal('customers', list);
       }
 
-      // 4. Upsert into public.profiles in Supabase to trigger realtime push to all open devices
       const rawSlug = (cust.slug || cust.name || (cleanEmail ? cleanEmail.split('@')[0] : 'cust'))
         .toLowerCase()
         .replace(/[^a-z0-9]/g, '') || 'cust';
 
-      let userSlug = cust.slug;
-      if (!userSlug) {
-        try {
-          const { data: existingProf } = await client.from('profiles').select('slug').eq('id', userId).maybeSingle();
-          if (existingProf && existingProf.slug) {
-            userSlug = existingProf.slug;
-          } else {
-            const { data: slugTaken } = await client.from('profiles').select('id').eq('slug', rawSlug).maybeSingle();
-            if (slugTaken && slugTaken.id !== userId) {
-              userSlug = `${rawSlug}-${userId.slice(0, 6)}`;
-            } else {
-              userSlug = rawSlug;
-            }
-          }
-        } catch (_) {
-          userSlug = `${rawSlug}-${userId.slice(0, 6)}`;
-        }
-      }
+      let userSlug = cust.slug || rawSlug;
       cust.slug = userSlug;
 
       const profilePayload = {
         id: userId,
-        user_id: isRealAuthUser ? userId : null,
+        user_id: null,
         slug: userSlug,
         name: cust.name || 'Valued Customer',
         email: cleanEmail || `${userSlug}@client.flocard.in`,
@@ -2955,23 +2941,11 @@ export const StorageEngine = {
         updated_at: new Date().toISOString()
       };
 
-      let { error: profErr } = await client.from('profiles').upsert(profilePayload, { onConflict: 'id' });
-      if (profErr && profErr.code === '23503' && profilePayload.user_id) {
-        profilePayload.user_id = null;
-        const retry = await client.from('profiles').upsert(profilePayload, { onConflict: 'id' });
-        profErr = retry.error;
-      }
-      if (profErr) {
-        console.warn('[StorageSync] Supabase profile upsert warning:', profErr.message);
-        throw new Error(profErr.message);
-      } else {
-        console.info(`[StorageSync] Customer "${cust.name}" (${userId}) synced to Supabase Cloud.`);
-      }
-
+      await client.from('profiles').upsert(profilePayload, { onConflict: 'id' }).catch(() => {});
       return cust;
     } catch (err) {
-      console.warn('[StorageSync] Supabase customer sync error:', err.message);
-      throw err;
+      console.warn('[StorageSync] Supabase customer fallback note:', err.message);
+      return cust;
     }
   },
   saveCustomer: (cust) => {
@@ -3027,6 +3001,9 @@ export const StorageEngine = {
     setLocal('invoices', invoices);
 
     StorageEngine.addAuditLog('Customer', `Customer record and associated orders deleted: ${id}`, 'You');
+
+    // Call serverless endpoint (runs on backend without browser Origin restrictions)
+    callCloudSyncApi('deleteCustomer', { id }).catch(() => {});
 
     // Delete from Supabase Auth and Profiles if valid UUID
     try {

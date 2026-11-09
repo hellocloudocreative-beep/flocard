@@ -24,9 +24,9 @@ export const supabase = isSupabaseConfigured
     })
   : null;
 
-// Service-role client — used ONLY for administrative operations like storage uploads
-// Explicitly isolated with a non-persisting memory store to avoid GoTrueClient collisions
-export const supabaseAdmin = (supabaseUrl && supabaseServiceKey)
+// Service-role client — used ONLY on the server for administrative operations
+// Strictly isolated from browser execution to prevent Supabase Gateway "Forbidden use of secret API key in browser" 403 errors
+export const supabaseAdmin = (supabaseUrl && supabaseServiceKey && typeof window === 'undefined')
   ? createClient(supabaseUrl, supabaseServiceKey, {
       auth: {
         storageKey: 'flocard-supabase-admin-service',
