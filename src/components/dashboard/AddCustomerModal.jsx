@@ -94,12 +94,15 @@ export default function AddCustomerModal({
   };
 
   const colors = {
-    modalBg: isDark ? '#140E20' : '#FFFFFF',
-    border: isDark ? 'rgba(255, 255, 255, 0.1)' : 'rgba(0, 0, 0, 0.08)',
+    modalBg: isDark ? '#0D0916' : '#FFFFFF',
+    border: isDark ? 'rgba(112, 56, 248, 0.25)' : 'rgba(107, 0, 255, 0.15)',
     textPrimary: isDark ? '#FFFFFF' : '#191522',
     textSecondary: isDark ? '#9E95AF' : '#686074',
-    inputBg: isDark ? '#1B142A' : '#F6F4F0',
-    brandPurple: '#6B004F'
+    inputBg: isDark ? '#140E20' : '#F8F6FD',
+    inputBorder: isDark ? 'rgba(112, 56, 248, 0.25)' : '#E4D8FF',
+    brandPurple: '#6B00FF',
+    brandPurpleHover: '#5B00DB',
+    brandGradient: 'linear-gradient(135deg, #6B00FF 0%, #9B51E0 100%)'
   };
 
   return (
@@ -146,17 +149,18 @@ export default function AddCustomerModal({
           <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
             <div
               style={{
-                width: '36px',
-                height: '36px',
-                borderRadius: '10px',
-                backgroundColor: 'rgba(107, 0, 79, 0.15)',
-                color: colors.brandPurple,
+                width: '38px',
+                height: '38px',
+                borderRadius: '12px',
+                backgroundColor: 'rgba(107, 0, 255, 0.15)',
+                border: '1px solid rgba(107, 0, 255, 0.28)',
+                color: isDark ? '#C084FC' : '#6B00FF',
                 display: 'flex',
                 alignItems: 'center',
                 justifyContent: 'center'
               }}
             >
-              <UserPlus size={18} />
+              <UserPlus size={19} />
             </div>
             <div>
               <h3 style={{ margin: 0, fontSize: '1.15rem', fontWeight: 800, color: colors.textPrimary }}>
@@ -219,7 +223,7 @@ export default function AddCustomerModal({
                 width: '100%',
                 padding: '10px 14px',
                 borderRadius: '10px',
-                border: `1px solid ${colors.border}`,
+                border: `1px solid ${colors.inputBorder}`,
                 backgroundColor: colors.inputBg,
                 color: colors.textPrimary,
                 fontSize: '0.86rem',
@@ -243,7 +247,7 @@ export default function AddCustomerModal({
                   width: '100%',
                   padding: '9px 12px',
                   borderRadius: '10px',
-                  border: `1px solid ${colors.border}`,
+                  border: `1px solid ${colors.inputBorder}`,
                   backgroundColor: colors.inputBg,
                   color: colors.textPrimary,
                   fontSize: '0.84rem',
@@ -265,7 +269,7 @@ export default function AddCustomerModal({
                   width: '100%',
                   padding: '9px 12px',
                   borderRadius: '10px',
-                  border: `1px solid ${colors.border}`,
+                  border: `1px solid ${colors.inputBorder}`,
                   backgroundColor: colors.inputBg,
                   color: colors.textPrimary,
                   fontSize: '0.84rem',
@@ -290,7 +294,7 @@ export default function AddCustomerModal({
                   width: '100%',
                   padding: '9px 12px',
                   borderRadius: '10px',
-                  border: `1px solid ${colors.border}`,
+                  border: `1px solid ${colors.inputBorder}`,
                   backgroundColor: colors.inputBg,
                   color: colors.textPrimary,
                   fontSize: '0.84rem',
@@ -313,7 +317,7 @@ export default function AddCustomerModal({
                   width: '100%',
                   padding: '9px 12px',
                   borderRadius: '10px',
-                  border: `1px solid ${colors.border}`,
+                  border: `1px solid ${colors.inputBorder}`,
                   backgroundColor: colors.inputBg,
                   color: colors.textPrimary,
                   fontSize: '0.84rem',
@@ -330,6 +334,7 @@ export default function AddCustomerModal({
               type="checkbox"
               checked={sameAsPhone}
               onChange={(e) => setSameAsPhone(e.target.checked)}
+              style={{ accentColor: '#6B00FF', cursor: 'pointer' }}
             />
             <span>WhatsApp number is same as phone number</span>
           </label>
@@ -347,7 +352,7 @@ export default function AddCustomerModal({
                 width: '100%',
                 padding: '9px 12px',
                 borderRadius: '10px',
-                border: `1px solid ${colors.border}`,
+                border: `1px solid ${colors.inputBorder}`,
                 backgroundColor: colors.inputBg,
                 color: colors.textPrimary,
                 fontSize: '0.82rem',
@@ -363,15 +368,18 @@ export default function AddCustomerModal({
               type="button"
               onClick={onClose}
               style={{
-                padding: '9px 18px',
+                padding: '10px 18px',
                 borderRadius: '10px',
                 border: `1px solid ${colors.border}`,
                 background: 'none',
                 color: colors.textSecondary,
                 fontSize: '0.84rem',
                 fontWeight: 600,
-                cursor: 'pointer'
+                cursor: 'pointer',
+                transition: 'all 0.15s ease'
               }}
+              onMouseEnter={(e) => { e.currentTarget.style.color = colors.textPrimary; }}
+              onMouseLeave={(e) => { e.currentTarget.style.color = colors.textSecondary; }}
             >
               Cancel
             </button>
@@ -379,15 +387,29 @@ export default function AddCustomerModal({
               type="submit"
               disabled={isSubmitting}
               style={{
-                padding: '9px 22px',
+                padding: '10px 22px',
                 borderRadius: '10px',
                 border: 'none',
-                backgroundColor: colors.brandPurple,
+                background: colors.brandGradient,
                 color: '#FFFFFF',
                 fontSize: '0.84rem',
                 fontWeight: 700,
                 cursor: isSubmitting ? 'wait' : 'pointer',
-                boxShadow: '0 4px 14px rgba(107, 0, 79, 0.4)'
+                boxShadow: '0 4px 16px rgba(107, 0, 255, 0.4)',
+                transition: 'all 0.15s ease',
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: '8px'
+              }}
+              onMouseEnter={(e) => {
+                if (!isSubmitting) {
+                  e.currentTarget.style.transform = 'translateY(-1px)';
+                  e.currentTarget.style.boxShadow = '0 6px 20px rgba(107, 0, 255, 0.55)';
+                }
+              }}
+              onMouseLeave={(e) => {
+                e.currentTarget.style.transform = 'translateY(0)';
+                e.currentTarget.style.boxShadow = '0 4px 16px rgba(107, 0, 255, 0.4)';
               }}
             >
               {isSubmitting ? 'Saving...' : 'Create Customer'}

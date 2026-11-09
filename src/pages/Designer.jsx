@@ -772,6 +772,7 @@ export default function Designer() {
 
   // Calculate dynamic 3D transform based on selected thumbnail preview mode
   const getPreviewTransform = () => {
+    if (viewportWidth < 1024) return 'none';
     if (previewMode === 'angled') {
       return 'perspective(1200px) rotateY(-24deg) rotateX(12deg) scale(0.96)';
     }
@@ -870,10 +871,10 @@ export default function Designer() {
           position: 'sticky',
           top: 0,
           zIndex: 100,
-          backdropFilter: 'blur(16px)',
-          WebkitBackdropFilter: 'blur(16px)',
-          background: isLight ? 'rgba(243, 240, 255, 0.88)' : 'rgba(9, 6, 17, 0.75)',
-          borderBottom: isLight ? '1px solid rgba(112, 56, 248, 0.18)' : '1px solid rgba(112, 56, 248, 0.12)',
+          backdropFilter: 'blur(20px)',
+          WebkitBackdropFilter: 'blur(20px)',
+          background: isLight ? 'rgba(255, 255, 255, 0.97)' : 'rgba(7, 5, 13, 0.97)',
+          borderBottom: isLight ? '1px solid rgba(112, 56, 248, 0.18)' : '1px solid rgba(112, 56, 248, 0.16)',
           padding: viewportWidth < 640 ? '10px 16px' : '12px 24px',
           display: 'flex',
           alignItems: 'center',
@@ -1311,17 +1312,18 @@ export default function Designer() {
             style={{
               display: 'flex',
               alignItems: 'center',
-              background: isLight ? 'rgba(243, 240, 255, 0.94)' : 'rgba(16, 12, 26, 0.92)',
+              background: isLight ? 'rgba(255, 255, 255, 0.97)' : 'rgba(11, 8, 20, 0.97)',
               border: isLight ? '1px solid rgba(112, 56, 248, 0.22)' : '1px solid rgba(112, 56, 248, 0.28)',
               borderRadius: '14px',
               padding: '4px',
-              marginBottom: '18px',
+              marginBottom: '16px',
               gap: '4px',
               backdropFilter: 'blur(20px)',
+              WebkitBackdropFilter: 'blur(20px)',
               position: 'sticky',
-              top: '60px',
+              top: '52px',
               zIndex: 40,
-              boxShadow: isLight ? '0 4px 20px rgba(112, 56, 248, 0.15)' : '0 8px 24px rgba(0, 0, 0, 0.45)'
+              boxShadow: isLight ? '0 4px 20px rgba(112, 56, 248, 0.15)' : '0 8px 24px rgba(0, 0, 0, 0.55)'
             }}
           >
             <button
@@ -2235,18 +2237,14 @@ export default function Designer() {
               width: '100%',
               maxWidth: '100%',
               order: viewportWidth < 1024 ? -1 : undefined,
-              position: 'sticky',
-              top: viewportWidth < 1024 ? (mobileTab !== 'preview' ? '112px' : '76px') : '80px',
+              position: viewportWidth < 1024 ? 'relative' : 'sticky',
+              top: viewportWidth < 1024 ? 'auto' : '80px',
               alignSelf: 'start',
-              zIndex: 35,
-              background: viewportWidth < 1024 && mobileTab !== 'preview'
-                ? (isLight ? '#f3f0fa' : '#0c0817')
-                : 'transparent',
-              padding: viewportWidth < 1024 && mobileTab !== 'preview' ? '8px 0 10px' : 0,
-              borderRadius: viewportWidth < 1024 && mobileTab !== 'preview' ? '18px' : 0,
-              boxShadow: viewportWidth < 1024 && mobileTab !== 'preview'
-                ? (isLight ? '0 10px 25px rgba(112, 56, 248, 0.12)' : '0 12px 30px rgba(0, 0, 0, 0.5)')
-                : 'none'
+              zIndex: viewportWidth < 1024 ? 10 : 35,
+              background: 'transparent',
+              padding: 0,
+              borderRadius: 0,
+              boxShadow: 'none'
             }}
           >
             {/* Top Preview Bar: Front/Back Toggle & Safe Area/Bleed Switches */}
@@ -2414,27 +2412,33 @@ export default function Designer() {
               )}
             </div>
 
-            {/* Central Stage Box (Solid Luxury Background - No animated ASCII) */}
+            {/* Central Stage Box (Clean Luxury Preview - Lightweight border on mobile) */}
             {(!mobilePreviewCollapsed || mobileTab === 'preview' || viewportWidth >= 1024) && (
               <div
                 style={{
                   position: 'relative',
                   width: '100%',
                   minHeight: viewportWidth < 1024 && mobileTab !== 'preview'
-                    ? `${Math.round(BASE_CARD_HEIGHT * fitScale) + 24}px`
-                    : (viewportWidth < 640 ? '340px' : '440px'),
-                  borderRadius: '20px',
+                    ? `${Math.round(BASE_CARD_HEIGHT * fitScale) + 16}px`
+                    : (viewportWidth < 640 ? '300px' : '440px'),
+                  borderRadius: viewportWidth < 1024 ? '14px' : '20px',
                   overflow: 'hidden',
-                  background: isLight ? '#f4f2fb' : '#0B0814',
-                  border: isLight ? '1px solid rgba(112, 56, 248, 0.2)' : '1px solid rgba(112, 56, 248, 0.22)',
+                  background: viewportWidth < 1024
+                    ? (isLight ? 'rgba(255, 255, 255, 0.7)' : 'rgba(16, 12, 26, 0.7)')
+                    : (isLight ? '#f4f2fb' : '#0B0814'),
+                  border: viewportWidth < 1024
+                    ? (isLight ? '1px solid rgba(112, 56, 248, 0.12)' : '1px solid rgba(112, 56, 248, 0.15)')
+                    : (isLight ? '1px solid rgba(112, 56, 248, 0.2)' : '1px solid rgba(112, 56, 248, 0.22)'),
                   display: 'flex',
                   flexDirection: 'column',
                   alignItems: 'center',
                   justifyContent: 'center',
-                  padding: viewportWidth < 1024 && mobileTab !== 'preview' ? '12px 8px' : '30px 20px',
-                  boxShadow: isLight
-                    ? '0 10px 30px rgba(112, 56, 248, 0.1), inset 0 0 40px rgba(112, 56, 248, 0.03)'
-                    : '0 20px 60px rgba(0, 0, 0, 0.65), inset 0 0 60px rgba(112, 56, 248, 0.05)'
+                  padding: viewportWidth < 1024 ? '12px 6px' : '30px 20px',
+                  boxShadow: viewportWidth < 1024
+                    ? 'none'
+                    : (isLight
+                        ? '0 10px 30px rgba(112, 56, 248, 0.1), inset 0 0 40px rgba(112, 56, 248, 0.03)'
+                        : '0 20px 60px rgba(0, 0, 0, 0.65), inset 0 0 60px rgba(112, 56, 248, 0.05)')
                 }}
               >
                 {/* The Live NFC Card with Perspective & Dynamic Lighting */}
@@ -2467,8 +2471,11 @@ export default function Designer() {
                         height: `${BASE_CARD_HEIGHT}px`,
                         transform: `scale(${fitScale})`,
                         transformOrigin: 'center center',
-                        flexShrink: 0
+                        flexShrink: 0,
+                        cursor: 'pointer'
                       }}
+                      onClick={() => setSide(s => (s === 'front' ? 'back' : 'front'))}
+                      title="Tap card to flip"
                     >
                       {is3DPreview ? (
                         <Card3DPreview
@@ -2480,9 +2487,9 @@ export default function Designer() {
                           showGuides={showGuides}
                           showBleed={showBleed}
                           width={BASE_CARD_WIDTH}
-                          enableTilt={dynamicLighting}
+                          enableTilt={viewportWidth < 1024 ? false : dynamicLighting}
                           onLogoWarningChange={setLogoWarning}
-                          allowFlip={false}
+                          allowFlip={true}
                         />
                       ) : (
                         <CardCanvas
