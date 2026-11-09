@@ -168,8 +168,8 @@ export async function updateCardActivationStatus({ cardId, newStatus, reason = '
     activationHistory: [historyItem, ...(existingCard.activationHistory || [])]
   };
 
-  // 4. In Local Development Sandbox, update local storage only to keep production database clean
-  if (isLocalEnvironment()) {
+  // 4. If Supabase is not configured, update local storage only as offline fallback
+  if (!isSupabaseConfigured) {
     StorageEngine.saveCard(updatedCard);
     recordAuditEntry({
       cardId: existingCard.id,
@@ -180,7 +180,7 @@ export async function updateCardActivationStatus({ cardId, newStatus, reason = '
       actorUser,
       reason,
       result: 'success',
-      details: `[Local Sandbox] ${actorName} changed card ${existingCard.cardCode} status to ${newStatus}.${reason ? ` Reason: ${reason}` : ''} (saved locally only)`
+      details: `[Local Fallback] ${actorName} changed card ${existingCard.cardCode} status to ${newStatus}.${reason ? ` Reason: ${reason}` : ''} (saved locally only)`
     });
 
     if (typeof window !== 'undefined') {
@@ -197,7 +197,7 @@ export async function updateCardActivationStatus({ cardId, newStatus, reason = '
     };
   }
 
-  // 4b. Update real Supabase database in Production
+  // 4b. Update real Supabase database so all devices synchronize in real-time
   if (isSupabaseConfigured && (supabaseAdmin || supabase)) {
     const dbClient = supabaseAdmin || supabase;
 

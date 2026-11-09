@@ -1025,10 +1025,6 @@ export const StorageEngine = {
   },
   syncProfileToCloud: async (profile) => {
     if (!profile) return;
-    if (isLocalEnvironment()) {
-      console.info(`[Local Sandbox] Skipping cloud sync for profile "${profile.slug}". Saved to local browser storage only.`);
-      return;
-    }
     try {
       const { supabase, supabaseAdmin, isSupabaseConfigured } = await import('./supabase.js');
       if (!isSupabaseConfigured) return;
@@ -1087,7 +1083,12 @@ export const StorageEngine = {
         payload.user_id = profile.user_id;
       }
 
-      const { error } = await client.from('profiles').upsert(payload, { onConflict: 'slug' });
+      let { error } = await client.from('profiles').upsert(payload, { onConflict: 'slug' });
+      if (error && error.code === '23503' && payload.user_id) {
+        delete payload.user_id;
+        const retry = await client.from('profiles').upsert(payload, { onConflict: 'slug' });
+        error = retry.error;
+      }
       if (error) {
         console.warn('[StorageSync] Supabase profiles upsert note:', error.message);
       }
@@ -1211,10 +1212,6 @@ export const StorageEngine = {
   },
   syncCardToCloud: async (card) => {
     if (!card || !card.cardCode) return;
-    if (isLocalEnvironment()) {
-      console.info(`[Local Sandbox] Skipping cloud sync for card "${card.cardCode}". Saved to local browser storage only.`);
-      return;
-    }
     try {
       const { supabase, supabaseAdmin, isSupabaseConfigured } = await import('./supabase.js');
       if (!isSupabaseConfigured) return;
@@ -1326,10 +1323,6 @@ export const StorageEngine = {
   },
   syncDesignToCloud: async (design) => {
     if (!design) return null;
-    if (isLocalEnvironment()) {
-      console.info(`[Local Sandbox] Skipping cloud sync for design "${design.title || design.id}". Saved to local browser storage only.`);
-      return null;
-    }
     try {
       const { supabase, supabaseAdmin, isSupabaseConfigured } = await import('./supabase.js');
       if (!isSupabaseConfigured) return null;
@@ -1393,7 +1386,12 @@ export const StorageEngine = {
         payload.user_id = design.customerId;
       }
 
-      const { error: upsertErr } = await client.from('card_designs').upsert(payload, { onConflict: 'id' });
+      let { error: upsertErr } = await client.from('card_designs').upsert(payload, { onConflict: 'id' });
+      if (upsertErr && upsertErr.code === '23503' && payload.user_id) {
+        delete payload.user_id;
+        const retry = await client.from('card_designs').upsert(payload, { onConflict: 'id' });
+        upsertErr = retry.error;
+      }
       if (upsertErr) {
         console.warn('[StorageSync] Supabase card_designs upsert warning:', upsertErr.message);
       } else {
@@ -2078,13 +2076,9 @@ export const StorageEngine = {
       customerName
     );
 
-    // Asynchronously synchronize with Supabase orders table if available (in production only)
+    // Asynchronously synchronize with Supabase orders table if available
     (async () => {
       try {
-        if (isLocalEnvironment()) {
-          console.info(`[Local Sandbox] Skipping cloud upsert for order "${newOrder.orderReference}". Saved to local browser storage only.`);
-          return;
-        }
         const { supabase, supabaseAdmin, isSupabaseConfigured } = await import('./supabase.js');
         if (!isSupabaseConfigured) return;
         const client = supabaseAdmin || supabase;
@@ -2277,27 +2271,25 @@ export const StorageEngine = {
       }
     } catch (_) {}
 
-    // In production, sync status directly to native Supabase orders table
-    if (!isLocalEnvironment()) {
-      (async () => {
-        try {
-          const { supabase, supabaseAdmin, isSupabaseConfigured } = await import('./supabase.js');
-          if (isSupabaseConfigured) {
-            const client = supabaseAdmin || supabase;
-            if (client) {
-              await client.from('orders').update({
-                status: targetStatus,
-                carrier_name: order.carrierName || null,
-                tracking_number: order.trackingNumber || null,
-                tracking_url: order.trackingUrl || null,
-                estimated_delivery_at: order.estimatedDeliveryAt || null,
-                updated_at: new Date().toISOString()
-              }).eq('order_reference', order.orderReference || order.id);
-            }
+    // Sync status directly to native Supabase orders table
+    (async () => {
+      try {
+        const { supabase, supabaseAdmin, isSupabaseConfigured } = await import('./supabase.js');
+        if (isSupabaseConfigured) {
+          const client = supabaseAdmin || supabase;
+          if (client) {
+            await client.from('orders').update({
+              status: targetStatus,
+              carrier_name: order.carrierName || null,
+              tracking_number: order.trackingNumber || null,
+              tracking_url: order.trackingUrl || null,
+              estimated_delivery_at: order.estimatedDeliveryAt || null,
+              updated_at: new Date().toISOString()
+            }).eq('order_reference', order.orderReference || order.id);
           }
-        } catch (_) {}
-      })();
-    }
+        }
+      } catch (_) {}
+    })();
 
     // 5. Emit browser event for immediate realtime timeline updates
     if (typeof window !== 'undefined') {
@@ -2843,27 +2835,25 @@ export const StorageEngine = {
   },
   syncCustomerToCloud: async (cust) => {
     if (!cust) return null;
-    if (isLocalEnvironment()) {
-      console.info(`[Local Sandbox] Skipping cloud sync for customer "${cust.name || cust.email}". Saved to local browser storage only.`);
-      return cust;
-    }
     try {
       const { supabase, supabaseAdmin, isSupabaseConfigured } = await import('./supabase.js');
-      if (!isSupabaseConfigured || !supabaseAdmin) return cust;
+      if (!isSupabaseConfigured) return cust;
       const client = supabaseAdmin || supabase;
       if (!client) return cust;
 
       const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
       const cleanEmail = cust.email ? String(cust.email).toLowerCase().trim() : '';
       let userId = (cust.id && uuidRegex.test(cust.id)) ? cust.id : null;
+      let isRealAuthUser = false;
 
-      // 1. If email is provided, check if user already exists in Supabase Auth
-      if (cleanEmail) {
+      // 1. If email is provided and supabaseAdmin is available, check/create user in Supabase Auth
+      if (cleanEmail && supabaseAdmin && supabaseAdmin.auth && supabaseAdmin.auth.admin) {
         try {
           const { data: usersData } = await supabaseAdmin.auth.admin.listUsers();
           const existing = usersData?.users?.find(u => u.email?.toLowerCase().trim() === cleanEmail);
           if (existing) {
             userId = existing.id;
+            isRealAuthUser = true;
           }
         } catch (authListErr) {
           console.warn('[StorageSync] listUsers note:', authListErr.message);
@@ -2887,6 +2877,7 @@ export const StorageEngine = {
             });
             if (!createErr && createData?.user) {
               userId = createData.user.id;
+              isRealAuthUser = true;
             } else if (createErr) {
               console.info('[StorageSync] Note on createUser:', createErr.message);
             }
@@ -2926,13 +2917,33 @@ export const StorageEngine = {
       }
 
       // 4. Upsert into public.profiles in Supabase to trigger realtime push to all open devices
-      const userSlug = (cust.name || (cleanEmail ? cleanEmail.split('@')[0] : 'client'))
+      const rawSlug = (cust.slug || cust.name || (cleanEmail ? cleanEmail.split('@')[0] : 'cust'))
         .toLowerCase()
-        .replace(/[^a-z0-9]/g, '') || `cust${Date.now()}`;
+        .replace(/[^a-z0-9]/g, '') || 'cust';
+
+      let userSlug = cust.slug;
+      if (!userSlug) {
+        try {
+          const { data: existingProf } = await client.from('profiles').select('slug').eq('id', userId).maybeSingle();
+          if (existingProf && existingProf.slug) {
+            userSlug = existingProf.slug;
+          } else {
+            const { data: slugTaken } = await client.from('profiles').select('id').eq('slug', rawSlug).maybeSingle();
+            if (slugTaken && slugTaken.id !== userId) {
+              userSlug = `${rawSlug}-${userId.slice(0, 6)}`;
+            } else {
+              userSlug = rawSlug;
+            }
+          }
+        } catch (_) {
+          userSlug = `${rawSlug}-${userId.slice(0, 6)}`;
+        }
+      }
+      cust.slug = userSlug;
 
       const profilePayload = {
         id: userId,
-        user_id: userId,
+        user_id: isRealAuthUser ? userId : null,
         slug: userSlug,
         name: cust.name || 'Valued Customer',
         email: cleanEmail || `${userSlug}@client.flocard.in`,
@@ -2944,7 +2955,12 @@ export const StorageEngine = {
         updated_at: new Date().toISOString()
       };
 
-      const { error: profErr } = await client.from('profiles').upsert(profilePayload, { onConflict: 'id' });
+      let { error: profErr } = await client.from('profiles').upsert(profilePayload, { onConflict: 'id' });
+      if (profErr && profErr.code === '23503' && profilePayload.user_id) {
+        profilePayload.user_id = null;
+        const retry = await client.from('profiles').upsert(profilePayload, { onConflict: 'id' });
+        profErr = retry.error;
+      }
       if (profErr) {
         console.warn('[StorageSync] Supabase profile upsert warning:', profErr.message);
         throw new Error(profErr.message);

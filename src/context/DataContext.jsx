@@ -64,6 +64,9 @@ export function DataProvider({ children }) {
 
         if (!pErr && Array.isArray(cloudProfiles) && cloudProfiles.length > 0) {
           const localProfiles = StorageEngine.getProfiles();
+          const currentCusts = StorageEngine.getCustomers();
+          let custsUpdated = false;
+
           for (const cp of cloudProfiles) {
             const rawPortfolio = Array.isArray(cp.portfolio) ? cp.portfolio : [];
             const bannerEntry = rawPortfolio.find(x => x && x._isBannerConfig);
@@ -120,7 +123,6 @@ export function DataProvider({ children }) {
             if (isCustomerProfile && cp.name) {
               const custId = cp.id || cp.user_id;
               const custEmail = (cp.email || '').toLowerCase().trim();
-              const currentCusts = StorageEngine.getCustomers();
               const existIdx = currentCusts.findIndex(c => (custId && c.id === custId) || (custEmail && c.email && c.email.toLowerCase().trim() === custEmail));
               const mappedFromProfile = {
                 id: custId,
@@ -140,9 +142,12 @@ export function DataProvider({ children }) {
               } else {
                 currentCusts.unshift(mappedFromProfile);
               }
-              StorageEngine.saveLocalCustomers(currentCusts);
-              setCustomers([...currentCusts]);
+              custsUpdated = true;
             }
+          }
+          if (custsUpdated) {
+            StorageEngine.saveLocalCustomers(currentCusts);
+            setCustomers([...currentCusts]);
           }
           StorageEngine.saveLocalProfiles(localProfiles);
           setProfiles([...localProfiles]);
