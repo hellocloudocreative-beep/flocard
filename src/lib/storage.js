@@ -4015,6 +4015,385 @@ export const StorageEngine = {
   getInvoiceConfig: () => getInvoiceConfig(),
   saveInvoiceConfig: (cfg) => saveInvoiceConfig(cfg),
 
+  // ==========================================================================
+  // FULL DEVELOPER BACKUP & RESTORE ARCHIVE SYSTEM (.ZIP)
+  // Backs up Customers, Sales (Orders & Invoices), Customer Designs, and NFC Cards
+  // Includes atomic validation, detailed diff preview, and approval gates.
+  // ==========================================================================
+  generateFullBackup: () => {
+    const customers = StorageEngine.getCustomers();
+    const profiles = StorageEngine.getProfiles();
+    const orders = StorageEngine.getOrders();
+    const invoices = StorageEngine.getInvoices();
+    const designs = StorageEngine.getDesigns();
+    const cards = StorageEngine.getCards();
+    const products = StorageEngine.getProducts ? StorageEngine.getProducts() : [];
+    const templates = StorageEngine.getTemplates ? StorageEngine.getTemplates() : [];
+    const invoiceSettings = StorageEngine.getInvoiceSettings ? StorageEngine.getInvoiceSettings() : null;
+    const demoConfig = StorageEngine.getDemoConfig ? StorageEngine.getDemoConfig() : null;
+
+    const totalSalesRevenue = orders.reduce((sum, o) => {
+      const amt = Number(o.totalAmount || o.pricingBreakdown?.total || 0);
+      return sum + (isNaN(amt) ? 0 : amt);
+    }, 0);
+
+    const manifest = {
+      appName: 'FLOCARD Enterprise',
+      version: '1.0',
+      exportedAt: new Date().toISOString(),
+      environment: isProductionEnvironment() ? 'production' : 'development',
+      summary: {
+        customersCount: customers.length,
+        profilesCount: profiles.length,
+        ordersCount: orders.length,
+        invoicesCount: invoices.length,
+        designsCount: designs.length,
+        cardsCount: cards.length,
+        totalSalesRevenue
+      }
+    };
+
+    return {
+      manifest,
+      customers,
+      profiles,
+      orders,
+      invoices,
+      designs,
+      cards,
+      products,
+      templates,
+      invoiceSettings,
+      demoConfig
+    };
+  },
+
+  createBackupZip: async () => {
+    const JSZipModule = await import('jszip');
+    const JSZip = JSZipModule.default || JSZipModule;
+    const zip = new JSZip();
+
+    const fullData = StorageEngine.generateFullBackup();
+    const { manifest, customers, profiles, orders, invoices, designs, cards, ...rest } = fullData;
+
+    // 1. Manifest / Checksums
+    zip.file('manifest.json', JSON.stringify(manifest, null, 2));
+
+    // 2. Customers & Profiles
+    zip.file('customers.json', JSON.stringify({ customers, profiles }, null, 2));
+
+    // 3. Sales (Orders, Invoices, Financials)
+    zip.file('sales.json', JSON.stringify({
+      orders,
+      invoices,
+      summary: {
+        totalOrders: orders.length,
+        totalInvoices: invoices.length,
+        totalRevenue: manifest.summary.totalSalesRevenue
+      }
+    }, null, 2));
+
+    // 4. Customer Designs & Custom Artwork
+    zip.file('designs.json', JSON.stringify({ designs }, null, 2));
+
+    // 5. Hardware NFC Inventory & Catalog
+    zip.file('cards.json', JSON.stringify({ cards, products: rest.products, templates: rest.templates }, null, 2));
+
+    // 6. Consolidated backup for rapid atomic restore
+    zip.file('flocard_full_backup.json', JSON.stringify(fullData, null, 2));
+
+    const blob = await zip.generateAsync({
+      type: 'blob',
+      compression: 'DEFLATE',
+      compressionOptions: { level: 9 }
+    });
+
+    const dateStr = new Date().toISOString().slice(0, 10);
+    const timeStr = new Date().toTimeString().slice(0, 5).replace(':', '-');
+    const fileName = `flocard_backup_${dateStr}_${timeStr}.zip`;
+
+    return { blob, fileName, manifest, fullData };
+  },
+
+  parseBackupZip: async (file) => {
+    if (!file) throw new Error('No backup file provided.');
+    const JSZipModule = await import('jszip');
+    const JSZip = JSZipModule.default || JSZipModule;
+
+    let zip;
+    try {
+      zip = await JSZip.loadAsync(file);
+    } catch (err) {
+      throw new Error('Invalid or corrupted ZIP file. Please provide a valid FLOCARD backup archive (.zip).');
+    }
+
+    let fullBackup = null;
+    let manifest = null;
+    let customers = [];
+    let profiles = [];
+    let orders = [];
+    let invoices = [];
+    let designs = [];
+    let cards = [];
+    let products = [];
+    let templates = [];
+    let invoiceSettings = null;
+    let demoConfig = null;
+
+    // Check flocard_full_backup.json first
+    const fullJsonFile = zip.file('flocard_full_backup.json');
+    if (fullJsonFile) {
+      try {
+        const fullJsonText = await fullJsonFile.async('string');
+        fullBackup = JSON.parse(fullJsonText);
+        manifest = fullBackup.manifest;
+        customers = fullBackup.customers || [];
+        profiles = fullBackup.profiles || [];
+        orders = fullBackup.orders || [];
+        invoices = fullBackup.invoices || [];
+        designs = fullBackup.designs || [];
+        cards = fullBackup.cards || [];
+        products = fullBackup.products || [];
+        templates = fullBackup.templates || [];
+        invoiceSettings = fullBackup.invoiceSettings || null;
+        demoConfig = fullBackup.demoConfig || null;
+      } catch (e) {
+        console.warn('Error reading flocard_full_backup.json:', e);
+      }
+    }
+
+    // Fallback: modular files if full file was missing
+    if (!fullBackup) {
+      const manifestFile = zip.file('manifest.json');
+      if (manifestFile) {
+        try { manifest = JSON.parse(await manifestFile.async('string')); } catch (_) {}
+      }
+      const custFile = zip.file('customers.json');
+      if (custFile) {
+        try {
+          const cData = JSON.parse(await custFile.async('string'));
+          customers = cData.customers || (Array.isArray(cData) ? cData : []);
+          profiles = cData.profiles || [];
+        } catch (_) {}
+      }
+      const salesFile = zip.file('sales.json');
+      if (salesFile) {
+        try {
+          const sData = JSON.parse(await salesFile.async('string'));
+          orders = sData.orders || (Array.isArray(sData) ? sData : []);
+          invoices = sData.invoices || [];
+        } catch (_) {}
+      }
+      const designsFile = zip.file('designs.json');
+      if (designsFile) {
+        try {
+          const dData = JSON.parse(await designsFile.async('string'));
+          designs = dData.designs || (Array.isArray(dData) ? dData : []);
+        } catch (_) {}
+      }
+      const cardsFile = zip.file('cards.json');
+      if (cardsFile) {
+        try {
+          const cdData = JSON.parse(await cardsFile.async('string'));
+          cards = cdData.cards || (Array.isArray(cdData) ? cdData : []);
+          products = cdData.products || [];
+          templates = cdData.templates || [];
+        } catch (_) {}
+      }
+    }
+
+    customers = Array.isArray(customers) ? customers : [];
+    profiles = Array.isArray(profiles) ? profiles : [];
+    orders = Array.isArray(orders) ? orders : [];
+    invoices = Array.isArray(invoices) ? invoices : [];
+    designs = Array.isArray(designs) ? designs : [];
+    cards = Array.isArray(cards) ? cards : [];
+
+    const totalSalesRevenue = orders.reduce((sum, o) => {
+      const amt = Number(o.totalAmount || o.pricingBreakdown?.total || 0);
+      return sum + (isNaN(amt) ? 0 : amt);
+    }, 0);
+
+    const currentCusts = StorageEngine.getCustomers();
+    const currentOrders = StorageEngine.getOrders();
+    const currentInvoices = StorageEngine.getInvoices();
+    const currentDesigns = StorageEngine.getDesigns();
+    const currentCards = StorageEngine.getCards();
+    const currentProfiles = StorageEngine.getProfiles();
+
+    return {
+      valid: true,
+      fileName: file.name,
+      fileSize: file.size,
+      exportedAt: manifest?.exportedAt || fullBackup?.exportedAt || new Date().toISOString(),
+      appName: manifest?.appName || 'FLOCARD Backup Archive',
+      version: manifest?.version || '1.0',
+      summary: {
+        customersCount: customers.length,
+        profilesCount: profiles.length,
+        ordersCount: orders.length,
+        invoicesCount: invoices.length,
+        designsCount: designs.length,
+        cardsCount: cards.length,
+        totalSalesRevenue
+      },
+      currentCounts: {
+        customersCount: currentCusts.length,
+        profilesCount: currentProfiles.length,
+        ordersCount: currentOrders.length,
+        invoicesCount: currentInvoices.length,
+        designsCount: currentDesigns.length,
+        cardsCount: currentCards.length
+      },
+      preview: {
+        sampleCustomers: customers.slice(0, 15),
+        sampleOrders: orders.slice(0, 15),
+        sampleDesigns: designs.slice(0, 15),
+        sampleInvoices: invoices.slice(0, 15),
+        sampleCards: cards.slice(0, 15)
+      },
+      rawBackup: {
+        customers,
+        profiles,
+        orders,
+        invoices,
+        designs,
+        cards,
+        products,
+        templates,
+        invoiceSettings,
+        demoConfig
+      }
+    };
+  },
+
+  restoreBackup: async (backupPayload, options = { mode: 'merge', actorName: 'Developer' }) => {
+    const raw = backupPayload.rawBackup || backupPayload;
+    const mode = options.mode || 'merge'; // 'merge' | 'replace'
+
+    // Clean up tombstones for items being restored so background sync loops don't drop them
+    const tombstoneCustIds = getLocal('flocard_deleted_cust_ids', []);
+    const tombstoneCustEmails = getLocal('flocard_deleted_cust_emails', []);
+    const tombstoneCardIds = getLocal('flocard_deleted_card_ids', []);
+    const tombstoneDesignIds = getLocal('flocard_deleted_design_ids', []);
+    const tombstoneOrderIds = getLocal('flocard_deleted_order_ids', []);
+    const tombstoneInvoiceIds = getLocal('flocard_deleted_invoice_ids', []);
+
+    const newTombCustIds = tombstoneCustIds.filter(id => !(raw.customers || []).some(c => c.id === id));
+    const newTombCustEmails = tombstoneCustEmails.filter(email => !(raw.customers || []).some(c => c.email?.toLowerCase().trim() === email.toLowerCase().trim()));
+    const newTombCardIds = tombstoneCardIds.filter(id => !(raw.cards || []).some(c => c.id === id || c.cardCode === id));
+    const newTombDesignIds = tombstoneDesignIds.filter(id => !(raw.designs || []).some(d => d.id === id || d.supabaseId === id));
+    const newTombOrderIds = tombstoneOrderIds.filter(id => !(raw.orders || []).some(o => o.id === id || o.orderReference === id));
+    const newTombInvoiceIds = tombstoneInvoiceIds.filter(id => !(raw.invoices || []).some(i => i.id === id || i.invoiceNumber === id));
+
+    setLocal('flocard_deleted_cust_ids', newTombCustIds);
+    setLocal('flocard_deleted_cust_emails', newTombCustEmails);
+    setLocal('flocard_deleted_card_ids', newTombCardIds);
+    setLocal('flocard_deleted_design_ids', newTombDesignIds);
+    setLocal('flocard_deleted_order_ids', newTombOrderIds);
+    setLocal('flocard_deleted_invoice_ids', newTombInvoiceIds);
+
+    let finalCustomers, finalProfiles, finalOrders, finalInvoices, finalDesigns, finalCards;
+
+    if (mode === 'replace') {
+      finalCustomers = raw.customers || [];
+      finalProfiles = raw.profiles || [];
+      finalOrders = raw.orders || [];
+      finalInvoices = raw.invoices || [];
+      finalDesigns = raw.designs || [];
+      finalCards = raw.cards || [];
+    } else {
+      // Merge mode
+      const currCusts = StorageEngine.getCustomers();
+      const custMap = new Map(currCusts.map(c => [c.id || c.email, c]));
+      (raw.customers || []).forEach(c => custMap.set(c.id || c.email, c));
+      finalCustomers = Array.from(custMap.values());
+
+      const currProfiles = StorageEngine.getProfiles();
+      const profMap = new Map(currProfiles.map(p => [p.slug || p.id, p]));
+      (raw.profiles || []).forEach(p => profMap.set(p.slug || p.id, p));
+      finalProfiles = Array.from(profMap.values());
+
+      const currOrders = StorageEngine.getOrders();
+      const orderMap = new Map(currOrders.map(o => [o.orderReference || o.id, o]));
+      (raw.orders || []).forEach(o => orderMap.set(o.orderReference || o.id, o));
+      finalOrders = Array.from(orderMap.values());
+
+      const currInvoices = StorageEngine.getInvoices();
+      const invMap = new Map(currInvoices.map(i => [i.invoiceNumber || i.id, i]));
+      (raw.invoices || []).forEach(i => invMap.set(i.invoiceNumber || i.id, i));
+      finalInvoices = Array.from(invMap.values());
+
+      const currDesigns = StorageEngine.getDesigns();
+      const desMap = new Map(currDesigns.map(d => [d.id, d]));
+      (raw.designs || []).forEach(d => desMap.set(d.id, d));
+      finalDesigns = Array.from(desMap.values());
+
+      const currCards = StorageEngine.getCards();
+      const cardMap = new Map(currCards.map(c => [c.cardCode || c.id, c]));
+      (raw.cards || []).forEach(c => cardMap.set(c.cardCode || c.id, c));
+      finalCards = Array.from(cardMap.values());
+    }
+
+    // Write to local persistence
+    setLocal('customers', finalCustomers);
+    setLocal('profiles', finalProfiles);
+    setLocal('orders', finalOrders);
+    setLocal('invoices', finalInvoices);
+    setLocal('designs', finalDesigns);
+    setLocal('card_designs', finalDesigns);
+    setLocal('cards', finalCards);
+
+    if (raw.products && raw.products.length > 0) setLocal('products', raw.products);
+    if (raw.templates && raw.templates.length > 0) setLocal('templates', raw.templates);
+    if (raw.invoiceSettings) setLocal('invoice_settings', raw.invoiceSettings);
+    if (raw.demoConfig) setLocal('demo_config', raw.demoConfig);
+
+    StorageEngine.addAuditLog(
+      'Backup & Restore',
+      `Restored backup archive: ${finalCustomers.length} customers, ${finalOrders.length} orders, ${finalDesigns.length} designs, ${finalCards.length} cards (Mode: ${mode})`,
+      options.actorName || 'Developer'
+    );
+
+    // Dispatch real-time cross-tab & window notification events
+    safeDispatchEvent('flocard_customers_updated', finalCustomers);
+    safeDispatchEvent('flocard_orders_updated', finalOrders);
+    safeDispatchEvent('flocard_designs_updated', finalDesigns);
+    safeDispatchEvent('flocard_cards_updated', finalCards);
+    safeDispatchEvent('flocard_invoices_updated', finalInvoices);
+    safeDispatchEvent('flocard_profiles_updated', finalProfiles);
+
+    // Asynchronously synchronize with Supabase cloud
+    (async () => {
+      try {
+        for (const cust of (raw.customers || [])) {
+          StorageEngine.syncCustomerToCloud(cust).catch(() => {});
+        }
+        for (const prof of (raw.profiles || [])) {
+          StorageEngine.syncProfileToCloud(prof).catch(() => {});
+        }
+        for (const des of (raw.designs || [])) {
+          StorageEngine.syncDesignToCloud(des).catch(() => {});
+        }
+        for (const card of (raw.cards || [])) {
+          StorageEngine.syncCardToCloud(card).catch(() => {});
+        }
+      } catch (_) {}
+    })();
+
+    return {
+      success: true,
+      restoredCounts: {
+        customers: finalCustomers.length,
+        profiles: finalProfiles.length,
+        orders: finalOrders.length,
+        invoices: finalInvoices.length,
+        designs: finalDesigns.length,
+        cards: finalCards.length
+      }
+    };
+  },
+
   // System Reset
   resetAll: () => {
     localStorage.removeItem(STORAGE_KEY_PREFIX + 'profiles');

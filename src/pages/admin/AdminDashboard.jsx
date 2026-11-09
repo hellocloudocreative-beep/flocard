@@ -78,7 +78,8 @@ import {
   Sliders,
   Edit3,
   Lock,
-  User
+  User,
+  Archive
 } from 'lucide-react';
 import { useData } from '../../context/DataContext';
 import { useAuth } from '../../context/AuthContext';
@@ -105,6 +106,7 @@ import OwnerActivityFeed from './activity/OwnerActivityFeed';
 import StaffPermissionsManager from './staff/StaffPermissionsManager';
 import AdminQrManager from './qr/AdminQrManager';
 import AdminAppointmentsManager from './appointments/AdminAppointmentsManager';
+import AdminBackupManager from '../../components/admin/AdminBackupManager';
 import {
   getWhatsAppConfig,
   saveWhatsAppConfig,
@@ -194,7 +196,7 @@ export default function AdminDashboard({ initialTab = 'overview', initialOrderId
   const validAdminTabs = [
     'overview', 'orders', 'invoices', 'studio', 'designs', 'qr', 'sales',
     'product-sales', 'customers', 'profiles', 'appointments', 'cards',
-    'pricing', 'templates', 'demo', 'analytics', 'admin-access', 'audit-logs', 'settings'
+    'pricing', 'templates', 'demo', 'analytics', 'admin-access', 'audit-logs', 'settings', 'backup'
   ];
 
   const [activeTab, setActiveTab] = useState(
@@ -821,7 +823,8 @@ export default function AdminDashboard({ initialTab = 'overview', initialOrderId
     // 4. System & Governance
     { id: 'admin-access', label: 'Staff & Permissions', icon: ShieldCheck, ownerOnly: true, group: 'System' },
     { id: 'audit-logs', label: 'Owner Activity Feed', icon: Activity, ownerOnly: true, group: 'System' },
-    { id: 'settings', label: 'Settings', icon: Settings, group: 'System' }
+    { id: 'settings', label: 'Settings', icon: Settings, group: 'System' },
+    { id: 'backup', label: 'Backup & Restore', icon: Archive, group: 'System' }
   ];
 
   const navItems = allNavItems.filter((item) => {
@@ -1827,6 +1830,7 @@ export default function AdminDashboard({ initialTab = 'overview', initialOrderId
                   {activeTab === 'admin-access' && 'Staff Governance'}
                   {activeTab === 'audit-logs' && 'Owner Activity'}
                   {activeTab === 'settings' && 'Settings'}
+                  {activeTab === 'backup' && 'Backup & Disaster Recovery'}
                 </span>
               </div>
 
@@ -1863,6 +1867,7 @@ export default function AdminDashboard({ initialTab = 'overview', initialOrderId
                 {activeTab === 'admin-access' && 'Staff Roles & Permissions Governance'}
                 {activeTab === 'audit-logs' && 'Owner-Only Live Activity Feed'}
                 {activeTab === 'settings' && 'Settings'}
+                {activeTab === 'backup' && 'System Backup & Disaster Recovery (.ZIP)'}
               </h1>
               <p className="admin-page-subtitle" style={{ margin: '2px 0 0', fontSize: '0.82rem', color: 'var(--adm-text-secondary)' }}>
                 {activeTab === 'overview' && "Welcome back! Here's what's happening with FLOCARD."}
@@ -1884,6 +1889,7 @@ export default function AdminDashboard({ initialTab = 'overview', initialOrderId
                 {activeTab === 'admin-access' && 'Owner-governed staff administration across Owner, Sales, Designer, Production, and Accounts.'}
                 {activeTab === 'audit-logs' && 'Strictly owner-only real-time audit ledger, timeline filters, and before-and-after diffs.'}
                 {activeTab === 'settings' && 'Database synchronization, studio backdrop, and system settings.'}
+                {activeTab === 'backup' && 'Export and restore complete system snapshots (Customers, Sales Orders, Tax Invoices, and Designs) in portable ZIP archives with interactive verification.'}
               </p>
             </div>
           </div>
@@ -7432,7 +7438,49 @@ export default function AdminDashboard({ initialTab = 'overview', initialOrderId
                 </div>
               </div>
 
+              {/* Card 4: Enterprise System Backup & Disaster Recovery Quick Access */}
+              <div style={{ backgroundColor: 'var(--adm-card-bg)', borderRadius: '16px', border: 'var(--adm-card-border)', padding: '24px' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '14px' }}>
+                  <div>
+                    <h3 style={{ margin: 0, fontSize: '1.08rem', fontWeight: 700, color: 'var(--adm-text-primary)', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                      <Archive size={18} color="#6B00FF" />
+                      <span>Enterprise System Backup &amp; Disaster Recovery (.ZIP)</span>
+                    </h3>
+                    <p style={{ margin: '3px 0 0', fontSize: '0.8rem', color: 'var(--adm-text-secondary)' }}>
+                      Download complete compressed ZIP snapshots of Customers, Sales Orders, Tax Invoices, and Designs, or upload a backup archive with interactive visual preview and developer approval.
+                    </p>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => setActiveTab('backup')}
+                    style={{
+                      padding: '10px 18px',
+                      borderRadius: '8px',
+                      backgroundColor: '#6B00FF',
+                      color: '#FFFFFF',
+                      border: 'none',
+                      fontSize: '0.82rem',
+                      fontWeight: 700,
+                      cursor: 'pointer',
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: '6px'
+                    }}
+                  >
+                    <span>Open Backup Manager</span>
+                    <ArrowRight size={14} />
+                  </button>
+                </div>
+              </div>
+
             </div>
+          )}
+
+          {/* ====================================================================
+              VIEW: ENTERPRISE DEVELOPER BACKUP & RESTORE (.ZIP)
+              ==================================================================== */}
+          {activeTab === 'backup' && (
+            <AdminBackupManager />
           )}
             </motion.div>
           </AnimatePresence>

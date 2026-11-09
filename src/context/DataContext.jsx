@@ -726,6 +726,13 @@ export function DataProvider({ children }) {
     return res;
   };
 
+  const restoreBackup = async (payload, opts) => {
+    const res = await StorageEngine.restoreBackup(payload, opts);
+    refreshAll();
+    syncCloudData();
+    return res;
+  };
+
   const saveInvoiceConfig = (cfg) => {
     const updated = StorageEngine.saveInvoiceConfig(cfg);
     refreshAll();
@@ -906,6 +913,9 @@ export function DataProvider({ children }) {
       reorderProducts,
       toggleProductStatus,
       getProductByEdition: StorageEngine.getProductByEdition,
+      createBackupZip: StorageEngine.createBackupZip,
+      parseBackupZip: StorageEngine.parseBackupZip,
+      restoreBackup,
       resetAllData,
       getProfileBySlug: StorageEngine.getProfileBySlug,
       getCardByCode: StorageEngine.getCardByCode,
