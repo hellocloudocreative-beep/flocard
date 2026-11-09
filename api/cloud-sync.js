@@ -196,6 +196,29 @@ export default async function handler(req, res) {
         return res.status(200).json({ success: true });
       }
 
+      case 'deleteProfile': {
+        const { id, slug, email } = body;
+        if (!id && !slug && !email) return res.status(400).json({ error: 'Missing profile identifier' });
+
+        if (id) {
+          await adminClient.from('profiles').delete().eq('id', id).catch(() => {});
+          await adminClient.from('profiles').delete().eq('user_id', id).catch(() => {});
+        }
+        if (slug) {
+          await adminClient.from('profiles').delete().eq('slug', slug).catch(() => {});
+        }
+        if (email) {
+          await adminClient.from('profiles').delete().ilike('email', email).catch(() => {});
+        }
+
+        // Also disassociate NFC cards pointing to this deleted profile
+        if (slug) {
+          await adminClient.from('nfc_cards').update({ profile_slug: null }).eq('profile_slug', slug).catch(() => {});
+        }
+
+        return res.status(200).json({ success: true, message: 'Profile permanently deleted' });
+      }
+
       case 'deleteCard': {
         const { id, cardCode } = body;
         if (!id && !cardCode) return res.status(400).json({ error: 'Missing card identifier' });

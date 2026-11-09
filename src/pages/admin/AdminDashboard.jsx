@@ -1023,10 +1023,16 @@ export default function AdminDashboard({ initialTab = 'overview', initialOrderId
     setTimeout(() => setFulfillmentToast(null), 5000);
   };
 
-  const handleDeleteProfile = (id) => {
+  const handleDeleteProfile = async (id) => {
     if (window.confirm('Are you sure you want to delete this digital profile? Its public URL will become unavailable.')) {
-      deleteProfile(id);
+      await deleteProfile(id);
       if (editingProfile?.id === id) setEditingProfile(null);
+      setFulfillmentToast({
+        title: 'Profile Deleted',
+        message: 'Digital profile has been permanently removed.',
+        type: 'success'
+      });
+      setTimeout(() => setFulfillmentToast(null), 4000);
     }
   };
 

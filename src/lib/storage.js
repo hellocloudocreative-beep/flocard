@@ -982,9 +982,27 @@ function setLocal(key, value) {
 
 export const StorageEngine = {
   // Profiles
+  getDeletedProfileIds: () => getLocal('flocard_deleted_profile_ids', []),
+  getDeletedProfileSlugs: () => getLocal('flocard_deleted_profile_slugs', []),
   getProfiles: () => {
+    const deletedProfileIds = getLocal('flocard_deleted_profile_ids', []);
+    const deletedProfileSlugs = getLocal('flocard_deleted_profile_slugs', []);
+    const deletedCustIds = getLocal('flocard_deleted_cust_ids', []);
+    const deletedCustEmails = getLocal('flocard_deleted_cust_emails', []);
+
     const rawList = getLocal('profiles', INITIAL_PROFILES);
-    const list = rawList.map(p => {
+    const list = rawList
+      .filter(p => {
+        if (!p) return false;
+        const pSlug = (p.slug || '').toLowerCase().trim();
+        const pEmail = (p.email || '').toLowerCase().trim();
+        if (p.id && (deletedProfileIds.includes(p.id) || deletedCustIds.includes(p.id))) return false;
+        if (p.userId && deletedCustIds.includes(p.userId)) return false;
+        if (pSlug && (deletedProfileSlugs.includes(pSlug) || deletedProfileIds.includes(pSlug))) return false;
+        if (pEmail && deletedCustEmails.includes(pEmail)) return false;
+        return true;
+      })
+      .map(p => {
       const init = INITIAL_PROFILES.find(ip => ip.id === p.id || ip.slug === p.slug) || {};
       return {
         ...init,
@@ -1143,13 +1161,71 @@ export const StorageEngine = {
     }
     return saved;
   },
-  deleteProfile: (id) => {
-    const list = getLocal('profiles', INITIAL_PROFILES).filter(p => p.id !== id);
+  deleteProfile: async (id) => {
+    if (!id) return false;
+    const allProfiles = getLocal('profiles', INITIAL_PROFILES);
+    const existing = allProfiles.find(p => p.id === id || p.slug === id);
+    const targetId = existing?.id || id;
+    const targetSlug = existing?.slug || (typeof id === 'string' && !id.startsWith('prof_') ? id : '');
+    const targetEmail = (existing?.email || '').toLowerCase().trim();
+
+    // 1. Purge from local profiles list
+    const list = allProfiles.filter(p => p.id !== targetId && p.slug !== targetId && p.id !== targetSlug && p.slug !== targetSlug);
     setLocal('profiles', list);
-    StorageEngine.addAuditLog('Profile', `Profile deleted: ${id}`, 'You');
-    if (typeof window !== 'undefined') {
-      window.dispatchEvent(new CustomEvent('flocard_profile_updated', { detail: { deletedId: id, list } }));
+
+    // 2. Record persistent tombstones so background syncing never resurrects it
+    const tombstoneIds = getLocal('flocard_deleted_profile_ids', []);
+    if (targetId && !tombstoneIds.includes(targetId)) {
+      tombstoneIds.push(targetId);
+      setLocal('flocard_deleted_profile_ids', tombstoneIds);
     }
+    const tombstoneSlugs = getLocal('flocard_deleted_profile_slugs', []);
+    if (targetSlug && !tombstoneSlugs.includes(targetSlug)) {
+      tombstoneSlugs.push(targetSlug);
+      setLocal('flocard_deleted_profile_slugs', tombstoneSlugs);
+    }
+
+    // 3. Disassociate any assigned NFC cards pointing to this profile
+    const cards = getLocal('cards', INITIAL_CARDS);
+    let cardsChanged = false;
+    cards.forEach(c => {
+      if ((targetSlug && c.profileSlug === targetSlug) || (targetId && c.profileId === targetId)) {
+        c.profileSlug = null;
+        c.profileId = null;
+        cardsChanged = true;
+      }
+    });
+    if (cardsChanged) {
+      setLocal('cards', cards);
+    }
+
+    StorageEngine.addAuditLog('Profile', `Profile permanently deleted: ${targetSlug || targetId}`, 'You');
+    if (typeof window !== 'undefined') {
+      window.dispatchEvent(new CustomEvent('flocard_profile_updated', { detail: { deletedId: targetId, deletedSlug: targetSlug, list } }));
+    }
+
+    // 4. Serverless Cloud Sync
+    callCloudSyncApi('deleteProfile', { id: targetId, slug: targetSlug, email: targetEmail }).catch(() => {});
+
+    // 5. Direct Supabase delete if client is available
+    try {
+      const { supabase, supabaseAdmin, isSupabaseConfigured } = await import('./supabase.js');
+      if (isSupabaseConfigured && (supabaseAdmin || supabase)) {
+        const client = supabaseAdmin || supabase;
+        if (targetId) {
+          await client.from('profiles').delete().eq('id', targetId).catch(() => {});
+          await client.from('profiles').delete().eq('user_id', targetId).catch(() => {});
+        }
+        if (targetSlug) {
+          await client.from('profiles').delete().eq('slug', targetSlug).catch(() => {});
+        }
+        if (targetEmail) {
+          await client.from('profiles').delete().ilike('email', targetEmail).catch(() => {});
+        }
+      }
+    } catch (_) {}
+
+    return true;
   },
 
   // Appointments
@@ -4420,6 +4496,8 @@ export const StorageEngine = {
     // Reset tombstones
     setLocal('flocard_deleted_cust_ids', []);
     setLocal('flocard_deleted_cust_emails', []);
+    setLocal('flocard_deleted_profile_ids', []);
+    setLocal('flocard_deleted_profile_slugs', []);
     setLocal('flocard_deleted_card_ids', []);
     setLocal('flocard_deleted_design_ids', []);
     setLocal('flocard_deleted_order_ids', []);

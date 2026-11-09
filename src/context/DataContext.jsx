@@ -57,6 +57,8 @@ export function DataProvider({ children }) {
 
       const deletedCustIds = StorageEngine.getDeletedCustomerIds?.() || [];
       const deletedCustEmails = StorageEngine.getDeletedCustomerEmails?.() || [];
+      const deletedProfileIds = StorageEngine.getDeletedProfileIds?.() || [];
+      const deletedProfileSlugs = StorageEngine.getDeletedProfileSlugs?.() || [];
       const deletedCardIds = StorageEngine.getDeletedCardIds?.() || [];
       const deletedDesignIds = StorageEngine.getDeletedDesignIds?.() || [];
       const deletedOrderIds = StorageEngine.getDeletedOrderIds?.() || [];
@@ -76,11 +78,13 @@ export function DataProvider({ children }) {
 
           for (const cp of cloudProfiles) {
             const cpEmail = (cp.email || '').toLowerCase().trim();
-            const isDeleted = (cp.id && deletedCustIds.includes(cp.id)) ||
+            const cpSlug = (cp.slug || '').toLowerCase().trim();
+            const isDeleted = (cp.id && (deletedCustIds.includes(cp.id) || deletedProfileIds.includes(cp.id))) ||
                               (cp.user_id && deletedCustIds.includes(cp.user_id)) ||
-                              (cpEmail && deletedCustEmails.includes(cpEmail));
+                              (cpSlug && (deletedProfileSlugs.includes(cpSlug) || deletedProfileIds.includes(cpSlug))) ||
+                              (cpEmail && (deletedCustEmails.includes(cpEmail) || deletedProfileIds.includes(cpEmail)));
             if (isDeleted) {
-              const pIdx = localProfiles.findIndex(p => p.id === cp.id || (cpEmail && p.email?.toLowerCase().trim() === cpEmail));
+              const pIdx = localProfiles.findIndex(p => p.id === cp.id || p.slug === cpSlug || (cpEmail && p.email?.toLowerCase().trim() === cpEmail));
               if (pIdx >= 0) localProfiles.splice(pIdx, 1);
               const cIdx = currentCusts.findIndex(c => c.id === cp.id || (cpEmail && c.email?.toLowerCase().trim() === cpEmail));
               if (cIdx >= 0) { currentCusts.splice(cIdx, 1); custsUpdated = true; }
@@ -266,6 +270,16 @@ export function DataProvider({ children }) {
               const uEmail = (u.email || '').toLowerCase().trim();
               const uName = u.user_metadata?.name || u.user_metadata?.full_name || uEmail.split('@')[0];
               const uSlug = uName.toLowerCase().replace(/[^a-z0-9]/g, '');
+
+              // Check if user or profile was deleted
+              const isDeleted = deletedCustIds.includes(u.id) ||
+                                (uEmail && deletedCustEmails.includes(uEmail)) ||
+                                deletedProfileIds.includes(`prof_${u.id}`) ||
+                                (uSlug && deletedProfileSlugs.includes(uSlug));
+              if (isDeleted) {
+                continue;
+              }
+
               const hasProf = localProfs.some(p => 
                 (p.email && p.email.toLowerCase().trim() === uEmail) || 
                 (p.userId && p.userId === u.id) ||
@@ -600,8 +614,9 @@ export function DataProvider({ children }) {
     return updated;
   };
 
-  const deleteProfile = (id) => {
-    StorageEngine.deleteProfile(id);
+  const deleteProfile = async (id) => {
+    await StorageEngine.deleteProfile(id);
+    setProfiles(prev => prev.filter(p => p.id !== id && p.slug !== id));
     refreshAll();
   };
 
