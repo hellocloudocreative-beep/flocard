@@ -48,6 +48,7 @@ import { useTheme } from '../../../context/ThemeContext';
 import { calculateOrderPricing, getInvoiceConfig, saveInvoiceConfig, DEFAULT_BUSINESS_DETAILS } from '../../../lib/orderPricing';
 import { downloadInvoicePDF, INVOICE_THEMES } from '../../../lib/invoicePdfExport';
 import { formatCurrencyINR, StorageEngine } from '../../../lib/storage';
+import ReceiptPrintAnimation from '../../../components/common/ReceiptPrintAnimation';
 
 export default function AdminInvoiceManager({ initialOrderId = null }) {
   const { isDark } = useTheme();
@@ -88,6 +89,7 @@ export default function AdminInvoiceManager({ initialOrderId = null }) {
   const [previewActiveTab, setPreviewActiveTab] = useState('preview'); // 'preview' | 'details' | 'items'
   const [previewThemeId, setPreviewThemeId] = useState('midnight_purple');
   const [isExporting, setIsExporting] = useState(false);
+  const [printReceiptData, setPrintReceiptData] = useState(null);
   const [adminCustomDetails, setAdminCustomDetails] = useState({
     customerName: '',
     company: '',
@@ -513,6 +515,13 @@ export default function AdminInvoiceManager({ initialOrderId = null }) {
         hasInvoiceAddon: true
       });
       const invoiceNumber = order.invoiceNumber || `INV-${new Date().getFullYear()}-${String(order.id || '0001').slice(-4).toUpperCase()}`;
+
+      setPrintReceiptData({
+        invoiceNumber,
+        customerName: adminCustomDetails.customerName || order.customerName || 'Valued Client',
+        totalAmount: `₹${Number(adminTotals.totalAmount || pricing.totalAmount || 0).toLocaleString('en-IN')}`,
+        items: adminCustomItems.length > 0 ? adminCustomItems.map(it => ({ title: it.title, amount: it.amount || (it.qty * it.rate) })) : [{ title: `${order.edition || 'Custom'} NFC Card`, amount: pricing.totalAmount }]
+      });
 
       await downloadInvoicePDF({
         invoiceNumber,
@@ -3081,6 +3090,20 @@ export default function AdminInvoiceManager({ initialOrderId = null }) {
           </div>
         </div>
       )}
+
+      {/* 60FPS Thermal Receipt Printing & Digitally Signed Animation */}
+      <ReceiptPrintAnimation
+        isOpen={!!printReceiptData}
+        title="FLOCARDS TAX INVOICE"
+        invoiceNumber={printReceiptData?.invoiceNumber || "INV-2026-0001"}
+        customerName={printReceiptData?.customerName || "Valued Client"}
+        totalAmount={printReceiptData?.totalAmount || "₹1,899"}
+        items={printReceiptData?.items || []}
+        onComplete={() => {
+          setTimeout(() => setPrintReceiptData(null), 1800);
+        }}
+        onClose={() => setPrintReceiptData(null)}
+      />
     </div>
   );
 }

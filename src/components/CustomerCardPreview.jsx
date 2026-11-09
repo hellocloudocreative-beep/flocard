@@ -7,7 +7,7 @@
    Guarantees 100% fidelity with the customer designer.
    ========================================================================== */
 
-import React, { useState, useMemo, useRef } from 'react';
+import React, { useState, useMemo, useRef, useEffect } from 'react';
 import CardCanvas from './CardCanvas';
 import Card3DPreview from './Card3DPreview';
 import {
