@@ -299,8 +299,8 @@ export function AuthProvider({ children }) {
           return { success: false, error: 'Please enter your administrator password.' };
         }
 
-        // Validate administrator password
-        const validAdminPasswords = ['flocardakhil@anwar', 'admin123', 'flocard123', 'akhil123', 'owner123'];
+        // Validate administrator password (strictly flocardakhil@anwar only)
+        const validAdminPasswords = ['flocardakhil@anwar'];
         if (!validAdminPasswords.includes(password.trim())) {
           return { success: false, error: 'Incorrect administrator password. Please check your credentials.' };
         }
