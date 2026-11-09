@@ -371,6 +371,9 @@ export default function Designer() {
   const BASE_CARD_HEIGHT = Math.round(560 / 1.585); // 353px
   const maxAvailableCardWidth = Math.max(260, Math.min(BASE_CARD_WIDTH, viewportWidth - (viewportWidth < 640 ? 40 : 80)));
   const fitScale = Math.min(1, maxAvailableCardWidth / BASE_CARD_WIDTH);
+  const activeCardScale = viewportWidth < 1024 && mobileTab !== 'preview'
+    ? Math.min(0.55, Math.max(0.44, (viewportWidth - 28) / BASE_CARD_WIDTH))
+    : fitScale;
   const [mobileTab, setMobileTab] = useState('preview'); // 'preview' | 'customise' | 'specs'
 
   // Prompt sign up if guest visits Design Studio directly
@@ -2233,18 +2236,27 @@ export default function Designer() {
             style={{
               display: 'flex',
               flexDirection: 'column',
-              gap: viewportWidth < 1024 && mobileTab !== 'preview' ? '8px' : '14px',
+              gap: viewportWidth < 1024 && mobileTab !== 'preview' ? '6px' : '14px',
               width: '100%',
               maxWidth: '100%',
               order: viewportWidth < 1024 ? -1 : undefined,
-              position: viewportWidth < 1024 ? 'relative' : 'sticky',
-              top: viewportWidth < 1024 ? 'auto' : '80px',
+              position: 'sticky',
+              top: viewportWidth < 1024 ? '52px' : '80px',
               alignSelf: 'start',
-              zIndex: viewportWidth < 1024 ? 10 : 35,
-              background: 'transparent',
-              padding: 0,
-              borderRadius: 0,
-              boxShadow: 'none'
+              zIndex: 35,
+              background: viewportWidth < 1024 && mobileTab !== 'preview'
+                ? (isLight ? 'rgba(243, 240, 255, 0.98)' : 'rgba(7, 5, 13, 0.98)')
+                : 'transparent',
+              backdropFilter: viewportWidth < 1024 && mobileTab !== 'preview' ? 'blur(20px)' : 'none',
+              WebkitBackdropFilter: viewportWidth < 1024 && mobileTab !== 'preview' ? 'blur(20px)' : 'none',
+              padding: viewportWidth < 1024 && mobileTab !== 'preview' ? '6px 8px 8px' : 0,
+              borderRadius: viewportWidth < 1024 && mobileTab !== 'preview' ? '0 0 16px 16px' : 0,
+              borderBottom: viewportWidth < 1024 && mobileTab !== 'preview'
+                ? (isLight ? '1px solid rgba(112, 56, 248, 0.16)' : '1px solid rgba(112, 56, 248, 0.22)')
+                : 'none',
+              boxShadow: viewportWidth < 1024 && mobileTab !== 'preview'
+                ? (isLight ? '0 6px 18px rgba(112, 56, 248, 0.1)' : '0 10px 28px rgba(0, 0, 0, 0.65)')
+                : 'none'
             }}
           >
             {/* Top Preview Bar: Front/Back Toggle & Safe Area/Bleed Switches */}
@@ -2412,28 +2424,32 @@ export default function Designer() {
               )}
             </div>
 
-            {/* Central Stage Box (Clean Luxury Preview - Lightweight border on mobile) */}
+            {/* Central Stage Box (Clean Luxury Preview - Pure Card on Mobile) */}
             {(!mobilePreviewCollapsed || mobileTab === 'preview' || viewportWidth >= 1024) && (
               <div
                 style={{
                   position: 'relative',
                   width: '100%',
                   minHeight: viewportWidth < 1024 && mobileTab !== 'preview'
-                    ? `${Math.round(BASE_CARD_HEIGHT * fitScale) + 16}px`
+                    ? 'auto'
                     : (viewportWidth < 640 ? '300px' : '440px'),
-                  borderRadius: viewportWidth < 1024 ? '14px' : '20px',
-                  overflow: 'hidden',
-                  background: viewportWidth < 1024
-                    ? (isLight ? 'rgba(255, 255, 255, 0.7)' : 'rgba(16, 12, 26, 0.7)')
-                    : (isLight ? '#f4f2fb' : '#0B0814'),
-                  border: viewportWidth < 1024
-                    ? (isLight ? '1px solid rgba(112, 56, 248, 0.12)' : '1px solid rgba(112, 56, 248, 0.15)')
-                    : (isLight ? '1px solid rgba(112, 56, 248, 0.2)' : '1px solid rgba(112, 56, 248, 0.22)'),
+                  borderRadius: viewportWidth < 1024 ? '12px' : '20px',
+                  overflow: viewportWidth < 1024 && mobileTab !== 'preview' ? 'visible' : 'hidden',
+                  background: viewportWidth < 1024 && mobileTab !== 'preview'
+                    ? 'transparent'
+                    : (viewportWidth < 1024
+                        ? (isLight ? 'rgba(255, 255, 255, 0.7)' : 'rgba(16, 12, 26, 0.7)')
+                        : (isLight ? '#f4f2fb' : '#0B0814')),
+                  border: viewportWidth < 1024 && mobileTab !== 'preview'
+                    ? 'none'
+                    : (viewportWidth < 1024
+                        ? (isLight ? '1px solid rgba(112, 56, 248, 0.12)' : '1px solid rgba(112, 56, 248, 0.15)')
+                        : (isLight ? '1px solid rgba(112, 56, 248, 0.2)' : '1px solid rgba(112, 56, 248, 0.22)')),
                   display: 'flex',
                   flexDirection: 'column',
                   alignItems: 'center',
                   justifyContent: 'center',
-                  padding: viewportWidth < 1024 ? '12px 6px' : '30px 20px',
+                  padding: viewportWidth < 1024 && mobileTab !== 'preview' ? '2px 0' : (viewportWidth < 1024 ? '12px 6px' : '30px 20px'),
                   boxShadow: viewportWidth < 1024
                     ? 'none'
                     : (isLight
@@ -2457,8 +2473,8 @@ export default function Designer() {
                 >
                   <div
                     style={{
-                      width: `${Math.round(BASE_CARD_WIDTH * fitScale)}px`,
-                      height: `${Math.round(BASE_CARD_HEIGHT * fitScale)}px`,
+                      width: `${Math.round(BASE_CARD_WIDTH * activeCardScale)}px`,
+                      height: `${Math.round(BASE_CARD_HEIGHT * activeCardScale)}px`,
                       display: 'flex',
                       alignItems: 'center',
                       justifyContent: 'center',
@@ -2469,7 +2485,7 @@ export default function Designer() {
                       style={{
                         width: `${BASE_CARD_WIDTH}px`,
                         height: `${BASE_CARD_HEIGHT}px`,
-                        transform: `scale(${fitScale})`,
+                        transform: `scale(${activeCardScale})`,
                         transformOrigin: 'center center',
                         flexShrink: 0,
                         cursor: 'pointer'
@@ -2507,41 +2523,43 @@ export default function Designer() {
                   </div>
                 </div>
 
-                {/* Single Flip Trigger Pill in the Bottom (Outside the Card) */}
-                <button
-                  type="button"
-                  onClick={() => setSide(side === 'front' ? 'back' : 'front')}
-                  style={{
-                    position: 'relative',
-                    zIndex: 15,
-                    marginTop: viewportWidth < 1024 && mobileTab !== 'preview' ? '12px' : '22px',
-                    display: 'inline-flex',
-                    alignItems: 'center',
-                    gap: '8px',
-                    padding: viewportWidth < 1024 && mobileTab !== 'preview' ? '6px 16px' : '8px 20px',
-                    borderRadius: '9999px',
-                    background: 'rgba(18, 14, 28, 0.92)',
-                    border: '1px solid rgba(112, 56, 248, 0.35)',
-                    color: '#ffffff',
-                    fontSize: '0.78rem',
-                    fontWeight: 600,
-                    cursor: 'pointer',
-                    backdropFilter: 'blur(12px)',
-                    boxShadow: '0 4px 16px rgba(0, 0, 0, 0.45)',
-                    transition: 'all 0.2s ease'
-                  }}
-                  onMouseEnter={e => {
-                    e.currentTarget.style.transform = 'translateY(-2px)';
-                    e.currentTarget.style.borderColor = '#7038f8';
-                  }}
-                  onMouseLeave={e => {
-                    e.currentTarget.style.transform = 'translateY(0)';
-                    e.currentTarget.style.borderColor = 'rgba(112, 56, 248, 0.35)';
-                  }}
-                >
-                  <RotateCw size={13} style={{ transform: side === 'back' ? 'rotate(180deg)' : 'none', transition: 'transform 0.3s ease' }} />
-                  <span>{side === 'front' ? 'Flip to Back' : 'Flip to Front'}</span>
-                </button>
+                {/* Single Flip Trigger Pill in the Bottom (Outside the Card - hidden in compact mobile customize mode) */}
+                {(viewportWidth >= 1024 || mobileTab === 'preview') && (
+                  <button
+                    type="button"
+                    onClick={() => setSide(side === 'front' ? 'back' : 'front')}
+                    style={{
+                      position: 'relative',
+                      zIndex: 15,
+                      marginTop: '22px',
+                      display: 'inline-flex',
+                      alignItems: 'center',
+                      gap: '8px',
+                      padding: '8px 20px',
+                      borderRadius: '9999px',
+                      background: 'rgba(18, 14, 28, 0.92)',
+                      border: '1px solid rgba(112, 56, 248, 0.35)',
+                      color: '#ffffff',
+                      fontSize: '0.78rem',
+                      fontWeight: 600,
+                      cursor: 'pointer',
+                      backdropFilter: 'blur(12px)',
+                      boxShadow: '0 4px 16px rgba(0, 0, 0, 0.45)',
+                      transition: 'all 0.2s ease'
+                    }}
+                    onMouseEnter={e => {
+                      e.currentTarget.style.transform = 'translateY(-2px)';
+                      e.currentTarget.style.borderColor = '#7038f8';
+                    }}
+                    onMouseLeave={e => {
+                      e.currentTarget.style.transform = 'translateY(0)';
+                      e.currentTarget.style.borderColor = 'rgba(112, 56, 248, 0.35)';
+                    }}
+                  >
+                    <RotateCw size={13} style={{ transform: side === 'back' ? 'rotate(180deg)' : 'none', transition: 'transform 0.3s ease' }} />
+                    <span>{side === 'front' ? 'Flip to Back' : 'Flip to Front'}</span>
+                  </button>
+                )}
               </div>
             )}
 
