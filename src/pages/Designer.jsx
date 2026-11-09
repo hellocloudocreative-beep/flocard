@@ -69,6 +69,7 @@ import { useData } from '../context/DataContext';
 import { useAuth } from '../context/AuthContext';
 import { useTheme } from '../context/ThemeContext';
 import { formatCurrencyINR } from '../lib/storage';
+import { getPrintOrderWhatsAppUrl } from '../lib/whatsapp';
 
 export const FONT_OPTIONS = [
   { id: 'Space Grotesk', name: 'Space Grotesk', style: 'Modern Tech & Bold' },
@@ -2881,8 +2882,8 @@ export default function Designer() {
               {/* Sole Primary Action: SlideCommit for Print Submission */}
               <div style={{ display: 'flex', justifyContent: 'center', marginTop: '6px' }}>
                 <SlideCommit
-                  label={editingOrder ? "Slide to update order artwork" : "Slide to send for print"}
-                  doneLabel={editingOrder ? "Artwork Updated" : "Sent for Print"}
+                  label={editingOrder ? "Slide to update order artwork" : "Slide to order via WhatsApp"}
+                  doneLabel={editingOrder ? "Artwork Updated" : "Order Prepared"}
                   errorLabel="Submission failed"
                   onConfirm={() => handleSaveDesign(true)}
                   trackColor={isLight ? '#ede9fe' : '#191226'}
@@ -3060,9 +3061,7 @@ export default function Designer() {
 
             <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
               <a
-                href={`https://wa.me/919778278552?text=${encodeURIComponent(
-                  `Hello FLOCARD Team, I have submitted my card design order ${submittedOrder?.orderReference || ''} for ${frontConfig.name || ''} (${EDITIONS[edition]?.name || edition}). Please confirm production.`
-                )}`}
+                href={submittedOrder ? getPrintOrderWhatsAppUrl(submittedOrder, BRAND.whatsapp) : `https://wa.me/${BRAND.whatsapp}`}
                 target="_blank"
                 rel="noopener noreferrer"
                 style={{

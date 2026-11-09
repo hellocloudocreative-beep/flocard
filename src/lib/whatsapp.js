@@ -356,9 +356,10 @@ export async function testWhatsAppConnection(recipientPhone = '919778278552') {
 export function createPrintOrderWhatsAppMessage(order) {
   if (!order) return '';
   const ref = order.orderReference || order.id || 'FLC-ORD';
-  const customerName = order.customerName || 'Valued Client';
-  const phone = order.customerPhone || 'Not provided';
-  const email = order.customerEmail || '';
+  const customerName = order.customerName || order.customerDetails?.name || 'Valued Client';
+  const username = order.username || order.customerUser?.username || order.customerDetails?.username || order.profileSlug || (order.customerEmail ? order.customerEmail.split('@')[0] : '');
+  const phone = order.customerPhone || order.customerDetails?.phone || 'Not provided';
+  const email = order.customerEmail || order.customerDetails?.email || '';
   const edition = order.edition || order.design?.edition || 'purple';
   const editionTitle = `${edition.charAt(0).toUpperCase() + edition.slice(1)} Edition NFC Card`;
   const quantity = order.quantity || order.pricing?.quantity || 1;
@@ -366,41 +367,35 @@ export function createPrintOrderWhatsAppMessage(order) {
   const role = order.role || order.design?.front?.role || order.frontConfig?.role || '';
   const company = order.company || order.design?.company || order.frontConfig?.company || '';
   const tagline = order.tagline || order.design?.front?.tagline || order.frontConfig?.tagline || '';
-  const templateName = order.templateType === 'customer_logo' ? 'Custom Logo Design (Pages 4–6)' : 'Standard FLOCARDS Design (Pages 1–3)';
+  const templateName = order.templateType === 'customer_logo' ? 'Custom Logo Design (With Logo)' : 'Standard FLOCARDS Design';
   const total = order.totalAmount || order.pricing?.totalAmount || 1899;
-  const hasInvoice = order.hasInvoiceAddon ? 'Included (Official Business Tax Invoice)' : 'Not requested';
-  const shipping = order.shippingAddress || 'To be confirmed on WhatsApp';
-  const profileSlug = order.profileSlug || order.design?.profileSlug || (customerName ? customerName.toLowerCase().replace(/[^a-z0-9]/g, '') : '');
+  const hasInvoice = order.hasInvoiceAddon ? 'Included (Tax Invoice)' : 'Not requested';
+  const shipping = order.shippingAddress || order.customerDetails?.shippingAddress || 'To be confirmed on WhatsApp';
+  const profileSlug = order.profileSlug || order.design?.profileSlug || (username || '');
   const previewUrl = profileSlug ? `https://flocard.in/p/${profileSlug}` : 'https://flocard.in/designer';
 
-  return `*NEW FLOCARDS PRINT ORDER SUBMISSION*
+  return `*NEW FLOCARDS ORDER SUBMISSION* 🚀
 ━━━━━━━━━━━━━━━━━━━━
-*Order Ref:* ${ref}
-*Customer:* ${customerName}
-*Contact Phone:* ${phone}
-*Email:* ${email}
-*Delivery Address:* ${shipping}
+📦 *Order ID:* ${ref}
+👤 *Customer Name:* ${customerName}
+${username ? `🆔 *Username / Handle:* @${username}\n` : ''}📞 *Contact Phone:* ${phone}
+✉️ *Email Address:* ${email}
+📍 *Shipping Address:* ${shipping}
 
-*Product:* ${editionTitle}
-*Template:* ${templateName}
-*Quantity:* ${quantity}
-*Card Design Title:* ${designName}
-*Name on Card:* ${order.design?.front?.name || order.frontConfig?.name || customerName}
-*Role / Company:* ${role ? `${role} • ` : ''}${company || 'Independent'}
-*Tagline:* ${tagline}
+🏷️ *Product:* ${editionTitle}
+🎨 *Template:* ${templateName}
+🔢 *Quantity:* ${quantity} Unit(s)
+📝 *Name on Card:* ${order.design?.front?.name || order.frontConfig?.name || customerName}
+🏢 *Company / Role:* ${role ? `${role} • ` : ''}${company || 'Independent'}
+${tagline ? `💬 *Tagline:* ${tagline}\n` : ''}
+💰 *Total Amount:* ₹${Number(total).toLocaleString('en-IN')}
+📋 *Tax Invoice:* ${hasInvoice}
+💳 *Payment Mode:* Direct WhatsApp (Manual Admin Verification)
 
-*Itemized Breakdown:*
-• Unit Price: ₹${order.pricing?.unitPrice || 1899}
-• Quantity: ${quantity}
-• Delivery: Free Express Shipping
-• Invoice Add-on: ${hasInvoice}
-*Final Total Amount:* ₹${total}
-*Payment Status:* Payment Pending (Awaiting WhatsApp confirmation)
-
-*Design / Profile Proof:*
+🔗 *Design & Profile Proof:*
 ${previewUrl}
 ━━━━━━━━━━━━━━━━━━━━
-_Submitted for pre-press verification via FLOCARD Studio_`;
+_Submitted directly via FLOCARDS Studio. Please review and confirm order details._`;
 }
 
 /**

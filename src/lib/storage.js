@@ -1974,6 +1974,7 @@ export const StorageEngine = {
       customerName,
       customerEmail,
       customerPhone,
+      username: payload.username || customerDetails.username || customerUser?.username || customerUser?.slug || design.profileSlug || (customerEmail ? customerEmail.split('@')[0] : clientSlug),
       company: customerDetails.company || design.company || customerUser?.company || design.front?.company || '',
       role: design.front?.role || '',
       tagline: design.front?.tagline || '',

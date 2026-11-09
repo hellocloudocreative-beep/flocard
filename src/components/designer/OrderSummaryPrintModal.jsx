@@ -27,9 +27,10 @@ import {
   Building,
   User,
   Copy,
-  Check
+  Check,
+  MessageCircle
 } from 'lucide-react';
-import { EDITIONS, TEMPLATES } from '../../lib/constants';
+import { EDITIONS, TEMPLATES, BRAND } from '../../lib/constants';
 import { calculateOrderPricing, getInvoiceConfig } from '../../lib/orderPricing';
 import { getPrintOrderWhatsAppUrl } from '../../lib/whatsapp';
 import CardCanvas from '../CardCanvas';
@@ -158,6 +159,8 @@ export default function OrderSummaryPrintModal({
     setIsSubmitting(true);
 
     try {
+      const customerUsername = user?.username || user?.slug || trimmedEmail.split('@')[0] || (trimmedName ? trimmedName.toLowerCase().replace(/[^a-z0-9]/g, '') : '');
+
       const orderPayload = {
         design: {
           ...(design || {}),
@@ -174,11 +177,13 @@ export default function OrderSummaryPrintModal({
         },
         customerDetails: {
           name: trimmedName,
+          username: customerUsername,
           phone: customerPhone.trim(),
           email: trimmedEmail,
           company: company.trim(),
           shippingAddress: fullShipping
         },
+        username: customerUsername,
         billingDetails: {
           company: billingCompany.trim() || company.trim(),
           gstin: billingGstin.trim(),
@@ -192,6 +197,12 @@ export default function OrderSummaryPrintModal({
 
       const created = await onSubmitOrder(orderPayload);
       setSubmittedOrder(created);
+
+      // Directly open WhatsApp with Order ID & complete details for manual admin confirmation
+      const waUrl = getPrintOrderWhatsAppUrl(created, BRAND.whatsapp);
+      if (typeof window !== 'undefined') {
+        window.open(waUrl, '_blank', 'noopener,noreferrer');
+      }
     } catch (err) {
       setErrorMessage(err.message || 'Failed to submit card request. Please try again.');
     } finally {
@@ -420,6 +431,47 @@ export default function OrderSummaryPrintModal({
                     ● New Request (In Review)
                   </span>
                 </div>
+              </div>
+
+              {/* WhatsApp Redirection Action & Notice */}
+              <div
+                style={{
+                  backgroundColor: isLight ? '#F0FDF4' : 'rgba(37, 211, 102, 0.1)',
+                  border: isLight ? '1px solid #BBF7D0' : '1px solid rgba(37, 211, 102, 0.3)',
+                  borderRadius: '14px',
+                  padding: '16px',
+                  marginBottom: '20px',
+                  display: 'flex',
+                  flexDirection: 'column',
+                  gap: '12px',
+                  textAlign: 'center'
+                }}
+              >
+                <div style={{ fontSize: '0.82rem', color: isLight ? '#166534' : '#86EFAC', fontWeight: 600, lineHeight: 1.4 }}>
+                  💬 We have sent your Order ID and details to our official WhatsApp (+91 97782 78552) for manual admin review.
+                </div>
+
+                <a
+                  href={getPrintOrderWhatsAppUrl(submittedOrder, BRAND.whatsapp)}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="btn btn-primary btn-lg"
+                  style={{
+                    backgroundColor: '#25D366',
+                    borderColor: '#25D366',
+                    color: '#FFFFFF',
+                    fontWeight: 800,
+                    fontSize: '0.96rem',
+                    gap: '8px',
+                    justifyContent: 'center',
+                    textDecoration: 'none',
+                    boxShadow: '0 6px 20px rgba(37, 211, 102, 0.35)'
+                  }}
+                >
+                  <MessageCircle size={20} />
+                  <span>Open WhatsApp to Confirm Order</span>
+                  <ExternalLink size={16} />
+                </a>
               </div>
 
               {/* Navigation Actions */}
@@ -947,18 +999,26 @@ export default function OrderSummaryPrintModal({
                         fontWeight: 800,
                         padding: '14px',
                         cursor: isSubmitting ? 'not-allowed' : 'pointer',
-                        opacity: isSubmitting ? 0.75 : 1
+                        opacity: isSubmitting ? 0.75 : 1,
+                        backgroundColor: '#25D366',
+                        borderColor: '#25D366',
+                        color: '#FFFFFF',
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: '8px',
+                        boxShadow: '0 6px 20px rgba(37, 211, 102, 0.3)'
                       }}
                     >
+                      <MessageCircle size={18} />
                       {isSubmitting ? (
-                        <span>Submitting Print Order...</span>
+                        <span>Submitting & Opening WhatsApp...</span>
                       ) : (
-                        <span>Submit Print Order</span>
+                        <span>Submit & Order via WhatsApp</span>
                       )}
                     </button>
 
                     <p style={{ margin: 0, fontSize: '0.76rem', color: isLight ? '#64748B' : '#94A3B8', textAlign: 'center', lineHeight: 1.4 }}>
-                      Submit your order for review. Our team will confirm the order and payment details through WhatsApp.
+                      ⚡ No online payment required. Clicking submit creates your order and automatically routes your Order ID and specifications directly to our official WhatsApp for manual admin confirmation.
                     </p>
                   </div>
                 </div>
