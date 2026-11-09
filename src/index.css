@@ -132,15 +132,15 @@ html[data-theme="light"] {
   --gold-metallic-gradient: linear-gradient(100deg, #FFF0A6 0%, #E9C766 35%, #C9972C 70%, #FFE8A0 100%);
   --gold-role-color: #C9972C;
   --gold-tagline-color: #A87D24;
-  --platinum-primary: #64748B;
-  --platinum-glow: rgba(100, 116, 139, 0.2);
-  --platinum-metallic-highlight: #FFFFFF;
-  --platinum-metallic-silver: #E2E8F0;
-  --platinum-metallic-chrome: #CBD5E1;
-  --platinum-metallic-shadow: #94A3B8;
-  --platinum-metallic-gradient: linear-gradient(100deg, #FFFFFF 0%, #F1F5F9 25%, #CBD5E1 55%, #94A3B8 80%, #FFFFFF 100%);
-  --platinum-role-color: #E2E8F0;
-  --platinum-tagline-color: #94A3B8;
+  --platinum-primary: #475569;
+  --platinum-glow: rgba(71, 85, 105, 0.2);
+  --platinum-metallic-highlight: #F8FAFC;
+  --platinum-metallic-silver: #CBD5E1;
+  --platinum-metallic-chrome: #94A3B8;
+  --platinum-metallic-shadow: #475569;
+  --platinum-metallic-gradient: linear-gradient(100deg, #F8FAFC 0%, #E2E8F0 25%, #CBD5E1 55%, #64748B 80%, #F8FAFC 100%);
+  --platinum-role-color: #475569;
+  --platinum-tagline-color: #64748B;
 
   --text-primary: #171321;
   --text-secondary: #625B70;
@@ -478,6 +478,39 @@ html[data-theme="light"] .btn-outline {
 html[data-theme="light"] .btn-outline:hover {
   background: #F1EDFA !important;
   border-color: #6B00FF !important;
+  color: #6B00FF !important;
+}
+
+html[data-theme="light"] .btn-secondary:hover {
+  background: #F1EDFA !important;
+  border-color: #6B00FF !important;
+  color: #6B00FF !important;
+}
+
+html[data-theme="light"] .btn-ghost:hover {
+  background: #F1EDFA !important;
+  color: #6B00FF !important;
+}
+
+html[data-theme="light"] .icon-btn:hover,
+html[data-theme="light"] .action-btn:hover,
+html[data-theme="light"] .table-action-btn:hover,
+html[data-theme="light"] .pagination-ctrl-btn:hover:not(:disabled) {
+  background: #F1EDFA !important;
+  border-color: #6B00FF !important;
+  color: #6B00FF !important;
+}
+
+/* Responsive display helpers */
+@media (max-width: 768px) {
+  .desktop-only {
+    display: none !important;
+  }
+}
+@media (min-width: 769px) {
+  .mobile-only {
+    display: none !important;
+  }
 }
 
 .btn-ghost {

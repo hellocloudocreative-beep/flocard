@@ -6239,7 +6239,8 @@ export default function AdminDashboard({ initialTab = 'overview', initialOrderId
                           alignItems: 'center',
                           justifyContent: 'center',
                           padding: '18px 16px 26px',
-                          position: 'relative'
+                          position: 'relative',
+                          overflow: 'hidden'
                         }}
                       >
                         {/* Top Studio Header Bar */}
@@ -6288,11 +6289,11 @@ export default function AdminDashboard({ initialTab = 'overview', initialOrderId
                         </div>
 
                         {/* Interactive 3D Card Live Preview */}
-                        <div style={{ position: 'relative', display: 'flex', justifyContent: 'center', alignItems: 'center' }}>
+                        <div style={{ position: 'relative', display: 'flex', justifyContent: 'center', alignItems: 'center', maxWidth: '100%', overflow: 'hidden' }}>
                           <Card3DPreview
                             edition={tmpl.key === 'customer_logo' ? 'purple' : 'purple'}
                             templateType={tmpl.key === 'customer_logo' ? 'customer_logo' : 'standard'}
-                            width={310}
+                            width={typeof window !== 'undefined' ? Math.min(310, Math.max(240, window.innerWidth - 64)) : 310}
                             allowFlip={true}
                             enableTilt={true}
                           />

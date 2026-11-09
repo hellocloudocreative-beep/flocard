@@ -121,7 +121,7 @@ export default function Footer() {
               <li><a href="/digital-profiles" style={{ color: 'var(--text-secondary)' }}>Digital Profiles</a></li>
               <li><a href="/how-it-works" style={{ color: 'var(--text-secondary)' }}>How It Works</a></li>
               <li><a href="/examples" style={{ color: 'var(--text-secondary)' }}>Example Profiles</a></li>
-              <li><a href="/alex" style={{ color: 'var(--primary-purple)', fontWeight: 500 }}>Live Profile Demo (@alex)</a></li>
+              <li><a href="/p/demo" style={{ color: 'var(--primary-purple)', fontWeight: 500 }}>Live Profile Demo</a></li>
               <li><a href="/faq" style={{ color: 'var(--text-secondary)' }}>Frequently Asked Questions</a></li>
             </ul>
           </div>

@@ -442,8 +442,8 @@ export default function CustomerOrderDetail({ orderId, onBack }) {
             </div>
           </div>
 
-          {/* Provisioned NFC Card Assets if delivered */}
-          {currentStatus === 'delivered' && order.cardCode && (
+          {/* Provisioned NFC Card Assets if delivered, else In Process Notice */}
+          {currentStatus === 'delivered' && order.cardCode ? (
             <div
               style={{
                 marginTop: '20px',
@@ -486,6 +486,24 @@ export default function CustomerOrderDetail({ orderId, onBack }) {
                     <ExternalLink size={10} />
                   </a>
                 )}
+              </div>
+            </div>
+          ) : (
+            <div
+              style={{
+                marginTop: '20px',
+                padding: '14px 16px',
+                borderRadius: '12px',
+                backgroundColor: 'rgba(245, 158, 11, 0.08)',
+                border: '1px solid rgba(245, 158, 11, 0.25)',
+                display: 'flex',
+                alignItems: 'center',
+                gap: '10px'
+              }}
+            >
+              <Clock size={16} color="#F59E0B" />
+              <div style={{ fontSize: '0.78rem', color: 'var(--text-secondary)' }}>
+                <strong style={{ color: '#F59E0B' }}>Order In Process:</strong> Physical card manufacturing & chip encoding are underway. Public NFC links will activate upon delivery.
               </div>
             </div>
           )}

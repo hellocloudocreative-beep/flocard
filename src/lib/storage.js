@@ -179,7 +179,7 @@ export function getDefaultPublicMessage(status) {
 }
 
 export const DEFAULT_DEMO_CONFIG = {
-  name: 'Alex Morgan',
+  name: 'Your Name',
   role: 'Founder & CEO',
   tagline: 'Connected Identity Systems',
   company: 'FLOCARDS',
@@ -203,8 +203,8 @@ export const INITIAL_PROFILES = [
   {
     id: 'prof_alex_001',
     userId: 'usr_alex_founder',
-    slug: 'alex',
-    name: 'Alex Morgan',
+    slug: 'your-name',
+    name: 'Your Name',
     role: 'Founder & CEO',
     company: 'FLOCARDS',
     avatar: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=400&auto=format&fit=crop&q=80',
@@ -1012,11 +1012,10 @@ export const StorageEngine = {
     });
 
     const primary = list.find(p => p.id === 'prof_alex_001' || p.slug === 'alex' || p.id === 'prof_akhil_001' || p.slug === 'akhil');
-    if (primary && (primary.name === 'Your Name' || !primary.avatar || primary.name === 'Akhil Anvar')) {
-      primary.name = 'Alex Morgan';
+    if (primary && primary.name === 'Akhil Anvar') {
+      primary.name = 'Your Name';
       primary.role = primary.role === 'Your Role' ? 'Founder & CEO' : primary.role;
       primary.company = primary.company === 'Your Company' ? 'FLOCARDS' : primary.company;
-      primary.avatar = primary.avatar && !primary.avatar.includes('akhil') ? primary.avatar : 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=400&auto=format&fit=crop&q=80';
       setLocal('profiles', list);
     }
     return list;
@@ -4392,6 +4391,52 @@ export const StorageEngine = {
         cards: finalCards.length
       }
     };
+  },
+
+  clearAllCustomersOrdersDesigns: async (actorName = 'Admin') => {
+    setLocal('customers', []);
+    setLocal('orders', []);
+    setLocal('designs', []);
+    setLocal('card_designs', []);
+    setLocal('invoices', []);
+
+    // Reset card assignments so cards return to in-stock
+    const cards = getLocal('cards', []).map(c => ({
+      ...c,
+      customerId: null,
+      profileSlug: null,
+      status: 'in_stock'
+    }));
+    setLocal('cards', cards);
+
+    // Keep only base profile
+    const profiles = getLocal('profiles', []).filter(p => p.role === 'owner' || p.role === 'admin' || p.email?.includes('flocard.in'));
+    if (profiles.length === 0) {
+      profiles.push(...INITIAL_PROFILES);
+    }
+    setLocal('profiles', profiles);
+
+    // Reset tombstones
+    setLocal('flocard_deleted_cust_ids', []);
+    setLocal('flocard_deleted_cust_emails', []);
+    setLocal('flocard_deleted_card_ids', []);
+    setLocal('flocard_deleted_design_ids', []);
+    setLocal('flocard_deleted_order_ids', []);
+    setLocal('flocard_deleted_invoice_ids', []);
+
+    StorageEngine.addAuditLog('System Reset', 'All customer records, orders, invoices, and custom designs reset to clean base.', actorName);
+
+    // Call serverless endpoint to clear cloud tables
+    callCloudSyncApi('resetAllData', {}).catch(() => {});
+
+    safeDispatchEvent('flocard_customers_updated', []);
+    safeDispatchEvent('flocard_orders_updated', []);
+    safeDispatchEvent('flocard_designs_updated', []);
+    safeDispatchEvent('flocard_invoices_updated', []);
+    safeDispatchEvent('flocard_cards_updated', cards);
+    safeDispatchEvent('flocard_profiles_updated', profiles);
+
+    return true;
   },
 
   // System Reset

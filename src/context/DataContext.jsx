@@ -846,6 +846,11 @@ export function DataProvider({ children }) {
     refreshAll();
   };
 
+  const clearAllCustomersOrdersDesigns = async (actorName) => {
+    await StorageEngine.clearAllCustomersOrdersDesigns(actorName);
+    refreshAll();
+  };
+
   return (
     <DataContext.Provider value={{
       profiles,
@@ -917,6 +922,7 @@ export function DataProvider({ children }) {
       parseBackupZip: StorageEngine.parseBackupZip,
       restoreBackup,
       resetAllData,
+      clearAllCustomersOrdersDesigns,
       getProfileBySlug: StorageEngine.getProfileBySlug,
       getCardByCode: StorageEngine.getCardByCode,
       getDesignById: StorageEngine.getDesignById,

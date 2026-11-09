@@ -532,9 +532,10 @@ export default function CustomerDashboard({ initialTab = 'overview', initialOrde
 
           {/* Right Header Actions: Design Card CTA, Notification Bell & Theme Switch */}
           <div style={{ display: 'flex', alignItems: 'center', gap: '12px', position: 'relative' }}>
-            {/* Header "Design Your Card" Button */}
+            {/* Header "Design Your Card" Button (Desktop only; on mobile, accessed via menu drawer to avoid header overlap) */}
             <a
               href="/designer"
+              className="desktop-only"
               style={{
                 display: 'inline-flex',
                 alignItems: 'center',

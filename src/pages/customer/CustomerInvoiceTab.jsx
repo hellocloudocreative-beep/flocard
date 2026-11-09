@@ -38,6 +38,7 @@ import { calculateOrderPricing, DEFAULT_BUSINESS_DETAILS, generateInvoiceNumber 
 import { INVOICE_THEMES, getInvoiceTheme, downloadInvoicePDF } from '../../lib/invoicePdfExport';
 import { getPrintOrderWhatsAppUrl } from '../../lib/whatsapp';
 import { BRAND } from '../../lib/constants';
+import ReceiptPrintAnimation from '../../components/common/ReceiptPrintAnimation';
 
 export default function CustomerInvoiceTab({ orders = [], customer = null }) {
   const { theme, isDark, isLight } = useTheme();
@@ -59,15 +60,16 @@ export default function CustomerInvoiceTab({ orders = [], customer = null }) {
   const [isDownloading, setIsDownloading] = useState(false);
   const [downloadSuccess, setDownloadSuccess] = useState('');
   const [savedInvoices, setSavedInvoices] = useState([]);
+  const [showReceiptAnimation, setShowReceiptAnimation] = useState(false);
 
   // Custom User / Customer Details State (with Place / City)
   const [customDetails, setCustomDetails] = useState({
-    customerName: customer?.name || 'Flocard Admin',
-    place: 'Indiranagar, Bengaluru',
-    company: 'FLOCARD Enterprise',
+    customerName: customer?.name || 'Your Name',
+    place: customer?.city || 'Your City',
+    company: customer?.company || 'Your Company',
     phone: customer?.phone || '+91 97782 78552',
     email: customer?.email || 'hello.flocard@gmail.com',
-    shippingAddress: 'Plot 42, Infopark Kochi, Kerala 682042',
+    shippingAddress: customer?.address || 'Plot 42, Infopark Kochi, Kerala 682042',
     gstin: ''
   });
 
@@ -75,21 +77,12 @@ export default function CustomerInvoiceTab({ orders = [], customer = null }) {
   const [customItems, setCustomItems] = useState([
     {
       id: 'item_init_1',
-      title: 'FLOCARDS Smart NFC Business Card — PURPLE Edition',
-      subtitle: 'NFC Embedded Matte Polymer Card + Dynamic Live Digital Profile',
+      title: 'Your Item / Service',
+      subtitle: 'Description of product or service',
       hsn: '998439',
       qty: 1,
       rate: 1899,
       amount: 1899
-    },
-    {
-      id: 'item_init_2',
-      title: 'Tax Invoice & Business Compliance Add-On',
-      subtitle: 'Official tax invoice issuance, audit trail & digital PDF export',
-      hsn: '998439',
-      qty: 1,
-      rate: 199,
-      amount: 199
     }
   ]);
 
@@ -357,6 +350,7 @@ export default function CustomerInvoiceTab({ orders = [], customer = null }) {
     const targetOrder = effectiveOrder;
     if (!targetOrder) return;
     setIsDownloading(true);
+    setShowReceiptAnimation(true);
     setDownloadSuccess('');
     try {
       const filename = await downloadInvoicePDF({
@@ -463,36 +457,6 @@ export default function CustomerInvoiceTab({ orders = [], customer = null }) {
             <Plus size={17} />
             <span>+ Create Invoice</span>
           </button>
-
-          {customerOrders.length > 0 && (
-            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', backgroundColor: 'var(--elevated-surface)', padding: '4px 10px', borderRadius: '8px', border: '1px solid var(--border-color)' }}>
-              <span style={{ fontSize: '0.74rem', fontWeight: 600, color: 'var(--text-muted)' }}>
-                or Load From Order:
-              </span>
-              <select
-                value={isCustomMode ? 'custom' : (selectedOrderId || 'custom')}
-                onChange={e => handleSelectOrder(e.target.value)}
-                style={{
-                  fontSize: '0.80rem',
-                  fontWeight: 600,
-                  padding: '6px 10px',
-                  borderRadius: '6px',
-                  border: '1px solid var(--border-color)',
-                  backgroundColor: 'var(--bg-secondary)',
-                  color: 'var(--text-primary)',
-                  cursor: 'pointer',
-                  outline: 'none'
-                }}
-              >
-                <option value="custom">✨ Custom Invoice Mode</option>
-                {customerOrders.map(o => (
-                  <option key={o.id} value={o.id}>
-                    Order {o.orderReference || o.id} (₹{Number(o.totalAmount || o.total_amount || 0).toLocaleString('en-IN')})
-                  </option>
-                ))}
-              </select>
-            </div>
-          )}
         </div>
       </div>
 
@@ -1451,10 +1415,10 @@ export default function CustomerInvoiceTab({ orders = [], customer = null }) {
                 }}
               >
                 <div>
-                  <h1 style={{ margin: 0, fontSize: '1.4rem', fontWeight: 900, letterSpacing: '0.5px' }}>
+                  <h1 style={{ margin: 0, fontSize: '1.4rem', fontWeight: 900, letterSpacing: '0.5px', color: '#FFFFFF' }}>
                     FLOCARDS
                   </h1>
-                  <div style={{ fontSize: '0.72rem', opacity: 0.85, marginTop: '2px' }}>
+                  <div style={{ fontSize: '0.72rem', opacity: 0.9, marginTop: '2px', color: 'rgba(255, 255, 255, 0.85)' }}>
                     Indiranagar, Bengaluru
                   </div>
                 </div>
@@ -1622,6 +1586,22 @@ export default function CustomerInvoiceTab({ orders = [], customer = null }) {
           </div>
         </div>
       )}
+
+      {/* 60FPS Thermal Receipt Printing & Signature Animation */}
+      <ReceiptPrintAnimation
+        isOpen={showReceiptAnimation}
+        title="FLOCARDS TAX INVOICE"
+        invoiceNumber={invoiceNumber}
+        customerName={customDetails.customerName || customer?.name || 'Valued Client'}
+        totalAmount={`₹${Number(customTotals.totalAmount || 0).toLocaleString('en-IN')}`}
+        items={customItems.map(it => ({ title: it.title, amount: it.amount || (it.qty * it.rate) }))}
+        onComplete={() => {
+          setTimeout(() => {
+            setShowReceiptAnimation(false);
+          }, 1800);
+        }}
+        onClose={() => setShowReceiptAnimation(false)}
+      />
     </div>
   );
 }

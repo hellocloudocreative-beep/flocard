@@ -225,6 +225,16 @@ export default async function handler(req, res) {
         return res.status(200).json({ success: true });
       }
 
+      case 'resetAllData': {
+        try {
+          await adminClient.from('card_designs').delete().neq('id', '___preserve___').catch(() => {});
+          await adminClient.from('profiles').delete().neq('role', 'owner').catch(() => {});
+          await adminClient.from('orders').delete().neq('id', '___preserve___').catch(() => {});
+          await adminClient.from('nfc_cards').update({ customer_id: null, profile_slug: null, status: 'in_stock' }).neq('id', '___preserve___').catch(() => {});
+        } catch (_) {}
+        return res.status(200).json({ success: true });
+      }
+
       case 'syncProfile': {
         const payload = body.profile;
         if (!payload) return res.status(400).json({ error: 'Missing profile' });

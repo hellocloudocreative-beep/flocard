@@ -47,8 +47,27 @@ export default function AdminBackupManager() {
     getInvoices,
     createBackupZip,
     parseBackupZip,
-    restoreBackup
+    restoreBackup,
+    clearAllCustomersOrdersDesigns
   } = useData();
+
+  const [isResetting, setIsResetting] = useState(false);
+
+  const handleCleanBaseReset = async () => {
+    if (!window.confirm('Are you sure you want to delete all customers, sales orders, invoices, and card designs to start fresh from base? All hardware NFC cards will return to stock inventory.')) {
+      return;
+    }
+    setIsResetting(true);
+    try {
+      await clearAllCustomersOrdersDesigns(user?.name || 'Developer Admin');
+      setRestoreSuccessMsg('System reset complete! All customers, orders, invoices, and custom designs have been cleared. Ready to start fresh from base.');
+      setTimeout(() => setRestoreSuccessMsg(null), 8000);
+    } catch (err) {
+      alert('Reset failed: ' + err.message);
+    } finally {
+      setIsResetting(false);
+    }
+  };
 
   const invoices = getInvoices ? getInvoices() : [];
 
@@ -417,6 +436,81 @@ export default function AdminBackupManager() {
             <ShieldCheck size={14} color="#10B981" />
             <span>Guaranteed Safe: Nothing will be restored until you inspect and approve the preview.</span>
           </div>
+        </div>
+
+        {/* Panel 3: Clean Base Reset */}
+        <div
+          style={{
+            backgroundColor: cardBg,
+            borderRadius: '16px',
+            border: `1px solid ${cardBorder}`,
+            padding: '24px',
+            display: 'flex',
+            flexDirection: 'column',
+            justifyContent: 'space-between',
+            boxShadow: '0 4px 20px rgba(0,0,0,0.03)'
+          }}
+        >
+          <div>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '14px' }}>
+              <div style={{ width: '40px', height: '40px', borderRadius: '10px', backgroundColor: 'rgba(239, 68, 68, 0.12)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#EF4444' }}>
+                <Trash2 size={22} />
+              </div>
+              <div>
+                <h3 style={{ margin: 0, fontSize: '1.05rem', fontWeight: 700, color: textPrimary }}>
+                  3. Clean Base Reset
+                </h3>
+                <p style={{ margin: '2px 0 0', fontSize: '0.78rem', color: textSecondary }}>
+                  Wipe all test customers, orders &amp; designs to start from scratch
+                </p>
+              </div>
+            </div>
+
+            <div style={{ backgroundColor: elevatedBg, borderRadius: '12px', padding: '14px', marginBottom: '18px', border: `1px solid ${cardBorder}` }}>
+              <div style={{ fontSize: '0.78rem', fontWeight: 700, color: textPrimary, marginBottom: '6px' }}>
+                Actions Performed:
+              </div>
+              <ul style={{ margin: 0, paddingLeft: '18px', fontSize: '0.75rem', color: textSecondary, lineHeight: 1.6 }}>
+                <li>Purges test customer accounts &amp; guest records</li>
+                <li>Deletes manufacturing orders &amp; test invoices</li>
+                <li>Clears custom card designs</li>
+                <li>Re-routes hardware NFC cards back to in-stock</li>
+              </ul>
+            </div>
+          </div>
+
+          <button
+            type="button"
+            disabled={isResetting}
+            onClick={handleCleanBaseReset}
+            style={{
+              padding: '12px 20px',
+              borderRadius: '10px',
+              backgroundColor: 'rgba(239, 68, 68, 0.1)',
+              border: '1px solid rgba(239, 68, 68, 0.3)',
+              color: '#EF4444',
+              fontSize: '0.86rem',
+              fontWeight: 700,
+              cursor: isResetting ? 'wait' : 'pointer',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              gap: '8px',
+              transition: 'all 0.15s ease'
+            }}
+          >
+            {isResetting ? (
+              <>
+                <RefreshCw size={16} className="spin-animation" />
+                <span>Resetting to Clean Base...</span>
+              </>
+            ) : (
+              <>
+                <Trash2 size={16} />
+                <span>Reset Database to Base (Fresh Start)</span>
+              </>
+            )}
+          </button>
         </div>
 
       </div>

@@ -543,23 +543,21 @@ export default function ProfileEditorModal({
     }
   };
 
-  // 15 Editor Navigation Sections definition
+  // Simplified and intuitive editor sections
   const SECTIONS = [
-    { id: 'basic', label: '1. Basic Information', icon: User },
-    { id: 'avatar', label: '2. Profile Picture & Logo', icon: CameraIcon },
-    { id: 'theme', label: '3. Theme & Card Finish', icon: Palette },
-    { id: 'banner', label: '4. Cover Banner & Media', icon: ImageIcon },
-    { id: 'contact', label: '5. Contact & Social Links', icon: Phone },
-    { id: 'hours', label: '6. Business Hours', icon: Clock },
-    { id: 'booking', label: '7. Appointment Booking', icon: Calendar },
-    { id: 'services', label: '8. Services Showcase', icon: Layers },
-    { id: 'portfolio', label: '9. Portfolio Gallery', icon: BriefcaseIcon },
-    { id: 'videos', label: '10. Videos', icon: Video },
-    { id: 'payments', label: '11. Payments & UPI', icon: CreditCard },
-    { id: 'bank', label: '12. Public Bank Details', icon: Landmark },
-    { id: 'qr', label: '13. QR Code Companion', icon: QrCode },
-    { id: 'usage', label: '14. Upload Usage & Quotas', icon: HardDrive },
-    { id: 'publishing', label: '15. Visibility & Publishing', icon: Globe }
+    { id: 'basic', label: 'Basic Info', icon: User },
+    { id: 'avatar', label: 'Photo & Logo', icon: CameraIcon },
+    { id: 'contact', label: 'Contact & Socials', icon: Phone },
+    { id: 'theme', label: 'Theme & Finish', icon: Palette },
+    { id: 'banner', label: 'Cover Banner', icon: ImageIcon },
+    { id: 'services', label: 'Services Showcase', icon: Layers },
+    { id: 'portfolio', label: 'Portfolio Gallery', icon: BriefcaseIcon },
+    { id: 'hours', label: 'Business Hours', icon: Clock },
+    { id: 'booking', label: 'Bookings & Slots', icon: Calendar },
+    { id: 'payments', label: 'Payments & UPI', icon: CreditCard },
+    { id: 'qr', label: 'QR Code Companion', icon: QrCode },
+    { id: 'videos', label: 'Videos', icon: Video },
+    { id: 'publishing', label: 'Visibility', icon: Globe }
   ];
 
 
