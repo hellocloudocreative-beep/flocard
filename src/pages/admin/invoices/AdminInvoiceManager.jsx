@@ -60,6 +60,7 @@ export default function AdminInvoiceManager({ initialOrderId = null }) {
     assignCustomerInvoice,
     declineCustomerInvoice,
     getInvoices,
+    deleteInvoice,
     refreshAll
   } = useData();
 
@@ -529,6 +530,14 @@ export default function AdminInvoiceManager({ initialOrderId = null }) {
       showToast('Failed to download invoice PDF', 'error');
     } finally {
       setIsExporting(false);
+    }
+  };
+
+  const handleDeleteInvoice = (inv) => {
+    const num = inv.invoiceNumber || inv.id;
+    if (window.confirm(`Are you sure you want to permanently delete Invoice ${num}?`)) {
+      deleteInvoice(inv.id || num);
+      showToast(`Invoice ${num} permanently deleted.`);
     }
   };
 
@@ -1564,6 +1573,34 @@ export default function AdminInvoiceManager({ initialOrderId = null }) {
                           >
                             <Download size={13} />
                             PDF
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => handleDeleteInvoice(inv)}
+                            title="Delete Invoice"
+                            style={{
+                              display: 'inline-flex',
+                              alignItems: 'center',
+                              justifyContent: 'center',
+                              padding: '5px 8px',
+                              borderRadius: '6px',
+                              border: '1px solid rgba(239, 68, 68, 0.25)',
+                              backgroundColor: 'rgba(239, 68, 68, 0.1)',
+                              color: '#EF4444',
+                              cursor: 'pointer',
+                              marginLeft: '6px',
+                              transition: 'all 0.15s ease'
+                            }}
+                            onMouseEnter={e => {
+                              e.currentTarget.style.backgroundColor = 'rgba(239, 68, 68, 0.2)';
+                              e.currentTarget.style.borderColor = 'rgba(239, 68, 68, 0.5)';
+                            }}
+                            onMouseLeave={e => {
+                              e.currentTarget.style.backgroundColor = 'rgba(239, 68, 68, 0.1)';
+                              e.currentTarget.style.borderColor = 'rgba(239, 68, 68, 0.25)';
+                            }}
+                          >
+                            <Trash2 size={13} />
                           </button>
                         </td>
                       </tr>

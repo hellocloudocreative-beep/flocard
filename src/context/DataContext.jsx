@@ -55,6 +55,13 @@ export function DataProvider({ children }) {
         return;
       }
 
+      const deletedCustIds = StorageEngine.getDeletedCustomerIds?.() || [];
+      const deletedCustEmails = StorageEngine.getDeletedCustomerEmails?.() || [];
+      const deletedCardIds = StorageEngine.getDeletedCardIds?.() || [];
+      const deletedDesignIds = StorageEngine.getDeletedDesignIds?.() || [];
+      const deletedOrderIds = StorageEngine.getDeletedOrderIds?.() || [];
+      const deletedInvoiceIds = StorageEngine.getDeletedInvoiceIds?.() || [];
+
       // 1. Synchronize Profiles from Supabase
       try {
         const { data: cloudProfiles, error: pErr } = await client
@@ -65,8 +72,6 @@ export function DataProvider({ children }) {
         if (!pErr && Array.isArray(cloudProfiles) && cloudProfiles.length > 0) {
           const localProfiles = StorageEngine.getProfiles();
           const currentCusts = StorageEngine.getCustomers();
-          const deletedCustIds = StorageEngine.getDeletedCustomerIds?.() || [];
-          const deletedCustEmails = StorageEngine.getDeletedCustomerEmails?.() || [];
           let custsUpdated = false;
 
           for (const cp of cloudProfiles) {
@@ -180,6 +185,15 @@ export function DataProvider({ children }) {
         if (!cErr && Array.isArray(cloudCards) && cloudCards.length > 0) {
           const localCards = StorageEngine.getCards();
           for (const cc of cloudCards) {
+            if (deletedCardIds.includes(cc.id) || (cc.card_code && deletedCardIds.includes(cc.card_code))) {
+              const cIdx = localCards.findIndex(c => c.cardCode === cc.card_code || c.id === cc.id);
+              if (cIdx >= 0) localCards.splice(cIdx, 1);
+              continue;
+            }
+            if (cc.customer_id && deletedCustIds.includes(cc.customer_id)) {
+              cc.customer_id = null;
+              cc.profile_slug = null;
+            }
             const rawStatus = (cc.status || 'in_stock').toLowerCase();
             const appStatus = rawStatus === 'revoked' ? 'disabled' : rawStatus;
             const mappedCard = {
@@ -203,8 +217,9 @@ export function DataProvider({ children }) {
               localCards.push(mappedCard);
             }
           }
-          StorageEngine.saveLocalCards(localCards);
-          setCards([...localCards]);
+          const filteredLocalCards = localCards.filter(c => !deletedCardIds.includes(c.id) && !deletedCardIds.includes(c.cardCode));
+          StorageEngine.saveLocalCards(filteredLocalCards);
+          setCards([...filteredLocalCards]);
         }
       } catch (err) {
         console.warn('[DataContext] NFC Cards cloud sync note:', err.message);
@@ -309,6 +324,21 @@ export function DataProvider({ children }) {
             const fc = cd.front_config || {};
             const localId = fc._localId || cd.id;
 
+            if (deletedDesignIds.includes(cd.id) || (localId && deletedDesignIds.includes(localId))) {
+              const existDIdx = localDesigns.findIndex(d => d.id === localId || d.supabaseId === cd.id);
+              if (existDIdx >= 0) localDesigns.splice(existDIdx, 1);
+              continue;
+            }
+
+            const custEmail = (fc.customerEmail || '').trim().toLowerCase();
+            const isDesignCustDeleted = (fc.customerId && deletedCustIds.includes(fc.customerId)) ||
+                                       (custEmail && deletedCustEmails.includes(custEmail));
+            if (isDesignCustDeleted) {
+              const existDIdx = localDesigns.findIndex(d => d.id === localId || d.supabaseId === cd.id);
+              if (existDIdx >= 0) localDesigns.splice(existDIdx, 1);
+              continue;
+            }
+
             const mappedDesign = {
               id: localId,
               supabaseId: cd.id,
@@ -340,39 +370,49 @@ export function DataProvider({ children }) {
             // Extract and reconstruct embedded Print Order across devices
             if (fc.printOrder) {
               const po = fc.printOrder;
-              const existOIdx = localOrders.findIndex(o => o.id === po.id || o.orderReference === po.orderReference);
-              if (existOIdx < 0) {
-                localOrders.unshift(po);
+              const isPoDeleted = (po.id && deletedOrderIds.includes(po.id)) ||
+                                  (po.orderReference && deletedOrderIds.includes(po.orderReference));
+              if (isPoDeleted) {
+                const existOIdx = localOrders.findIndex(o => o.id === po.id || o.orderReference === po.orderReference);
+                if (existOIdx >= 0) localOrders.splice(existOIdx, 1);
               } else {
-                localOrders[existOIdx] = { ...localOrders[existOIdx], ...po };
+                const existOIdx = localOrders.findIndex(o => o.id === po.id || o.orderReference === po.orderReference);
+                if (existOIdx < 0) {
+                  localOrders.unshift(po);
+                } else {
+                  localOrders[existOIdx] = { ...localOrders[existOIdx], ...po };
+                }
               }
             } else if (mappedDesign.orderId) {
               const ordRef = mappedDesign.orderId;
-              const existOIdx = localOrders.findIndex(o => o.id === ordRef || o.orderReference === ordRef);
-              if (existOIdx < 0) {
-                localOrders.unshift({
-                  id: ordRef,
-                  orderReference: ordRef,
-                  designId: localId,
-                  designTitle: mappedDesign.title,
-                  customerName: mappedDesign.customerName,
-                  customerEmail: mappedDesign.customerEmail,
-                  customerPhone: mappedDesign.customerPhone,
-                  company: mappedDesign.company,
-                  edition: mappedDesign.edition,
-                  status: mappedDesign.status === 'approved' ? 'approved' : 'new_order',
-                  createdAt: cd.created_at,
-                  updatedAt: cd.updated_at || cd.created_at,
-                  totalAmount: 1899,
-                  source: 'web_studio'
-                });
+              const isOrdDeleted = deletedOrderIds.includes(ordRef);
+              if (isOrdDeleted) {
+                const existOIdx = localOrders.findIndex(o => o.id === ordRef || o.orderReference === ordRef);
+                if (existOIdx >= 0) localOrders.splice(existOIdx, 1);
+              } else {
+                const existOIdx = localOrders.findIndex(o => o.id === ordRef || o.orderReference === ordRef);
+                if (existOIdx < 0) {
+                  localOrders.unshift({
+                    id: ordRef,
+                    orderReference: ordRef,
+                    designId: localId,
+                    designTitle: mappedDesign.title,
+                    customerName: mappedDesign.customerName,
+                    customerEmail: mappedDesign.customerEmail,
+                    customerPhone: mappedDesign.customerPhone,
+                    company: mappedDesign.company,
+                    edition: mappedDesign.edition,
+                    status: mappedDesign.status === 'approved' ? 'approved' : 'new_order',
+                    createdAt: cd.created_at,
+                    updatedAt: cd.updated_at || cd.created_at,
+                    totalAmount: 1899,
+                    source: 'web_studio'
+                  });
+                }
               }
             }
 
             // Synthesize customer from design so customers from any device are never lost
-            const custEmail = (fc.customerEmail || '').trim().toLowerCase();
-            const isDesignCustDeleted = (fc.customerId && deletedCustIds.includes(fc.customerId)) ||
-                                       (custEmail && deletedCustEmails.includes(custEmail));
             if (custEmail && !isDesignCustDeleted) {
               const existC = currentCusts.find(c => (c.email && c.email.toLowerCase() === custEmail) || (fc.customerId && c.id === fc.customerId));
               if (!existC) {
@@ -397,10 +437,19 @@ export function DataProvider({ children }) {
             StorageEngine.saveLocalCustomers(currentCusts);
             setCustomers([...currentCusts]);
           }
-          StorageEngine.saveLocalDesigns(localDesigns);
-          setDesigns([...localDesigns]);
-          StorageEngine.saveLocalOrders(localOrders);
-          setOrders([...localOrders]);
+          const cleanLocalDesigns = localDesigns.filter(d => !deletedDesignIds.includes(d.id) && !deletedDesignIds.includes(d.supabaseId));
+          StorageEngine.saveLocalDesigns(cleanLocalDesigns);
+          setDesigns([...cleanLocalDesigns]);
+
+          const cleanLocalOrders = localOrders.filter(o => {
+            const isDel = (o.id && deletedOrderIds.includes(o.id)) ||
+                          (o.orderReference && deletedOrderIds.includes(o.orderReference)) ||
+                          (o.customerId && deletedCustIds.includes(o.customerId)) ||
+                          (o.customerEmail && deletedCustEmails.includes(o.customerEmail.toLowerCase().trim()));
+            return !isDel;
+          });
+          StorageEngine.saveLocalOrders(cleanLocalOrders);
+          setOrders([...cleanLocalOrders]);
         }
       } catch (err) {
         console.warn('[DataContext] Card designs cloud sync note:', err.message);
@@ -562,8 +611,9 @@ export function DataProvider({ children }) {
     return updated;
   };
 
-  const deleteCard = (id) => {
-    StorageEngine.deleteCard(id);
+  const deleteCard = async (id) => {
+    await StorageEngine.deleteCard(id);
+    setCards(prev => prev.filter(c => c.id !== id && c.cardCode !== id));
     refreshAll();
   };
 
@@ -585,8 +635,9 @@ export function DataProvider({ children }) {
     return updated;
   };
 
-  const deleteDesign = (id) => {
-    StorageEngine.deleteDesign(id);
+  const deleteDesign = async (id) => {
+    await StorageEngine.deleteDesign(id);
+    setDesigns(prev => prev.filter(d => d.id !== id && d.supabaseId !== id));
     refreshAll();
   };
 
@@ -614,8 +665,15 @@ export function DataProvider({ children }) {
     return result;
   };
 
-  const deleteOrder = (id, actorUser) => {
-    const res = StorageEngine.deleteOrder(id, actorUser);
+  const deleteOrder = async (id, actorUser) => {
+    const res = await StorageEngine.deleteOrder(id, actorUser);
+    setOrders(prev => prev.filter(o => o.id !== id && o.orderReference !== id));
+    refreshAll();
+    return res;
+  };
+
+  const deleteInvoice = (id) => {
+    const res = StorageEngine.deleteInvoice(id);
     refreshAll();
     return res;
   };
@@ -835,6 +893,7 @@ export function DataProvider({ children }) {
       getInvoiceConfig: StorageEngine.getInvoiceConfig,
       saveInvoiceConfig,
       saveInvoice,
+      deleteInvoice,
       getInvoices: StorageEngine.getInvoices,
       getInvoicesByOrder: StorageEngine.getInvoicesByOrder,
       getInvoicesByCustomer: StorageEngine.getInvoicesByCustomer,

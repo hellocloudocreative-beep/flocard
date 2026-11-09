@@ -69,6 +69,7 @@ export default function AdminOrderManager({ initialOrderId = null }) {
   const {
     orders = [],
     updateOrderStatus,
+    deleteOrder,
     getOrderHistory,
     getOrderInternalNotes,
     addOrderInternalNote,
@@ -536,6 +537,21 @@ export default function AdminOrderManager({ initialOrderId = null }) {
       }
     }
   }, [initialOrderId, orders]);
+
+  const handleDeleteOrder = async (order) => {
+    const ref = order.orderReference || order.id;
+    if (window.confirm(`Are you sure you want to permanently delete Order #${ref}? This will also delete any related customer design and invoices.`)) {
+      try {
+        await deleteOrder(order.id || ref, adminUser);
+        if (selectedOrder?.id === order.id || selectedOrder?.orderReference === ref) {
+          setSelectedOrder(null);
+          setIsUpdateModalOpen(false);
+        }
+      } catch (err) {
+        alert(`Failed to delete order: ${err.message}`);
+      }
+    }
+  };
 
   const handleStatusChangePrecheck = (e) => {
     e.preventDefault();
@@ -1225,6 +1241,33 @@ export default function AdminOrderManager({ initialOrderId = null }) {
                             <Sliders size={12} />
                             <span>Update Status</span>
                           </button>
+                          <button
+                            type="button"
+                            onClick={() => handleDeleteOrder(order)}
+                            title="Delete Order Permanently"
+                            style={{
+                              display: 'inline-flex',
+                              alignItems: 'center',
+                              justifyContent: 'center',
+                              padding: '5px 8px',
+                              borderRadius: '8px',
+                              backgroundColor: 'rgba(239, 68, 68, 0.1)',
+                              border: '1px solid rgba(239, 68, 68, 0.25)',
+                              color: '#EF4444',
+                              cursor: 'pointer',
+                              transition: 'all 0.15s ease'
+                            }}
+                            onMouseEnter={e => {
+                              e.currentTarget.style.backgroundColor = 'rgba(239, 68, 68, 0.2)';
+                              e.currentTarget.style.borderColor = 'rgba(239, 68, 68, 0.5)';
+                            }}
+                            onMouseLeave={e => {
+                              e.currentTarget.style.backgroundColor = 'rgba(239, 68, 68, 0.1)';
+                              e.currentTarget.style.borderColor = 'rgba(239, 68, 68, 0.25)';
+                            }}
+                          >
+                            <Trash2 size={13} />
+                          </button>
                         </div>
                       </td>
                     </tr>
@@ -1397,6 +1440,24 @@ export default function AdminOrderManager({ initialOrderId = null }) {
                     >
                       <Sliders size={14} />
                       <span>Update Order Stage</span>
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => handleDeleteOrder(order)}
+                      title="Delete Order"
+                      style={{
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        padding: '10px 12px',
+                        borderRadius: '8px',
+                        backgroundColor: 'rgba(239, 68, 68, 0.1)',
+                        border: '1px solid rgba(239, 68, 68, 0.25)',
+                        color: '#EF4444',
+                        cursor: 'pointer'
+                      }}
+                    >
+                      <Trash2 size={15} />
                     </button>
                   </div>
                 </div>

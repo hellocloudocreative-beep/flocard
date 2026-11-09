@@ -1319,13 +1319,35 @@ export const StorageEngine = {
     }
     return saved;
   },
-  deleteCard: (id) => {
+  getDeletedCardIds: () => getLocal('flocard_deleted_card_ids', []),
+  deleteCard: async (id) => {
     const list = getLocal('cards', INITIAL_CARDS).filter(c => c.id !== id && c.cardCode !== id);
     setLocal('cards', list);
+    
+    // Save tombstone
+    const tombstoneIds = getLocal('flocard_deleted_card_ids', []);
+    if (id && !tombstoneIds.includes(id)) {
+      tombstoneIds.push(id);
+      setLocal('flocard_deleted_card_ids', tombstoneIds);
+    }
+
     StorageEngine.addAuditLog('NFC Card', `Card deleted: ${id}`, 'You');
     if (typeof window !== 'undefined') {
       window.dispatchEvent(new CustomEvent('flocard_card_updated', { detail: { deletedId: id, list } }));
     }
+
+    // Call serverless cloud sync
+    callCloudSyncApi('deleteCard', { id, cardCode: id }).catch(() => {});
+
+    // Direct delete from Supabase if client is accessible
+    try {
+      const { supabase, supabaseAdmin, isSupabaseConfigured } = await import('./supabase.js');
+      if (isSupabaseConfigured && (supabaseAdmin || supabase)) {
+        const client = supabaseAdmin || supabase;
+        await client.from('nfc_cards').delete().or(`id.eq.${id},card_code.eq.${id}`).catch(() => {});
+      }
+    } catch (_) {}
+    return true;
   },
   recordCardTap: (cardCode, clientMeta = {}) => {
     const list = getLocal('cards', INITIAL_CARDS);
@@ -1498,10 +1520,37 @@ export const StorageEngine = {
     }
     return item;
   },
-  deleteDesign: (id) => {
+  getDeletedDesignIds: () => getLocal('flocard_deleted_design_ids', []),
+  deleteDesign: async (id) => {
     const list = getLocal('designs', INITIAL_DESIGNS).filter(d => d.id !== id);
     setLocal('designs', list);
+    const altList = getLocal('card_designs', INITIAL_DESIGNS).filter(d => d.id !== id);
+    setLocal('card_designs', altList);
+
+    // Save tombstone
+    const tombstoneIds = getLocal('flocard_deleted_design_ids', []);
+    if (id && !tombstoneIds.includes(id)) {
+      tombstoneIds.push(id);
+      setLocal('flocard_deleted_design_ids', tombstoneIds);
+    }
+
     StorageEngine.addAuditLog('Card Design', `Design deleted: ${id}`, 'You');
+    if (typeof window !== 'undefined') {
+      window.dispatchEvent(new CustomEvent('flocard_design_updated', { detail: { deletedId: id, list } }));
+    }
+
+    // Call serverless cloud sync
+    callCloudSyncApi('deleteDesign', { id }).catch(() => {});
+
+    // Direct delete from Supabase if client is accessible
+    try {
+      const { supabase, supabaseAdmin, isSupabaseConfigured } = await import('./supabase.js');
+      if (isSupabaseConfigured && (supabaseAdmin || supabase)) {
+        const client = supabaseAdmin || supabase;
+        await client.from('card_designs').delete().eq('id', id).catch(() => {});
+      }
+    } catch (_) {}
+    return true;
   },
 
   // Orders & Fulfillment Pipeline
@@ -2347,14 +2396,42 @@ export const StorageEngine = {
     return { success: true, order, ...order };
   },
 
-  deleteOrder: (orderId, actorUser = null) => {
+  getDeletedOrderIds: () => getLocal('flocard_deleted_order_ids', []),
+  deleteOrder: async (orderId, actorUser = null) => {
     const isElevated = !actorUser || isElevatedUser(actorUser);
     if (!isElevated) {
       throw new Error('Unauthorized: Only administrators can delete orders.');
     }
     const orders = getLocal('orders', INITIAL_ORDERS).filter(o => o.id !== orderId && o.orderReference !== orderId);
     setLocal('orders', orders);
+
+    // Also purge associated invoices
+    const invoices = getLocal('invoices', []).filter(inv => inv.orderId !== orderId && inv.orderReference !== orderId);
+    setLocal('invoices', invoices);
+
+    // Save tombstone
+    const tombstoneIds = getLocal('flocard_deleted_order_ids', []);
+    if (orderId && !tombstoneIds.includes(orderId)) {
+      tombstoneIds.push(orderId);
+      setLocal('flocard_deleted_order_ids', tombstoneIds);
+    }
+
     StorageEngine.addAuditLog('Order Fulfillment', `Order deleted: ${orderId}`, actorUser?.name || 'Administrator');
+    if (typeof window !== 'undefined') {
+      window.dispatchEvent(new CustomEvent('flocard_order_updated', { detail: { deletedId: orderId, orders } }));
+    }
+
+    // Call serverless cloud sync
+    callCloudSyncApi('deleteOrder', { id: orderId }).catch(() => {});
+
+    // Direct delete from Supabase if client is accessible
+    try {
+      const { supabase, supabaseAdmin, isSupabaseConfigured } = await import('./supabase.js');
+      if (isSupabaseConfigured && (supabaseAdmin || supabase)) {
+        const client = supabaseAdmin || supabase;
+        await client.from('orders').delete().or(`id.eq.${orderId},order_reference.eq.${orderId}`).catch(() => {});
+      }
+    } catch (_) {}
     return true;
   },
 
@@ -3625,6 +3702,20 @@ export const StorageEngine = {
 
   // Invoices Management
   getInvoices: () => getLocal('invoices', []),
+  getDeletedInvoiceIds: () => getLocal('flocard_deleted_invoice_ids', []),
+  deleteInvoice: (id) => {
+    if (!id) return;
+    const list = getLocal('invoices', []).filter(i => i.id !== id && i.invoiceNumber !== id);
+    setLocal('invoices', list);
+    const tombstoneIds = getLocal('flocard_deleted_invoice_ids', []);
+    if (!tombstoneIds.includes(id)) {
+      tombstoneIds.push(id);
+      setLocal('flocard_deleted_invoice_ids', tombstoneIds);
+    }
+    StorageEngine.addAuditLog('Invoice', `Invoice deleted: ${id}`, 'You');
+    safeDispatchEvent('flocard_invoice_updated', { deletedId: id });
+    return true;
+  },
   saveInvoice: (invoice) => {
     if (!invoice || (!invoice.id && !invoice.invoiceNumber)) {
       throw new Error('Invoice object with ID or invoiceNumber is required.');

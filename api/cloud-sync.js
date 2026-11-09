@@ -196,6 +196,35 @@ export default async function handler(req, res) {
         return res.status(200).json({ success: true });
       }
 
+      case 'deleteCard': {
+        const { id, cardCode } = body;
+        if (!id && !cardCode) return res.status(400).json({ error: 'Missing card identifier' });
+        if (id) {
+          await adminClient.from('nfc_cards').delete().eq('id', id).catch(() => {});
+        }
+        if (cardCode) {
+          await adminClient.from('nfc_cards').delete().eq('card_code', cardCode).catch(() => {});
+        }
+        return res.status(200).json({ success: true });
+      }
+
+      case 'deleteDesign': {
+        const { id } = body;
+        if (!id) return res.status(400).json({ error: 'Missing design identifier' });
+        await adminClient.from('card_designs').delete().eq('id', id).catch(() => {});
+        return res.status(200).json({ success: true });
+      }
+
+      case 'deleteOrder': {
+        const { id } = body;
+        if (!id) return res.status(400).json({ error: 'Missing order identifier' });
+        try {
+          await adminClient.from('orders').delete().or(`id.eq.${id},order_reference.eq.${id}`).catch(() => {});
+          await adminClient.from('card_designs').delete().eq('order_id', id).catch(() => {});
+        } catch (_) {}
+        return res.status(200).json({ success: true });
+      }
+
       case 'syncProfile': {
         const payload = body.profile;
         if (!payload) return res.status(400).json({ error: 'Missing profile' });
