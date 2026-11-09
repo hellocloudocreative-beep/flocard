@@ -371,10 +371,10 @@ export default function Designer() {
   const BASE_CARD_HEIGHT = Math.round(560 / 1.585); // 353px
   const maxAvailableCardWidth = Math.max(260, Math.min(BASE_CARD_WIDTH, viewportWidth - (viewportWidth < 640 ? 40 : 80)));
   const fitScale = Math.min(1, maxAvailableCardWidth / BASE_CARD_WIDTH);
+  const [mobileTab, setMobileTab] = useState('preview'); // 'preview' | 'customise' | 'specs'
   const activeCardScale = viewportWidth < 1024 && mobileTab !== 'preview'
     ? Math.min(0.55, Math.max(0.44, (viewportWidth - 28) / BASE_CARD_WIDTH))
     : fitScale;
-  const [mobileTab, setMobileTab] = useState('preview'); // 'preview' | 'customise' | 'specs'
 
   // Prompt sign up if guest visits Design Studio directly
   useEffect(() => {

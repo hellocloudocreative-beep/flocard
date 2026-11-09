@@ -54,6 +54,41 @@ function GlobalPlainBackground() {
   );
 }
 
+class AppErrorBoundary extends React.Component {
+  constructor(props) {
+    super(props);
+    this.state = { hasError: false, error: null };
+  }
+  static getDerivedStateFromError(error) {
+    return { hasError: true, error };
+  }
+  componentDidCatch(error, errorInfo) {
+    console.error('Application caught runtime error:', error, errorInfo);
+  }
+  render() {
+    if (this.state.hasError) {
+      return (
+        <div style={{ minHeight: '80vh', background: '#08060D', color: '#fff', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: '24px' }}>
+          <div style={{ maxWidth: '480px', width: '100%', background: 'rgba(23, 16, 32, 0.95)', border: '1px solid rgba(168, 85, 247, 0.3)', borderRadius: '20px', padding: '32px', textAlign: 'center' }}>
+            <h2 style={{ fontSize: '1.3rem', fontWeight: 700, color: '#f87171', marginBottom: '12px' }}>Page Rendering Notice</h2>
+            <p style={{ fontSize: '0.86rem', color: '#b9aec9', marginBottom: '24px', lineHeight: 1.5 }}>
+              {this.state.error?.message || 'A transient error occurred while loading this page.'}
+            </p>
+            <button
+              onClick={() => { this.setState({ hasError: false, error: null }); window.location.reload(); }}
+              className="btn btn-primary"
+              style={{ padding: '10px 20px', borderRadius: '10px', fontSize: '0.88rem' }}
+            >
+              Reload Page
+            </button>
+          </div>
+        </div>
+      );
+    }
+    return this.props.children;
+  }
+}
+
 class AdminErrorBoundary extends React.Component {
   constructor(props) {
     super(props);
@@ -427,7 +462,9 @@ export default function App() {
                 }}
                 style={{ width: '100%', minHeight: '80vh' }}
               >
-                {content}
+                <AppErrorBoundary>
+                  {content}
+                </AppErrorBoundary>
               </motion.main>
             </AnimatePresence>
             {showHeaderFooter && <Footer />}
