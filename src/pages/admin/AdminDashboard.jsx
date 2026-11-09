@@ -996,6 +996,12 @@ export default function AdminDashboard({ initialTab = 'overview', initialOrderId
     if (window.confirm('Are you sure you want to delete this customer? This will remove their record across all devices.')) {
       await deleteCustomer(id);
       if (editingCustomer?.id === id) setEditingCustomer(null);
+      setFulfillmentToast({
+        title: 'Customer Deleted',
+        message: 'Customer record, profiles, and associated data removed permanently.',
+        type: 'success'
+      });
+      setTimeout(() => setFulfillmentToast(null), 4000);
     }
   };
 

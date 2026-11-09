@@ -150,13 +150,49 @@ export default async function handler(req, res) {
       }
 
       case 'deleteCustomer': {
-        const id = body.id;
-        if (!id) return res.status(400).json({ error: 'Missing customer id' });
+        const { id, email, slug } = body;
+        if (!id && !email && !slug) return res.status(400).json({ error: 'Missing customer identifier' });
+
         const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
-        if (uuidRegex.test(id)) {
+
+        // 1. Delete from Supabase Auth if UUID or by matching email
+        if (id && uuidRegex.test(id)) {
           await adminClient.auth.admin.deleteUser(id).catch(() => {});
-          await adminClient.from('profiles').delete().eq('id', id).catch(() => {});
+        } else if (email) {
+          try {
+            const { data: usersData } = await adminClient.auth.admin.listUsers();
+            const matched = usersData?.users?.find(u => u.email && u.email.toLowerCase() === email.toLowerCase());
+            if (matched?.id) {
+              await adminClient.auth.admin.deleteUser(matched.id).catch(() => {});
+            }
+          } catch (_) {}
         }
+
+        // 2. Delete from profiles table by id, user_id, email, or slug
+        if (id) {
+          await adminClient.from('profiles').delete().eq('id', id).catch(() => {});
+          await adminClient.from('profiles').delete().eq('user_id', id).catch(() => {});
+        }
+        if (email) {
+          await adminClient.from('profiles').delete().ilike('email', email).catch(() => {});
+        }
+        if (slug) {
+          await adminClient.from('profiles').delete().eq('slug', slug).catch(() => {});
+        }
+
+        // 3. Purge orphaned card designs for this customer
+        if (id) {
+          await adminClient.from('card_designs').delete().eq('user_id', id).catch(() => {});
+        }
+
+        // 4. Disassociate cards assigned to this customer so they return to stock
+        if (id) {
+          await adminClient.from('nfc_cards').update({ customer_id: null, profile_slug: null, status: 'in_stock' }).eq('customer_id', id).catch(() => {});
+        }
+        if (slug) {
+          await adminClient.from('nfc_cards').update({ customer_id: null, profile_slug: null, status: 'in_stock' }).eq('profile_slug', slug).catch(() => {});
+        }
+
         return res.status(200).json({ success: true });
       }
 

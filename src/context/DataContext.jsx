@@ -65,9 +65,23 @@ export function DataProvider({ children }) {
         if (!pErr && Array.isArray(cloudProfiles) && cloudProfiles.length > 0) {
           const localProfiles = StorageEngine.getProfiles();
           const currentCusts = StorageEngine.getCustomers();
+          const deletedCustIds = StorageEngine.getDeletedCustomerIds?.() || [];
+          const deletedCustEmails = StorageEngine.getDeletedCustomerEmails?.() || [];
           let custsUpdated = false;
 
           for (const cp of cloudProfiles) {
+            const cpEmail = (cp.email || '').toLowerCase().trim();
+            const isDeleted = (cp.id && deletedCustIds.includes(cp.id)) ||
+                              (cp.user_id && deletedCustIds.includes(cp.user_id)) ||
+                              (cpEmail && deletedCustEmails.includes(cpEmail));
+            if (isDeleted) {
+              const pIdx = localProfiles.findIndex(p => p.id === cp.id || (cpEmail && p.email?.toLowerCase().trim() === cpEmail));
+              if (pIdx >= 0) localProfiles.splice(pIdx, 1);
+              const cIdx = currentCusts.findIndex(c => c.id === cp.id || (cpEmail && c.email?.toLowerCase().trim() === cpEmail));
+              if (cIdx >= 0) { currentCusts.splice(cIdx, 1); custsUpdated = true; }
+              continue;
+            }
+
             const rawPortfolio = Array.isArray(cp.portfolio) ? cp.portfolio : [];
             const bannerEntry = rawPortfolio.find(x => x && x._isBannerConfig);
             const banner = cp.banner || bannerEntry?.banner || null;
@@ -203,6 +217,10 @@ export function DataProvider({ children }) {
           if (!uErr && userData?.users?.length > 0) {
             const localCusts = StorageEngine.getCustomers();
             for (const u of userData.users) {
+              const uEmail = (u.email || '').toLowerCase().trim();
+              if (deletedCustIds.includes(u.id) || (uEmail && deletedCustEmails.includes(uEmail))) {
+                continue;
+              }
               const mappedCust = {
                 id: u.id,
                 name: u.user_metadata?.name || u.user_metadata?.full_name || u.email.split('@')[0],
@@ -353,7 +371,9 @@ export function DataProvider({ children }) {
 
             // Synthesize customer from design so customers from any device are never lost
             const custEmail = (fc.customerEmail || '').trim().toLowerCase();
-            if (custEmail) {
+            const isDesignCustDeleted = (fc.customerId && deletedCustIds.includes(fc.customerId)) ||
+                                       (custEmail && deletedCustEmails.includes(custEmail));
+            if (custEmail && !isDesignCustDeleted) {
               const existC = currentCusts.find(c => (c.email && c.email.toLowerCase() === custEmail) || (fc.customerId && c.id === fc.customerId));
               if (!existC) {
                 currentCusts.unshift({
@@ -681,6 +701,10 @@ export function DataProvider({ children }) {
 
   const deleteCustomer = async (id) => {
     await StorageEngine.deleteCustomer(id);
+    setCustomers([...StorageEngine.getCustomers()]);
+    setProfiles([...StorageEngine.getProfiles()]);
+    setDesigns([...StorageEngine.getDesigns()]);
+    setOrders([...StorageEngine.getOrders()]);
     refreshAll();
   };
 

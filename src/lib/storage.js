@@ -2978,44 +2978,97 @@ export const StorageEngine = {
     });
     return saved;
   },
+  getDeletedCustomerIds: () => getLocal('flocard_deleted_cust_ids', []),
+  getDeletedCustomerEmails: () => getLocal('flocard_deleted_cust_emails', []),
   deleteCustomer: async (id) => {
-    const list = getLocal('customers', INITIAL_CUSTOMERS).filter(c => c.id !== id && c.email !== id);
+    const allCusts = getLocal('customers', INITIAL_CUSTOMERS);
+    const existing = allCusts.find(c => c.id === id || c.email === id);
+    const targetId = existing?.id || id;
+    const targetEmail = (existing?.email || (typeof id === 'string' && id.includes('@') ? id : '')).toLowerCase().trim();
+    const targetSlug = existing?.slug || (existing?.name ? existing.name.toLowerCase().replace(/[^a-z0-9]/g, '') : '');
+
+    // 1. Purge from local customers
+    const list = allCusts.filter(c => {
+      const matchId = c.id === targetId || (targetId && c.id === targetId);
+      const matchEmail = targetEmail && c.email && c.email.toLowerCase().trim() === targetEmail;
+      return !matchId && !matchEmail;
+    });
     setLocal('customers', list);
 
-    // Also purge all associated orders so deleted customers don't leave zombie orders
+    // 2. Purge from local profiles so deleted customers don't resurrect from profile cache
+    const profiles = getLocal('profiles', INITIAL_PROFILES).filter(p => {
+      const matchId = p.id === targetId || p.userId === targetId;
+      const matchEmail = targetEmail && p.email && p.email.toLowerCase().trim() === targetEmail;
+      const matchSlug = targetSlug && p.slug && p.slug.toLowerCase().trim() === targetSlug;
+      return !matchId && !matchEmail && !matchSlug;
+    });
+    setLocal('profiles', profiles);
+
+    // 3. Purge from local card designs
+    const designs = getLocal('card_designs', INITIAL_DESIGNS).filter(d => {
+      const matchId = d.customerId === targetId || d.userId === targetId;
+      const matchEmail = targetEmail && (
+        (d.customerEmail && d.customerEmail.toLowerCase().trim() === targetEmail) ||
+        (d.front?.customerEmail && d.front.customerEmail.toLowerCase().trim() === targetEmail)
+      );
+      return !matchId && !matchEmail;
+    });
+    setLocal('card_designs', designs);
+
+    // 4. Also purge all associated orders so deleted customers don't leave zombie orders
     const orders = getLocal('orders', INITIAL_ORDERS).filter(o => {
-      const matchId = o.customerId === id || o.customer_id === id;
-      const matchEmail = (o.customerEmail && o.customerEmail.toLowerCase() === String(id).toLowerCase()) ||
-                         (o.customerDetails?.email && o.customerDetails.email.toLowerCase() === String(id).toLowerCase());
+      const matchId = o.customerId === targetId || o.customer_id === targetId;
+      const matchEmail = targetEmail && (
+        (o.customerEmail && o.customerEmail.toLowerCase() === targetEmail) ||
+        (o.customerDetails?.email && o.customerDetails.email.toLowerCase() === targetEmail)
+      );
       return !matchId && !matchEmail;
     });
     setLocal('orders', orders);
 
-    // Also purge associated invoices
+    // 5. Also purge associated invoices
     const invoices = getLocal('invoices', []).filter(inv => {
-      const matchCust = inv.customerId === id || 
-                        (inv.customerEmail && inv.customerEmail.toLowerCase() === String(id).toLowerCase()) ||
-                        (inv.billedTo?.email && inv.billedTo.email.toLowerCase() === String(id).toLowerCase());
+      const matchCust = inv.customerId === targetId || 
+                        (targetEmail && inv.customerEmail && inv.customerEmail.toLowerCase() === targetEmail) ||
+                        (targetEmail && inv.billedTo?.email && inv.billedTo.email.toLowerCase() === targetEmail);
       return !matchCust;
     });
     setLocal('invoices', invoices);
 
-    StorageEngine.addAuditLog('Customer', `Customer record and associated orders deleted: ${id}`, 'You');
+    // 6. Record tombstones so background polling never re-adds them
+    const tombstoneIds = getLocal('flocard_deleted_cust_ids', []);
+    if (targetId && !tombstoneIds.includes(targetId)) {
+      tombstoneIds.push(targetId);
+      setLocal('flocard_deleted_cust_ids', tombstoneIds);
+    }
+    const tombstoneEmails = getLocal('flocard_deleted_cust_emails', []);
+    if (targetEmail && !tombstoneEmails.includes(targetEmail)) {
+      tombstoneEmails.push(targetEmail);
+      setLocal('flocard_deleted_cust_emails', tombstoneEmails);
+    }
 
-    // Call serverless endpoint (runs on backend without browser Origin restrictions)
-    callCloudSyncApi('deleteCustomer', { id }).catch(() => {});
+    StorageEngine.addAuditLog('Customer', `Customer record and associated profiles deleted: ${targetId}`, 'You');
 
-    // Delete from Supabase Auth and Profiles if valid UUID
+    // 7. Call serverless endpoint to purge from Supabase Auth and Profiles table
+    callCloudSyncApi('deleteCustomer', { id: targetId, email: targetEmail, slug: targetSlug }).catch(() => {});
+
+    // 8. Delete directly from Supabase if client is accessible
     try {
       const { supabase, supabaseAdmin, isSupabaseConfigured } = await import('./supabase.js');
       if (isSupabaseConfigured && (supabaseAdmin || supabase)) {
         const client = supabaseAdmin || supabase;
         const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
-        if (uuidRegex.test(id)) {
+        if (targetId && uuidRegex.test(targetId)) {
           if (supabaseAdmin && supabaseAdmin.auth && supabaseAdmin.auth.admin) {
-            await supabaseAdmin.auth.admin.deleteUser(id).catch(() => {});
+            await supabaseAdmin.auth.admin.deleteUser(targetId).catch(() => {});
           }
-          await client.from('profiles').delete().eq('id', id).catch(() => {});
+          await client.from('profiles').delete().eq('id', targetId).catch(() => {});
+        }
+        if (targetEmail) {
+          await client.from('profiles').delete().ilike('email', targetEmail).catch(() => {});
+        }
+        if (targetSlug) {
+          await client.from('profiles').delete().eq('slug', targetSlug).catch(() => {});
         }
       }
     } catch (e) {
