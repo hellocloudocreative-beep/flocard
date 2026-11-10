@@ -351,6 +351,8 @@ export default function AdminDashboard({ initialTab = 'overview', initialOrderId
   const [editingProfile, setEditingProfile] = useState(null);
   const [editingCard, setEditingCard] = useState(null);
   const [editingDesign, setEditingDesign] = useState(null);
+  const editDesignLogoInputRef = useRef(null);
+  const [isUploadingDesignLogo, setIsUploadingDesignLogo] = useState(false);
   const [editingTemplate, setEditingTemplate] = useState(null);
   const [editingProduct, setEditingProduct] = useState(null);
   const [productSaveError, setProductSaveError] = useState('');
@@ -1212,12 +1214,126 @@ export default function AdminDashboard({ initialTab = 'overview', initialOrderId
     }
   };
 
-  // Handle Edit/Save Design
+  // Handle Edit/Save Design with Logo Support & Order Synchronization
   const handleUpdateDesign = (e) => {
     e.preventDefault();
     if (!editingDesign) return;
-    saveDesign(editingDesign);
+
+    // Ensure template and templateType match
+    const finalDesign = {
+      ...editingDesign,
+      templateType: editingDesign.templateType || 'standard',
+      template: editingDesign.templateType === 'customer_logo' ? 'Customer Logo' : (editingDesign.template || 'Standard FLOCARD')
+    };
+
+    saveDesign(finalDesign);
+
+    // Propagate changes to any associated manufacturing order
+    try {
+      const relatedOrder = orders?.find(o => o.designId === finalDesign.id || (finalDesign.orderId && o.id === finalDesign.orderId));
+      if (relatedOrder && saveOrder) {
+        const logoUrl = finalDesign.customerLogo?.url || (typeof finalDesign.customerLogo === 'string' ? finalDesign.customerLogo : null) || finalDesign.front?.customLogo || null;
+        saveOrder({
+          ...relatedOrder,
+          customerLogo: finalDesign.customerLogo || logoUrl || relatedOrder.customerLogo,
+          templateType: finalDesign.templateType || relatedOrder.templateType,
+          edition: finalDesign.edition || relatedOrder.edition,
+          customerName: finalDesign.customerName || relatedOrder.customerName,
+          design: {
+            ...(relatedOrder.design || {}),
+            ...finalDesign
+          }
+        });
+      }
+    } catch (orderSyncErr) {
+      console.warn('[AdminDashboard] Non-fatal order sync notice:', orderSyncErr);
+    }
+
     setEditingDesign(null);
+  };
+
+  const handleDesignLogoUpload = async (e) => {
+    const file = e.target.files?.[0];
+    if (!file || !editingDesign) return;
+
+    if (!file.type.startsWith('image/')) {
+      alert('Please select a valid image file (PNG, JPG, SVG, WebP).');
+      return;
+    }
+
+    // Instant local preview via FileReader
+    const reader = new FileReader();
+    reader.onload = (loadEvt) => {
+      const dataUrl = loadEvt.target.result;
+      setEditingDesign(prev => {
+        if (!prev) return null;
+        const prevLogo = typeof prev.customerLogo === 'object' && prev.customerLogo !== null ? prev.customerLogo : {};
+        return {
+          ...prev,
+          templateType: 'customer_logo',
+          template: 'Customer Logo',
+          customerLogo: {
+            ...prevLogo,
+            url: dataUrl,
+            size: prevLogo.size || 75,
+            posX: prevLogo.posX || 0,
+            posY: prevLogo.posY || 0
+          },
+          front: {
+            ...(prev.front || {}),
+            customLogo: dataUrl
+          }
+        };
+      });
+    };
+    reader.readAsDataURL(file);
+
+    try {
+      setIsUploadingDesignLogo(true);
+      const uploadedUrl = await uploadImage(file, 'logo', `design_${editingDesign.id}_${Date.now()}`);
+      if (uploadedUrl) {
+        setEditingDesign(prev => {
+          if (!prev) return null;
+          const prevLogo = typeof prev.customerLogo === 'object' && prev.customerLogo !== null ? prev.customerLogo : {};
+          return {
+            ...prev,
+            templateType: 'customer_logo',
+            template: 'Customer Logo',
+            customerLogo: {
+              ...prevLogo,
+              url: uploadedUrl,
+              size: prevLogo.size || 75,
+              posX: prevLogo.posX || 0,
+              posY: prevLogo.posY || 0
+            },
+            front: {
+              ...(prev.front || {}),
+              customLogo: uploadedUrl
+            }
+          };
+        });
+      }
+    } catch (err) {
+      console.error('[AdminDashboard] Design logo upload failed:', err);
+    } finally {
+      setIsUploadingDesignLogo(false);
+      if (e.target) e.target.value = '';
+    }
+  };
+
+  const handleRemoveDesignLogo = () => {
+    if (!editingDesign) return;
+    setEditingDesign(prev => {
+      if (!prev) return null;
+      return {
+        ...prev,
+        customerLogo: null,
+        front: {
+          ...(prev.front || {}),
+          customLogo: null
+        }
+      };
+    });
   };
 
   const handleDeleteDesign = (id) => {
@@ -8626,11 +8742,18 @@ export default function AdminDashboard({ initialTab = 'overview', initialOrderId
                   <label style={{ display: 'block', fontSize: '0.78rem', fontWeight: 600, marginBottom: '4px', color: 'var(--adm-text-primary)' }}>Template Family</label>
                   <select
                     value={editingDesign.templateType || 'standard'}
-                    onChange={(e) => setEditingDesign({ ...editingDesign, templateType: e.target.value, template: e.target.value === 'customer_logo' ? 'Customer Logo' : 'Standard FLOCARD' })}
+                    onChange={(e) => {
+                      const val = e.target.value;
+                      setEditingDesign({
+                        ...editingDesign,
+                        templateType: val,
+                        template: val === 'customer_logo' ? 'Customer Logo' : 'Standard FLOCARD'
+                      });
+                    }}
                     style={{ width: '100%', padding: '9px 12px', borderRadius: '8px', border: 'var(--adm-card-border)', fontSize: '0.84rem' }}
                   >
-                    <option value="standard">Standard FLOCARD Design (Theme 1)</option>
-                    <option value="customer_logo">Customer Logo Design (Theme 2)</option>
+                    <option value="standard">Standard FLOCARD Design (Theme 1 - No Logo)</option>
+                    <option value="customer_logo">Customer Logo Design (Theme 2 - With Logo)</option>
                   </select>
                 </div>
                 <div>
@@ -8645,6 +8768,98 @@ export default function AdminDashboard({ initialTab = 'overview', initialOrderId
                     <option value="platinum">Brushed Platinum</option>
                   </select>
                 </div>
+              </div>
+
+              {/* Customer Logo Management & Upload Section */}
+              <div style={{ padding: '12px 14px', borderRadius: '10px', backgroundColor: isDark ? 'rgba(255, 255, 255, 0.03)' : '#F9F8FD', border: '1px solid var(--adm-card-border)' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
+                  <label style={{ fontSize: '0.78rem', fontWeight: 700, color: 'var(--adm-text-primary)', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                    <Sparkles size={14} color="#8B5CF6" />
+                    <span>Customer Brand Logo</span>
+                  </label>
+                  {editingDesign.templateType === 'customer_logo' && (
+                    <span style={{ fontSize: '0.7rem', color: '#10B981', fontWeight: 700, backgroundColor: 'rgba(16, 185, 129, 0.1)', padding: '2px 8px', borderRadius: '9999px' }}>
+                      Theme 2 (Logo Active)
+                    </span>
+                  )}
+                </div>
+
+                <input
+                  ref={editDesignLogoInputRef}
+                  type="file"
+                  accept="image/*"
+                  onChange={handleDesignLogoUpload}
+                  style={{ display: 'none' }}
+                  disabled={isUploadingDesignLogo}
+                />
+
+                {(editingDesign.customerLogo?.url || (typeof editingDesign.customerLogo === 'string' && editingDesign.customerLogo) || editingDesign.front?.customLogo) ? (
+                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '10px 12px', borderRadius: '8px', backgroundColor: isDark ? 'rgba(0,0,0,0.3)' : '#FFFFFF', border: '1px solid var(--adm-card-border)', gap: '12px' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '12px', minWidth: 0 }}>
+                      <div style={{ width: '48px', height: '48px', flexShrink: 0, borderRadius: '8px', backgroundColor: isDark ? '#1F1A2E' : '#F1EDFA', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '4px', overflow: 'hidden', border: '1px solid rgba(139, 92, 246, 0.25)' }}>
+                        <img
+                          src={editingDesign.customerLogo?.url || (typeof editingDesign.customerLogo === 'string' ? editingDesign.customerLogo : editingDesign.front?.customLogo)}
+                          alt="Customer Logo"
+                          style={{ maxWidth: '100%', maxHeight: '100%', objectFit: 'contain' }}
+                        />
+                      </div>
+                      <div style={{ minWidth: 0 }}>
+                        <p style={{ margin: 0, fontSize: '0.78rem', fontWeight: 700, color: 'var(--adm-text-primary)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>Client Logo Attached</p>
+                        <p style={{ margin: '2px 0 0', fontSize: '0.7rem', color: 'var(--adm-text-secondary)' }}>Ready for card engraving & foil print</p>
+                      </div>
+                    </div>
+                    <div style={{ display: 'flex', gap: '6px', flexShrink: 0 }}>
+                      <button
+                        type="button"
+                        onClick={() => editDesignLogoInputRef.current?.click()}
+                        disabled={isUploadingDesignLogo}
+                        style={{ padding: '6px 10px', borderRadius: '6px', border: '1px solid var(--adm-card-border)', background: 'none', color: 'var(--adm-text-primary)', fontSize: '0.74rem', fontWeight: 600, cursor: isUploadingDesignLogo ? 'wait' : 'pointer', display: 'inline-flex', alignItems: 'center', gap: '4px' }}
+                      >
+                        <Upload size={12} />
+                        <span>{isUploadingDesignLogo ? 'Uploading...' : 'Replace'}</span>
+                      </button>
+                      <button
+                        type="button"
+                        onClick={handleRemoveDesignLogo}
+                        style={{ padding: '6px 8px', borderRadius: '6px', border: '1px solid #FEE2E2', backgroundColor: '#FEF2F2', color: '#DC2626', fontSize: '0.74rem', fontWeight: 600, cursor: 'pointer', display: 'inline-flex', alignItems: 'center', gap: '4px' }}
+                        title="Remove Logo"
+                      >
+                        <Trash2 size={12} />
+                        <span>Remove</span>
+                      </button>
+                    </div>
+                  </div>
+                ) : (
+                  <button
+                    type="button"
+                    onClick={() => editDesignLogoInputRef.current?.click()}
+                    disabled={isUploadingDesignLogo}
+                    style={{
+                      width: '100%',
+                      display: 'flex',
+                      flexDirection: 'column',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      gap: '6px',
+                      padding: '14px 12px',
+                      borderRadius: '8px',
+                      border: '1px dashed rgba(139, 92, 246, 0.45)',
+                      backgroundColor: isDark ? 'rgba(139, 92, 246, 0.05)' : '#FAF8FF',
+                      cursor: isUploadingDesignLogo ? 'wait' : 'pointer',
+                      transition: 'all 0.15s ease'
+                    }}
+                  >
+                    <div style={{ width: '32px', height: '32px', borderRadius: '50%', backgroundColor: 'rgba(139, 92, 246, 0.15)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                      <Upload size={15} color="#8B5CF6" />
+                    </div>
+                    <span style={{ fontSize: '0.8rem', fontWeight: 700, color: '#8B5CF6' }}>
+                      {isUploadingDesignLogo ? 'Uploading logo to storage...' : '+ Upload Customer Logo (PNG, SVG, JPG)'}
+                    </span>
+                    <span style={{ fontSize: '0.7rem', color: 'var(--adm-text-secondary)' }}>
+                      Automatically switches to Customer Logo Design (Theme 2) & attaches to card
+                    </span>
+                  </button>
+                )}
               </div>
 
               <div>
