@@ -29,7 +29,8 @@ import {
   ShieldCheck,
   Database,
   Search,
-  Layers
+  Layers,
+  Trash2
 } from 'lucide-react';
 import { useData } from '../../context/DataContext';
 import { useTheme } from '../../context/ThemeContext';

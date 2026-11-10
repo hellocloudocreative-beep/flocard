@@ -193,6 +193,14 @@ export default async function handler(req, res) {
           await adminClient.from('nfc_cards').update({ customer_id: null, profile_slug: null, status: 'in_stock' }).eq('profile_slug', slug).catch(() => {});
         }
 
+        // 5. Purge customer orders
+        if (id) {
+          await adminClient.from('orders').delete().eq('customer_id', id).catch(() => {});
+        }
+        if (email) {
+          await adminClient.from('orders').delete().ilike('customer_email', email).catch(() => {});
+        }
+
         return res.status(200).json({ success: true });
       }
 
@@ -297,11 +305,36 @@ export default async function handler(req, res) {
         return res.status(200).json({ success: true });
       }
 
+      case 'syncOrder': {
+        const payload = body.order;
+        if (!payload) return res.status(400).json({ error: 'Missing order' });
+        const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+        const orderRow = {
+          order_reference: payload.orderReference || payload.id,
+          customer_name: payload.customerName || '',
+          customer_email: payload.customerEmail || '',
+          customer_phone: payload.customerPhone || '',
+          company: payload.company || '',
+          status: payload.status || 'new_order',
+          shipping_address: payload.shippingAddress || '',
+          total_amount: Number(payload.totalAmount || 0),
+          created_at: payload.createdAt || new Date().toISOString(),
+          updated_at: new Date().toISOString()
+        };
+        if (payload.id && uuidRegex.test(payload.id)) {
+          orderRow.id = payload.id;
+        }
+        let { error } = await adminClient.from('orders').upsert(orderRow, { onConflict: 'order_reference' });
+        if (error) return res.status(500).json({ error: error.message });
+        return res.status(200).json({ success: true });
+      }
+
       case 'fetchData': {
-        const [profilesRes, cardsRes, designsRes, usersRes] = await Promise.all([
+        const [profilesRes, cardsRes, designsRes, ordersRes, usersRes] = await Promise.all([
           adminClient.from('profiles').select('*').order('created_at', { ascending: false }),
           adminClient.from('nfc_cards').select('*').order('created_at', { ascending: false }),
           adminClient.from('card_designs').select('*').order('created_at', { ascending: false }),
+          adminClient.from('orders').select('*').order('created_at', { ascending: false }).catch(() => ({ data: [] })),
           adminClient.auth.admin.listUsers().catch(() => ({ data: { users: [] } }))
         ]);
 
@@ -310,6 +343,7 @@ export default async function handler(req, res) {
           profiles: profilesRes.data || [],
           cards: cardsRes.data || [],
           designs: designsRes.data || [],
+          orders: ordersRes.data || [],
           users: usersRes.data?.users || []
         });
       }

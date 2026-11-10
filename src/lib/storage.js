@@ -1722,6 +1722,7 @@ export const StorageEngine = {
         StorageEngine.syncDesignToCloud(linkedD);
       }
     } catch (_) {}
+    callCloudSyncApi('syncOrder', { order: saved }).catch(() => {});
     safeDispatchEvent('flocard_order_updated', saved);
     return saved;
   },

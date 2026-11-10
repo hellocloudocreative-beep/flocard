@@ -1586,22 +1586,6 @@ export default function CustomerInvoiceTab({ orders = [], customer = null }) {
           </div>
         </div>
       )}
-
-      {/* 60FPS Thermal Receipt Printing & Signature Animation */}
-      <ReceiptPrintAnimation
-        isOpen={showReceiptAnimation}
-        title="FLOCARDS TAX INVOICE"
-        invoiceNumber={invoiceNumber}
-        customerName={customDetails.customerName || customer?.name || 'Valued Client'}
-        totalAmount={`₹${Number(customTotals.totalAmount || 0).toLocaleString('en-IN')}`}
-        items={customItems.map(it => ({ title: it.title, amount: it.amount || (it.qty * it.rate) }))}
-        onComplete={() => {
-          setTimeout(() => {
-            setShowReceiptAnimation(false);
-          }, 1800);
-        }}
-        onClose={() => setShowReceiptAnimation(false)}
-      />
     </div>
   );
 }

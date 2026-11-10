@@ -3090,20 +3090,6 @@ export default function AdminInvoiceManager({ initialOrderId = null }) {
           </div>
         </div>
       )}
-
-      {/* 60FPS Thermal Receipt Printing & Digitally Signed Animation */}
-      <ReceiptPrintAnimation
-        isOpen={!!printReceiptData}
-        title="FLOCARDS TAX INVOICE"
-        invoiceNumber={printReceiptData?.invoiceNumber || "INV-2026-0001"}
-        customerName={printReceiptData?.customerName || "Valued Client"}
-        totalAmount={printReceiptData?.totalAmount || "₹1,899"}
-        items={printReceiptData?.items || []}
-        onComplete={() => {
-          setTimeout(() => setPrintReceiptData(null), 1800);
-        }}
-        onClose={() => setPrintReceiptData(null)}
-      />
     </div>
   );
 }

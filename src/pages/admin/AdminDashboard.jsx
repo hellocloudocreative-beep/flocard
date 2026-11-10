@@ -1527,6 +1527,8 @@ export default function AdminDashboard({ initialTab = 'overview', initialOrderId
         overflowX: 'clip',
         maxWidth: '100vw',
         /* Rich FLOCARD Obsidian Violet & Purple Theme Tokens */
+        '--adm-primary': '#7C3AED',
+        '--adm-primary-hover': '#6D28D9',
         '--adm-card-bg': isDark ? '#110C1D' : '#FFFFFF',
         '--adm-card-border': isDark ? '1px solid rgba(139, 92, 246, 0.22)' : '1px solid #EDE6F8',
         '--adm-card-shadow': isDark ? '0 4px 20px rgba(0, 0, 0, 0.35)' : '0 2px 12px rgba(107, 0, 255, 0.05)',
@@ -2514,7 +2516,7 @@ export default function AdminDashboard({ initialTab = 'overview', initialOrderId
                       padding: '8px 18px',
                       borderRadius: '10px',
                       border: 'none',
-                      backgroundColor: 'var(--adm-primary)',
+                      backgroundColor: '#7C3AED',
                       color: '#FFFFFF',
                       fontSize: '0.82rem',
                       fontWeight: 700,
@@ -2522,12 +2524,12 @@ export default function AdminDashboard({ initialTab = 'overview', initialOrderId
                       display: 'inline-flex',
                       alignItems: 'center',
                       gap: '8px',
-                      boxShadow: '0 2px 8px rgba(124, 58, 237, 0.25)',
+                      boxShadow: '0 2px 8px rgba(124, 58, 237, 0.35)',
                       transition: 'all 0.15s ease'
                     }}
                   >
-                    <Package size={15} />
-                    <span>View Orders</span>
+                    <Package size={15} color="#FFFFFF" />
+                    <span style={{ color: '#FFFFFF', fontWeight: 700 }}>View Orders</span>
                   </button>
                 </div>
               </div>
