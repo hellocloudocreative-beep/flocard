@@ -484,9 +484,10 @@ export default function ProfileEditorModal({
 
 
   // Save profile changes
-  const handleSave = (e) => {
+  const [isSavingProfile, setIsSavingProfile] = useState(false);
+  const handleSave = async (e) => {
     if (e) e.preventDefault();
-    if (!formData.name || !formData.slug) return;
+    if (!formData.name || !formData.slug || isSavingProfile) return;
 
     // Validate bank details if marked public
     if (formData.bankDetails?.isPublic && formData.bankDetails?.enabled) {
@@ -508,14 +509,19 @@ export default function ProfileEditorModal({
       }
     }
 
-    const saved = saveProfile(formData);
-    if (onSave) onSave(saved);
+    setIsSavingProfile(true);
+    try {
+      const saved = await saveProfile(formData);
+      if (onSave) onSave(saved);
 
-    setSaveSuccess(true);
-    setTimeout(() => {
-      setSaveSuccess(false);
-      if (onClose) onClose();
-    }, 1200);
+      setSaveSuccess(true);
+      setTimeout(() => {
+        setSaveSuccess(false);
+        if (onClose) onClose();
+      }, 1200);
+    } finally {
+      setIsSavingProfile(false);
+    }
   };
 
   const handleCopyLink = (slug) => {

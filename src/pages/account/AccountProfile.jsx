@@ -192,7 +192,7 @@ export default function AccountProfile() {
   };
 
   // Submit Profile Form
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
     const updated = {
       ...userProfile,
@@ -200,7 +200,7 @@ export default function AccountProfile() {
       slug: userProfile?.slug || 'alex',
       updatedAt: new Date().toISOString()
     };
-    saveProfile(updated);
+    await saveProfile(updated);
     setSavedSuccess(true);
     setTimeout(() => setSavedSuccess(false), 3500);
   };

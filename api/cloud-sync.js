@@ -157,48 +157,48 @@ export default async function handler(req, res) {
 
         // 1. Delete from Supabase Auth if UUID or by matching email
         if (id && uuidRegex.test(id)) {
-          await adminClient.auth.admin.deleteUser(id).catch(() => {});
+          try { await adminClient.auth.admin.deleteUser(id); } catch (_) {}
         } else if (email) {
           try {
             const { data: usersData } = await adminClient.auth.admin.listUsers();
             const matched = usersData?.users?.find(u => u.email && u.email.toLowerCase() === email.toLowerCase());
             if (matched?.id) {
-              await adminClient.auth.admin.deleteUser(matched.id).catch(() => {});
+              await adminClient.auth.admin.deleteUser(matched.id);
             }
           } catch (_) {}
         }
 
         // 2. Delete from profiles table by id, user_id, email, or slug
         if (id) {
-          await adminClient.from('profiles').delete().eq('id', id).catch(() => {});
-          await adminClient.from('profiles').delete().eq('user_id', id).catch(() => {});
+          try { await adminClient.from('profiles').delete().eq('id', id); } catch (_) {}
+          try { await adminClient.from('profiles').delete().eq('user_id', id); } catch (_) {}
         }
         if (email) {
-          await adminClient.from('profiles').delete().ilike('email', email).catch(() => {});
+          try { await adminClient.from('profiles').delete().ilike('email', email); } catch (_) {}
         }
         if (slug) {
-          await adminClient.from('profiles').delete().eq('slug', slug).catch(() => {});
+          try { await adminClient.from('profiles').delete().eq('slug', slug); } catch (_) {}
         }
 
         // 3. Purge orphaned card designs for this customer
         if (id) {
-          await adminClient.from('card_designs').delete().eq('user_id', id).catch(() => {});
+          try { await adminClient.from('card_designs').delete().eq('user_id', id); } catch (_) {}
         }
 
         // 4. Disassociate cards assigned to this customer so they return to stock
         if (id) {
-          await adminClient.from('nfc_cards').update({ customer_id: null, profile_slug: null, status: 'in_stock' }).eq('customer_id', id).catch(() => {});
+          try { await adminClient.from('nfc_cards').update({ customer_id: null, profile_slug: null, status: 'in_stock' }).eq('customer_id', id); } catch (_) {}
         }
         if (slug) {
-          await adminClient.from('nfc_cards').update({ customer_id: null, profile_slug: null, status: 'in_stock' }).eq('profile_slug', slug).catch(() => {});
+          try { await adminClient.from('nfc_cards').update({ customer_id: null, profile_slug: null, status: 'in_stock' }).eq('profile_slug', slug); } catch (_) {}
         }
 
         // 5. Purge customer orders
         if (id) {
-          await adminClient.from('orders').delete().eq('customer_id', id).catch(() => {});
+          try { await adminClient.from('orders').delete().eq('customer_id', id); } catch (_) {}
         }
         if (email) {
-          await adminClient.from('orders').delete().ilike('customer_email', email).catch(() => {});
+          try { await adminClient.from('orders').delete().ilike('customer_email', email); } catch (_) {}
         }
 
         return res.status(200).json({ success: true });
@@ -209,19 +209,19 @@ export default async function handler(req, res) {
         if (!id && !slug && !email) return res.status(400).json({ error: 'Missing profile identifier' });
 
         if (id) {
-          await adminClient.from('profiles').delete().eq('id', id).catch(() => {});
-          await adminClient.from('profiles').delete().eq('user_id', id).catch(() => {});
+          try { await adminClient.from('profiles').delete().eq('id', id); } catch (_) {}
+          try { await adminClient.from('profiles').delete().eq('user_id', id); } catch (_) {}
         }
         if (slug) {
-          await adminClient.from('profiles').delete().eq('slug', slug).catch(() => {});
+          try { await adminClient.from('profiles').delete().eq('slug', slug); } catch (_) {}
         }
         if (email) {
-          await adminClient.from('profiles').delete().ilike('email', email).catch(() => {});
+          try { await adminClient.from('profiles').delete().ilike('email', email); } catch (_) {}
         }
 
         // Also disassociate NFC cards pointing to this deleted profile
         if (slug) {
-          await adminClient.from('nfc_cards').update({ profile_slug: null }).eq('profile_slug', slug).catch(() => {});
+          try { await adminClient.from('nfc_cards').update({ profile_slug: null }).eq('profile_slug', slug); } catch (_) {}
         }
 
         return res.status(200).json({ success: true, message: 'Profile permanently deleted' });
@@ -231,10 +231,10 @@ export default async function handler(req, res) {
         const { id, cardCode } = body;
         if (!id && !cardCode) return res.status(400).json({ error: 'Missing card identifier' });
         if (id) {
-          await adminClient.from('nfc_cards').delete().eq('id', id).catch(() => {});
+          try { await adminClient.from('nfc_cards').delete().eq('id', id); } catch (_) {}
         }
         if (cardCode) {
-          await adminClient.from('nfc_cards').delete().eq('card_code', cardCode).catch(() => {});
+          try { await adminClient.from('nfc_cards').delete().eq('card_code', cardCode); } catch (_) {}
         }
         return res.status(200).json({ success: true });
       }
@@ -242,7 +242,7 @@ export default async function handler(req, res) {
       case 'deleteDesign': {
         const { id } = body;
         if (!id) return res.status(400).json({ error: 'Missing design identifier' });
-        await adminClient.from('card_designs').delete().eq('id', id).catch(() => {});
+        try { await adminClient.from('card_designs').delete().eq('id', id); } catch (_) {}
         return res.status(200).json({ success: true });
       }
 
@@ -250,18 +250,18 @@ export default async function handler(req, res) {
         const { id } = body;
         if (!id) return res.status(400).json({ error: 'Missing order identifier' });
         try {
-          await adminClient.from('orders').delete().or(`id.eq.${id},order_reference.eq.${id}`).catch(() => {});
-          await adminClient.from('card_designs').delete().eq('order_id', id).catch(() => {});
+          await adminClient.from('orders').delete().or(`id.eq.${id},order_reference.eq.${id}`);
+          await adminClient.from('card_designs').delete().eq('order_id', id);
         } catch (_) {}
         return res.status(200).json({ success: true });
       }
 
       case 'resetAllData': {
         try {
-          await adminClient.from('card_designs').delete().neq('id', '___preserve___').catch(() => {});
-          await adminClient.from('profiles').delete().neq('role', 'owner').catch(() => {});
-          await adminClient.from('orders').delete().neq('id', '___preserve___').catch(() => {});
-          await adminClient.from('nfc_cards').update({ customer_id: null, profile_slug: null, status: 'in_stock' }).neq('id', '___preserve___').catch(() => {});
+          await adminClient.from('card_designs').delete().neq('id', '___preserve___');
+          await adminClient.from('profiles').delete().neq('role', 'owner');
+          await adminClient.from('orders').delete().neq('id', '___preserve___');
+          await adminClient.from('nfc_cards').update({ customer_id: null, profile_slug: null, status: 'in_stock' }).neq('id', '___preserve___');
         } catch (_) {}
         return res.status(200).json({ success: true });
       }
@@ -269,6 +269,19 @@ export default async function handler(req, res) {
       case 'syncProfile': {
         const payload = body.profile;
         if (!payload) return res.status(400).json({ error: 'Missing profile' });
+
+        const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+        if (payload.id && !uuidRegex.test(payload.id)) {
+          delete payload.id;
+        }
+        if (payload.user_id && !uuidRegex.test(payload.user_id)) {
+          delete payload.user_id;
+        }
+        if (!payload.slug) {
+          payload.slug = `prof-${Date.now()}`;
+        }
+        payload.slug = String(payload.slug).trim().toLowerCase();
+
         let { error } = await adminClient.from('profiles').upsert(payload, { onConflict: 'slug' });
         if (error && error.code === '23503' && payload.user_id) {
           delete payload.user_id;
@@ -334,8 +347,20 @@ export default async function handler(req, res) {
           adminClient.from('profiles').select('*').order('created_at', { ascending: false }),
           adminClient.from('nfc_cards').select('*').order('created_at', { ascending: false }),
           adminClient.from('card_designs').select('*').order('created_at', { ascending: false }),
-          adminClient.from('orders').select('*').order('created_at', { ascending: false }).catch(() => ({ data: [] })),
-          adminClient.auth.admin.listUsers().catch(() => ({ data: { users: [] } }))
+          (async () => {
+            try {
+              return await adminClient.from('orders').select('*').order('created_at', { ascending: false });
+            } catch (_) {
+              return { data: [] };
+            }
+          })(),
+          (async () => {
+            try {
+              return await adminClient.auth.admin.listUsers();
+            } catch (_) {
+              return { data: { users: [] } };
+            }
+          })()
         ]);
 
         return res.status(200).json({

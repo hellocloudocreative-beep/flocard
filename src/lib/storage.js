@@ -1066,7 +1066,11 @@ export const StorageEngine = {
       const client = supabaseAdmin || supabase;
       if (!client) return;
 
-      const cleanSlug = (profile.slug || '').trim().toLowerCase();
+      const rawSlug = profile.slug || profile.name || `prof-${Date.now()}`;
+      const cleanSlug = String(rawSlug).trim().toLowerCase()
+        .replace(/[^a-z0-9_-]/g, '-')
+        .replace(/-+/g, '-')
+        .replace(/^-|-$/g, '') || `prof-${Date.now()}`;
       if (!cleanSlug) return;
 
       const cleanPortfolio = Array.isArray(profile.portfolio)
@@ -1137,23 +1141,35 @@ export const StorageEngine = {
       console.warn('[StorageSync] Supabase profile sync error:', err.message);
     }
   },
-  saveProfile: (profile) => {
+  saveProfile: async (profile) => {
     if (!profile) return null;
+    const rawSlug = profile.slug || profile.name || `prof-${Date.now()}`;
+    const cleanSlug = String(rawSlug).trim().toLowerCase()
+      .replace(/[^a-z0-9_-]/g, '-')
+      .replace(/-+/g, '-')
+      .replace(/^-|-$/g, '') || `prof-${Date.now()}`;
+    const normalizedProfile = { ...profile, slug: cleanSlug };
+
     const list = getLocal('profiles', INITIAL_PROFILES);
-    const index = list.findIndex(p => p.id === profile.id || (p.slug && profile.slug && p.slug.trim().toLowerCase() === profile.slug.trim().toLowerCase()));
+    const index = list.findIndex(p => p.id === normalizedProfile.id || (p.slug && p.slug.trim().toLowerCase() === cleanSlug));
     let saved;
+    const now = new Date().toISOString();
     if (index >= 0) {
-      list[index] = { ...list[index], ...profile, updatedAt: new Date().toISOString() };
+      list[index] = { ...list[index], ...normalizedProfile, slug: cleanSlug, updatedAt: now, _savedAt: Date.now() };
       saved = list[index];
     } else {
-      saved = { ...profile, id: profile.id || `prof_${Date.now()}`, createdAt: new Date().toISOString() };
+      saved = { ...normalizedProfile, slug: cleanSlug, id: normalizedProfile.id || `prof_${Date.now()}`, createdAt: now, updatedAt: now, _savedAt: Date.now() };
       list.unshift(saved);
     }
     setLocal('profiles', list);
-    StorageEngine.addAuditLog('Profile', `Profile updated for ${profile.name}`, 'You');
+    StorageEngine.addAuditLog('Profile', `Profile updated for ${saved.name}`, 'You');
 
-    // Asynchronously synchronize with Supabase cloud
-    StorageEngine.syncProfileToCloud(saved);
+    // Await synchronization with Supabase cloud
+    try {
+      await StorageEngine.syncProfileToCloud(saved);
+    } catch (err) {
+      console.warn('[StorageSync] syncProfileToCloud note:', err.message);
+    }
 
     // Broadcast update across windows & reactive hooks
     if (typeof window !== 'undefined') {
@@ -1213,14 +1229,14 @@ export const StorageEngine = {
       if (isSupabaseConfigured && (supabaseAdmin || supabase)) {
         const client = supabaseAdmin || supabase;
         if (targetId) {
-          await client.from('profiles').delete().eq('id', targetId).catch(() => {});
-          await client.from('profiles').delete().eq('user_id', targetId).catch(() => {});
+          try { await client.from('profiles').delete().eq('id', targetId); } catch (_) {}
+          try { await client.from('profiles').delete().eq('user_id', targetId); } catch (_) {}
         }
         if (targetSlug) {
-          await client.from('profiles').delete().eq('slug', targetSlug).catch(() => {});
+          try { await client.from('profiles').delete().eq('slug', targetSlug); } catch (_) {}
         }
         if (targetEmail) {
-          await client.from('profiles').delete().ilike('email', targetEmail).catch(() => {});
+          try { await client.from('profiles').delete().ilike('email', targetEmail); } catch (_) {}
         }
       }
     } catch (_) {}
@@ -1419,7 +1435,7 @@ export const StorageEngine = {
       const { supabase, supabaseAdmin, isSupabaseConfigured } = await import('./supabase.js');
       if (isSupabaseConfigured && (supabaseAdmin || supabase)) {
         const client = supabaseAdmin || supabase;
-        await client.from('nfc_cards').delete().or(`id.eq.${id},card_code.eq.${id}`).catch(() => {});
+        try { await client.from('nfc_cards').delete().or(`id.eq.${id},card_code.eq.${id}`); } catch (_) {}
       }
     } catch (_) {}
     return true;
@@ -1622,7 +1638,7 @@ export const StorageEngine = {
       const { supabase, supabaseAdmin, isSupabaseConfigured } = await import('./supabase.js');
       if (isSupabaseConfigured && (supabaseAdmin || supabase)) {
         const client = supabaseAdmin || supabase;
-        await client.from('card_designs').delete().eq('id', id).catch(() => {});
+        try { await client.from('card_designs').delete().eq('id', id); } catch (_) {}
       }
     } catch (_) {}
     return true;
@@ -2506,7 +2522,7 @@ export const StorageEngine = {
       const { supabase, supabaseAdmin, isSupabaseConfigured } = await import('./supabase.js');
       if (isSupabaseConfigured && (supabaseAdmin || supabase)) {
         const client = supabaseAdmin || supabase;
-        await client.from('orders').delete().or(`id.eq.${orderId},order_reference.eq.${orderId}`).catch(() => {});
+        try { await client.from('orders').delete().or(`id.eq.${orderId},order_reference.eq.${orderId}`); } catch (_) {}
       }
     } catch (_) {}
     return true;
@@ -3095,7 +3111,7 @@ export const StorageEngine = {
         updated_at: new Date().toISOString()
       };
 
-      await client.from('profiles').upsert(profilePayload, { onConflict: 'id' }).catch(() => {});
+      try { await client.from('profiles').upsert(profilePayload, { onConflict: 'id' }); } catch (_) {}
       return cust;
     } catch (err) {
       console.warn('[StorageSync] Supabase customer fallback note:', err.message);
@@ -3214,15 +3230,15 @@ export const StorageEngine = {
         const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
         if (targetId && uuidRegex.test(targetId)) {
           if (supabaseAdmin && supabaseAdmin.auth && supabaseAdmin.auth.admin) {
-            await supabaseAdmin.auth.admin.deleteUser(targetId).catch(() => {});
+            try { await supabaseAdmin.auth.admin.deleteUser(targetId); } catch (_) {}
           }
-          await client.from('profiles').delete().eq('id', targetId).catch(() => {});
+          try { await client.from('profiles').delete().eq('id', targetId); } catch (_) {}
         }
         if (targetEmail) {
-          await client.from('profiles').delete().ilike('email', targetEmail).catch(() => {});
+          try { await client.from('profiles').delete().ilike('email', targetEmail); } catch (_) {}
         }
         if (targetSlug) {
-          await client.from('profiles').delete().eq('slug', targetSlug).catch(() => {});
+          try { await client.from('profiles').delete().eq('slug', targetSlug); } catch (_) {}
         }
       }
     } catch (e) {

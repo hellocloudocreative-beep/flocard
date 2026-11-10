@@ -160,15 +160,21 @@ export function DataProvider({ children }) {
           });
         }
 
-        // If serverData is authoritative, replace local profiles with live cloud records (purging cross-device deletions)
-        let finalProfiles = mappedProfiles;
-        if (!serverData) {
-          // In offline fallback, keep local profiles that were not deleted
-          for (const lp of localProfiles) {
-            const lSlug = lp.slug?.toLowerCase().trim();
-            if (lSlug && !validSlugs.has(lSlug) && !deletedProfileSlugs.includes(lSlug)) {
-              finalProfiles.push(lp);
-            }
+        // Reconcile profiles: Live cloud records + any locally saved profiles not yet replicated
+        const finalProfiles = [...mappedProfiles];
+        const cloudSlugs = new Set(mappedProfiles.map(p => (p.slug || '').toLowerCase().trim()));
+        const cloudIds = new Set(mappedProfiles.map(p => p.id));
+
+        for (const lp of localProfiles) {
+          const lSlug = (lp.slug || '').toLowerCase().trim();
+          const isDeleted = (lp.id && (deletedCustIds.includes(lp.id) || deletedProfileIds.includes(lp.id))) ||
+                            (lSlug && (deletedProfileSlugs.includes(lSlug) || deletedProfileIds.includes(lSlug)));
+          if (isDeleted) continue;
+
+          // If this local profile is not yet in cloud data, keep it and ensure it syncs
+          if (lSlug && !cloudSlugs.has(lSlug) && (!lp.id || !cloudIds.has(lp.id))) {
+            finalProfiles.push(lp);
+            StorageEngine.syncProfileToCloud(lp);
           }
         }
 
@@ -523,10 +529,10 @@ export function DataProvider({ children }) {
     return res;
   };
 
-  const saveProfile = (profile) => {
-    const updated = StorageEngine.saveProfile(profile);
+  const saveProfile = async (profile) => {
+    const updated = await StorageEngine.saveProfile(profile);
     refreshAll();
-    syncCloudData();
+    await syncCloudData();
     return updated;
   };
 

@@ -915,10 +915,10 @@ export default function AdminDashboard({ initialTab = 'overview', initialOrderId
   };
 
   // Handle Create Profile
-  const handleCreateProfile = (e) => {
+  const handleCreateProfile = async (e) => {
     e.preventDefault();
     if (!newProfForm.name || !newProfForm.slug) return;
-    const created = saveProfile({
+    const created = await saveProfile({
       name: newProfForm.name,
       slug: newProfForm.slug.toLowerCase().replace(/[^a-z0-9_-]/g, ''),
       role: newProfForm.role || '',
@@ -1011,10 +1011,10 @@ export default function AdminDashboard({ initialTab = 'overview', initialOrderId
   };
 
   // Handle Edit/Save Profile
-  const handleUpdateProfile = (e) => {
+  const handleUpdateProfile = async (e) => {
     e.preventDefault();
     if (!editingProfile) return;
-    const saved = saveProfile(editingProfile);
+    const saved = await saveProfile(editingProfile);
     const targetSlug = saved?.slug || editingProfile.slug || 'alex';
     setEditingProfile(null);
     setFulfillmentToast({
