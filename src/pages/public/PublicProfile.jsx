@@ -325,44 +325,55 @@ export default function PublicProfile({ slug = 'alex' }) {
         boxSizing: 'border-box'
       }}
     >
-      {/* Top Floating CardNav (Seamless Overlay) */}
-      <div
+      {/* Top Navbar Header (Positioned above profile content with sticky glass effect) */}
+      <header
         style={{
           width: '100%',
-          maxWidth: '1360px',
-          padding: '16px 20px 0',
-          position: 'absolute',
+          display: 'flex',
+          justifyContent: 'center',
+          position: 'sticky',
           top: 0,
-          left: '50%',
-          transform: 'translateX(-50%)',
-          zIndex: 50,
-          boxSizing: 'border-box'
+          zIndex: 100,
+          padding: '12px 20px 8px',
+          boxSizing: 'border-box',
+          backdropFilter: 'blur(16px)',
+          WebkitBackdropFilter: 'blur(16px)',
+          background: isLight ? 'rgba(255, 255, 255, 0.75)' : 'rgba(8, 6, 13, 0.75)',
+          borderBottom: isLight ? '1px solid rgba(0, 0, 0, 0.06)' : '1px solid rgba(255, 255, 255, 0.06)'
         }}
       >
-        <CardNav
-          logo={
-            <img
-              src={isLight ? '/assets/logo-dark.png' : '/assets/logo-light.png'}
-              alt="FLOCARD"
-              style={{
-                height: '24px',
-                width: 'auto',
-                display: 'block',
-                objectFit: 'contain'
-              }}
-            />
-          }
-          logoAlt="FLOCARD"
-          logoHref="/"
-          items={navItems}
-          cta={{ label: 'Get FLOCARD', href: '/' }}
-          theme={isLight ? 'light' : 'dark'}
-          surface="glass"
-          accentColor={accentColor}
-          openOn="click"
-          cardEffect="rise"
-        />
-      </div>
+        <div
+          style={{
+            width: '100%',
+            maxWidth: '1360px',
+            boxSizing: 'border-box'
+          }}
+        >
+          <CardNav
+            logo={
+              <img
+                src={isLight ? '/assets/logo-dark.png' : '/assets/logo-light.png'}
+                alt="FLOCARD"
+                style={{
+                  height: '24px',
+                  width: 'auto',
+                  display: 'block',
+                  objectFit: 'contain'
+                }}
+              />
+            }
+            logoAlt="FLOCARD"
+            logoHref="/"
+            items={navItems}
+            cta={{ label: 'Get FLOCARD', href: '/' }}
+            theme={isLight ? 'light' : 'dark'}
+            surface="glass"
+            accentColor={accentColor}
+            openOn="click"
+            cardEffect="rise"
+          />
+        </div>
+      </header>
 
       {/* Full-Screen Continuous Digital Profile */}
       <FullScreenDigitalProfile

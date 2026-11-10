@@ -119,6 +119,14 @@ export default function FullScreenDigitalProfile({
     ];
   }, [resolvedLinks, p.website]);
 
+  // Banner visibility check
+  const hasBanner = Boolean(
+    secVis.banner !== false &&
+    p.banner &&
+    p.banner.enabled !== false &&
+    (p.banner.url || p.banner.type === 'gradient' || p.banner.type === 'color' || p.banner.type === 'video' || p.banner.type === 'image')
+  );
+
   return (
     <article
       className={`flocard-fullscreen-profile ${isLight ? 'theme-light' : 'theme-dark'}`}
@@ -139,7 +147,7 @@ export default function FullScreenDigitalProfile({
       {/* =========================================================================
           PART 1: DISCORD/FACEBOOK-STYLE COVER BANNER
           ========================================================================= */}
-      {secVis.banner !== false && (
+      {hasBanner && (
         <ProfileBanner
           banner={p.banner}
           accentColor={accentColor}
@@ -167,7 +175,7 @@ export default function FullScreenDigitalProfile({
         <header
           className="flocard-profile-header"
           style={{
-            marginTop: secVis.banner !== false ? '-64px' : '32px',
+            marginTop: hasBanner ? '-64px' : '28px',
             marginBottom: '40px',
             display: 'flex',
             flexDirection: 'column',
