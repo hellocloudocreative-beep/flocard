@@ -30,6 +30,20 @@ export default function AddCustomerModal({
   const [error, setError] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
 
+  // Clean form state every time modal is opened
+  React.useEffect(() => {
+    if (isOpen) {
+      setName('');
+      setPhone('');
+      setWhatsapp('');
+      setEmail('');
+      setCompany('');
+      setNotes('');
+      setError('');
+      setIsSubmitting(false);
+    }
+  }, [isOpen]);
+
   if (!isOpen) return null;
 
   const handleClose = () => {

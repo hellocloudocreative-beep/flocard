@@ -112,10 +112,7 @@ export function DataProvider({ children }) {
           if (!cpSlug) continue;
 
           const isDeleted = (cp.id && (deletedCustIds.includes(cp.id) || deletedProfileIds.includes(cp.id))) ||
-                            (cp.user_id && deletedCustIds.includes(cp.user_id)) ||
-                            (deletedProfileSlugs.includes(cpSlug) || deletedProfileIds.includes(cpSlug)) ||
-                            (cpName && (deletedCustNames.includes(cpName) || deletedProfileNames.includes(cpName))) ||
-                            (cpEmail && (deletedCustEmails.includes(cpEmail) || deletedProfileIds.includes(cpEmail)));
+                            (cp.user_id && deletedCustIds.includes(cp.user_id));
           if (isDeleted) continue;
 
           validSlugs.add(cpSlug);
@@ -162,7 +159,8 @@ export function DataProvider({ children }) {
             services: Array.isArray(cp.services) ? cp.services : [],
             portfolio: cleanPortfolio,
             vcard_enabled: cp.vcard_enabled !== false,
-            status: cp.status || 'active',
+            status: cp.status === 'draft' ? 'private' : (cp.status || 'active'),
+            isPrivate: cp.status === 'draft' || cp.status === 'suspended',
             views_count: cp.views_count || 0,
             save_count: cp.save_count || 0,
             banner: banner || { enabled: true, url: '/assets/hero-bg.jpg', zoom: 100, positionX: 50, positionY: 45 },
@@ -182,10 +180,8 @@ export function DataProvider({ children }) {
         for (const lp of localProfiles) {
           const lSlug = (lp.slug || '').toLowerCase().trim();
           const lpId = lp.id ? String(lp.id) : '';
-          const lpName = (lp.name || '').toLowerCase().trim();
           const isDeleted = (lpId && (deletedCustIds.includes(lpId) || deletedProfileIds.includes(lpId))) ||
-                            (lSlug && (deletedProfileSlugs.includes(lSlug) || deletedProfileIds.includes(lSlug))) ||
-                            (lpName && (deletedCustNames.includes(lpName) || deletedProfileNames.includes(lpName)));
+                            (lSlug && (deletedProfileSlugs.includes(lSlug) || deletedProfileIds.includes(lSlug)));
           if (isDeleted) continue;
 
           // If this local profile is not yet in cloud data and not deleted, keep it!
@@ -209,9 +205,7 @@ export function DataProvider({ children }) {
       for (const u of (cloudUsers || [])) {
         const uEmail = (u.email || '').toLowerCase().trim();
         const rawName = u.user_metadata?.name || u.user_metadata?.full_name || '';
-        const uName = rawName.toLowerCase().trim();
         if (!uEmail || deletedCustIds.includes(u.id) || deletedCustEmails.includes(uEmail)) continue;
-        if (uName && deletedCustNames.includes(uName)) continue;
         if (uEmail.includes('flocard.in') && u.user_metadata?.role === 'owner') continue;
 
         let cleanName = rawName.trim();
@@ -238,16 +232,14 @@ export function DataProvider({ children }) {
         });
       }
 
-      // Reconcile customers derived from digital profiles (ensures Altaf, Akhil, and all created profiles are synchronized as customers across all accounts)
+      // Reconcile customers derived from digital profiles (ensures all profiles created across any device are synchronized as customers)
       for (const cp of (cloudProfiles || [])) {
         const cpEmail = (cp.email || '').toLowerCase().trim();
         const cpSlug = (cp.slug || '').toLowerCase().trim();
         const cpName = (cp.name || '').trim();
-        const cpNameLower = cpName.toLowerCase();
         const cpId = cp.id ? String(cp.id).trim() : '';
 
-        if (deletedCustIds.includes(cpId) || deletedProfileIds.includes(cpId) || deletedProfileSlugs.includes(cpSlug)) continue;
-        if (cpNameLower && (deletedCustNames.includes(cpNameLower) || deletedProfileNames.includes(cpNameLower))) continue;
+        if (deletedCustIds.includes(cpId) || deletedProfileIds.includes(cpId)) continue;
         if (cpEmail && (deletedCustEmails.includes(cpEmail) || seenCustEmails.has(cpEmail))) {
           const existing = authoritativeCusts.find(c => c.email?.toLowerCase().trim() === cpEmail);
           if (existing) {
@@ -259,10 +251,8 @@ export function DataProvider({ children }) {
           continue;
         }
 
-        if (cpNameLower && seenCustNames.has(cpNameLower)) continue;
-
         let cleanDerivedName = cpName;
-        if (!cleanDerivedName || cleanDerivedName === cpSlug || /^[0-9a-f-]{12,}$/i.test(cleanDerivedName)) {
+        if (!cleanDerivedName || /^[0-9a-f-]{12,}$/i.test(cleanDerivedName)) {
           cleanDerivedName = cpSlug
             .replace(/-[0-9a-f]{4,8}$/i, '')
             .replace(/[_-]/g, ' ')
@@ -276,12 +266,13 @@ export function DataProvider({ children }) {
 
           authoritativeCusts.push({
             id: cpId || `cust_${cpSlug}`,
+            slug: cpSlug,
             name: cleanDerivedName,
             email: cpEmail || '',
             phone: cp.phone || '',
             company: cp.company || '',
             avatar: cp.avatar_url || '',
-            role: 'customer',
+            role: cp.role || 'customer',
             status: cp.status || 'active',
             joinedDate: (cp.created_at || '').split('T')[0] || new Date().toISOString().split('T')[0],
             totalCards: 0,
@@ -297,7 +288,6 @@ export function DataProvider({ children }) {
         const lcName = (lc.name || '').trim();
         const lcNameLower = lcName.toLowerCase();
         if (deletedCustIds.includes(lcId) || (lcEmail && deletedCustEmails.includes(lcEmail))) continue;
-        if (lcNameLower && deletedCustNames.includes(lcNameLower)) continue;
 
         if (lcEmail && seenCustEmails.has(lcEmail)) {
           const existing = authoritativeCusts.find(c => c.email?.toLowerCase().trim() === lcEmail);
@@ -311,7 +301,6 @@ export function DataProvider({ children }) {
           continue;
         }
 
-        if (lcNameLower && seenCustNames.has(lcNameLower)) continue;
         if (lcId && seenCustIds.has(lcId)) continue;
 
         if (lcEmail) seenCustEmails.add(lcEmail);
@@ -468,20 +457,31 @@ export function DataProvider({ children }) {
           if (cc.id) seenCardCodes.add(cc.id.toLowerCase());
 
           const rawStatus = (cc.status || 'in_stock').toLowerCase();
+          const cCodeNorm = (cc.card_code || cc.id || '').toLowerCase();
+          const existingLocal = localCards.find(c => (c.cardCode || '').toLowerCase() === cCodeNorm || c.id === cc.id);
+
+          const profSlug = cc.profile_slug || existingLocal?.profileSlug || null;
+          const matchedProfile = profSlug ? finalProfiles.find(p => (p.slug || '').toLowerCase().trim() === profSlug.toLowerCase().trim()) : null;
+          const matchedCust = authoritativeCusts.find(c => (matchedProfile && c.id === matchedProfile.id) || (profSlug && c.slug === profSlug));
+
+          const resolvedCustName = cc.customer_name || existingLocal?.customerName || matchedCust?.name || matchedProfile?.name || '';
+          const resolvedProfName = cc.profile_name || existingLocal?.profileName || matchedProfile?.name || profSlug || '';
+          const resolvedCustId = cc.customer_id || existingLocal?.customerId || matchedCust?.id || matchedProfile?.id || null;
+
           authoritativeCards.push({
             id: cc.id || cCode,
             cardCode: cc.card_code,
-            cardName: cc.card_name || `NFC Card ${cc.card_code}`,
-            chipType: cc.chip_type || 'NXP NTAG216 (888 Bytes)',
-            batch: cc.batch || 'Batch-A',
-            edition: cc.edition || 'purple',
-            customerId: cc.customer_id,
-            customerName: cc.customer_name,
-            profileSlug: cc.profile_slug,
-            profileName: cc.profile_name,
+            cardName: cc.card_name || existingLocal?.cardName || `NFC Card ${cc.card_code}`,
+            chipType: cc.chip_type || existingLocal?.chipType || 'NXP NTAG216 (888 Bytes)',
+            batch: cc.batch || existingLocal?.batch || 'Batch-A',
+            edition: cc.edition || existingLocal?.edition || 'purple',
+            customerId: resolvedCustId,
+            customerName: resolvedCustName,
+            profileSlug: profSlug,
+            profileName: resolvedProfName,
             status: rawStatus === 'revoked' ? 'disabled' : rawStatus,
-            tapCount: cc.tap_count || 0,
-            lastTapped: cc.last_tapped_at,
+            tapCount: cc.tap_count || existingLocal?.tapCount || 0,
+            lastTapped: cc.last_tapped_at || existingLocal?.lastTapped || null,
             updatedAt: cc.updated_at || cc.created_at
           });
         }
@@ -519,6 +519,14 @@ export function DataProvider({ children }) {
 
   // Real-time synchronization listeners across browser windows, tabs, and local dispatches
   useEffect(() => {
+    // Clean legacy poisonous name-based tombstones so new creations with common names are never hidden
+    if (typeof window !== 'undefined') {
+      try {
+        localStorage.removeItem('flocard_deleted_cust_names');
+        localStorage.removeItem('flocard_deleted_profile_names');
+      } catch (_) {}
+    }
+
     // Initial cloud fetch on mount
     syncCloudData();
 

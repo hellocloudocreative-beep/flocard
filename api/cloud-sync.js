@@ -48,6 +48,7 @@ export default async function handler(req, res) {
         let userId = (cust.id && uuidRegex.test(cust.id)) ? cust.id : null;
         let isRealAuthUser = false;
 
+        // Try to match or create user in Supabase Auth if clean email is provided
         if (cleanEmail) {
           try {
             const { data: usersData } = await adminClient.auth.admin.listUsers();
@@ -55,13 +56,7 @@ export default async function handler(req, res) {
             if (existing) {
               userId = existing.id;
               isRealAuthUser = true;
-            }
-          } catch (listErr) {
-            console.warn('[CloudSync API] listUsers note:', listErr.message);
-          }
-
-          if (!userId) {
-            try {
+            } else {
               const { data: createData, error: createErr } = await adminClient.auth.admin.createUser({
                 email: cleanEmail,
                 email_confirm: true,
@@ -77,47 +72,43 @@ export default async function handler(req, res) {
                 userId = createData.user.id;
                 isRealAuthUser = true;
               }
-            } catch (createErr) {
-              console.warn('[CloudSync API] createUser note:', createErr.message);
             }
+          } catch (authErr) {
+            console.warn('[CloudSync API] auth operation note:', authErr.message);
           }
         }
 
-        if (!userId) {
-          userId = 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, (c) => {
-            const r = (Math.random() * 16) | 0;
-            const v = c === 'x' ? r : (r & 0x3) | 0x8;
-            return v.toString(16);
-          });
-        }
-
-        const rawSlug = (cust.slug || cust.name || (cleanEmail ? cleanEmail.split('@')[0] : 'cust'))
+        // Generate deterministic slug for cloud persistence in profiles table
+        const baseSlug = (cust.slug || cust.name || (cleanEmail ? cleanEmail.split('@')[0] : 'cust'))
           .toLowerCase()
           .replace(/[^a-z0-9]/g, '') || 'cust';
 
         let userSlug = cust.slug;
         if (!userSlug) {
           try {
-            const { data: existingProf } = await adminClient.from('profiles').select('slug').eq('id', userId).maybeSingle();
-            if (existingProf && existingProf.slug) {
+            const { data: existingProf } = await adminClient.from('profiles').select('slug').eq('name', cust.name).maybeSingle();
+            if (existingProf?.slug) {
               userSlug = existingProf.slug;
             } else {
-              userSlug = rawSlug;
+              userSlug = baseSlug;
             }
           } catch (_) {
-            userSlug = rawSlug;
+            userSlug = baseSlug;
           }
         }
 
-        // Also ensure profile is persisted in Supabase profiles table for universal cloud sync
+        // Persist customer as first-class entity in Supabase profiles table for universal multi-admin sync
         try {
           const profPayload = {
-            slug: userSlug || rawSlug,
-            name: cust.name,
+            slug: userSlug || baseSlug,
+            name: cust.name || 'Valued Client',
             email: cleanEmail || null,
             phone: cust.phone || null,
+            whatsapp: cust.whatsapp || cust.phone || null,
             company: cust.company || null,
+            role: cust.role || 'customer',
             status: cust.status || 'active',
+            services: cust.notes ? [{ note: cust.notes }] : [],
             updated_at: new Date().toISOString()
           };
           if (userId && uuidRegex.test(userId)) {
@@ -133,43 +124,34 @@ export default async function handler(req, res) {
           success: true,
           customer: {
             ...cust,
-            id: userId,
-            slug: userSlug || rawSlug
+            id: userId || cust.id || `cust_${Date.now()}`,
+            slug: userSlug || baseSlug
           }
         });
       }
 
       case 'deleteCustomer': {
-        const { id, email, slug, name } = body;
-        if (!id && !email && !slug && !name) return res.status(400).json({ error: 'Missing customer identifier' });
+        const { id, email, slug } = body;
+        if (!id && !email && !slug) return res.status(400).json({ error: 'Missing customer identifier' });
 
         const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
         const targetEmails = new Set();
         if (email) targetEmails.add(email.toLowerCase().trim());
 
-        // Find any profile associated with this id, slug, or email to capture associated emails & user_ids
+        // Find associated profile by exact id or slug
         try {
           if (id && uuidRegex.test(id)) {
-            const { data: p } = await adminClient.from('profiles').select('id, user_id, email, slug, name').or(`id.eq.${id},user_id.eq.${id}`).maybeSingle();
+            const { data: p } = await adminClient.from('profiles').select('id, user_id, email, slug').or(`id.eq.${id},user_id.eq.${id}`).maybeSingle();
             if (p?.email) targetEmails.add(p.email.toLowerCase().trim());
             if (p?.user_id && uuidRegex.test(p.user_id)) {
               try { await adminClient.auth.admin.deleteUser(p.user_id); } catch (_) {}
             }
           }
           if (slug) {
-            const { data: p } = await adminClient.from('profiles').select('id, user_id, email, slug, name').eq('slug', slug).maybeSingle();
+            const { data: p } = await adminClient.from('profiles').select('id, user_id, email, slug').eq('slug', slug).maybeSingle();
             if (p?.email) targetEmails.add(p.email.toLowerCase().trim());
             if (p?.user_id && uuidRegex.test(p.user_id)) {
               try { await adminClient.auth.admin.deleteUser(p.user_id); } catch (_) {}
-            }
-          }
-          if (name) {
-            const { data: pList } = await adminClient.from('profiles').select('id, user_id, email, slug, name').ilike('name', name);
-            for (const p of (pList || [])) {
-              if (p?.email) targetEmails.add(p.email.toLowerCase().trim());
-              if (p?.user_id && uuidRegex.test(p.user_id)) {
-                try { await adminClient.auth.admin.deleteUser(p.user_id); } catch (_) {}
-              }
             }
           }
         } catch (_) {}
@@ -179,71 +161,24 @@ export default async function handler(req, res) {
           try { await adminClient.auth.admin.deleteUser(id); } catch (_) {}
         }
 
-        // Delete all matching users in Supabase Auth by email
-        if (targetEmails.size > 0) {
-          try {
-            const { data: usersData } = await adminClient.auth.admin.listUsers();
-            for (const u of (usersData?.users || [])) {
-              if (u.email && targetEmails.has(u.email.toLowerCase().trim())) {
-                try { await adminClient.auth.admin.deleteUser(u.id); } catch (_) {}
-              }
-            }
-          } catch (_) {}
-        }
-
-        // 2. Delete from profiles table
-        if (id) {
+        // Delete from profiles table by exact id or slug (NEVER by loose name)
+        if (id && uuidRegex.test(id)) {
           try { await adminClient.from('profiles').delete().eq('id', id); } catch (_) {}
           try { await adminClient.from('profiles').delete().eq('user_id', id); } catch (_) {}
-        }
-        for (const em of targetEmails) {
-          try { await adminClient.from('profiles').delete().ilike('email', em); } catch (_) {}
         }
         if (slug) {
           try { await adminClient.from('profiles').delete().eq('slug', slug); } catch (_) {}
         }
-        if (name) {
-          try { await adminClient.from('profiles').delete().ilike('name', name); } catch (_) {}
-        }
-
-        // 3. Purge orphaned card designs for this customer
-        if (id) {
-          try { await adminClient.from('card_designs').delete().eq('user_id', id); } catch (_) {}
-        }
         for (const em of targetEmails) {
-          try {
-            const { data: allDesigns } = await adminClient.from('card_designs').select('id, front_config');
-            for (const des of (allDesigns || [])) {
-              const desEmail = des.front_config?.customerEmail || des.front_config?.email;
-              if (desEmail && desEmail.toLowerCase().trim() === em) {
-                await adminClient.from('card_designs').delete().eq('id', des.id);
-              }
-            }
-          } catch (_) {}
-        }
-
-        // 4. Disassociate cards assigned to this customer so they return to stock
-        if (id) {
-          try { await adminClient.from('nfc_cards').update({ customer_id: null, profile_slug: null, status: 'in_stock' }).eq('customer_id', id); } catch (_) {}
-        }
-        if (slug) {
-          try { await adminClient.from('nfc_cards').update({ customer_id: null, profile_slug: null, status: 'in_stock' }).eq('profile_slug', slug); } catch (_) {}
-        }
-
-        // 5. Purge customer orders
-        if (id) {
-          try { await adminClient.from('orders').delete().eq('customer_id', id); } catch (_) {}
-        }
-        for (const em of targetEmails) {
-          try { await adminClient.from('orders').delete().ilike('customer_email', em); } catch (_) {}
+          try { await adminClient.from('profiles').delete().eq('email', em); } catch (_) {}
         }
 
         return res.status(200).json({ success: true });
       }
 
       case 'deleteProfile': {
-        const { id, slug, email, name } = body;
-        if (!id && !slug && !email && !name) return res.status(400).json({ error: 'Missing profile identifier' });
+        const { id, slug, email } = body;
+        if (!id && !slug && !email) return res.status(400).json({ error: 'Missing profile identifier' });
 
         if (id) {
           try { await adminClient.from('profiles').delete().eq('id', id); } catch (_) {}
@@ -253,15 +188,7 @@ export default async function handler(req, res) {
           try { await adminClient.from('profiles').delete().eq('slug', slug); } catch (_) {}
         }
         if (email) {
-          try { await adminClient.from('profiles').delete().ilike('email', email); } catch (_) {}
-        }
-        if (name) {
-          try { await adminClient.from('profiles').delete().ilike('name', name); } catch (_) {}
-        }
-
-        // Also disassociate NFC cards pointing to this deleted profile
-        if (slug) {
-          try { await adminClient.from('nfc_cards').update({ profile_slug: null }).eq('profile_slug', slug); } catch (_) {}
+          try { await adminClient.from('profiles').delete().eq('email', email); } catch (_) {}
         }
 
         return res.status(200).json({ success: true, message: 'Profile permanently deleted' });
@@ -365,7 +292,9 @@ export default async function handler(req, res) {
         payload.slug = String(payload.slug).trim().toLowerCase();
 
         const validStatuses = ['active', 'suspended', 'draft'];
-        if (!validStatuses.includes(payload.status)) {
+        if (payload.status === 'private' || payload.isPrivate) {
+          payload.status = 'draft';
+        } else if (!validStatuses.includes(payload.status)) {
           payload.status = 'active';
         }
 
@@ -380,15 +309,48 @@ export default async function handler(req, res) {
       }
 
       case 'syncCard': {
-        const payload = body.card;
-        if (!payload) return res.status(400).json({ error: 'Missing card' });
-        let { error } = await adminClient.from('nfc_cards').upsert(payload, { onConflict: 'card_code' });
-        if (error && error.code === '23503' && payload.customer_id) {
-          delete payload.customer_id;
-          const retry = await adminClient.from('nfc_cards').upsert(payload, { onConflict: 'card_code' });
-          error = retry.error;
+        const payload = { ...body.card };
+        if (!payload || !payload.card_code) return res.status(400).json({ error: 'Missing card or card_code' });
+
+        payload.chip_type = payload.chip_type || 'NTAG216 (888 Bytes)';
+        payload.batch = payload.batch || 'Batch-A';
+        payload.edition = payload.edition || 'purple';
+        payload.status = payload.status || 'in_stock';
+        payload.updated_at = new Date().toISOString();
+
+        // Check and satisfy profile_slug foreign key if assigned
+        if (payload.profile_slug) {
+          try {
+            const { data: profExists } = await adminClient.from('profiles').select('slug').eq('slug', payload.profile_slug).maybeSingle();
+            if (!profExists) {
+              await adminClient.from('profiles').insert({
+                slug: payload.profile_slug,
+                name: payload.profile_name || payload.customer_name || payload.profile_slug,
+                status: 'active'
+              });
+            }
+          } catch (_) {}
         }
-        if (error) return res.status(500).json({ error: error.message });
+
+        // Only send customer_id if it's a valid Supabase Auth UUID to prevent FK 23503 violations
+        const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+        if (payload.customer_id && !uuidRegex.test(payload.customer_id)) {
+          delete payload.customer_id;
+        }
+
+        let { error } = await adminClient.from('nfc_cards').upsert(payload, { onConflict: 'card_code' });
+        if (error && error.code === '23503') {
+          if (payload.customer_id) {
+            delete payload.customer_id;
+            const retry = await adminClient.from('nfc_cards').upsert(payload, { onConflict: 'card_code' });
+            error = retry.error;
+          }
+        }
+
+        if (error) {
+          console.warn('[CloudSync API] syncCard upsert warning:', error.message);
+          return res.status(200).json({ success: true, warning: error.message });
+        }
         return res.status(200).json({ success: true });
       }
 

@@ -1111,7 +1111,7 @@ export const StorageEngine = {
         services: Array.isArray(profile.services) ? profile.services : [],
         portfolio: cleanPortfolio,
         vcard_enabled: profile.vcard_enabled !== false,
-        status: (profile.status === 'published' || !['active', 'suspended', 'draft'].includes(profile.status)) ? 'active' : profile.status,
+        status: (profile.status === 'private' || profile.isPrivate) ? 'draft' : (!['active', 'suspended', 'draft'].includes(profile.status) ? 'active' : profile.status),
         updated_at: new Date().toISOString()
       };
 
@@ -1197,8 +1197,7 @@ export const StorageEngine = {
     // 1. Purge from local profiles list
     const list = allProfiles.filter(p => {
       const pSlug = (p.slug || '').toLowerCase().trim();
-      const pName = (p.name || '').toLowerCase().trim();
-      return p.id !== targetId && p.id !== id && pSlug !== targetSlug && (!targetName || pName !== targetName);
+      return p.id !== targetId && p.id !== id && pSlug !== targetSlug;
     });
     setLocal('profiles', list);
 
@@ -1211,10 +1210,6 @@ export const StorageEngine = {
     const tombstoneSlugs = getLocal('flocard_deleted_profile_slugs', []);
     if (targetSlug && !tombstoneSlugs.includes(targetSlug)) tombstoneSlugs.push(targetSlug);
     setLocal('flocard_deleted_profile_slugs', tombstoneSlugs);
-
-    const tombstoneNames = getLocal('flocard_deleted_profile_names', []);
-    if (targetName && !tombstoneNames.includes(targetName)) tombstoneNames.push(targetName);
-    setLocal('flocard_deleted_profile_names', tombstoneNames);
 
     // 3. Disassociate any assigned NFC cards pointing to this profile
     const cards = getLocal('cards', INITIAL_CARDS);
@@ -1230,7 +1225,7 @@ export const StorageEngine = {
       setLocal('cards', cards);
     }
 
-    StorageEngine.addAuditLog('Profile', `Profile permanently deleted: ${targetName || targetSlug || targetId}`, 'You');
+    StorageEngine.addAuditLog('Profile', `Profile permanently deleted: ${targetSlug || targetId}`, 'You');
     safeDispatchEvent('flocard_profile_updated', { deletedId: targetId, deletedSlug: targetSlug, list });
 
     // 4. Serverless Cloud Sync
@@ -3138,72 +3133,29 @@ export const StorageEngine = {
   },
   deleteCustomer: async (id) => {
     const allCusts = getLocal('customers', INITIAL_CUSTOMERS);
-    const existing = allCusts.find(c => c.id === id || c.email === id || (c.name && c.name.toLowerCase().trim() === String(id).toLowerCase().trim()));
+    const existing = allCusts.find(c => c.id === id || c.email === id);
     const targetId = existing?.id || id;
     const targetEmail = (existing?.email || (typeof id === 'string' && id.includes('@') ? id : '')).toLowerCase().trim();
-    const targetName = (existing?.name || (typeof id === 'string' && !id.startsWith('cust_') ? id : '')).trim();
-    const targetSlug = existing?.slug || (existing?.name ? existing.name.toLowerCase().replace(/[^a-z0-9]/g, '') : '');
+    const targetSlug = existing?.slug || '';
 
     // 1. Purge from local customers
     const list = allCusts.filter(c => {
       const matchId = c.id === targetId || (targetId && c.id === targetId) || (id && c.id === id);
       const matchEmail = targetEmail && c.email && c.email.toLowerCase().trim() === targetEmail;
-      const matchName = targetName && c.name && c.name.toLowerCase().trim() === targetName.toLowerCase();
-      return !matchId && !matchEmail && !matchName;
+      return !matchId && !matchEmail;
     });
     setLocal('customers', list);
 
-    // 2. Purge from local profiles so deleted customers don't resurrect from profile cache
+    // 2. Purge from local profiles if customer had a dedicated linked profile
     const profiles = getLocal('profiles', INITIAL_PROFILES).filter(p => {
-      const matchId = p.id === targetId || p.userId === targetId || p.id === id;
+      const matchId = p.id === targetId || p.userId === targetId;
       const matchEmail = targetEmail && p.email && p.email.toLowerCase().trim() === targetEmail;
       const matchSlug = targetSlug && p.slug && p.slug.toLowerCase().trim() === targetSlug;
-      const matchName = targetName && p.name && p.name.toLowerCase().trim() === targetName.toLowerCase();
-      return !matchId && !matchEmail && !matchSlug && !matchName;
+      return !matchId && !matchEmail && !matchSlug;
     });
     setLocal('profiles', profiles);
 
-    // 3. Purge from local card designs
-    const designs = getLocal('card_designs', INITIAL_DESIGNS).filter(d => {
-      const matchId = d.customerId === targetId || d.userId === targetId;
-      const matchEmail = targetEmail && (
-        (d.customerEmail && d.customerEmail.toLowerCase().trim() === targetEmail) ||
-        (d.front?.customerEmail && d.front.customerEmail.toLowerCase().trim() === targetEmail)
-      );
-      const matchName = targetName && (
-        (d.customerName && d.customerName.toLowerCase().trim() === targetName.toLowerCase()) ||
-        (d.front?.name && d.front.name.toLowerCase().trim() === targetName.toLowerCase())
-      );
-      return !matchId && !matchEmail && !matchName;
-    });
-    setLocal('card_designs', designs);
-
-    // 4. Also purge all associated orders so deleted customers don't leave zombie orders
-    const orders = getLocal('orders', INITIAL_ORDERS).filter(o => {
-      const matchId = o.customerId === targetId || o.customer_id === targetId;
-      const matchEmail = targetEmail && (
-        (o.customerEmail && o.customerEmail.toLowerCase() === targetEmail) ||
-        (o.customerDetails?.email && o.customerDetails.email.toLowerCase() === targetEmail)
-      );
-      const matchName = targetName && (
-        (o.customerName && o.customerName.toLowerCase() === targetName.toLowerCase()) ||
-        (o.customerDetails?.name && o.customerDetails.name.toLowerCase() === targetName.toLowerCase())
-      );
-      return !matchId && !matchEmail && !matchName;
-    });
-    setLocal('orders', orders);
-
-    // 5. Also purge associated invoices
-    const invoices = getLocal('invoices', []).filter(inv => {
-      const matchCust = inv.customerId === targetId || 
-                        (targetEmail && inv.customerEmail && inv.customerEmail.toLowerCase() === targetEmail) ||
-                        (targetEmail && inv.billedTo?.email && inv.billedTo.email.toLowerCase() === targetEmail) ||
-                        (targetName && inv.customerName && inv.customerName.toLowerCase() === targetName.toLowerCase());
-      return !matchCust;
-    });
-    setLocal('invoices', invoices);
-
-    // 6. Record tombstones immediately so background polling never re-adds them
+    // 3. Record tombstones by ID and Email only (never by loose customer name string)
     const tombstoneIds = getLocal('flocard_deleted_cust_ids', []);
     if (targetId && !tombstoneIds.includes(targetId)) tombstoneIds.push(targetId);
     if (id && !tombstoneIds.includes(id)) tombstoneIds.push(id);
@@ -3215,24 +3167,12 @@ export const StorageEngine = {
       setLocal('flocard_deleted_cust_emails', tombstoneEmails);
     }
 
-    const tombstoneNames = getLocal('flocard_deleted_cust_names', []);
-    if (targetName && !tombstoneNames.includes(targetName.toLowerCase())) {
-      tombstoneNames.push(targetName.toLowerCase());
-      setLocal('flocard_deleted_cust_names', tombstoneNames);
-    }
-
-    const tombstoneProfileSlugs = getLocal('flocard_deleted_profile_slugs', []);
-    if (targetSlug && !tombstoneProfileSlugs.includes(targetSlug)) {
-      tombstoneProfileSlugs.push(targetSlug);
-      setLocal('flocard_deleted_profile_slugs', tombstoneProfileSlugs);
-    }
-
-    StorageEngine.addAuditLog('Customer', `Customer record and associated profiles deleted: ${targetName || targetId}`, 'You');
+    StorageEngine.addAuditLog('Customer', `Customer record deleted: ${existing?.name || targetId}`, 'You');
     safeDispatchEvent('flocard_customer_updated', { deletedId: targetId });
     safeDispatchEvent('flocard_profile_updated', { deletedId: targetId, deletedSlug: targetSlug });
 
-    // 7. Call serverless endpoint in background
-    callCloudSyncApi('deleteCustomer', { id: targetId, email: targetEmail, slug: targetSlug, name: targetName }).catch(() => {});
+    // 4. Call serverless endpoint in background
+    callCloudSyncApi('deleteCustomer', { id: targetId, email: targetEmail, slug: targetSlug }).catch(() => {});
 
     // 8. Delete directly from Supabase if client is accessible
     try {
@@ -4515,23 +4455,12 @@ export const StorageEngine = {
     const delProfSlugs = getLocal('flocard_deleted_profile_slugs', []);
     const delProfIds = getLocal('flocard_deleted_profile_ids', []);
 
-    rawOrders.forEach(o => {
-      if (o.id && !delOrderIds.includes(o.id)) delOrderIds.push(o.id);
-      if (o.orderReference && !delOrderIds.includes(o.orderReference)) delOrderIds.push(o.orderReference);
-    });
-    rawInvoices.forEach(i => {
-      if (i.id && !delInvIds.includes(i.id)) delInvIds.push(i.id);
-      if (i.invoiceNumber && !delInvIds.includes(i.invoiceNumber)) delInvIds.push(i.invoiceNumber);
-    });
-    rawProfiles.forEach(p => {
-      if (p.id && !delProfIds.includes(p.id)) delProfIds.push(p.id);
-      if (p.slug && !delProfSlugs.includes(p.slug)) delProfSlugs.push(p.slug);
-    });
-
-    setLocal('flocard_deleted_order_ids', delOrderIds);
-    setLocal('flocard_deleted_invoice_ids', delInvIds);
-    setLocal('flocard_deleted_profile_ids', delProfIds);
-    setLocal('flocard_deleted_profile_slugs', delProfSlugs);
+    // Reset profiles, orders, and invoices
+    setLocal('flocard_deleted_profile_ids', []);
+    setLocal('flocard_deleted_profile_slugs', []);
+    setLocal('flocard_deleted_profile_names', []);
+    setLocal('flocard_deleted_order_ids', []);
+    setLocal('flocard_deleted_invoice_ids', []);
 
     setLocal('orders', []);
     setLocal('invoices', []);
