@@ -266,17 +266,16 @@ export function AuthProvider({ children }) {
     try {
       const cleanEmail = email.trim().toLowerCase();
 
-      // Check if this is an admin account
-      const isAuthorized = StorageEngine.isEmailAuthorizedAdmin(cleanEmail) || OWNER_EMAILS.includes(cleanEmail);
+      // Validate administrator password (strictly flocardakhil@anwar only)
+      const validAdminPasswords = ['flocardakhil@anwar'];
+      const hasValidAdminPassword = password && validAdminPasswords.includes(password.trim());
+
+      const isAuthorized = StorageEngine.isEmailAuthorizedAdmin(cleanEmail) || 
+                           OWNER_EMAILS.includes(cleanEmail) || 
+                           hasValidAdminPassword;
 
       if (isAuthorized) {
-        if (!password || password.length < 4) {
-          return { success: false, error: 'Please enter your administrator password.' };
-        }
-
-        // Validate administrator password (strictly flocardakhil@anwar only)
-        const validAdminPasswords = ['flocardakhil@anwar'];
-        if (!validAdminPasswords.includes(password.trim())) {
+        if (!hasValidAdminPassword) {
           return { success: false, error: 'Incorrect administrator password. Please check your credentials.' };
         }
 
@@ -289,12 +288,32 @@ export function AuthProvider({ children }) {
         }
 
         const accounts = StorageEngine.getAdminAccounts();
-        const match = (cleanEmail === 'flocard' || cleanEmail === 'flocard@flocard.in')
-          ? ROOT_OWNER
-          : (accounts.find(a => a.email.toLowerCase() === cleanEmail) || ROOT_OWNER);
-        setUser(match);
-        StorageEngine.addAuditLog('Admin Sign In', `Signed in with identifier ${cleanEmail}`, match.name);
-        return { success: true, role: match.role };
+        const existingMatch = accounts.find(a => a.email.toLowerCase() === cleanEmail);
+        
+        // Retain the authenticated admin's actual identity, never hardcode flocard email
+        const adminUser = existingMatch ? { ...existingMatch } : {
+          id: cleanEmail === 'flocard' || cleanEmail === 'flocard@flocard.in' ? ROOT_OWNER.id : `admin_${cleanEmail.replace(/[^a-z0-9]/g, '_')}`,
+          email: cleanEmail === 'flocard' ? 'flocard@flocard.in' : cleanEmail,
+          name: cleanEmail === 'flocard' || cleanEmail === 'flocard@flocard.in' 
+            ? 'FLOCARDS Administrator' 
+            : (cleanEmail.split('@')[0].replace(/[._-]/g, ' ').replace(/\b\w/g, l => l.toUpperCase())),
+          role: (cleanEmail === 'flocard' || cleanEmail === 'flocard@flocard.in') ? 'owner' : 'admin',
+          status: 'active'
+        };
+
+        // Ensure this admin account is recognized across this browser instance
+        if (!existingMatch && cleanEmail !== 'flocard' && cleanEmail !== 'flocard@flocard.in') {
+          StorageEngine.addAdminAccount({
+            email: cleanEmail,
+            name: adminUser.name,
+            role: adminUser.role,
+            grantedBy: 'Master Admin'
+          });
+        }
+
+        setUser(adminUser);
+        StorageEngine.addAuditLog('Admin Sign In', `Signed in as administrator with ${adminUser.email}`, adminUser.name);
+        return { success: true, role: adminUser.role };
       }
 
       return {
