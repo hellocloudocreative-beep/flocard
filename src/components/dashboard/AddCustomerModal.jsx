@@ -32,6 +32,18 @@ export default function AddCustomerModal({
 
   if (!isOpen) return null;
 
+  const handleClose = () => {
+    setName('');
+    setPhone('');
+    setWhatsapp('');
+    setEmail('');
+    setCompany('');
+    setNotes('');
+    setError('');
+    setIsSubmitting(false);
+    onClose();
+  };
+
   const handleSubmit = async (e) => {
     e.preventDefault();
     setError('');
@@ -78,16 +90,9 @@ export default function AddCustomerModal({
       };
 
       await onSaveCustomer(newCust);
-      onClose();
-      // Reset form
-      setName('');
-      setPhone('');
-      setWhatsapp('');
-      setEmail('');
-      setCompany('');
-      setNotes('');
+      handleClose();
     } catch (err) {
-      setError(err.message || 'Failed to create customer record in database.');
+      setError(err.message || 'Failed to create customer record.');
     } finally {
       setIsSubmitting(false);
     }
@@ -120,7 +125,7 @@ export default function AddCustomerModal({
         overflowY: 'auto'
       }}
       onClick={(e) => {
-        if (e.target === e.currentTarget) onClose();
+        if (e.target === e.currentTarget) handleClose();
       }}
     >
       <div
@@ -174,7 +179,7 @@ export default function AddCustomerModal({
 
           <button
             type="button"
-            onClick={onClose}
+            onClick={handleClose}
             style={{
               background: 'none',
               border: 'none',
@@ -366,7 +371,7 @@ export default function AddCustomerModal({
           <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '10px', marginTop: '10px' }}>
             <button
               type="button"
-              onClick={onClose}
+              onClick={handleClose}
               style={{
                 padding: '10px 18px',
                 borderRadius: '10px',

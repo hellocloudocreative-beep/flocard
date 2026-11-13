@@ -132,86 +132,14 @@ export const DEFAULT_ROLE_PERMISSIONS = {
   ]
 };
 
-// Check if user has a specific permission
+// Check if user has a specific permission (Unified Admin Dashboard: All features enabled for all admin users)
 export function hasPermission(user, permissionId) {
   if (!user) return false;
-
-  const role = (user.role || 'customer').toLowerCase();
-  const email = (user.email || '').toLowerCase().trim();
-
-  // Root Owner bypasses all checks (Owner has full authority)
-  const isSuperOwner = role === 'owner' ||
-    email === 'flocard' ||
-    email === 'flocard@flocard.in' ||
-    email === 'hello.flocard@gmail.com' ||
-    email === 'admin@flocard.in';
-
-  if (isSuperOwner) return true;
-
-  // Audit and staff management strictly forbidden for non-owners regardless of overrides
-  if ((permissionId === 'audit.read' || permissionId === 'audit.export' || permissionId === 'staff.manage') && !isSuperOwner) {
-    return false;
-  }
-
-  // Check custom permission overrides if present on user object
-  if (user.customPermissions && Array.isArray(user.customPermissions)) {
-    if (user.customPermissions.includes(permissionId)) return true;
-  }
-
-  // Fallback to role defaults
-  const roleDefaults = DEFAULT_ROLE_PERMISSIONS[role] || [];
-  return roleDefaults.includes(permissionId);
+  return true;
 }
 
-// Check which tabs a staff user is permitted to access
+// Check which tabs a staff user is permitted to access (Unified Admin: Full visibility across all sections)
 export function canAccessTab(user, tabId) {
   if (!user) return false;
-
-  const role = (user.role || 'customer').toLowerCase();
-  const isOwner = role === 'owner' ||
-    ['flocard', 'flocard@flocard.in', 'hello.flocard@gmail.com', 'admin@flocard.in'].includes(user?.email?.toLowerCase()?.trim());
-
-  if (isOwner) return true;
-
-  // Strict owner-only tabs
-  if (tabId === 'audit-logs' || tabId === 'admin-access') {
-    return false;
-  }
-
-  switch (tabId) {
-    case 'overview':
-      return true; // All staff roles can see dashboard overview
-    case 'orders':
-      return hasPermission(user, 'orders.read');
-    case 'studio':
-      return hasPermission(user, 'designs.create');
-    case 'designs':
-      return hasPermission(user, 'designs.read');
-    case 'sales':
-      return hasPermission(user, 'finance.read');
-    case 'invoices':
-      return hasPermission(user, 'finance.read') || isOwner || role === 'admin' || role === 'accounts';
-    case 'product-sales':
-      return hasPermission(user, 'finance.read');
-    case 'customers':
-      return hasPermission(user, 'customers.read');
-    case 'profiles':
-      return isOwner || role === 'admin' || role === 'designer';
-    case 'appointments':
-      return isOwner || role === 'admin' || role === 'sales' || role === 'designer';
-    case 'cards':
-      return hasPermission(user, 'nfc.read');
-    case 'pricing':
-      return isOwner || role === 'admin' || role === 'sales';
-    case 'templates':
-      return hasPermission(user, 'designs.read');
-    case 'analytics':
-      return isOwner || role === 'admin' || role === 'sales' || role === 'accounts';
-    case 'qr':
-      return hasPermission(user, 'qr.read');
-    case 'settings':
-      return hasPermission(user, 'settings.manage');
-    default:
-      return false;
-  }
+  return true;
 }

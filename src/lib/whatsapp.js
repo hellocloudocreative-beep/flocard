@@ -469,4 +469,111 @@ export function getManualCustomerWhatsAppUrl(customerOrOrder, customText = '') {
   return `https://wa.me/${fullNumber}?text=${encodeURIComponent(message)}`;
 }
 
+/**
+ * Generate standard UPI deep-link URL (RFC-compliant upi://pay URI) for an order
+ * Prefills the exact order amount so scanning or clicking pre-fills ₹2000 (or exact amount)
+ */
+export function getOrderUpiPaymentUrl(order, customUpiId = null) {
+  if (!order) return '';
+  let upiId = customUpiId || order.upiId || order.paymentConfig?.upiId;
+  if (!upiId) {
+    try {
+      const stored = localStorage.getItem('flocard_invoice_settings');
+      if (stored) {
+        const parsed = JSON.parse(stored);
+        if (parsed.upiId) upiId = parsed.upiId;
+      }
+    } catch (_) {}
+  }
+  if (!upiId) upiId = 'flocard@hdfcbank';
+
+  const rawAmount = Number(order.totalAmount || order.total_amount || order.pricing?.totalPayable || order.pricing?.total || order.unitPrice || 2000);
+  const amount = isNaN(rawAmount) || rawAmount <= 0 ? 2000 : rawAmount;
+  const orderRef = order.orderReference || order.id || 'FLOCARD-ORDER';
+  const merchantName = 'FLOCARDS';
+
+  const params = new URLSearchParams();
+  params.set('pa', upiId.trim());
+  params.set('pn', merchantName);
+  params.set('cu', 'INR');
+  params.set('am', amount.toFixed(2));
+  params.set('tn', `Payment for FLOCARD Order ${orderRef}`);
+
+  return `upi://pay?${params.toString()}`;
+}
+
+/**
+ * Generate formatted WhatsApp message containing order details and Google Pay payment link.
+ * STRICT REQUIREMENT: Does NOT send card link, does NOT send QR code image.
+ * Sends direct Google Pay / UPI payment deep link with exact amount prefilled!
+ */
+export function getOrderWhatsAppPaymentMessage(order, customUpiId = null) {
+  if (!order) return '';
+
+  const customerName =
+    order.customerName ||
+    order.name ||
+    order.customerDetails?.name ||
+    'there';
+
+  const orderRef = order.orderReference || order.id || 'FLOCARD-ORDER';
+  const rawAmount = Number(order.totalAmount || order.total_amount || order.pricing?.totalPayable || order.pricing?.total || order.unitPrice || 2000);
+  const amount = isNaN(rawAmount) || rawAmount <= 0 ? 2000 : rawAmount;
+  const formattedAmount = amount.toLocaleString('en-IN');
+
+  const edition = order.edition
+    ? `${String(order.edition).toUpperCase()} Edition`
+    : (order.productName || 'FLOCARD NFC Smart Card');
+
+  let upiId = customUpiId || order.upiId || order.paymentConfig?.upiId;
+  if (!upiId) {
+    try {
+      const stored = localStorage.getItem('flocard_invoice_settings');
+      if (stored) {
+        const parsed = JSON.parse(stored);
+        if (parsed.upiId) upiId = parsed.upiId;
+      }
+    } catch (_) {}
+  }
+  if (!upiId) upiId = 'flocard@hdfcbank';
+
+  const upiPayUrl = getOrderUpiPaymentUrl(order, upiId);
+
+  return (
+    `Hello ${customerName}! ✨\n\n` +
+    `Here are your FLOCARDS order details and instant payment link:\n\n` +
+    `📦 *Order Reference:* ${orderRef}\n` +
+    `🎴 *Product:* ${edition}\n` +
+    `💰 *Total Amount Due:* ₹${formattedAmount}\n\n` +
+    `👉 *Google Pay / UPI Payment Link:*\n${upiPayUrl}\n\n` +
+    `*Payee UPI ID:* ${upiId}\n\n` +
+    `_Tap the Google Pay link above on your phone to open Google Pay, PhonePe, or Paytm with the ₹${formattedAmount} amount already filled, or transfer directly to our UPI ID *${upiId}*._\n\n` +
+    `— Team FLOCARDS\nhttps://flocard.in`
+  );
+}
+
+/**
+ * Generate click-to-chat WhatsApp URL with prefilled Order Details & Google Pay payment link
+ */
+export function getOrderWhatsAppPaymentDetailsUrl(order, customUpiId = null) {
+  if (!order) return null;
+  const rawNumber =
+    order.whatsapp ||
+    order.whatsappNumber ||
+    order.phone ||
+    order.customerPhone ||
+    order.customerDetails?.phone ||
+    order.customerDetails?.whatsapp ||
+    '';
+
+  const clean = String(rawNumber).replace(/[^0-9]/g, '');
+  if (!clean || clean.length < 8) return null;
+
+  const fullNumber = clean.length === 10 ? `91${clean}` : clean;
+  const message = getOrderWhatsAppPaymentMessage(order, customUpiId);
+
+  return `https://wa.me/${fullNumber}?text=${encodeURIComponent(message)}`;
+}
+
+
 

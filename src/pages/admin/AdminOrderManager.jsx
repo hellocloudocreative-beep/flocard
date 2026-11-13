@@ -39,7 +39,8 @@ import {
   Users,
   Receipt,
   CreditCard,
-  Edit3
+  Edit3,
+  QrCode
 } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 import { useData } from '../../context/DataContext';
@@ -52,6 +53,7 @@ import OrderPrintDownloadsPanel from '../../components/admin/OrderPrintDownloads
 import { uploadImage } from '../../lib/uploadImage';
 import { queueWhatsAppNotification, getWhatsAppOutbox, retryWhatsAppMessage } from '../../lib/whatsapp';
 import WhatsAppContactButton from '../../components/dashboard/WhatsAppContactButton';
+import PaymentQrModal from '../../components/dashboard/PaymentQrModal';
 
 export default function AdminOrderManager({ initialOrderId = null }) {
   const { user } = useAuth();
@@ -84,6 +86,7 @@ export default function AdminOrderManager({ initialOrderId = null }) {
   const [statusFilter, setStatusFilter] = useState('all');
   const [sourceFilter, setSourceFilter] = useState('all'); // 'all' | 'whatsapp' | 'website'
   const [selectedOrder, setSelectedOrder] = useState(null);
+  const [paymentQrOrder, setPaymentQrOrder] = useState(null);
   const [isUpdateModalOpen, setIsUpdateModalOpen] = useState(false);
   const [isAddOrderModalOpen, setIsAddOrderModalOpen] = useState(false);
   const [addOrderError, setAddOrderError] = useState('');
@@ -1180,7 +1183,41 @@ export default function AdminOrderManager({ initialOrderId = null }) {
                       {/* Actions Toolbar (Unified Inline Action Group) */}
                       <td style={{ padding: '14px 14px', textAlign: 'right', verticalAlign: 'middle', whiteSpace: 'nowrap' }}>
                         <div style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'flex-end', gap: '6px' }}>
-                          <WhatsAppContactButton customerOrOrder={order} size="sm" />
+                          <WhatsAppContactButton
+                            customerOrOrder={order}
+                            size="sm"
+                            onOpenPaymentQr={(ord) => setPaymentQrOrder(ord)}
+                          />
+                          <button
+                            type="button"
+                            onClick={() => setPaymentQrOrder(order)}
+                            title={`View ₹${Number(order.totalAmount || order.total_amount || 2000).toLocaleString('en-IN')} Dynamic UPI Payment QR Code`}
+                            style={{
+                              display: 'inline-flex',
+                              alignItems: 'center',
+                              gap: '4px',
+                              padding: '5px 10px',
+                              borderRadius: '8px',
+                              backgroundColor: isLight ? 'rgba(107, 0, 255, 0.08)' : 'rgba(107, 0, 255, 0.2)',
+                              border: '1px solid rgba(107, 0, 255, 0.35)',
+                              color: isLight ? '#6B00FF' : '#C084FC',
+                              fontSize: '0.74rem',
+                              fontWeight: 700,
+                              cursor: 'pointer',
+                              transition: 'all 0.15s ease'
+                            }}
+                            onMouseEnter={e => {
+                              e.currentTarget.style.backgroundColor = isLight ? 'rgba(107, 0, 255, 0.18)' : 'rgba(107, 0, 255, 0.32)';
+                              e.currentTarget.style.transform = 'translateY(-1px)';
+                            }}
+                            onMouseLeave={e => {
+                              e.currentTarget.style.backgroundColor = isLight ? 'rgba(107, 0, 255, 0.08)' : 'rgba(107, 0, 255, 0.2)';
+                              e.currentTarget.style.transform = 'none';
+                            }}
+                          >
+                            <QrCode size={12} />
+                            <span>Payment QR</span>
+                          </button>
                           <a
                             href={`/admin?tab=studio&orderId=${order.id || order.orderReference}`}
                             title="Edit Card Design in Admin Studio"
@@ -1504,7 +1541,33 @@ export default function AdminOrderManager({ initialOrderId = null }) {
                   <p style={{ margin: 0, fontSize: '0.8rem', color: textSecondary }}>
                     Customer: <strong>{selectedOrder.customerName}</strong> ({selectedOrder.customerEmail})
                   </p>
-                  <WhatsAppContactButton customerOrOrder={selectedOrder} size="sm" />
+                  <WhatsAppContactButton
+                    customerOrOrder={selectedOrder}
+                    size="sm"
+                    onOpenPaymentQr={(ord) => setPaymentQrOrder(ord)}
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setPaymentQrOrder(selectedOrder)}
+                    title="View & Scan Dynamic UPI Payment QR Code"
+                    style={{
+                      display: 'inline-flex',
+                      alignItems: 'center',
+                      gap: '5px',
+                      padding: '5px 12px',
+                      borderRadius: '8px',
+                      backgroundColor: isLight ? '#EDE9FE' : 'rgba(107, 0, 255, 0.22)',
+                      border: '1px solid rgba(107, 0, 255, 0.35)',
+                      color: isLight ? '#6B00FF' : '#C084FC',
+                      fontSize: '0.74rem',
+                      fontWeight: 700,
+                      cursor: 'pointer',
+                      transition: 'all 0.15s ease'
+                    }}
+                  >
+                    <QrCode size={13} />
+                    <span>Payment QR</span>
+                  </button>
                 </div>
               </div>
               <button
@@ -1526,13 +1589,36 @@ export default function AdminOrderManager({ initialOrderId = null }) {
 
             {/* Order Financials & Shipping Details */}
             <div style={{ padding: '14px', borderRadius: '12px', backgroundColor: elevatedBg, border: `1px solid ${cardBorder}`, marginBottom: '16px' }}>
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px', flexWrap: 'wrap', gap: '8px' }}>
                 <span style={{ fontSize: '0.74rem', textTransform: 'uppercase', fontWeight: 700, color: textSecondary }}>
                   Order Financials & Delivery
                 </span>
-                <span style={{ fontSize: '1rem', fontWeight: 800, color: '#6B00FF' }}>
-                  Total: ₹{Number(selectedOrder.totalAmount || selectedOrder.total_amount || 0).toLocaleString('en-IN')}
-                </span>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                  <button
+                    type="button"
+                    onClick={() => setPaymentQrOrder(selectedOrder)}
+                    title="Open Dynamic Payment QR with exact amount"
+                    style={{
+                      display: 'inline-flex',
+                      alignItems: 'center',
+                      gap: '4px',
+                      padding: '3px 9px',
+                      borderRadius: '6px',
+                      backgroundColor: isLight ? 'rgba(107, 0, 255, 0.08)' : 'rgba(107, 0, 255, 0.2)',
+                      border: '1px solid rgba(107, 0, 255, 0.35)',
+                      color: isLight ? '#6B00FF' : '#C084FC',
+                      fontSize: '0.72rem',
+                      fontWeight: 700,
+                      cursor: 'pointer'
+                    }}
+                  >
+                    <QrCode size={12} />
+                    <span>View Payment QR</span>
+                  </button>
+                  <span style={{ fontSize: '1rem', fontWeight: 800, color: '#6B00FF' }}>
+                    Total: ₹{Number(selectedOrder.totalAmount || selectedOrder.total_amount || 0).toLocaleString('en-IN')}
+                  </span>
+                </div>
               </div>
 
               <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 200px), 1fr))', gap: '8px', fontSize: '0.78rem', color: textSecondary }}>
@@ -2610,6 +2696,14 @@ export default function AdminOrderManager({ initialOrderId = null }) {
           </div>
         </div>
       )}
+
+      {/* Dynamic Payment QR Code Modal (Pre-fills ₹ Amount & Google Pay Deep Link) */}
+      <PaymentQrModal
+        isOpen={Boolean(paymentQrOrder)}
+        order={paymentQrOrder}
+        onClose={() => setPaymentQrOrder(null)}
+        isLight={isLight}
+      />
     </div>
   );
 }

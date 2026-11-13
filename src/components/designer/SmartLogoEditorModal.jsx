@@ -39,8 +39,6 @@ export default function SmartLogoEditorModal({
   isLight = false,
   cardEdition = 'purple'
 }) {
-  if (!isOpen) return null;
-
   // Active Tool & Mode States
   const [activeTab, setActiveTab] = useState('auto_bg'); // 'auto_bg' | 'manual_brush' | 'transform' | 'download'
   const [viewMode, setViewMode] = useState('transparent'); // 'transparent' | 'original' | 'compare'
@@ -426,6 +424,8 @@ export default function SmartLogoEditorModal({
     }
     return { backgroundColor: previewBg };
   };
+
+  if (!isOpen) return null;
 
   return (
     <div

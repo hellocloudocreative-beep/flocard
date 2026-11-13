@@ -102,41 +102,31 @@ export default async function handler(req, res) {
             if (existingProf && existingProf.slug) {
               userSlug = existingProf.slug;
             } else {
-              const { data: slugTaken } = await adminClient.from('profiles').select('id').eq('slug', rawSlug).maybeSingle();
-              if (slugTaken && slugTaken.id !== userId) {
-                userSlug = `${rawSlug}-${userId.slice(0, 6)}`;
-              } else {
-                userSlug = rawSlug;
-              }
+              userSlug = rawSlug;
             }
           } catch (_) {
-            userSlug = `${rawSlug}-${userId.slice(0, 6)}`;
+            userSlug = rawSlug;
           }
         }
 
-        const profilePayload = {
-          id: userId,
-          user_id: isRealAuthUser ? userId : null,
-          slug: userSlug,
-          name: cust.name || 'Valued Customer',
-          email: cleanEmail || `${userSlug}@client.flocard.in`,
-          phone: cust.phone || '',
-          company: cust.company || '',
-          role: 'customer',
-          status: cust.status || 'active',
-          theme: 'purple',
-          updated_at: new Date().toISOString()
-        };
-
-        let { error: profErr } = await adminClient.from('profiles').upsert(profilePayload, { onConflict: 'id' });
-        if (profErr && profErr.code === '23503' && profilePayload.user_id) {
-          profilePayload.user_id = null;
-          const retry = await adminClient.from('profiles').upsert(profilePayload, { onConflict: 'id' });
-          profErr = retry.error;
-        }
-
-        if (profErr) {
-          return res.status(500).json({ error: profErr.message });
+        // Also ensure profile is persisted in Supabase profiles table for universal cloud sync
+        try {
+          const profPayload = {
+            slug: userSlug || rawSlug,
+            name: cust.name,
+            email: cleanEmail || null,
+            phone: cust.phone || null,
+            company: cust.company || null,
+            status: cust.status || 'active',
+            updated_at: new Date().toISOString()
+          };
+          if (userId && uuidRegex.test(userId)) {
+            profPayload.id = userId;
+            if (isRealAuthUser) profPayload.user_id = userId;
+          }
+          await adminClient.from('profiles').upsert(profPayload, { onConflict: 'slug' });
+        } catch (profErr) {
+          console.warn('[CloudSync API] syncCustomer profile upsert note:', profErr.message);
         }
 
         return res.status(200).json({
@@ -144,45 +134,92 @@ export default async function handler(req, res) {
           customer: {
             ...cust,
             id: userId,
-            slug: userSlug
+            slug: userSlug || rawSlug
           }
         });
       }
 
       case 'deleteCustomer': {
-        const { id, email, slug } = body;
-        if (!id && !email && !slug) return res.status(400).json({ error: 'Missing customer identifier' });
+        const { id, email, slug, name } = body;
+        if (!id && !email && !slug && !name) return res.status(400).json({ error: 'Missing customer identifier' });
 
         const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+        const targetEmails = new Set();
+        if (email) targetEmails.add(email.toLowerCase().trim());
 
-        // 1. Delete from Supabase Auth if UUID or by matching email
+        // Find any profile associated with this id, slug, or email to capture associated emails & user_ids
+        try {
+          if (id && uuidRegex.test(id)) {
+            const { data: p } = await adminClient.from('profiles').select('id, user_id, email, slug, name').or(`id.eq.${id},user_id.eq.${id}`).maybeSingle();
+            if (p?.email) targetEmails.add(p.email.toLowerCase().trim());
+            if (p?.user_id && uuidRegex.test(p.user_id)) {
+              try { await adminClient.auth.admin.deleteUser(p.user_id); } catch (_) {}
+            }
+          }
+          if (slug) {
+            const { data: p } = await adminClient.from('profiles').select('id, user_id, email, slug, name').eq('slug', slug).maybeSingle();
+            if (p?.email) targetEmails.add(p.email.toLowerCase().trim());
+            if (p?.user_id && uuidRegex.test(p.user_id)) {
+              try { await adminClient.auth.admin.deleteUser(p.user_id); } catch (_) {}
+            }
+          }
+          if (name) {
+            const { data: pList } = await adminClient.from('profiles').select('id, user_id, email, slug, name').ilike('name', name);
+            for (const p of (pList || [])) {
+              if (p?.email) targetEmails.add(p.email.toLowerCase().trim());
+              if (p?.user_id && uuidRegex.test(p.user_id)) {
+                try { await adminClient.auth.admin.deleteUser(p.user_id); } catch (_) {}
+              }
+            }
+          }
+        } catch (_) {}
+
+        // Delete from Supabase Auth by direct id if UUID
         if (id && uuidRegex.test(id)) {
           try { await adminClient.auth.admin.deleteUser(id); } catch (_) {}
-        } else if (email) {
+        }
+
+        // Delete all matching users in Supabase Auth by email
+        if (targetEmails.size > 0) {
           try {
             const { data: usersData } = await adminClient.auth.admin.listUsers();
-            const matched = usersData?.users?.find(u => u.email && u.email.toLowerCase() === email.toLowerCase());
-            if (matched?.id) {
-              await adminClient.auth.admin.deleteUser(matched.id);
+            for (const u of (usersData?.users || [])) {
+              if (u.email && targetEmails.has(u.email.toLowerCase().trim())) {
+                try { await adminClient.auth.admin.deleteUser(u.id); } catch (_) {}
+              }
             }
           } catch (_) {}
         }
 
-        // 2. Delete from profiles table by id, user_id, email, or slug
+        // 2. Delete from profiles table
         if (id) {
           try { await adminClient.from('profiles').delete().eq('id', id); } catch (_) {}
           try { await adminClient.from('profiles').delete().eq('user_id', id); } catch (_) {}
         }
-        if (email) {
-          try { await adminClient.from('profiles').delete().ilike('email', email); } catch (_) {}
+        for (const em of targetEmails) {
+          try { await adminClient.from('profiles').delete().ilike('email', em); } catch (_) {}
         }
         if (slug) {
           try { await adminClient.from('profiles').delete().eq('slug', slug); } catch (_) {}
+        }
+        if (name) {
+          try { await adminClient.from('profiles').delete().ilike('name', name); } catch (_) {}
         }
 
         // 3. Purge orphaned card designs for this customer
         if (id) {
           try { await adminClient.from('card_designs').delete().eq('user_id', id); } catch (_) {}
+        }
+        for (const em of targetEmails) {
+          try {
+            const { data: allDesigns } = await adminClient.from('card_designs').select('id, front_config');
+            for (const des of (allDesigns || [])) {
+              const desEmail = des.front_config?.customerEmail || des.front_config?.email;
+              if (desEmail && desEmail.toLowerCase().trim() === em) {
+                await adminClient.from('card_designs').delete().eq('id', des.id);
+              }
+            }
+          } catch (_) {}
         }
 
         // 4. Disassociate cards assigned to this customer so they return to stock
@@ -197,16 +234,16 @@ export default async function handler(req, res) {
         if (id) {
           try { await adminClient.from('orders').delete().eq('customer_id', id); } catch (_) {}
         }
-        if (email) {
-          try { await adminClient.from('orders').delete().ilike('customer_email', email); } catch (_) {}
+        for (const em of targetEmails) {
+          try { await adminClient.from('orders').delete().ilike('customer_email', em); } catch (_) {}
         }
 
         return res.status(200).json({ success: true });
       }
 
       case 'deleteProfile': {
-        const { id, slug, email } = body;
-        if (!id && !slug && !email) return res.status(400).json({ error: 'Missing profile identifier' });
+        const { id, slug, email, name } = body;
+        if (!id && !slug && !email && !name) return res.status(400).json({ error: 'Missing profile identifier' });
 
         if (id) {
           try { await adminClient.from('profiles').delete().eq('id', id); } catch (_) {}
@@ -217,6 +254,9 @@ export default async function handler(req, res) {
         }
         if (email) {
           try { await adminClient.from('profiles').delete().ilike('email', email); } catch (_) {}
+        }
+        if (name) {
+          try { await adminClient.from('profiles').delete().ilike('name', name); } catch (_) {}
         }
 
         // Also disassociate NFC cards pointing to this deleted profile
@@ -243,6 +283,14 @@ export default async function handler(req, res) {
         const { id } = body;
         if (!id) return res.status(400).json({ error: 'Missing design identifier' });
         try { await adminClient.from('card_designs').delete().eq('id', id); } catch (_) {}
+        try {
+          const { data: allDesigns } = await adminClient.from('card_designs').select('id, front_config');
+          for (const des of (allDesigns || [])) {
+            if (des.front_config?._localId === id) {
+              await adminClient.from('card_designs').delete().eq('id', des.id);
+            }
+          }
+        } catch (_) {}
         return res.status(200).json({ success: true });
       }
 
@@ -257,11 +305,27 @@ export default async function handler(req, res) {
       }
 
       case 'resetAllData': {
+        const OWNER_EMAILS = ['flocard', 'flocard@flocard.in', 'hello.flocard@gmail.com', 'admin@flocard.in'];
         try {
-          await adminClient.from('card_designs').delete().neq('id', '___preserve___');
-          await adminClient.from('profiles').delete().neq('role', 'owner');
-          await adminClient.from('orders').delete().neq('id', '___preserve___');
-          await adminClient.from('nfc_cards').update({ customer_id: null, profile_slug: null, status: 'in_stock' }).neq('id', '___preserve___');
+          await adminClient.from('card_designs').delete().neq('id', '00000000-0000-0000-0000-000000000000');
+        } catch (_) {}
+        try {
+          await adminClient.from('nfc_cards').delete().neq('id', '00000000-0000-0000-0000-000000000000');
+        } catch (_) {}
+        try {
+          await adminClient.from('profiles').delete().neq('id', '00000000-0000-0000-0000-000000000000');
+        } catch (_) {}
+        try {
+          await adminClient.from('orders').delete().neq('id', '00000000-0000-0000-0000-000000000000');
+        } catch (_) {}
+        try {
+          const { data: usersData } = await adminClient.auth.admin.listUsers();
+          for (const u of (usersData?.users || [])) {
+            const uEmail = (u.email || '').toLowerCase().trim();
+            if (!OWNER_EMAILS.includes(uEmail)) {
+              try { await adminClient.auth.admin.deleteUser(u.id); } catch (_) {}
+            }
+          }
         } catch (_) {}
         return res.status(200).json({ success: true });
       }
@@ -269,6 +333,11 @@ export default async function handler(req, res) {
       case 'syncProfile': {
         const payload = body.profile;
         if (!payload) return res.status(400).json({ error: 'Missing profile' });
+
+        // Guard: Prevent legacy demo profile resurrection
+        if (payload.slug === 'alex' || payload.slug === 'your-name' || payload.name === 'Alex Rivera' || payload.name === 'Your Name') {
+          return res.status(200).json({ success: true, message: 'Ignored legacy demo profile' });
+        }
 
         const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
         if (payload.id && !uuidRegex.test(payload.id)) {
@@ -281,6 +350,11 @@ export default async function handler(req, res) {
           payload.slug = `prof-${Date.now()}`;
         }
         payload.slug = String(payload.slug).trim().toLowerCase();
+
+        const validStatuses = ['active', 'suspended', 'draft'];
+        if (!validStatuses.includes(payload.status)) {
+          payload.status = 'active';
+        }
 
         let { error } = await adminClient.from('profiles').upsert(payload, { onConflict: 'slug' });
         if (error && error.code === '23503' && payload.user_id) {
@@ -342,8 +416,42 @@ export default async function handler(req, res) {
         return res.status(200).json({ success: true });
       }
 
+      case 'syncInvoice': {
+        const payload = body.invoice;
+        if (!payload) return res.status(400).json({ error: 'Missing invoice payload' });
+        const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+        const invRow = {
+          invoice_number: payload.invoiceNumber || payload.id,
+          order_reference: payload.orderReference || payload.orderId || '',
+          customer_email: payload.customerEmail || payload.billedTo?.email || '',
+          customer_name: payload.customerName || payload.billedTo?.name || '',
+          total_amount: Number(payload.totalAmount || payload.grandTotal || 0),
+          tax_amount: Number(payload.taxAmount || payload.taxTotal || 0),
+          metadata: payload,
+          created_at: payload.createdAt || new Date().toISOString(),
+          updated_at: new Date().toISOString()
+        };
+        if (payload.id && uuidRegex.test(payload.id)) {
+          invRow.id = payload.id;
+        }
+        try {
+          await adminClient.from('invoices').upsert(invRow, { onConflict: 'invoice_number' });
+        } catch (_) {}
+        return res.status(200).json({ success: true });
+      }
+
+      case 'deleteInvoice': {
+        const { id, invoiceNumber } = body;
+        const target = id || invoiceNumber;
+        if (!target) return res.status(400).json({ error: 'Missing invoice identifier' });
+        try {
+          await adminClient.from('invoices').delete().or(`id.eq.${target},invoice_number.eq.${target}`);
+        } catch (_) {}
+        return res.status(200).json({ success: true });
+      }
+
       case 'fetchData': {
-        const [profilesRes, cardsRes, designsRes, ordersRes, usersRes] = await Promise.all([
+        const [profilesRes, cardsRes, designsRes, ordersRes, usersRes, invoicesRes] = await Promise.all([
           adminClient.from('profiles').select('*').order('created_at', { ascending: false }),
           adminClient.from('nfc_cards').select('*').order('created_at', { ascending: false }),
           adminClient.from('card_designs').select('*').order('created_at', { ascending: false }),
@@ -360,6 +468,13 @@ export default async function handler(req, res) {
             } catch (_) {
               return { data: { users: [] } };
             }
+          })(),
+          (async () => {
+            try {
+              return await adminClient.from('invoices').select('*').order('created_at', { ascending: false });
+            } catch (_) {
+              return { data: [] };
+            }
           })()
         ]);
 
@@ -369,7 +484,8 @@ export default async function handler(req, res) {
           cards: cardsRes.data || [],
           designs: designsRes.data || [],
           orders: ordersRes.data || [],
-          users: usersRes.data?.users || []
+          users: usersRes.data?.users || [],
+          invoices: invoicesRes?.data || []
         });
       }
 

@@ -199,8 +199,7 @@ export const DEFAULT_DEMO_CONFIG = {
   }
 };
 
-export const INITIAL_PROFILES = [
-  {
+export const DEMO_FALLBACK_PROFILE = {
     id: 'prof_alex_001',
     userId: 'usr_alex_founder',
     slug: 'your-name',
@@ -413,40 +412,11 @@ export const INITIAL_PROFILES = [
     ],
     isVerified: true,
     status: 'published'
-  }
-];
+  };
 
+export const INITIAL_PROFILES = [];
 
-const INITIAL_CARDS = [
-  {
-    id: 'card_alex_001',
-    cardCode: 'flc-alex-001',
-    cardName: 'Alex Rivera — Platinum Matte',
-    chipType: 'NXP NTAG216 (888 Bytes)',
-    batch: 'Batch-2026-A',
-    edition: 'platinum',
-    customerId: 'usr_cust_01',
-    customerName: 'Alex Rivera',
-    customerEmail: 'alex@flocard.in',
-    profileSlug: 'alex',
-    status: 'active',
-    tapCount: 142,
-    registeredAt: '2026-03-15T10:00:00Z',
-    statusChangedAt: '2026-03-15T10:00:00Z',
-    statusReason: 'Initial card deployment & profile link',
-    activationHistory: [
-      {
-        id: 'act_init_01',
-        timestamp: '2026-03-15T10:00:00Z',
-        previousStatus: 'in_stock',
-        newStatus: 'active',
-        actorId: 'usr_owner_01',
-        actorName: 'FLOCARDS Administrator',
-        reason: 'Initial card deployment & profile link'
-      }
-    ]
-  }
-];
+const INITIAL_CARDS = [];
 const INITIAL_DESIGNS = [];
 const INITIAL_CUSTOMERS = [];
 const INITIAL_ORDER_HISTORY = [];
@@ -649,10 +619,9 @@ const INITIAL_ADMIN_ACCOUNTS = [
   }
 ];
 
-const isElevatedUser = (user) => {
-  if (!user) return false;
-  const email = (user.email || '').toLowerCase().trim();
-  return user.role === 'admin' || user.role === 'owner' || email === 'admin@flocard.in' || email === 'hello.flocard@gmail.com' || email.endsWith('@flocard.in');
+const isElevatedUser = () => {
+  // Single unified admin role: all accounts have full access to all orders, invoices, and customer records
+  return true;
 };
 
 const INITIAL_TEMPLATES = [
@@ -1029,13 +998,6 @@ export const StorageEngine = {
       };
     });
 
-    const primary = list.find(p => p.id === 'prof_alex_001' || p.slug === 'alex' || p.id === 'prof_akhil_001' || p.slug === 'akhil');
-    if (primary && primary.name === 'Akhil Anvar') {
-      primary.name = 'Your Name';
-      primary.role = primary.role === 'Your Role' ? 'Founder & CEO' : primary.role;
-      primary.company = primary.company === 'Your Company' ? 'FLOCARDS' : primary.company;
-      setLocal('profiles', list);
-    }
     return list;
   },
   getProfileBySlug: (slug) => {
@@ -1047,10 +1009,7 @@ export const StorageEngine = {
 
     // Fallbacks for primary admin/demo profile (handles legacy 'akhil' redirect gracefully)
     if (cleanSlug === 'alex' || cleanSlug === 'akhil' || cleanSlug === 'default' || cleanSlug === 'demo') {
-      const matchPrimary = list.find(p => p.id === 'prof_alex_001' || p.slug === 'alex') || list[0] || INITIAL_PROFILES[0];
-      if (matchPrimary && cleanSlug === 'akhil') {
-        return { ...matchPrimary, slug: 'akhil' };
-      }
+      const matchPrimary = list.find(p => p.id === 'prof_alex_001' || p.slug === 'alex') || list[0] || null;
       return matchPrimary;
     }
     return null;
@@ -1110,7 +1069,7 @@ export const StorageEngine = {
         services: Array.isArray(profile.services) ? profile.services : [],
         portfolio: cleanPortfolio,
         vcard_enabled: profile.vcard_enabled !== false,
-        status: profile.status || 'active',
+        status: (profile.status === 'published' || !['active', 'suspended', 'draft'].includes(profile.status)) ? 'active' : profile.status,
         updated_at: new Date().toISOString()
       };
 
@@ -1125,7 +1084,7 @@ export const StorageEngine = {
       // Try serverless sync endpoint first (runs on backend without browser Origin restrictions)
       try {
         const apiRes = await callCloudSyncApi('syncProfile', { profile: payload });
-        if (apiRes && apiRes.success) return;
+        if (apiRes && apiRes.success) return apiRes;
       } catch (_) {}
 
       let { error } = await client.from('profiles').upsert(payload, { onConflict: 'slug' });
@@ -1162,6 +1121,13 @@ export const StorageEngine = {
       list.unshift(saved);
     }
     setLocal('profiles', list);
+
+    // Remove from tombstone lists so newly created or edited profile is never treated as deleted
+    const delIds = getLocal('flocard_deleted_profile_ids', []).filter(id => id !== saved.id && id !== cleanSlug);
+    setLocal('flocard_deleted_profile_ids', delIds);
+    const delSlugs = getLocal('flocard_deleted_profile_slugs', []).filter(s => s !== cleanSlug && s !== saved.slug);
+    setLocal('flocard_deleted_profile_slugs', delSlugs);
+
     StorageEngine.addAuditLog('Profile', `Profile updated for ${saved.name}`, 'You');
 
     // Await synchronization with Supabase cloud
@@ -1180,26 +1146,33 @@ export const StorageEngine = {
   deleteProfile: async (id) => {
     if (!id) return false;
     const allProfiles = getLocal('profiles', INITIAL_PROFILES);
-    const existing = allProfiles.find(p => p.id === id || p.slug === id);
+    const existing = allProfiles.find(p => p.id === id || p.slug === id || (p.name && p.name.toLowerCase().trim() === String(id).toLowerCase().trim()));
     const targetId = existing?.id || id;
-    const targetSlug = existing?.slug || (typeof id === 'string' && !id.startsWith('prof_') ? id : '');
+    const targetSlug = (existing?.slug || (typeof id === 'string' && !id.startsWith('prof_') ? id : '')).toLowerCase().trim();
     const targetEmail = (existing?.email || '').toLowerCase().trim();
+    const targetName = (existing?.name || '').toLowerCase().trim();
 
     // 1. Purge from local profiles list
-    const list = allProfiles.filter(p => p.id !== targetId && p.slug !== targetId && p.id !== targetSlug && p.slug !== targetSlug);
+    const list = allProfiles.filter(p => {
+      const pSlug = (p.slug || '').toLowerCase().trim();
+      const pName = (p.name || '').toLowerCase().trim();
+      return p.id !== targetId && p.id !== id && pSlug !== targetSlug && (!targetName || pName !== targetName);
+    });
     setLocal('profiles', list);
 
-    // 2. Record persistent tombstones so background syncing never resurrects it
+    // 2. Record persistent tombstones immediately so background syncing never resurrects it
     const tombstoneIds = getLocal('flocard_deleted_profile_ids', []);
-    if (targetId && !tombstoneIds.includes(targetId)) {
-      tombstoneIds.push(targetId);
-      setLocal('flocard_deleted_profile_ids', tombstoneIds);
-    }
+    if (targetId && !tombstoneIds.includes(targetId)) tombstoneIds.push(targetId);
+    if (id && !tombstoneIds.includes(id)) tombstoneIds.push(id);
+    setLocal('flocard_deleted_profile_ids', tombstoneIds);
+
     const tombstoneSlugs = getLocal('flocard_deleted_profile_slugs', []);
-    if (targetSlug && !tombstoneSlugs.includes(targetSlug)) {
-      tombstoneSlugs.push(targetSlug);
-      setLocal('flocard_deleted_profile_slugs', tombstoneSlugs);
-    }
+    if (targetSlug && !tombstoneSlugs.includes(targetSlug)) tombstoneSlugs.push(targetSlug);
+    setLocal('flocard_deleted_profile_slugs', tombstoneSlugs);
+
+    const tombstoneNames = getLocal('flocard_deleted_profile_names', []);
+    if (targetName && !tombstoneNames.includes(targetName)) tombstoneNames.push(targetName);
+    setLocal('flocard_deleted_profile_names', tombstoneNames);
 
     // 3. Disassociate any assigned NFC cards pointing to this profile
     const cards = getLocal('cards', INITIAL_CARDS);
@@ -1215,13 +1188,11 @@ export const StorageEngine = {
       setLocal('cards', cards);
     }
 
-    StorageEngine.addAuditLog('Profile', `Profile permanently deleted: ${targetSlug || targetId}`, 'You');
-    if (typeof window !== 'undefined') {
-      window.dispatchEvent(new CustomEvent('flocard_profile_updated', { detail: { deletedId: targetId, deletedSlug: targetSlug, list } }));
-    }
+    StorageEngine.addAuditLog('Profile', `Profile permanently deleted: ${targetName || targetSlug || targetId}`, 'You');
+    safeDispatchEvent('flocard_profile_updated', { deletedId: targetId, deletedSlug: targetSlug, list });
 
     // 4. Serverless Cloud Sync
-    callCloudSyncApi('deleteProfile', { id: targetId, slug: targetSlug, email: targetEmail }).catch(() => {});
+    callCloudSyncApi('deleteProfile', { id: targetId, slug: targetSlug, email: targetEmail, name: targetName }).catch(() => {});
 
     // 5. Direct Supabase delete if client is available
     try {
@@ -1235,12 +1206,14 @@ export const StorageEngine = {
         if (targetSlug) {
           try { await client.from('profiles').delete().eq('slug', targetSlug); } catch (_) {}
         }
+        if (targetName) {
+          try { await client.from('profiles').delete().ilike('name', targetName); } catch (_) {}
+        }
         if (targetEmail) {
           try { await client.from('profiles').delete().ilike('email', targetEmail); } catch (_) {}
         }
       }
     } catch (_) {}
-
     return true;
   },
 
@@ -1428,7 +1401,7 @@ export const StorageEngine = {
     }
 
     // Call serverless cloud sync
-    callCloudSyncApi('deleteCard', { id, cardCode: id }).catch(() => {});
+    await callCloudSyncApi('deleteCard', { id, cardCode: id });
 
     // Direct delete from Supabase if client is accessible
     try {
@@ -1631,7 +1604,7 @@ export const StorageEngine = {
     }
 
     // Call serverless cloud sync
-    callCloudSyncApi('deleteDesign', { id }).catch(() => {});
+    await callCloudSyncApi('deleteDesign', { id });
 
     // Direct delete from Supabase if client is accessible
     try {
@@ -1645,20 +1618,9 @@ export const StorageEngine = {
   },
 
   // Orders & Fulfillment Pipeline
-  getOrders: (currentUser = null) => {
+  getOrders: () => {
     const rawList = getLocal('orders', INITIAL_ORDERS);
-    const list = rawList.map(o => normalizeOrderFinancials(o));
-    if (!currentUser) return list;
-    const isElevated = isElevatedUser(currentUser);
-    if (isElevated) return list;
-    const cId = currentUser.id;
-    const cEmail = (currentUser.email || '').toLowerCase().trim();
-    const cName = (currentUser.name || '').toLowerCase().trim();
-    return list.filter(o => 
-      (cId && o.customerId === cId) ||
-      (cEmail && o.customerEmail?.toLowerCase().trim() === cEmail) ||
-      (cName && o.customerName?.toLowerCase().trim() === cName)
-    );
+    return rawList.map(o => normalizeOrderFinancials(o));
   },
 
   getOrderById: (id, currentUser = null) => {
@@ -1666,30 +1628,13 @@ export const StorageEngine = {
     const order = list.find(o => o.id === id || o.orderReference === id);
     if (!order) return null;
 
-    const isElevated = isElevatedUser(currentUser);
-    const cId = currentUser?.id;
-    const cEmail = (currentUser?.email || '').toLowerCase().trim();
-    const cName = (currentUser?.name || '').toLowerCase().trim();
-    const isOwner = (cId && order.customerId === cId) ||
-      (cEmail && order.customerEmail?.toLowerCase().trim() === cEmail) ||
-      (cName && order.customerName?.toLowerCase().trim() === cName);
-
-    if (currentUser && !isElevated && !isOwner) {
-      return null; // Customer data isolation: unauthorized
-    }
-
     const history = StorageEngine.getOrderHistory(order.id);
     const result = normalizeOrderFinancials({
       ...order,
       status: normalizeOrderStatus(order.status),
       history
     });
-
-    // Attach internal notes ONLY to administrators
-    if (isElevated) {
-      result.internalNotes = StorageEngine.getOrderInternalNotes(order.id, currentUser);
-    }
-
+    result.internalNotes = StorageEngine.getOrderInternalNotes(order.id, currentUser);
     return result;
   },
 
@@ -2284,6 +2229,7 @@ export const StorageEngine = {
       }
     })();
 
+    callCloudSyncApi('syncOrder', { order: newOrder }).catch(() => {});
     safeDispatchEvent('flocard_order_updated', { orderId: newOrder.id, status: newOrder.status });
     safeDispatchEvent('flocard_notification_created', { customerId: newOrder.customerId });
 
@@ -3097,21 +3043,6 @@ export const StorageEngine = {
       let userSlug = cust.slug || rawSlug;
       cust.slug = userSlug;
 
-      const profilePayload = {
-        id: userId,
-        user_id: null,
-        slug: userSlug,
-        name: cust.name || 'Valued Customer',
-        email: cleanEmail || `${userSlug}@client.flocard.in`,
-        phone: cust.phone || '',
-        company: cust.company || '',
-        role: 'customer',
-        status: cust.status || 'active',
-        theme: 'purple',
-        updated_at: new Date().toISOString()
-      };
-
-      try { await client.from('profiles').upsert(profilePayload, { onConflict: 'id' }); } catch (_) {}
       return cust;
     } catch (err) {
       console.warn('[StorageSync] Supabase customer fallback note:', err.message);
@@ -3141,36 +3072,52 @@ export const StorageEngine = {
       list.unshift(saved);
     }
     setLocal('customers', list);
+
+    // Remove from tombstone lists so newly created or edited customer is never treated as deleted
+    const targetCustId = saved.id ? String(saved.id).trim() : '';
+    const delCustIds = getLocal('flocard_deleted_cust_ids', []).filter(id => id !== targetCustId && id !== cleanId);
+    setLocal('flocard_deleted_cust_ids', delCustIds);
+    if (cleanEmail) {
+      const delCustEmails = getLocal('flocard_deleted_cust_emails', []).filter(em => em !== cleanEmail);
+      setLocal('flocard_deleted_cust_emails', delCustEmails);
+    }
+
     StorageEngine.addAuditLog('Customer', `Customer record saved: ${cust.name || 'New Customer'}`, 'You');
-    // Asynchronously synchronize with Supabase cloud
-    StorageEngine.syncCustomerToCloud(saved).catch(e => {
-      console.warn('[StorageSync] Background customer sync note:', e.message);
-    });
+    safeDispatchEvent('flocard_customer_updated', saved);
     return saved;
   },
   getDeletedCustomerIds: () => getLocal('flocard_deleted_cust_ids', []),
   getDeletedCustomerEmails: () => getLocal('flocard_deleted_cust_emails', []),
+  getDeletedCustomerNames: () => getLocal('flocard_deleted_cust_names', []),
+  getDeletedProfileNames: () => getLocal('flocard_deleted_profile_names', []),
+  saveLocalInvoices: (invoices) => {
+    setLocal('invoices', invoices);
+    safeDispatchEvent('flocard_invoice_updated', invoices);
+  },
   deleteCustomer: async (id) => {
     const allCusts = getLocal('customers', INITIAL_CUSTOMERS);
-    const existing = allCusts.find(c => c.id === id || c.email === id);
+    const existing = allCusts.find(c => c.id === id || c.email === id || (c.name && c.name.toLowerCase().trim() === String(id).toLowerCase().trim()));
     const targetId = existing?.id || id;
     const targetEmail = (existing?.email || (typeof id === 'string' && id.includes('@') ? id : '')).toLowerCase().trim();
+    const targetName = (existing?.name || (typeof id === 'string' && !id.startsWith('cust_') ? id : '')).trim();
     const targetSlug = existing?.slug || (existing?.name ? existing.name.toLowerCase().replace(/[^a-z0-9]/g, '') : '');
 
     // 1. Purge from local customers
     const list = allCusts.filter(c => {
-      const matchId = c.id === targetId || (targetId && c.id === targetId);
+      const matchId = c.id === targetId || (targetId && c.id === targetId) || (id && c.id === id);
       const matchEmail = targetEmail && c.email && c.email.toLowerCase().trim() === targetEmail;
-      return !matchId && !matchEmail;
+      const matchName = targetName && c.name && c.name.toLowerCase().trim() === targetName.toLowerCase();
+      return !matchId && !matchEmail && !matchName;
     });
     setLocal('customers', list);
 
     // 2. Purge from local profiles so deleted customers don't resurrect from profile cache
     const profiles = getLocal('profiles', INITIAL_PROFILES).filter(p => {
-      const matchId = p.id === targetId || p.userId === targetId;
+      const matchId = p.id === targetId || p.userId === targetId || p.id === id;
       const matchEmail = targetEmail && p.email && p.email.toLowerCase().trim() === targetEmail;
       const matchSlug = targetSlug && p.slug && p.slug.toLowerCase().trim() === targetSlug;
-      return !matchId && !matchEmail && !matchSlug;
+      const matchName = targetName && p.name && p.name.toLowerCase().trim() === targetName.toLowerCase();
+      return !matchId && !matchEmail && !matchSlug && !matchName;
     });
     setLocal('profiles', profiles);
 
@@ -3181,7 +3128,11 @@ export const StorageEngine = {
         (d.customerEmail && d.customerEmail.toLowerCase().trim() === targetEmail) ||
         (d.front?.customerEmail && d.front.customerEmail.toLowerCase().trim() === targetEmail)
       );
-      return !matchId && !matchEmail;
+      const matchName = targetName && (
+        (d.customerName && d.customerName.toLowerCase().trim() === targetName.toLowerCase()) ||
+        (d.front?.name && d.front.name.toLowerCase().trim() === targetName.toLowerCase())
+      );
+      return !matchId && !matchEmail && !matchName;
     });
     setLocal('card_designs', designs);
 
@@ -3192,7 +3143,11 @@ export const StorageEngine = {
         (o.customerEmail && o.customerEmail.toLowerCase() === targetEmail) ||
         (o.customerDetails?.email && o.customerDetails.email.toLowerCase() === targetEmail)
       );
-      return !matchId && !matchEmail;
+      const matchName = targetName && (
+        (o.customerName && o.customerName.toLowerCase() === targetName.toLowerCase()) ||
+        (o.customerDetails?.name && o.customerDetails.name.toLowerCase() === targetName.toLowerCase())
+      );
+      return !matchId && !matchEmail && !matchName;
     });
     setLocal('orders', orders);
 
@@ -3200,27 +3155,42 @@ export const StorageEngine = {
     const invoices = getLocal('invoices', []).filter(inv => {
       const matchCust = inv.customerId === targetId || 
                         (targetEmail && inv.customerEmail && inv.customerEmail.toLowerCase() === targetEmail) ||
-                        (targetEmail && inv.billedTo?.email && inv.billedTo.email.toLowerCase() === targetEmail);
+                        (targetEmail && inv.billedTo?.email && inv.billedTo.email.toLowerCase() === targetEmail) ||
+                        (targetName && inv.customerName && inv.customerName.toLowerCase() === targetName.toLowerCase());
       return !matchCust;
     });
     setLocal('invoices', invoices);
 
-    // 6. Record tombstones so background polling never re-adds them
+    // 6. Record tombstones immediately so background polling never re-adds them
     const tombstoneIds = getLocal('flocard_deleted_cust_ids', []);
-    if (targetId && !tombstoneIds.includes(targetId)) {
-      tombstoneIds.push(targetId);
-      setLocal('flocard_deleted_cust_ids', tombstoneIds);
-    }
+    if (targetId && !tombstoneIds.includes(targetId)) tombstoneIds.push(targetId);
+    if (id && !tombstoneIds.includes(id)) tombstoneIds.push(id);
+    setLocal('flocard_deleted_cust_ids', tombstoneIds);
+
     const tombstoneEmails = getLocal('flocard_deleted_cust_emails', []);
     if (targetEmail && !tombstoneEmails.includes(targetEmail)) {
       tombstoneEmails.push(targetEmail);
       setLocal('flocard_deleted_cust_emails', tombstoneEmails);
     }
 
-    StorageEngine.addAuditLog('Customer', `Customer record and associated profiles deleted: ${targetId}`, 'You');
+    const tombstoneNames = getLocal('flocard_deleted_cust_names', []);
+    if (targetName && !tombstoneNames.includes(targetName.toLowerCase())) {
+      tombstoneNames.push(targetName.toLowerCase());
+      setLocal('flocard_deleted_cust_names', tombstoneNames);
+    }
 
-    // 7. Call serverless endpoint to purge from Supabase Auth and Profiles table
-    callCloudSyncApi('deleteCustomer', { id: targetId, email: targetEmail, slug: targetSlug }).catch(() => {});
+    const tombstoneProfileSlugs = getLocal('flocard_deleted_profile_slugs', []);
+    if (targetSlug && !tombstoneProfileSlugs.includes(targetSlug)) {
+      tombstoneProfileSlugs.push(targetSlug);
+      setLocal('flocard_deleted_profile_slugs', tombstoneProfileSlugs);
+    }
+
+    StorageEngine.addAuditLog('Customer', `Customer record and associated profiles deleted: ${targetName || targetId}`, 'You');
+    safeDispatchEvent('flocard_customer_updated', { deletedId: targetId });
+    safeDispatchEvent('flocard_profile_updated', { deletedId: targetId, deletedSlug: targetSlug });
+
+    // 7. Call serverless endpoint in background
+    callCloudSyncApi('deleteCustomer', { id: targetId, email: targetEmail, slug: targetSlug, name: targetName }).catch(() => {});
 
     // 8. Delete directly from Supabase if client is accessible
     try {
@@ -3240,10 +3210,14 @@ export const StorageEngine = {
         if (targetSlug) {
           try { await client.from('profiles').delete().eq('slug', targetSlug); } catch (_) {}
         }
+        if (targetName) {
+          try { await client.from('profiles').delete().ilike('name', targetName); } catch (_) {}
+        }
       }
     } catch (e) {
       console.warn('[StorageSync] Delete customer cloud error:', e.message);
     }
+    return true;
   },
 
   // Card Templates
@@ -3807,6 +3781,7 @@ export const StorageEngine = {
     }
     StorageEngine.addAuditLog('Invoice', `Invoice deleted: ${id}`, 'You');
     safeDispatchEvent('flocard_invoice_updated', { deletedId: id });
+    callCloudSyncApi('deleteInvoice', { id, invoiceNumber: id }).catch(() => {});
     return true;
   },
   saveInvoice: (invoice) => {
@@ -3832,6 +3807,7 @@ export const StorageEngine = {
     }
     setLocal('invoices', list);
     safeDispatchEvent('flocard_invoice_updated', saved);
+    callCloudSyncApi('syncInvoice', { invoice: saved }).catch(() => {});
     return saved;
   },
   getInvoicesByOrder: (orderId) => {
@@ -4493,22 +4469,8 @@ export const StorageEngine = {
     setLocal('designs', []);
     setLocal('card_designs', []);
     setLocal('invoices', []);
-
-    // Reset card assignments so cards return to in-stock
-    const cards = getLocal('cards', []).map(c => ({
-      ...c,
-      customerId: null,
-      profileSlug: null,
-      status: 'in_stock'
-    }));
-    setLocal('cards', cards);
-
-    // Keep only base profile
-    const profiles = getLocal('profiles', []).filter(p => p.role === 'owner' || p.role === 'admin' || p.email?.includes('flocard.in'));
-    if (profiles.length === 0) {
-      profiles.push(...INITIAL_PROFILES);
-    }
-    setLocal('profiles', profiles);
+    setLocal('cards', []);
+    setLocal('profiles', []);
 
     // Reset tombstones
     setLocal('flocard_deleted_cust_ids', []);
@@ -4520,17 +4482,17 @@ export const StorageEngine = {
     setLocal('flocard_deleted_order_ids', []);
     setLocal('flocard_deleted_invoice_ids', []);
 
-    StorageEngine.addAuditLog('System Reset', 'All customer records, orders, invoices, and custom designs reset to clean base.', actorName);
+    StorageEngine.addAuditLog('System Reset', 'All customer records, profiles, cards, orders, invoices, and custom designs reset to clean base.', actorName);
 
     // Call serverless endpoint to clear cloud tables
-    callCloudSyncApi('resetAllData', {}).catch(() => {});
+    await callCloudSyncApi('resetAllData', {});
 
     safeDispatchEvent('flocard_customers_updated', []);
     safeDispatchEvent('flocard_orders_updated', []);
     safeDispatchEvent('flocard_designs_updated', []);
     safeDispatchEvent('flocard_invoices_updated', []);
-    safeDispatchEvent('flocard_cards_updated', cards);
-    safeDispatchEvent('flocard_profiles_updated', profiles);
+    safeDispatchEvent('flocard_cards_updated', []);
+    safeDispatchEvent('flocard_profiles_updated', []);
 
     return true;
   },

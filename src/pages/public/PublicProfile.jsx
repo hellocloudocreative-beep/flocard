@@ -8,6 +8,8 @@
    ========================================================================== */
 
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
+import { Lock, EyeOff } from 'lucide-react';
+import { useAuth } from '../../context/AuthContext';
 import { useData } from '../../context/DataContext';
 import { useTheme } from '../../context/ThemeContext';
 import FullScreenDigitalProfile from '../../components/profile/FullScreenDigitalProfile';
@@ -17,6 +19,7 @@ import { INITIAL_PROFILES } from '../../lib/storage';
 import { getProfileTheme } from '../../lib/themeService';
 
 export default function PublicProfile({ slug = 'alex' }) {
+  const { user } = useAuth();
   const { getProfileBySlug, profiles } = useData();
   const { isLight: visitorIsLight } = useTheme();
 
@@ -189,6 +192,55 @@ export default function PublicProfile({ slug = 'alex' }) {
     }
   }, []);
 
+  const activeTheme = useMemo(() => {
+    if (!profile) return getProfileTheme('purple');
+    return getProfileTheme(profile.theme || profile.cardFinish || profile.edition);
+  }, [profile?.theme, profile?.cardFinish, profile?.edition]);
+
+  const glowColor = profile?.glowColor || activeTheme.glowColor;
+  const accentColor = profile?.accentColor || activeTheme.accentColor;
+
+  const handleShare = () => {
+    if (!profile) return;
+    const url = typeof window !== 'undefined' ? window.location.href : `https://flocard.in/p/${profile.slug}`;
+    if (navigator.share) {
+      navigator.share({
+        title: `${profile.name} — FLOCARD Digital Identity`,
+        text: `Connect with ${profile.name} (${profile.role} at ${profile.company})`,
+        url
+      }).catch(() => {});
+    } else {
+      navigator.clipboard.writeText(url);
+    }
+  };
+
+  const navItems = useMemo(() => [
+    {
+      label: 'Profile',
+      description: `${profile?.name || 'Identity'} • ${profile?.role || 'Executive'}`,
+      links: [
+        { label: 'Save Contact vCard', onClick: () => profile && downloadVCard(profile) },
+        { label: 'Share Profile', onClick: handleShare }
+      ]
+    },
+    {
+      label: 'Editions',
+      description: 'FLOCARD Luxury NFC smart business cards.',
+      links: [
+        { label: 'Purple Edition (Signature)', href: '/#pricing' },
+        { label: '24K Gold Edition', href: '/#pricing' },
+        { label: 'Platinum Edition', href: '/#pricing' }
+      ]
+    },
+    {
+      label: 'Platform',
+      description: 'Digital Profiles, NFC Hardware & Tracking',
+      links: [
+        { label: 'Create Card', href: '/designer' }
+      ]
+    }
+  ], [profile]);
+
   // Searching state
   if (!profile && isSearchingCloud) {
     return (
@@ -263,49 +315,76 @@ export default function PublicProfile({ slug = 'alex' }) {
     );
   }
 
-  const activeTheme = useMemo(() => getProfileTheme(profile.theme || profile.cardFinish || profile.edition), [profile.theme, profile.cardFinish, profile.edition]);
-  const glowColor = profile.glowColor || activeTheme.glowColor;
-  const accentColor = profile.accentColor || activeTheme.accentColor;
+  // Private / Draft status check (Privacy enforcement)
+  const isProfilePrivate = profile.status === 'private' || profile.status === 'draft' || profile.status === 'suspended' || profile.isPrivate === true;
 
-  const handleShare = () => {
-    const url = typeof window !== 'undefined' ? window.location.href : `https://flocard.in/p/${profile.slug}`;
-    if (navigator.share) {
-      navigator.share({
-        title: `${profile.name} — FLOCARD Digital Identity`,
-        text: `Connect with ${profile.name} (${profile.role} at ${profile.company})`,
-        url
-      }).catch(() => {});
-    } else {
-      navigator.clipboard.writeText(url);
-    }
-  };
-
-  const navItems = useMemo(() => [
-    {
-      label: 'Profile',
-      description: `${profile?.name || 'Identity'} • ${profile?.role || 'Executive'}`,
-      links: [
-        { label: 'Save Contact vCard', onClick: () => downloadVCard(profile) },
-        { label: 'Share Profile', onClick: handleShare }
-      ]
-    },
-    {
-      label: 'Editions',
-      description: 'FLOCARD Luxury NFC smart business cards.',
-      links: [
-        { label: 'Purple Edition (Signature)', href: '/#pricing' },
-        { label: '24K Gold Edition', href: '/#pricing' },
-        { label: 'Platinum Edition', href: '/#pricing' }
-      ]
-    },
-    {
-      label: 'Platform',
-      description: 'Digital Profiles, NFC Hardware & Tracking',
-      links: [
-        { label: 'Create Card', href: '/designer' }
-      ]
-    }
-  ], [profile]);
+  if (isProfilePrivate && !user) {
+    return (
+      <div
+        style={{
+          minHeight: '100vh',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          textAlign: 'center',
+          padding: '24px',
+          background: '#08060D',
+          color: '#FFFFFF'
+        }}
+      >
+        <div
+          style={{
+            maxWidth: '440px',
+            width: '100%',
+            padding: '36px 28px',
+            borderRadius: '20px',
+            backgroundColor: '#130C1E',
+            border: '1px solid rgba(168, 85, 247, 0.3)',
+            boxShadow: '0 20px 48px rgba(0, 0, 0, 0.6)'
+          }}
+        >
+          <div
+            style={{
+              width: '60px',
+              height: '60px',
+              borderRadius: '50%',
+              backgroundColor: 'rgba(168, 85, 247, 0.15)',
+              border: '1px solid rgba(168, 85, 247, 0.3)',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              margin: '0 auto 16px',
+              color: '#A855F7'
+            }}
+          >
+            <Lock size={28} />
+          </div>
+          <h2 style={{ fontSize: '1.4rem', fontWeight: 800, margin: '0 0 8px', color: '#FFFFFF', fontFamily: "var(--font-heading, 'Sora', sans-serif)" }}>
+            Private Profile
+          </h2>
+          <p style={{ color: '#94A3B8', fontSize: '0.86rem', lineHeight: 1.5, margin: '0 0 24px' }}>
+            This FLOCARD digital profile is currently set to <strong>private</strong> by its owner. It is not publicly accessible.
+          </p>
+          <a
+            href="/"
+            style={{
+              display: 'inline-block',
+              padding: '10px 24px',
+              borderRadius: '9999px',
+              backgroundColor: '#6B00FF',
+              color: '#FFFFFF',
+              textDecoration: 'none',
+              fontWeight: 600,
+              fontSize: '0.86rem',
+              boxShadow: '0 4px 16px rgba(107, 0, 255, 0.4)'
+            }}
+          >
+            Return to Homepage
+          </a>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div
@@ -325,6 +404,27 @@ export default function PublicProfile({ slug = 'alex' }) {
         boxSizing: 'border-box'
       }}
     >
+      {isProfilePrivate && (
+        <div
+          style={{
+            width: '100%',
+            backgroundColor: 'rgba(239, 68, 68, 0.15)',
+            borderBottom: '1px solid rgba(239, 68, 68, 0.35)',
+            color: '#F87171',
+            padding: '8px 16px',
+            fontSize: '0.8rem',
+            fontWeight: 700,
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            gap: '8px',
+            zIndex: 101
+          }}
+        >
+          <EyeOff size={14} />
+          <span>Private Mode: This profile is set to {profile.status || 'private'}. Visitors without login cannot view this card.</span>
+        </div>
+      )}
       {/* Top Navbar Header (Positioned above profile content with sticky glass effect) */}
       <header
         style={{

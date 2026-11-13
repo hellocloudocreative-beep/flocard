@@ -47,8 +47,10 @@ export function DataProvider({ children }) {
 
       const deletedCustIds = StorageEngine.getDeletedCustomerIds?.() || [];
       const deletedCustEmails = StorageEngine.getDeletedCustomerEmails?.() || [];
+      const deletedCustNames = StorageEngine.getDeletedCustomerNames?.() || [];
       const deletedProfileIds = StorageEngine.getDeletedProfileIds?.() || [];
       const deletedProfileSlugs = StorageEngine.getDeletedProfileSlugs?.() || [];
+      const deletedProfileNames = StorageEngine.getDeletedProfileNames?.() || [];
       const deletedCardIds = StorageEngine.getDeletedCardIds?.() || [];
       const deletedDesignIds = StorageEngine.getDeletedDesignIds?.() || [];
       const deletedOrderIds = StorageEngine.getDeletedOrderIds?.() || [];
@@ -80,6 +82,7 @@ export function DataProvider({ children }) {
       let cloudDesigns = serverData?.designs;
       let cloudOrders = serverData?.orders;
       let cloudUsers = serverData?.users;
+      let cloudInvoices = serverData?.invoices;
 
       // Fallback: Query client tables directly if serverless endpoint didn't return
       if (!serverData && isSupabaseConfigured && client) {
@@ -105,11 +108,13 @@ export function DataProvider({ children }) {
         for (const cp of cloudProfiles) {
           const cpEmail = (cp.email || '').toLowerCase().trim();
           const cpSlug = (cp.slug || '').toLowerCase().trim();
+          const cpName = (cp.name || '').toLowerCase().trim();
           if (!cpSlug) continue;
 
           const isDeleted = (cp.id && (deletedCustIds.includes(cp.id) || deletedProfileIds.includes(cp.id))) ||
                             (cp.user_id && deletedCustIds.includes(cp.user_id)) ||
                             (deletedProfileSlugs.includes(cpSlug) || deletedProfileIds.includes(cpSlug)) ||
+                            (cpName && (deletedCustNames.includes(cpName) || deletedProfileNames.includes(cpName))) ||
                             (cpEmail && (deletedCustEmails.includes(cpEmail) || deletedProfileIds.includes(cpEmail)));
           if (isDeleted) continue;
 
@@ -125,10 +130,19 @@ export function DataProvider({ children }) {
           const avatarPosY = cp.avatar_pos_y ?? bannerEntry?.avatarPosY ?? 50;
           const photoShape = cp.photo_shape ?? bannerEntry?.photoShape ?? 'circle';
 
+          // Clean human-friendly name: never show raw IDs or random hashes in name
+          let cleanProfName = (cp.name || '').trim();
+          if (!cleanProfName || cleanProfName === cp.slug || /^[0-9a-f-]{12,}$/i.test(cleanProfName)) {
+            cleanProfName = cpSlug
+              .replace(/-[0-9a-f]{4,8}$/i, '')
+              .replace(/[_-]/g, ' ')
+              .replace(/\b\w/g, l => l.toUpperCase());
+          }
+
           mappedProfiles.push({
             id: cp.id,
             slug: cp.slug,
-            name: cp.name || cp.slug,
+            name: cleanProfName || 'Digital Profile',
             role: cp.role || '',
             company: cp.company || '',
             tagline: cp.tagline || '',
@@ -160,21 +174,23 @@ export function DataProvider({ children }) {
           });
         }
 
-        // Reconcile profiles: Live cloud records + any locally saved profiles not yet replicated
+        // Reconcile profiles: Live cloud records + locally created profiles not yet replicated
         const finalProfiles = [...mappedProfiles];
         const cloudSlugs = new Set(mappedProfiles.map(p => (p.slug || '').toLowerCase().trim()));
         const cloudIds = new Set(mappedProfiles.map(p => p.id));
 
         for (const lp of localProfiles) {
           const lSlug = (lp.slug || '').toLowerCase().trim();
-          const isDeleted = (lp.id && (deletedCustIds.includes(lp.id) || deletedProfileIds.includes(lp.id))) ||
-                            (lSlug && (deletedProfileSlugs.includes(lSlug) || deletedProfileIds.includes(lSlug)));
+          const lpId = lp.id ? String(lp.id) : '';
+          const lpName = (lp.name || '').toLowerCase().trim();
+          const isDeleted = (lpId && (deletedCustIds.includes(lpId) || deletedProfileIds.includes(lpId))) ||
+                            (lSlug && (deletedProfileSlugs.includes(lSlug) || deletedProfileIds.includes(lSlug))) ||
+                            (lpName && (deletedCustNames.includes(lpName) || deletedProfileNames.includes(lpName)));
           if (isDeleted) continue;
 
-          // If this local profile is not yet in cloud data, keep it and ensure it syncs
-          if (lSlug && !cloudSlugs.has(lSlug) && (!lp.id || !cloudIds.has(lp.id))) {
+          // If this local profile is not yet in cloud data and not deleted, keep it!
+          if (lSlug && !cloudSlugs.has(lSlug) && (!lpId || !cloudIds.has(lpId))) {
             finalProfiles.push(lp);
-            StorageEngine.syncProfileToCloud(lp);
           }
         }
 
@@ -183,27 +199,38 @@ export function DataProvider({ children }) {
       }
 
       // 2. Reconcile Customers
+      const localCustomers = StorageEngine.getCustomers();
       const authoritativeCusts = [];
       const seenCustEmails = new Set();
       const seenCustIds = new Set();
+      const seenCustNames = new Set();
 
       // From cloud users
       for (const u of (cloudUsers || [])) {
         const uEmail = (u.email || '').toLowerCase().trim();
+        const rawName = u.user_metadata?.name || u.user_metadata?.full_name || '';
+        const uName = rawName.toLowerCase().trim();
         if (!uEmail || deletedCustIds.includes(u.id) || deletedCustEmails.includes(uEmail)) continue;
+        if (uName && deletedCustNames.includes(uName)) continue;
         if (uEmail.includes('flocard.in') && u.user_metadata?.role === 'owner') continue;
+
+        let cleanName = rawName.trim();
+        if (!cleanName || /^[0-9a-f-]{12,}$/i.test(cleanName)) {
+          cleanName = uEmail.split('@')[0].replace(/[._-]/g, ' ').replace(/\b\w/g, l => l.toUpperCase());
+        }
 
         seenCustEmails.add(uEmail);
         if (u.id) seenCustIds.add(u.id);
+        if (cleanName) seenCustNames.add(cleanName.toLowerCase());
 
         authoritativeCusts.push({
           id: u.id,
-          name: u.user_metadata?.name || u.user_metadata?.full_name || uEmail.split('@')[0],
+          name: cleanName,
           email: u.email,
           phone: u.phone || u.user_metadata?.phone || '',
           company: u.user_metadata?.company || '',
           avatar: u.user_metadata?.avatar_url || u.user_metadata?.picture || '',
-          role: u.user_metadata?.role || 'customer',
+          role: 'customer',
           status: u.user_metadata?.status || 'active',
           joinedDate: (u.created_at || '').split('T')[0] || new Date().toISOString().split('T')[0],
           totalCards: 0,
@@ -211,61 +238,105 @@ export function DataProvider({ children }) {
         });
       }
 
-      // From cloud profiles
+      // Reconcile customers derived from digital profiles (ensures Altaf, Akhil, and all created profiles are synchronized as customers across all accounts)
       for (const cp of (cloudProfiles || [])) {
         const cpEmail = (cp.email || '').toLowerCase().trim();
-        const isDeleted = (cp.id && deletedCustIds.includes(cp.id)) ||
-                          (cp.user_id && deletedCustIds.includes(cp.user_id)) ||
-                          (cpEmail && deletedCustEmails.includes(cpEmail));
-        if (isDeleted) continue;
+        const cpSlug = (cp.slug || '').toLowerCase().trim();
+        const cpName = (cp.name || '').trim();
+        const cpNameLower = cpName.toLowerCase();
+        const cpId = cp.id ? String(cp.id).trim() : '';
 
-        const isCustomer = cp.role === 'customer' || (!cp.email?.includes('flocard.in') && cp.role !== 'owner');
-        if (isCustomer && cp.name) {
-          const custId = cp.id || cp.user_id || `cust_${cp.slug}`;
-          if (cpEmail && seenCustEmails.has(cpEmail)) {
-            const existing = authoritativeCusts.find(c => c.email?.toLowerCase().trim() === cpEmail);
-            if (existing) {
-              if (cp.phone && !existing.phone) existing.phone = cp.phone;
-              if (cp.company && !existing.company) existing.company = cp.company;
-              if (cp.avatar_url && !existing.avatar) existing.avatar = cp.avatar_url;
+        if (deletedCustIds.includes(cpId) || deletedProfileIds.includes(cpId) || deletedProfileSlugs.includes(cpSlug)) continue;
+        if (cpNameLower && (deletedCustNames.includes(cpNameLower) || deletedProfileNames.includes(cpNameLower))) continue;
+        if (cpEmail && (deletedCustEmails.includes(cpEmail) || seenCustEmails.has(cpEmail))) {
+          const existing = authoritativeCusts.find(c => c.email?.toLowerCase().trim() === cpEmail);
+          if (existing) {
+            if (cp.phone && !existing.phone) existing.phone = cp.phone;
+            if (cp.company && !existing.company) existing.company = cp.company;
+            if (cp.avatar_url && !existing.avatar) existing.avatar = cp.avatar_url;
+            if (cpName && (!existing.name || existing.name === cpEmail.split('@')[0])) existing.name = cpName;
+          }
+          continue;
+        }
+
+        if (cpNameLower && seenCustNames.has(cpNameLower)) continue;
+
+        let cleanDerivedName = cpName;
+        if (!cleanDerivedName || cleanDerivedName === cpSlug || /^[0-9a-f-]{12,}$/i.test(cleanDerivedName)) {
+          cleanDerivedName = cpSlug
+            .replace(/-[0-9a-f]{4,8}$/i, '')
+            .replace(/[_-]/g, ' ')
+            .replace(/\b\w/g, l => l.toUpperCase());
+        }
+
+        if (cleanDerivedName && cleanDerivedName !== 'Flocard' && cleanDerivedName !== 'Admin') {
+          if (cpEmail) seenCustEmails.add(cpEmail);
+          if (cpId) seenCustIds.add(cpId);
+          seenCustNames.add(cleanDerivedName.toLowerCase());
+
+          authoritativeCusts.push({
+            id: cpId || `cust_${cpSlug}`,
+            name: cleanDerivedName,
+            email: cpEmail || '',
+            phone: cp.phone || '',
+            company: cp.company || '',
+            avatar: cp.avatar_url || '',
+            role: 'customer',
+            status: cp.status || 'active',
+            joinedDate: (cp.created_at || '').split('T')[0] || new Date().toISOString().split('T')[0],
+            totalCards: 0,
+            totalDesigns: 0
+          });
+        }
+      }
+
+      // Retain valid local customers (including newly added customers and those without emails)
+      for (const lc of localCustomers) {
+        const lcEmail = (lc.email || '').toLowerCase().trim();
+        const lcId = lc.id ? String(lc.id).trim() : '';
+        const lcName = (lc.name || '').trim();
+        const lcNameLower = lcName.toLowerCase();
+        if (deletedCustIds.includes(lcId) || (lcEmail && deletedCustEmails.includes(lcEmail))) continue;
+        if (lcNameLower && deletedCustNames.includes(lcNameLower)) continue;
+
+        if (lcEmail && seenCustEmails.has(lcEmail)) {
+          const existing = authoritativeCusts.find(c => c.email?.toLowerCase().trim() === lcEmail);
+          if (existing) {
+            if (lc.phone && !existing.phone) existing.phone = lc.phone;
+            if (lc.company && !existing.company) existing.company = lc.company;
+            if (lc.name && (!existing.name || existing.name === lcEmail.split('@')[0])) existing.name = lc.name;
+            if (lc.whatsapp && !existing.whatsapp) existing.whatsapp = lc.whatsapp;
+            if (lc.notes && !existing.notes) existing.notes = lc.notes;
+          }
+          continue;
+        }
+
+        if (lcNameLower && seenCustNames.has(lcNameLower)) continue;
+        if (lcId && seenCustIds.has(lcId)) continue;
+
+        if (lcEmail) seenCustEmails.add(lcEmail);
+        if (lcId) seenCustIds.add(lcId);
+        if (lcNameLower) seenCustNames.add(lcNameLower);
+        authoritativeCusts.push(lc);
+      }
+
+      // Check for live customer updates
+      const prevCustCount = StorageEngine.getCustomers().length;
+      if (authoritativeCusts.length > prevCustCount) {
+        const latest = authoritativeCusts[authoritativeCusts.length - 1];
+        if (typeof window !== 'undefined') {
+          window.dispatchEvent(new CustomEvent('flocard_realtime_sync_toast', {
+            detail: {
+              title: '⚡ Live Update',
+              message: `Customer ${latest?.name || 'record'} updated in real-time.`
             }
-          } else if (!seenCustIds.has(custId)) {
-            if (cpEmail) seenCustEmails.add(cpEmail);
-            seenCustIds.add(custId);
-            authoritativeCusts.push({
-              id: custId,
-              name: cp.name,
-              email: cp.email || '',
-              phone: cp.phone || '',
-              company: cp.company || '',
-              avatar: cp.avatar_url || '',
-              role: 'customer',
-              status: cp.status || 'active',
-              joinedDate: (cp.created_at || '').split('T')[0] || new Date().toISOString().split('T')[0],
-              totalCards: 0,
-              totalDesigns: 0
-            });
-          }
+          }));
         }
       }
 
-      // If serverData is authoritative, set customers strictly to authoritativeCusts (purges old 4 test customers)
-      if (serverData) {
-        StorageEngine.saveLocalCustomers(authoritativeCusts);
-        setCustomers([...authoritativeCusts]);
-      } else if (authoritativeCusts.length > 0) {
-        const currentCusts = StorageEngine.getCustomers();
-        for (const ac of authoritativeCusts) {
-          const idx = currentCusts.findIndex(c => (ac.email && c.email?.toLowerCase() === ac.email.toLowerCase()) || c.id === ac.id);
-          if (idx >= 0) {
-            currentCusts[idx] = { ...currentCusts[idx], ...ac };
-          } else {
-            currentCusts.unshift(ac);
-          }
-        }
-        StorageEngine.saveLocalCustomers(currentCusts);
-        setCustomers([...currentCusts]);
-      }
+      // Authoritative customer list across all devices & sessions
+      StorageEngine.saveLocalCustomers(authoritativeCusts);
+      setCustomers([...authoritativeCusts]);
 
       // 3. Reconcile Card Designs
       if (Array.isArray(cloudDesigns)) {
@@ -273,15 +344,6 @@ export function DataProvider({ children }) {
         for (const cd of cloudDesigns) {
           const fc = cd.front_config || {};
           const localId = fc._localId || cd.id;
-
-          if (deletedDesignIds.includes(cd.id) || (localId && deletedDesignIds.includes(localId))) {
-            continue;
-          }
-
-          const custEmail = (fc.customerEmail || '').trim().toLowerCase();
-          const isDesignCustDeleted = (fc.customerId && deletedCustIds.includes(fc.customerId)) ||
-                                     (custEmail && deletedCustEmails.includes(custEmail));
-          if (isDesignCustDeleted) continue;
 
           mappedDesigns.push({
             id: localId,
@@ -305,20 +367,8 @@ export function DataProvider({ children }) {
           });
         }
 
-        if (serverData) {
-          StorageEngine.saveLocalDesigns(mappedDesigns);
-          setDesigns([...mappedDesigns]);
-        } else if (mappedDesigns.length > 0) {
-          const localDesigns = StorageEngine.getDesigns();
-          for (const md of mappedDesigns) {
-            const idx = localDesigns.findIndex(d => d.id === md.id || d.supabaseId === md.supabaseId);
-            if (idx >= 0) localDesigns[idx] = { ...localDesigns[idx], ...md };
-            else localDesigns.unshift(md);
-          }
-          const cleanLocalDesigns = localDesigns.filter(d => !deletedDesignIds.includes(d.id) && !deletedDesignIds.includes(d.supabaseId));
-          StorageEngine.saveLocalDesigns(cleanLocalDesigns);
-          setDesigns([...cleanLocalDesigns]);
-        }
+        StorageEngine.saveLocalDesigns(mappedDesigns);
+        setDesigns([...mappedDesigns]);
       }
 
       // 4. Reconcile Orders
@@ -366,29 +416,98 @@ export function DataProvider({ children }) {
         setOrders([...authoritativeOrders]);
       }
 
-      // 5. Reconcile NFC Cards
-      if (Array.isArray(cloudCards) && cloudCards.length > 0) {
-        const mappedCards = cloudCards.map(cc => {
+      // 5. Reconcile Invoices across all accounts
+      if (Array.isArray(cloudInvoices)) {
+        const localInvoices = StorageEngine.getInvoices();
+        const seenInvNos = new Set();
+        const finalInvoices = [];
+
+        for (const ci of cloudInvoices) {
+          const invNo = ci.invoice_number || ci.id;
+          if (!invNo || deletedInvoiceIds.includes(invNo) || deletedInvoiceIds.includes(ci.id)) continue;
+          seenInvNos.add(invNo);
+          if (ci.id) seenInvNos.add(ci.id);
+
+          const meta = ci.metadata || {};
+          finalInvoices.push({
+            id: ci.id || invNo,
+            invoiceNumber: invNo,
+            orderId: ci.order_id || meta.orderId || meta.orderReference || '',
+            orderReference: ci.order_reference || meta.orderReference || '',
+            customerId: ci.customer_id || meta.customerId || '',
+            customerEmail: ci.customer_email || meta.customerEmail || '',
+            customerName: ci.customer_name || meta.customerName || '',
+            totalAmount: Number(ci.total_amount || meta.totalAmount || 0),
+            taxAmount: Number(ci.tax_amount || meta.taxAmount || 0),
+            createdAt: ci.created_at || meta.createdAt,
+            updatedAt: ci.updated_at || meta.updatedAt,
+            ...meta
+          });
+        }
+
+        for (const li of localInvoices) {
+          const lNo = li.invoiceNumber || li.id;
+          if (!lNo || deletedInvoiceIds.includes(lNo) || seenInvNos.has(lNo)) continue;
+          seenInvNos.add(lNo);
+          finalInvoices.push(li);
+        }
+
+        StorageEngine.saveLocalInvoices(finalInvoices);
+      }
+
+      // 6. Reconcile NFC Cards (Preserve old cards, merge cloud cards, check tombstones)
+      const localCards = StorageEngine.getCards();
+      const authoritativeCards = [];
+      const seenCardCodes = new Set();
+
+      if (Array.isArray(cloudCards)) {
+        for (const cc of cloudCards) {
+          const cCode = cc.card_code || cc.id;
+          if (!cCode || deletedCardIds.includes(cc.id) || deletedCardIds.includes(cCode)) continue;
+          seenCardCodes.add(cCode.toLowerCase());
+          if (cc.id) seenCardCodes.add(cc.id.toLowerCase());
+
           const rawStatus = (cc.status || 'in_stock').toLowerCase();
-          return {
-            id: cc.id,
+          authoritativeCards.push({
+            id: cc.id || cCode,
             cardCode: cc.card_code,
-            cardName: `NFC Card ${cc.card_code}`,
+            cardName: cc.card_name || `NFC Card ${cc.card_code}`,
             chipType: cc.chip_type || 'NXP NTAG216 (888 Bytes)',
             batch: cc.batch || 'Batch-A',
             edition: cc.edition || 'purple',
             customerId: cc.customer_id,
+            customerName: cc.customer_name,
             profileSlug: cc.profile_slug,
+            profileName: cc.profile_name,
             status: rawStatus === 'revoked' ? 'disabled' : rawStatus,
             tapCount: cc.tap_count || 0,
             lastTapped: cc.last_tapped_at,
             updatedAt: cc.updated_at || cc.created_at
-          };
-        }).filter(c => !deletedCardIds.includes(c.id) && !deletedCardIds.includes(c.cardCode));
-
-        StorageEngine.saveLocalCards(mappedCards);
-        setCards([...mappedCards]);
+          });
+        }
       }
+
+      // Retain existing local cards so physical cards in hand or previously created cards are never missing
+      for (const lc of localCards) {
+        const lcCode = lc.cardCode || lc.id;
+        if (!lcCode || deletedCardIds.includes(lc.id) || deletedCardIds.includes(lcCode)) continue;
+        const normCode = lcCode.toLowerCase();
+        if (seenCardCodes.has(normCode) || (lc.id && seenCardCodes.has(lc.id.toLowerCase()))) {
+          const existing = authoritativeCards.find(c => c.cardCode?.toLowerCase() === normCode || c.id === lc.id);
+          if (existing) {
+            if (!existing.profileSlug && lc.profileSlug) existing.profileSlug = lc.profileSlug;
+            if (!existing.customerId && lc.customerId) existing.customerId = lc.customerId;
+            if (!existing.customerName && lc.customerName) existing.customerName = lc.customerName;
+            if (!existing.profileName && lc.profileName) existing.profileName = lc.profileName;
+          }
+          continue;
+        }
+        seenCardCodes.add(normCode);
+        authoritativeCards.push(lc);
+      }
+
+      StorageEngine.saveLocalCards(authoritativeCards);
+      setCards([...authoritativeCards]);
 
       setLastCloudSyncTime(new Date());
     } catch (err) {
@@ -531,22 +650,53 @@ export function DataProvider({ children }) {
 
   const saveProfile = async (profile) => {
     const updated = await StorageEngine.saveProfile(profile);
+    setProfiles(prev => {
+      const idx = prev.findIndex(p => p.id === updated.id || p.slug === updated.slug);
+      if (idx >= 0) {
+        const copy = [...prev];
+        copy[idx] = updated;
+        return copy;
+      }
+      return [updated, ...prev];
+    });
     refreshAll();
-    await syncCloudData();
+    (async () => {
+      try {
+        await syncCloudData();
+      } catch (err) {
+        console.warn('[DataContext] Profile cloud sync note:', err.message);
+      }
+    })();
     return updated;
   };
 
   const deleteProfile = async (id) => {
+    setProfiles(prev => prev.filter(p => p.id !== id && p.slug !== id && p.name !== id));
     await StorageEngine.deleteProfile(id);
-    setProfiles(prev => prev.filter(p => p.id !== id && p.slug !== id));
     refreshAll();
-    syncCloudData();
+    await syncCloudData();
   };
 
-  const saveCard = (card) => {
+  const saveCard = async (card) => {
     const updated = StorageEngine.saveCard(card);
+    setCards(prev => {
+      const idx = prev.findIndex(c => (c.id && c.id === updated.id) || (c.cardCode && c.cardCode === updated.cardCode));
+      if (idx >= 0) {
+        const copy = [...prev];
+        copy[idx] = updated;
+        return copy;
+      }
+      return [updated, ...prev];
+    });
     refreshAll();
-    syncCloudData();
+    (async () => {
+      try {
+        await StorageEngine.syncCardToCloud(updated);
+        await callCloudSyncApi('syncCard', { card: updated });
+      } catch (e) {
+        console.warn('[DataContext] syncCard note:', e.message);
+      }
+    })();
     return updated;
   };
 
@@ -554,7 +704,7 @@ export function DataProvider({ children }) {
     await StorageEngine.deleteCard(id);
     setCards(prev => prev.filter(c => c.id !== id && c.cardCode !== id));
     refreshAll();
-    syncCloudData();
+    await syncCloudData();
   };
 
   const recordTap = (cardCode, clientMeta) => {
@@ -563,10 +713,11 @@ export function DataProvider({ children }) {
     return card;
   };
 
-  const saveDesign = (design) => {
+  const saveDesign = async (design) => {
     const updated = StorageEngine.saveDesign(design);
     refreshAll();
-    syncCloudData();
+    await StorageEngine.syncDesignToCloud(updated);
+    await syncCloudData();
     return updated;
   };
 
@@ -581,7 +732,7 @@ export function DataProvider({ children }) {
     await StorageEngine.deleteDesign(id);
     setDesigns(prev => prev.filter(d => d.id !== id && d.supabaseId !== id));
     refreshAll();
-    syncCloudData();
+    await syncCloudData();
   };
 
   const saveOrder = (order) => {
@@ -701,27 +852,34 @@ export function DataProvider({ children }) {
 
   const saveCustomer = async (customer) => {
     const updated = StorageEngine.saveCustomer(customer);
+    setCustomers(prev => {
+      const idx = prev.findIndex(c => c.id === updated.id || (c.email && c.email === updated.email));
+      if (idx >= 0) {
+        const copy = [...prev];
+        copy[idx] = updated;
+        return copy;
+      }
+      return [updated, ...prev];
+    });
     refreshAll();
-    try {
-      const synced = await StorageEngine.syncCustomerToCloud(updated);
-      refreshAll();
-      syncCloudData();
-      return synced || updated;
-    } catch (err) {
-      refreshAll();
-      syncCloudData();
-      throw err;
-    }
+    // Non-blocking background sync so UI and modals respond instantly
+    (async () => {
+      try {
+        await StorageEngine.syncCustomerToCloud(updated);
+        refreshAll();
+        await syncCloudData();
+      } catch (err) {
+        console.warn('[DataContext] Customer cloud sync note:', err.message);
+      }
+    })();
+    return updated;
   };
 
   const deleteCustomer = async (id) => {
+    setCustomers(prev => prev.filter(c => c.id !== id && c.email !== id && c.name !== id));
     await StorageEngine.deleteCustomer(id);
-    setCustomers([...StorageEngine.getCustomers()]);
-    setProfiles([...StorageEngine.getProfiles()]);
-    setDesigns([...StorageEngine.getDesigns()]);
-    setOrders([...StorageEngine.getOrders()]);
     refreshAll();
-    syncCloudData();
+    await syncCloudData();
   };
 
   const saveTemplate = (template) => {
@@ -800,6 +958,7 @@ export function DataProvider({ children }) {
   const clearAllCustomersOrdersDesigns = async (actorName) => {
     await StorageEngine.clearAllCustomersOrdersDesigns(actorName);
     refreshAll();
+    await syncCloudData();
   };
 
   return (
