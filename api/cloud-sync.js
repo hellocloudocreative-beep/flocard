@@ -304,6 +304,19 @@ export default async function handler(req, res) {
         return res.status(200).json({ success: true });
       }
 
+      case 'resetOrdersInvoicesProfiles': {
+        try {
+          await adminClient.from('orders').delete().neq('id', '00000000-0000-0000-0000-000000000000');
+        } catch (_) {}
+        try {
+          await adminClient.from('invoices').delete().neq('id', '00000000-0000-0000-0000-000000000000');
+        } catch (_) {}
+        try {
+          await adminClient.from('profiles').delete().neq('id', '00000000-0000-0000-0000-000000000000');
+        } catch (_) {}
+        return res.status(200).json({ success: true });
+      }
+
       case 'resetAllData': {
         const OWNER_EMAILS = ['flocard', 'flocard@flocard.in', 'hello.flocard@gmail.com', 'admin@flocard.in'];
         try {

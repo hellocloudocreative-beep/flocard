@@ -36,6 +36,7 @@ import { useData } from '../../context/DataContext';
 import { useTheme } from '../../context/ThemeContext';
 import { useAuth } from '../../context/AuthContext';
 import { formatCurrencyINR } from '../../lib/storage';
+import DeleteConfirmNotification from '../dashboard/DeleteConfirmNotification';
 
 export default function AdminBackupManager() {
   const { isDark } = useTheme();
@@ -53,21 +54,27 @@ export default function AdminBackupManager() {
   } = useData();
 
   const [isResetting, setIsResetting] = useState(false);
+  const [confirmDialogState, setConfirmDialogState] = useState(null);
 
-  const handleCleanBaseReset = async () => {
-    if (!window.confirm('Are you sure you want to delete all customers, sales orders, invoices, and card designs to start fresh from base? All hardware NFC cards will return to stock inventory.')) {
-      return;
-    }
-    setIsResetting(true);
-    try {
-      await clearAllCustomersOrdersDesigns(user?.name || 'Developer Admin');
-      setRestoreSuccessMsg('System reset complete! All customers, orders, invoices, and custom designs have been cleared. Ready to start fresh from base.');
-      setTimeout(() => setRestoreSuccessMsg(null), 8000);
-    } catch (err) {
-      alert('Reset failed: ' + err.message);
-    } finally {
-      setIsResetting(false);
-    }
+  const handleCleanBaseReset = () => {
+    setConfirmDialogState({
+      title: 'Reset System to Clean Base',
+      itemName: 'All Customers, Orders, Invoices & Designs',
+      message: 'Are you sure you want to delete all customers, sales orders, invoices, and card designs to start fresh from base? All hardware NFC cards will return to stock inventory.',
+      onConfirm: async () => {
+        setConfirmDialogState(null);
+        setIsResetting(true);
+        try {
+          await clearAllCustomersOrdersDesigns(user?.name || 'Developer Admin');
+          setRestoreSuccessMsg('System reset complete! All customers, orders, invoices, and custom designs have been cleared. Ready to start fresh from base.');
+          setTimeout(() => setRestoreSuccessMsg(null), 8000);
+        } catch (err) {
+          console.error('Reset failed:', err);
+        } finally {
+          setIsResetting(false);
+        }
+      }
+    });
   };
 
   const invoices = getInvoices ? getInvoices() : [];
@@ -158,33 +165,36 @@ export default function AdminBackupManager() {
   };
 
   // 4. Handle Final Approval & Restore
-  const handleApproveRestore = async () => {
+  const handleApproveRestore = () => {
     if (!parsedBackup) return;
 
     const confirmText = restoreMode === 'replace'
       ? `ATTENTION: Clean Replacement will overwrite current live records with this backup snapshot (${parsedBackup.summary.customersCount} Customers, ${parsedBackup.summary.ordersCount} Orders, ${parsedBackup.summary.designsCount} Designs). Proceed?`
       : `Approve and merge ${parsedBackup.summary.customersCount} Customers, ${parsedBackup.summary.ordersCount} Orders, and ${parsedBackup.summary.designsCount} Designs into the active system?`;
 
-    if (!window.confirm(confirmText)) {
-      return;
-    }
-
-    setIsRestoring(true);
-    try {
-      const result = await restoreBackup(parsedBackup, {
-        mode: restoreMode,
-        actorName: user?.name || user?.email || 'Developer Admin'
-      });
-
-      setRestoreSuccessMsg(`Backup approved & restored successfully! (${result.restoredCounts.customers} Customers, ${result.restoredCounts.orders} Sales Orders, ${result.restoredCounts.designs} Designs now live).`);
-      setParsedBackup(null);
-      setTimeout(() => setRestoreSuccessMsg(null), 10000);
-    } catch (err) {
-      console.error('Failed to restore backup:', err);
-      alert('Restore failed: ' + err.message);
-    } finally {
-      setIsRestoring(false);
-    }
+    setConfirmDialogState({
+      title: 'Approve Snapshot Restore',
+      itemName: `${parsedBackup.summary.customersCount} Customers, ${parsedBackup.summary.ordersCount} Orders`,
+      message: confirmText,
+      confirmLabel: 'OK, Restore',
+      onConfirm: async () => {
+        setConfirmDialogState(null);
+        setIsRestoring(true);
+        try {
+          const result = await restoreBackup(parsedBackup, {
+            mode: restoreMode,
+            actorName: user?.name || user?.email || 'Developer Admin'
+          });
+          setRestoreSuccessMsg(`Snapshot restored successfully! Restored: ${result.restoredCounts.customers} customers, ${result.restoredCounts.orders} orders, ${result.restoredCounts.designs} designs.`);
+          setParsedBackup(null);
+          setTimeout(() => setRestoreSuccessMsg(null), 8000);
+        } catch (err) {
+          console.error('Restore failed:', err);
+        } finally {
+          setIsRestoring(false);
+        }
+      }
+    });
   };
 
   const handleCancelPreview = () => {
@@ -942,6 +952,17 @@ export default function AdminBackupManager() {
         </div>
       )}
 
+      {/* Apple-Style In-App Confirmation Notification with OK Button */}
+      <DeleteConfirmNotification
+        isOpen={Boolean(confirmDialogState)}
+        title={confirmDialogState?.title || 'Confirm Action'}
+        itemName={confirmDialogState?.itemName || ''}
+        message={confirmDialogState?.message || ''}
+        onConfirm={confirmDialogState?.onConfirm}
+        onCancel={() => setConfirmDialogState(null)}
+        confirmLabel={confirmDialogState?.confirmLabel || 'OK'}
+        isLight={!isDark}
+      />
     </div>
   );
 }

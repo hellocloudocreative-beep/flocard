@@ -35,11 +35,13 @@ import {
 import { StorageEngine } from '../../../lib/storage';
 import { appointmentService } from '../../../lib/appointmentService';
 import { useAuth } from '../../../context/AuthContext';
+import DeleteConfirmNotification from '../../../components/dashboard/DeleteConfirmNotification';
 
 export default function AdminAppointmentsManager() {
   const { user } = useAuth();
   const [appointments, setAppointments] = useState([]);
   const [profiles, setProfiles] = useState([]);
+  const [deleteConfirmApptId, setDeleteConfirmApptId] = useState(null);
   const [searchQuery, setSearchQuery] = useState('');
   const [statusFilter, setStatusFilter] = useState('ALL');
   const [profileFilter, setProfileFilter] = useState('ALL');
@@ -111,11 +113,15 @@ export default function AdminAppointmentsManager() {
 
   // Delete
   const handleDelete = (appointmentId) => {
-    if (window.confirm('Are you sure you want to delete this booking record?')) {
-      StorageEngine.deleteAppointment(appointmentId);
-      showNotification('Appointment record deleted');
-      loadData();
-    }
+    setDeleteConfirmApptId(appointmentId);
+  };
+
+  const executeDelete = () => {
+    if (!deleteConfirmApptId) return;
+    StorageEngine.deleteAppointment(deleteConfirmApptId);
+    showNotification('Appointment record deleted');
+    setDeleteConfirmApptId(null);
+    loadData();
   };
 
   // Reschedule
@@ -705,6 +711,17 @@ export default function AdminAppointmentsManager() {
           </div>
         </div>
       )}
+
+      {/* Apple-Style In-App Delete Confirmation Notification with OK Button */}
+      <DeleteConfirmNotification
+        isOpen={Boolean(deleteConfirmApptId)}
+        title="Delete Appointment"
+        itemName={`Booking #${deleteConfirmApptId}`}
+        message="Are you sure you want to delete this appointment booking record?"
+        onConfirm={executeDelete}
+        onCancel={() => setDeleteConfirmApptId(null)}
+        confirmLabel="OK"
+      />
     </div>
   );
 }

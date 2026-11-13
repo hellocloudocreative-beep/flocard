@@ -49,6 +49,7 @@ import { calculateOrderPricing, getInvoiceConfig, saveInvoiceConfig, DEFAULT_BUS
 import { downloadInvoicePDF, INVOICE_THEMES } from '../../../lib/invoicePdfExport';
 import { formatCurrencyINR, StorageEngine } from '../../../lib/storage';
 import ReceiptPrintAnimation from '../../../components/common/ReceiptPrintAnimation';
+import DeleteConfirmNotification from '../../../components/dashboard/DeleteConfirmNotification';
 
 export default function AdminInvoiceManager({ initialOrderId = null }) {
   const { isDark } = useTheme();
@@ -83,6 +84,7 @@ export default function AdminInvoiceManager({ initialOrderId = null }) {
 
   // Single Row Confirmation State (when clicking Assign/Decline directly on a row)
   const [selectedItemForAction, setSelectedItemForAction] = useState(null);
+  const [deleteConfirmInvoice, setDeleteConfirmInvoice] = useState(null);
 
   // Preview Modal
   const [previewOrder, setPreviewOrder] = useState(null);
@@ -543,11 +545,16 @@ export default function AdminInvoiceManager({ initialOrderId = null }) {
   };
 
   const handleDeleteInvoice = (inv) => {
+    setDeleteConfirmInvoice(inv);
+  };
+
+  const executeDeleteInvoice = () => {
+    if (!deleteConfirmInvoice) return;
+    const inv = deleteConfirmInvoice;
     const num = inv.invoiceNumber || inv.id;
-    if (window.confirm(`Are you sure you want to permanently delete Invoice ${num}?`)) {
-      deleteInvoice(inv.id || num);
-      showToast(`Invoice ${num} permanently deleted.`);
-    }
+    setDeleteConfirmInvoice(null);
+    deleteInvoice(inv.id || num);
+    showToast(`Invoice ${num} permanently deleted.`);
   };
 
   // Theme Colors
@@ -3090,6 +3097,18 @@ export default function AdminInvoiceManager({ initialOrderId = null }) {
           </div>
         </div>
       )}
+
+      {/* Apple-Style In-App Delete Confirmation Notification with OK Button */}
+      <DeleteConfirmNotification
+        isOpen={Boolean(deleteConfirmInvoice)}
+        title="Delete Tax Invoice"
+        itemName={deleteConfirmInvoice ? `Invoice #${deleteConfirmInvoice.invoiceNumber || deleteConfirmInvoice.id}` : ''}
+        message="Are you sure you want to permanently delete this invoice record? Tax and ledger records will be updated."
+        onConfirm={executeDeleteInvoice}
+        onCancel={() => setDeleteConfirmInvoice(null)}
+        confirmLabel="OK"
+        isLight={!isDark}
+      />
     </div>
   );
 }

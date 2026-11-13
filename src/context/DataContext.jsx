@@ -961,6 +961,13 @@ export function DataProvider({ children }) {
     await syncCloudData();
   };
 
+  const purgeOrdersInvoicesAndProfiles = async (actorName) => {
+    await StorageEngine.purgeOrdersInvoicesAndProfiles(actorName);
+    setOrders([]);
+    setProfiles([]);
+    refreshAll();
+  };
+
   return (
     <DataContext.Provider value={{
       profiles,
@@ -1033,6 +1040,7 @@ export function DataProvider({ children }) {
       restoreBackup,
       resetAllData,
       clearAllCustomersOrdersDesigns,
+      purgeOrdersInvoicesAndProfiles,
       getProfileBySlug: StorageEngine.getProfileBySlug,
       getCardByCode: StorageEngine.getCardByCode,
       getDesignById: StorageEngine.getDesignById,

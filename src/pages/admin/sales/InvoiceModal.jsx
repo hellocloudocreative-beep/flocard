@@ -25,6 +25,7 @@ import { useData } from '../../../context/DataContext';
 export default function InvoiceModal({ order, onClose }) {
   const { invoiceSettings } = useData();
   const [downloading, setDownloading] = useState(false);
+  const [pdfError, setPdfError] = useState(null);
   const invoiceRef = useRef(null);
 
   if (!order) return null;
@@ -275,7 +276,8 @@ export default function InvoiceModal({ order, onClose }) {
       doc.save(`FLOCARD_Invoice_${invoiceNumber}.pdf`);
     } catch (err) {
       console.error('Failed to generate PDF:', err);
-      alert('Could not generate PDF. Please use the Print option instead.');
+      setPdfError('Could not generate PDF. Please use the Print option instead.');
+      setTimeout(() => setPdfError(null), 5000);
     } finally {
       setDownloading(false);
     }
@@ -358,6 +360,13 @@ export default function InvoiceModal({ order, onClose }) {
             </button>
           </div>
         </div>
+
+        {pdfError && (
+          <div className="mx-6 mt-4 p-3 rounded-xl bg-rose-500/15 border border-rose-500/30 text-rose-300 text-xs font-semibold flex items-center gap-2">
+            <AlertCircle className="w-4 h-4 text-rose-400 shrink-0" />
+            <span>{pdfError}</span>
+          </div>
+        )}
 
         {/* Invoice Printable Sheet */}
         <div ref={invoiceRef} className="p-8 md:p-12 print:p-8 space-y-8 bg-[#0D0819] print:bg-white">

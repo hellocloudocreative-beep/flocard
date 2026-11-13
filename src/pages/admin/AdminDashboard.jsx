@@ -123,6 +123,7 @@ import {
 import { resolveMapUrl } from '../../lib/constants';
 import WhatsAppContactButton from '../../components/dashboard/WhatsAppContactButton';
 import AddCustomerModal from '../../components/dashboard/AddCustomerModal';
+import DeleteConfirmNotification from '../../components/dashboard/DeleteConfirmNotification';
 
 export default function AdminDashboard({ initialTab = 'overview', initialOrderId = null }) {
   const {
@@ -186,6 +187,7 @@ export default function AdminDashboard({ initialTab = 'overview', initialOrderId
     saveDemoConfig,
     resetDemoConfig,
     resetAllData,
+    purgeOrdersInvoicesAndProfiles,
     refreshAll,
     syncCloudData,
     isCloudSyncing,
@@ -228,6 +230,7 @@ export default function AdminDashboard({ initialTab = 'overview', initialOrderId
   const [orderFilter, setOrderFilter] = useState('all');
   const [selectedOrder, setSelectedOrder] = useState(null);
   const [fulfillmentToast, setFulfillmentToast] = useState(null);
+  const [deleteConfirmState, setDeleteConfirmState] = useState(null);
 
   // Real-time live background update notification listener
   useEffect(() => {
@@ -330,7 +333,12 @@ export default function AdminDashboard({ initialTab = 'overview', initialOrderId
         if (res && res.order) linkedOrd = res.order;
       }
       if (!linkedOrd) {
-        alert('Could not link a manufacturing order for this design.');
+        setFulfillmentToast({
+          title: 'Order Link Failed',
+          message: 'Could not link a manufacturing order for this design.',
+          type: 'error'
+        });
+        setTimeout(() => setFulfillmentToast(null), 5000);
         setIsUpdatingStatus(false);
         return;
       }
@@ -362,7 +370,12 @@ export default function AdminDashboard({ initialTab = 'overview', initialOrderId
       setTimeout(() => setFulfillmentToast(null), 4000);
       setDesignStatusModal(null);
     } catch (err) {
-      alert(err.message || 'Failed to update order status');
+      setFulfillmentToast({
+        title: 'Status Update Failed',
+        message: err.message || 'Failed to update order status',
+        type: 'error'
+      });
+      setTimeout(() => setFulfillmentToast(null), 5000);
     } finally {
       setIsUpdatingStatus(false);
     }
@@ -758,11 +771,17 @@ export default function AdminDashboard({ initialTab = 'overview', initialOrderId
   };
 
   const handleResetDemoSettings = () => {
-    if (window.confirm('Reset demo showcase settings to factory defaults ("Your Name", "Your Role", etc.)?')) {
-      resetDemoConfig();
-      setDemoSaveSuccess('Demo settings reset to factory defaults.');
-      setTimeout(() => setDemoSaveSuccess(''), 4000);
-    }
+    setDeleteConfirmState({
+      title: 'Reset Demo Showcase',
+      itemName: 'Homepage Demo Showcase Settings',
+      message: 'Are you sure you want to reset demo showcase settings to factory defaults ("Your Name", "Your Role", etc.)?',
+      onConfirm: () => {
+        setDeleteConfirmState(null);
+        resetDemoConfig();
+        setDemoSaveSuccess('Demo settings reset to factory defaults.');
+        setTimeout(() => setDemoSaveSuccess(''), 4000);
+      }
+    });
   };
   const [newAdminForm, setNewAdminForm] = useState({ email: '', name: '', role: 'admin' });
   const [newTmplForm, setNewTmplForm] = useState({
@@ -1054,17 +1073,24 @@ export default function AdminDashboard({ initialTab = 'overview', initialOrderId
     }
   };
 
-  const handleDeleteCustomer = async (id) => {
-    if (window.confirm('Are you sure you want to delete this customer? This will remove their record across all devices.')) {
-      await deleteCustomer(id);
-      if (editingCustomer?.id === id) setEditingCustomer(null);
-      setFulfillmentToast({
-        title: 'Customer Deleted',
-        message: 'Customer record, profiles, and associated data removed permanently.',
-        type: 'success'
-      });
-      setTimeout(() => setFulfillmentToast(null), 4000);
-    }
+  const handleDeleteCustomer = (id) => {
+    const cust = customers.find(c => c.id === id);
+    setDeleteConfirmState({
+      title: 'Delete Customer Account',
+      itemName: cust ? `${cust.name || cust.email} (${cust.phone || id})` : `Customer ID: ${id}`,
+      message: 'Are you sure you want to delete this customer? This will remove their record across all devices.',
+      onConfirm: async () => {
+        setDeleteConfirmState(null);
+        await deleteCustomer(id);
+        if (editingCustomer?.id === id) setEditingCustomer(null);
+        setFulfillmentToast({
+          title: 'Customer Deleted',
+          message: 'Customer record, profiles, and associated data removed permanently.',
+          type: 'success'
+        });
+        setTimeout(() => setFulfillmentToast(null), 4000);
+      }
+    });
   };
 
   // Handle Edit/Save Profile
@@ -1082,17 +1108,42 @@ export default function AdminDashboard({ initialTab = 'overview', initialOrderId
     setTimeout(() => setFulfillmentToast(null), 5000);
   };
 
-  const handleDeleteProfile = async (id) => {
-    if (window.confirm('Are you sure you want to delete this digital profile? Its public URL will become unavailable.')) {
-      await deleteProfile(id);
-      if (editingProfile?.id === id) setEditingProfile(null);
-      setFulfillmentToast({
-        title: 'Profile Deleted',
-        message: 'Digital profile has been permanently removed.',
-        type: 'success'
-      });
-      setTimeout(() => setFulfillmentToast(null), 4000);
-    }
+  const handleDeleteProfile = (id) => {
+    const prof = profiles.find(p => p.id === id || p.slug === id);
+    setDeleteConfirmState({
+      title: 'Delete Digital Profile',
+      itemName: prof ? `${prof.name || prof.full_name || 'Profile'} (/p/${prof.slug || id})` : `Profile: ${id}`,
+      message: 'Are you sure you want to delete this digital profile? Its public URL will become permanently unavailable.',
+      onConfirm: async () => {
+        setDeleteConfirmState(null);
+        await deleteProfile(id);
+        if (editingProfile?.id === id) setEditingProfile(null);
+        setFulfillmentToast({
+          title: 'Profile Deleted',
+          message: 'Digital profile has been permanently removed.',
+          type: 'success'
+        });
+        setTimeout(() => setFulfillmentToast(null), 4000);
+      }
+    });
+  };
+
+  const handlePurgeAllOrdersInvoicesProfiles = () => {
+    setDeleteConfirmState({
+      title: 'Purge Invoices, Orders & Profiles',
+      itemName: 'All Active Invoices, Orders & Digital Profiles',
+      message: 'Are you sure you want to permanently delete all invoices, orders, and digital profiles? This resets them to an empty clean slate.',
+      onConfirm: async () => {
+        setDeleteConfirmState(null);
+        await purgeOrdersInvoicesAndProfiles(user?.name || 'Administrator');
+        setFulfillmentToast({
+          title: 'System Cleaned',
+          message: 'All current invoices, orders, and digital profiles have been completely purged.',
+          type: 'success'
+        });
+        setTimeout(() => setFulfillmentToast(null), 5000);
+      }
+    });
   };
 
   // Handle Trigger Card Status Change (Confirmation Dialog Flow)
@@ -1258,17 +1309,24 @@ export default function AdminDashboard({ initialTab = 'overview', initialOrderId
     }
   };
 
-  const handleDeleteCard = async (id) => {
-    if (window.confirm('Are you sure you want to delete this NFC hardware record? The card tag will no longer resolve.')) {
-      await deleteCard(id);
-      if (editingCard?.id === id) setEditingCard(null);
-      if (cardDetailsModal?.id === id) setCardDetailsModal(null);
-      setCardToast({
-        type: 'success',
-        message: 'NFC card record removed from inventory.'
-      });
-      setTimeout(() => setCardToast(null), 4000);
-    }
+  const handleDeleteCard = (id) => {
+    const card = cards.find(c => c.id === id || c.cardCode === id);
+    setDeleteConfirmState({
+      title: 'Delete NFC Hardware Card',
+      itemName: card ? `Card Code: ${card.cardCode} (${card.edition || 'NTAG216'})` : `Card: ${id}`,
+      message: 'Are you sure you want to delete this NFC hardware record? The card tag will no longer resolve.',
+      onConfirm: async () => {
+        setDeleteConfirmState(null);
+        await deleteCard(id);
+        if (editingCard?.id === id) setEditingCard(null);
+        if (cardDetailsModal?.id === id) setCardDetailsModal(null);
+        setCardToast({
+          type: 'success',
+          message: 'NFC card record removed from inventory.'
+        });
+        setTimeout(() => setCardToast(null), 4000);
+      }
+    });
   };
 
   // Handle Edit/Save Design with Logo Support & Order Synchronization
@@ -1314,7 +1372,12 @@ export default function AdminDashboard({ initialTab = 'overview', initialOrderId
     if (!file || !editingDesign) return;
 
     if (!file.type.startsWith('image/')) {
-      alert('Please select a valid image file (PNG, JPG, SVG, WebP).');
+      setFulfillmentToast({
+        title: 'Invalid File Type',
+        message: 'Please select a valid image file (PNG, JPG, SVG, WebP).',
+        type: 'error'
+      });
+      setTimeout(() => setFulfillmentToast(null), 5000);
       return;
     }
 
@@ -1393,11 +1456,23 @@ export default function AdminDashboard({ initialTab = 'overview', initialOrderId
     });
   };
 
-  const handleDeleteDesign = async (id) => {
-    if (window.confirm('Are you sure you want to delete this card design record?')) {
-      await deleteDesign(id);
-      if (editingDesign?.id === id) setEditingDesign(null);
-    }
+  const handleDeleteDesign = (id) => {
+    setDeleteConfirmState({
+      title: 'Delete Card Design',
+      itemName: `Design #${id}`,
+      message: 'Are you sure you want to permanently delete this card artwork proof? This cannot be undone.',
+      onConfirm: async () => {
+        setDeleteConfirmState(null);
+        await deleteDesign(id);
+        if (editingDesign?.id === id) setEditingDesign(null);
+        setFulfillmentToast({
+          title: 'Design Deleted',
+          message: 'Artwork record removed permanently.',
+          type: 'success'
+        });
+        setTimeout(() => setFulfillmentToast(null), 4000);
+      }
+    });
   };
 
   // Handle Edit/Save Template
@@ -1409,10 +1484,17 @@ export default function AdminDashboard({ initialTab = 'overview', initialOrderId
   };
 
   const handleDeleteTemplate = (id) => {
-    if (window.confirm('Are you sure you want to delete this card template preset?')) {
-      deleteTemplate(id);
-      if (editingTemplate?.id === id) setEditingTemplate(null);
-    }
+    const tmpl = templates.find(t => t.id === id || t.key === id);
+    setDeleteConfirmState({
+      title: 'Delete Template Preset',
+      itemName: tmpl ? tmpl.name : `Template #${id}`,
+      message: 'Are you sure you want to delete this card template preset?',
+      onConfirm: () => {
+        setDeleteConfirmState(null);
+        deleteTemplate(id);
+        if (editingTemplate?.id === id) setEditingTemplate(null);
+      }
+    });
   };
 
   const handleCreateTemplate = (e) => {
@@ -10507,6 +10589,17 @@ export default function AdminDashboard({ initialTab = 'overview', initialOrderId
           </div>
         </div>
       )}
+
+      {/* Apple-Style In-App Delete Confirmation Notification with OK Button */}
+      <DeleteConfirmNotification
+        isOpen={Boolean(deleteConfirmState)}
+        title={deleteConfirmState?.title || 'Confirm Deletion'}
+        itemName={deleteConfirmState?.itemName || ''}
+        message={deleteConfirmState?.message || ''}
+        onConfirm={deleteConfirmState?.onConfirm}
+        onCancel={() => setDeleteConfirmState(null)}
+        confirmLabel="OK"
+      />
     </div>
   );
 }

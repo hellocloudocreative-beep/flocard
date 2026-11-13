@@ -61,6 +61,48 @@ try {
     }
     keysToRemove.forEach(k => localStorage.removeItem(k));
 
+    // Mandatory clean wipe: Purge all existing invoices, orders, and digital profiles per user request
+    const PURGE_ORDERS_INVOICES_PROFILES_KEY = 'flocard_purged_initial_records_v3';
+    if (!localStorage.getItem(PURGE_ORDERS_INVOICES_PROFILES_KEY)) {
+      try {
+        const rawOrders = JSON.parse(localStorage.getItem('flocard_data_v3_orders') || '[]');
+        const rawInvoices = JSON.parse(localStorage.getItem('flocard_data_v3_invoices') || '[]');
+        const rawProfiles = JSON.parse(localStorage.getItem('flocard_data_v3_profiles') || '[]');
+
+        const delOrderIds = JSON.parse(localStorage.getItem('flocard_deleted_order_ids') || '[]');
+        const delInvIds = JSON.parse(localStorage.getItem('flocard_deleted_invoice_ids') || '[]');
+        const delProfSlugs = JSON.parse(localStorage.getItem('flocard_deleted_profile_slugs') || '[]');
+        const delProfIds = JSON.parse(localStorage.getItem('flocard_deleted_profile_ids') || '[]');
+
+        rawOrders.forEach(o => {
+          if (o.id && !delOrderIds.includes(o.id)) delOrderIds.push(o.id);
+          if (o.orderReference && !delOrderIds.includes(o.orderReference)) delOrderIds.push(o.orderReference);
+        });
+        rawInvoices.forEach(i => {
+          if (i.id && !delInvIds.includes(i.id)) delInvIds.push(i.id);
+          if (i.invoiceNumber && !delInvIds.includes(i.invoiceNumber)) delInvIds.push(i.invoiceNumber);
+        });
+        rawProfiles.forEach(p => {
+          if (p.id && !delProfIds.includes(p.id)) delProfIds.push(p.id);
+          if (p.slug && !delProfSlugs.includes(p.slug)) delProfSlugs.push(p.slug);
+        });
+
+        localStorage.setItem('flocard_deleted_order_ids', JSON.stringify(delOrderIds));
+        localStorage.setItem('flocard_deleted_invoice_ids', JSON.stringify(delInvIds));
+        localStorage.setItem('flocard_deleted_profile_ids', JSON.stringify(delProfIds));
+        localStorage.setItem('flocard_deleted_profile_slugs', JSON.stringify(delProfSlugs));
+
+        localStorage.setItem('flocard_data_v3_orders', JSON.stringify([]));
+        localStorage.setItem('flocard_data_v3_invoices', JSON.stringify([]));
+        localStorage.setItem('flocard_data_v3_profiles', JSON.stringify([]));
+        localStorage.setItem('flocard_orders', JSON.stringify([]));
+        localStorage.setItem('flocard_invoices', JSON.stringify([]));
+        localStorage.setItem('flocard_profiles', JSON.stringify([]));
+
+        localStorage.setItem(PURGE_ORDERS_INVOICES_PROFILES_KEY, 'true');
+      } catch (_) {}
+    }
+
     // Clear demo orders from current storage
     const currentOrdersRaw = localStorage.getItem('flocard_data_v3_orders');
     if (currentOrdersRaw) {
@@ -4461,6 +4503,51 @@ export const StorageEngine = {
         cards: finalCards.length
       }
     };
+  },
+
+  purgeOrdersInvoicesAndProfiles: async (actorName = 'Admin') => {
+    const rawOrders = getLocal('orders', []);
+    const rawInvoices = getLocal('invoices', []);
+    const rawProfiles = getLocal('profiles', []);
+
+    const delOrderIds = getLocal('flocard_deleted_order_ids', []);
+    const delInvIds = getLocal('flocard_deleted_invoice_ids', []);
+    const delProfSlugs = getLocal('flocard_deleted_profile_slugs', []);
+    const delProfIds = getLocal('flocard_deleted_profile_ids', []);
+
+    rawOrders.forEach(o => {
+      if (o.id && !delOrderIds.includes(o.id)) delOrderIds.push(o.id);
+      if (o.orderReference && !delOrderIds.includes(o.orderReference)) delOrderIds.push(o.orderReference);
+    });
+    rawInvoices.forEach(i => {
+      if (i.id && !delInvIds.includes(i.id)) delInvIds.push(i.id);
+      if (i.invoiceNumber && !delInvIds.includes(i.invoiceNumber)) delInvIds.push(i.invoiceNumber);
+    });
+    rawProfiles.forEach(p => {
+      if (p.id && !delProfIds.includes(p.id)) delProfIds.push(p.id);
+      if (p.slug && !delProfSlugs.includes(p.slug)) delProfSlugs.push(p.slug);
+    });
+
+    setLocal('flocard_deleted_order_ids', delOrderIds);
+    setLocal('flocard_deleted_invoice_ids', delInvIds);
+    setLocal('flocard_deleted_profile_ids', delProfIds);
+    setLocal('flocard_deleted_profile_slugs', delProfSlugs);
+
+    setLocal('orders', []);
+    setLocal('invoices', []);
+    setLocal('profiles', []);
+
+    StorageEngine.addAuditLog('System Clean', 'All orders, invoices, and digital profiles purged to clean slate.', actorName);
+
+    try {
+      await callCloudSyncApi('resetOrdersInvoicesProfiles', {});
+    } catch (_) {}
+
+    safeDispatchEvent('flocard_orders_updated', []);
+    safeDispatchEvent('flocard_invoices_updated', []);
+    safeDispatchEvent('flocard_profiles_updated', []);
+
+    return true;
   },
 
   clearAllCustomersOrdersDesigns: async (actorName = 'Admin') => {

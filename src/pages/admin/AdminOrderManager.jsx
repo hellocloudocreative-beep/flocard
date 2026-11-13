@@ -54,6 +54,7 @@ import { uploadImage } from '../../lib/uploadImage';
 import { queueWhatsAppNotification, getWhatsAppOutbox, retryWhatsAppMessage } from '../../lib/whatsapp';
 import WhatsAppContactButton from '../../components/dashboard/WhatsAppContactButton';
 import PaymentQrModal from '../../components/dashboard/PaymentQrModal';
+import DeleteConfirmNotification from '../../components/dashboard/DeleteConfirmNotification';
 
 export default function AdminOrderManager({ initialOrderId = null }) {
   const { user } = useAuth();
@@ -87,6 +88,8 @@ export default function AdminOrderManager({ initialOrderId = null }) {
   const [sourceFilter, setSourceFilter] = useState('all'); // 'all' | 'whatsapp' | 'website'
   const [selectedOrder, setSelectedOrder] = useState(null);
   const [paymentQrOrder, setPaymentQrOrder] = useState(null);
+  const [deleteConfirmOrder, setDeleteConfirmOrder] = useState(null);
+  const [orderToast, setOrderToast] = useState(null);
   const [isUpdateModalOpen, setIsUpdateModalOpen] = useState(false);
   const [isAddOrderModalOpen, setIsAddOrderModalOpen] = useState(false);
   const [addOrderError, setAddOrderError] = useState('');
@@ -541,18 +544,36 @@ export default function AdminOrderManager({ initialOrderId = null }) {
     }
   }, [initialOrderId, orders]);
 
-  const handleDeleteOrder = async (order) => {
-    const ref = order.orderReference || order.id;
-    if (window.confirm(`Are you sure you want to permanently delete Order #${ref}? This will also delete any related customer design and invoices.`)) {
-      try {
-        await deleteOrder(order.id || ref, adminUser);
-        if (selectedOrder?.id === order.id || selectedOrder?.orderReference === ref) {
-          setSelectedOrder(null);
-          setIsUpdateModalOpen(false);
-        }
-      } catch (err) {
-        alert(`Failed to delete order: ${err.message}`);
+  const handleDeleteOrder = (order) => {
+    setDeleteConfirmOrder(order);
+  };
+
+  const executeDeleteOrder = async () => {
+    if (!deleteConfirmOrder) return;
+    const orderToDelete = deleteConfirmOrder;
+    const ref = orderToDelete.orderReference || orderToDelete.id;
+    setDeleteConfirmOrder(null);
+
+    try {
+      await deleteOrder(orderToDelete.id || ref, user);
+      if (selectedOrder?.id === orderToDelete.id || selectedOrder?.orderReference === ref) {
+        setSelectedOrder(null);
+        setIsUpdateModalOpen(false);
       }
+      setOrderToast({
+        title: 'Order Deleted',
+        message: `Order #${ref} permanently deleted from production queue.`,
+        type: 'success'
+      });
+      setTimeout(() => setOrderToast(null), 4000);
+    } catch (err) {
+      console.error('Failed to delete order:', err);
+      setOrderToast({
+        title: 'Delete Failed',
+        message: err.message || 'Could not delete order.',
+        type: 'error'
+      });
+      setTimeout(() => setOrderToast(null), 5000);
     }
   };
 
@@ -2704,6 +2725,48 @@ export default function AdminOrderManager({ initialOrderId = null }) {
         onClose={() => setPaymentQrOrder(null)}
         isLight={isLight}
       />
+
+      {/* Apple-Style In-App Delete Confirmation Notification with OK Button */}
+      <DeleteConfirmNotification
+        isOpen={Boolean(deleteConfirmOrder)}
+        title="Delete Card Order"
+        itemName={deleteConfirmOrder ? `Order #${deleteConfirmOrder.orderReference || deleteConfirmOrder.id}` : ''}
+        message="Are you sure you want to permanently delete this order? All related customer artwork proofs and invoices will also be removed."
+        onConfirm={executeDeleteOrder}
+        onCancel={() => setDeleteConfirmOrder(null)}
+        confirmLabel="OK"
+        isLight={isLight}
+      />
+
+      {/* Floating Side Toast Notification for Order Actions */}
+      {orderToast && (
+        <div
+          style={{
+            position: 'fixed',
+            top: '24px',
+            right: '24px',
+            zIndex: 9999999,
+            maxWidth: '380px',
+            padding: '14px 18px',
+            borderRadius: '14px',
+            backgroundColor: orderToast.type === 'error' ? '#EF4444' : '#10B981',
+            color: '#FFFFFF',
+            boxShadow: '0 12px 35px rgba(0, 0, 0, 0.45)',
+            display: 'flex',
+            alignItems: 'center',
+            gap: '10px',
+            animation: 'slideInRight 0.25s ease-out',
+            fontSize: '0.84rem',
+            fontWeight: 600
+          }}
+        >
+          <Check size={18} />
+          <div>
+            <div style={{ fontWeight: 800, fontSize: '0.88rem' }}>{orderToast.title}</div>
+            <div style={{ opacity: 0.92, fontSize: '0.78rem' }}>{orderToast.message}</div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
