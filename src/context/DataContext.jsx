@@ -6,6 +6,18 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import { StorageEngine } from '../lib/storage';
 
+const flocardBus = typeof window !== 'undefined' && typeof BroadcastChannel !== 'undefined'
+  ? new BroadcastChannel('flocard_realtime_sync')
+  : null;
+
+export function broadcastSyncChange(type, payload = {}) {
+  if (flocardBus) {
+    try {
+      flocardBus.postMessage({ type, payload, timestamp: Date.now() });
+    } catch (_) {}
+  }
+}
+
 const DataContext = createContext();
 
 export function DataProvider({ children }) {
@@ -114,6 +126,11 @@ export function DataProvider({ children }) {
           const isDeleted = (cp.id && (deletedCustIds.includes(cp.id) || deletedProfileIds.includes(cp.id))) ||
                             (cp.user_id && deletedCustIds.includes(cp.user_id));
           if (isDeleted) continue;
+
+          // Exclude CRM customer records from Digital Profiles list to keep counts accurate & separate
+          if (cp.role === 'customer' && !cp.is_digital_profile && !cp.bio && !cp.tagline) {
+            continue;
+          }
 
           validSlugs.add(cpSlug);
           if (cp.id) validIds.add(cp.id);
@@ -302,6 +319,17 @@ export function DataProvider({ children }) {
         }
 
         if (lcId && seenCustIds.has(lcId)) continue;
+
+        if (lcNameLower && seenCustNames.has(lcNameLower)) {
+          const existing = authoritativeCusts.find(c => (c.name || '').trim().toLowerCase() === lcNameLower);
+          if (existing) {
+            if (lc.phone && !existing.phone) existing.phone = lc.phone;
+            if (lc.company && !existing.company) existing.company = lc.company;
+            if (lc.whatsapp && !existing.whatsapp) existing.whatsapp = lc.whatsapp;
+            if (lc.notes && !existing.notes) existing.notes = lc.notes;
+          }
+          continue;
+        }
 
         if (lcEmail) seenCustEmails.add(lcEmail);
         if (lcId) seenCustIds.add(lcId);
@@ -591,6 +619,7 @@ export function DataProvider({ children }) {
 
     const handleVisibilityChange = () => {
       if (typeof document !== 'undefined' && document.visibilityState === 'visible') {
+        refreshAll();
         syncCloudData();
       }
     };
@@ -598,10 +627,20 @@ export function DataProvider({ children }) {
       document.addEventListener('visibilitychange', handleVisibilityChange);
     }
 
-    // High-frequency background sync polling every 6 seconds for instantaneous cross-device data propagation
+    // Cross-tab broadcast listener for immediate zero-latency cross-admin sync
+    if (flocardBus) {
+      flocardBus.onmessage = (event) => {
+        if (event?.data?.type) {
+          refreshAll();
+          syncCloudData();
+        }
+      };
+    }
+
+    // High-frequency background sync polling every 3.5 seconds for instantaneous cross-device data propagation
     const pollInterval = setInterval(() => {
       syncCloudData();
-    }, 6000);
+    }, 3500);
 
     return () => {
       clearInterval(pollInterval);
@@ -671,6 +710,7 @@ export function DataProvider({ children }) {
     (async () => {
       try {
         await syncCloudData();
+        broadcastSyncChange('PROFILE_SAVED', updated);
       } catch (err) {
         console.warn('[DataContext] Profile cloud sync note:', err.message);
       }
@@ -683,6 +723,7 @@ export function DataProvider({ children }) {
     await StorageEngine.deleteProfile(id);
     refreshAll();
     await syncCloudData();
+    broadcastSyncChange('PROFILE_DELETED', { id });
   };
 
   const saveCard = async (card) => {
@@ -701,6 +742,7 @@ export function DataProvider({ children }) {
       try {
         await StorageEngine.syncCardToCloud(updated);
         await callCloudSyncApi('syncCard', { card: updated });
+        broadcastSyncChange('CARD_SAVED', updated);
       } catch (e) {
         console.warn('[DataContext] syncCard note:', e.message);
       }
@@ -713,6 +755,7 @@ export function DataProvider({ children }) {
     setCards(prev => prev.filter(c => c.id !== id && c.cardCode !== id));
     refreshAll();
     await syncCloudData();
+    broadcastSyncChange('CARD_DELETED', { id });
   };
 
   const recordTap = (cardCode, clientMeta) => {
@@ -726,6 +769,7 @@ export function DataProvider({ children }) {
     refreshAll();
     await StorageEngine.syncDesignToCloud(updated);
     await syncCloudData();
+    broadcastSyncChange('DESIGN_SAVED', updated);
     return updated;
   };
 
@@ -733,6 +777,7 @@ export function DataProvider({ children }) {
     const updated = StorageEngine.updateDesignStatus(id, status, notes);
     refreshAll();
     syncCloudData();
+    broadcastSyncChange('DESIGN_STATUS_UPDATED', { id, status });
     return updated;
   };
 
@@ -741,12 +786,14 @@ export function DataProvider({ children }) {
     setDesigns(prev => prev.filter(d => d.id !== id && d.supabaseId !== id));
     refreshAll();
     await syncCloudData();
+    broadcastSyncChange('DESIGN_DELETED', { id });
   };
 
   const saveOrder = (order) => {
     const updated = StorageEngine.saveOrder(order);
     refreshAll();
     syncCloudData();
+    broadcastSyncChange('ORDER_SAVED', updated);
     return updated;
   };
 
@@ -754,6 +801,7 @@ export function DataProvider({ children }) {
     const updated = StorageEngine.saveAdminOrderDesign(orderId, updatedDesignConfig, adminUser, options);
     refreshAll();
     syncCloudData();
+    broadcastSyncChange('ORDER_DESIGN_SAVED', { orderId });
     return updated;
   };
 
@@ -761,6 +809,7 @@ export function DataProvider({ children }) {
     const updated = StorageEngine.updateOrderStatus(params);
     refreshAll();
     syncCloudData();
+    broadcastSyncChange('ORDER_STATUS_UPDATED', params);
     return updated;
   };
 
@@ -768,6 +817,7 @@ export function DataProvider({ children }) {
     const result = StorageEngine.deliverOrder(orderId, actorUser);
     refreshAll();
     syncCloudData();
+    broadcastSyncChange('ORDER_DELIVERED', { orderId });
     return result;
   };
 
@@ -775,7 +825,8 @@ export function DataProvider({ children }) {
     const res = await StorageEngine.deleteOrder(id, actorUser);
     setOrders(prev => prev.filter(o => o.id !== id && o.orderReference !== id));
     refreshAll();
-    syncCloudData();
+    await syncCloudData();
+    broadcastSyncChange('ORDER_DELETED', { id });
     return res;
   };
 
@@ -870,16 +921,21 @@ export function DataProvider({ children }) {
       return [updated, ...prev];
     });
     refreshAll();
-    // Non-blocking background sync so UI and modals respond instantly
-    (async () => {
-      try {
-        await StorageEngine.syncCustomerToCloud(updated);
-        refreshAll();
-        await syncCloudData();
-      } catch (err) {
-        console.warn('[DataContext] Customer cloud sync note:', err.message);
+
+    // Await cloud sync so Supabase is populated BEFORE completion
+    try {
+      const synced = await StorageEngine.syncCustomerToCloud(updated);
+      if (synced?.id) {
+        updated.id = synced.id;
+        if (synced.slug) updated.slug = synced.slug;
       }
-    })();
+    } catch (err) {
+      console.warn('[DataContext] Customer cloud sync note:', err.message);
+    }
+
+    refreshAll();
+    await syncCloudData();
+    broadcastSyncChange('CUSTOMER_SAVED', updated);
     return updated;
   };
 
@@ -888,6 +944,7 @@ export function DataProvider({ children }) {
     await StorageEngine.deleteCustomer(id);
     refreshAll();
     await syncCloudData();
+    broadcastSyncChange('CUSTOMER_DELETED', { id });
   };
 
   const saveTemplate = (template) => {

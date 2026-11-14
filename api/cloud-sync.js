@@ -78,6 +78,19 @@ export default async function handler(req, res) {
           }
         }
 
+        // Always guarantee a valid UUID so primary key is rock-solid
+        if (!userId) {
+          if (typeof crypto !== 'undefined' && crypto.randomUUID) {
+            userId = crypto.randomUUID();
+          } else {
+            userId = 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, (c) => {
+              const r = (Math.random() * 16) | 0;
+              const v = c === 'x' ? r : (r & 0x3) | 0x8;
+              return v.toString(16);
+            });
+          }
+        }
+
         // Generate deterministic slug for cloud persistence in profiles table
         const baseSlug = (cust.slug || cust.name || (cleanEmail ? cleanEmail.split('@')[0] : 'cust'))
           .toLowerCase()
@@ -85,37 +98,61 @@ export default async function handler(req, res) {
 
         let userSlug = cust.slug;
         if (!userSlug) {
-          try {
-            const { data: existingProf } = await adminClient.from('profiles').select('slug').eq('name', cust.name).maybeSingle();
+          // Check if profile exists with same email or phone
+          if (cleanEmail) {
+            const { data: existingProf } = await adminClient.from('profiles').select('id, slug').eq('email', cleanEmail).maybeSingle();
             if (existingProf?.slug) {
               userSlug = existingProf.slug;
+              if (existingProf.id) userId = existingProf.id;
+            }
+          }
+          if (!userSlug && cust.phone) {
+            const { data: existingProfPhone } = await adminClient.from('profiles').select('id, slug').eq('phone', cust.phone).maybeSingle();
+            if (existingProfPhone?.slug) {
+              userSlug = existingProfPhone.slug;
+              if (existingProfPhone.id) userId = existingProfPhone.id;
+            }
+          }
+          if (!userSlug) {
+            const { data: slugTaken } = await adminClient.from('profiles').select('id').eq('slug', baseSlug).maybeSingle();
+            if (slugTaken && slugTaken.id !== userId) {
+              const suffix = Math.random().toString(36).substring(2, 6);
+              userSlug = `${baseSlug}-${suffix}`;
             } else {
               userSlug = baseSlug;
             }
-          } catch (_) {
-            userSlug = baseSlug;
           }
         }
 
         // Persist customer as first-class entity in Supabase profiles table for universal multi-admin sync
+        let savedRow = null;
         try {
           const profPayload = {
+            id: userId,
             slug: userSlug || baseSlug,
             name: cust.name || 'Valued Client',
             email: cleanEmail || null,
             phone: cust.phone || null,
             whatsapp: cust.whatsapp || cust.phone || null,
             company: cust.company || null,
-            role: cust.role || 'customer',
+            role: 'customer',
             status: cust.status || 'active',
             services: cust.notes ? [{ note: cust.notes }] : [],
             updated_at: new Date().toISOString()
           };
-          if (userId && uuidRegex.test(userId)) {
-            profPayload.id = userId;
-            if (isRealAuthUser) profPayload.user_id = userId;
+          if (isRealAuthUser) profPayload.user_id = userId;
+
+          const { data, error: profErr } = await adminClient
+            .from('profiles')
+            .upsert(profPayload, { onConflict: 'slug' })
+            .select()
+            .maybeSingle();
+
+          if (profErr) {
+            console.warn('[CloudSync API] syncCustomer profile upsert note:', profErr.message);
+          } else {
+            savedRow = data;
           }
-          await adminClient.from('profiles').upsert(profPayload, { onConflict: 'slug' });
         } catch (profErr) {
           console.warn('[CloudSync API] syncCustomer profile upsert note:', profErr.message);
         }
@@ -124,8 +161,9 @@ export default async function handler(req, res) {
           success: true,
           customer: {
             ...cust,
-            id: userId || cust.id || `cust_${Date.now()}`,
-            slug: userSlug || baseSlug
+            id: savedRow?.id || userId,
+            slug: savedRow?.slug || userSlug || baseSlug,
+            role: 'customer'
           }
         });
       }

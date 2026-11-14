@@ -3065,20 +3065,36 @@ export const StorageEngine = {
 
       cust.id = userId;
 
-      // Update localStorage customer with authoritative UUID
-      const list = getLocal('customers', INITIAL_CUSTOMERS);
-      const idx = list.findIndex(c => (userId && c.id === userId) || (cleanEmail && c.email && c.email.toLowerCase().trim() === cleanEmail));
-      if (idx >= 0) {
-        list[idx] = { ...list[idx], ...cust, id: userId };
-        setLocal('customers', list);
-      }
-
       const rawSlug = (cust.slug || cust.name || (cleanEmail ? cleanEmail.split('@')[0] : 'cust'))
         .toLowerCase()
         .replace(/[^a-z0-9]/g, '') || 'cust';
 
       let userSlug = cust.slug || rawSlug;
       cust.slug = userSlug;
+
+      // Update localStorage customer with authoritative UUID
+      const list = getLocal('customers', INITIAL_CUSTOMERS);
+      const idx = list.findIndex(c => (userId && c.id === userId) || (cust.id && c.id === cust.id) || (cleanEmail && c.email && c.email.toLowerCase().trim() === cleanEmail));
+      if (idx >= 0) {
+        list[idx] = { ...list[idx], ...cust, id: userId, slug: userSlug };
+        setLocal('customers', list);
+      }
+
+      // Try direct upsert to profiles table
+      try {
+        await client.from('profiles').upsert({
+          id: userId,
+          slug: userSlug,
+          name: cust.name || 'Valued Client',
+          email: cleanEmail || null,
+          phone: cust.phone || null,
+          whatsapp: cust.whatsapp || cust.phone || null,
+          company: cust.company || null,
+          role: 'customer',
+          status: cust.status || 'active',
+          updated_at: new Date().toISOString()
+        }, { onConflict: 'slug' });
+      } catch (_) {}
 
       return cust;
     } catch (err) {
