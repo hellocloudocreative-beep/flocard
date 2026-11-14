@@ -189,11 +189,12 @@ export function DataProvider({ children }) {
           });
         }
 
-        // Reconcile profiles: Live cloud records + locally created profiles not yet replicated
+        // Reconcile profiles: Live cloud records are authoritative
         const finalProfiles = [...mappedProfiles];
         const cloudSlugs = new Set(mappedProfiles.map(p => (p.slug || '').toLowerCase().trim()));
         const cloudIds = new Set(mappedProfiles.map(p => p.id));
 
+        // Only retain local profiles if they were created just now and pending sync
         for (const lp of localProfiles) {
           const lSlug = (lp.slug || '').toLowerCase().trim();
           const lpId = lp.id ? String(lp.id) : '';
@@ -201,9 +202,10 @@ export function DataProvider({ children }) {
                             (lSlug && (deletedProfileSlugs.includes(lSlug) || deletedProfileIds.includes(lSlug)));
           if (isDeleted) continue;
 
-          // If this local profile is not yet in cloud data and not deleted, keep it!
-          if (lSlug && !cloudSlugs.has(lSlug) && (!lpId || !cloudIds.has(lpId))) {
-            finalProfiles.push(lp);
+          if (lp._pendingSync && (Date.now() - (lp._savedAt || 0) < 15000)) {
+            if (lSlug && !cloudSlugs.has(lSlug) && (!lpId || !cloudIds.has(lpId))) {
+              finalProfiles.push(lp);
+            }
           }
         }
 
@@ -298,7 +300,7 @@ export function DataProvider({ children }) {
         }
       }
 
-      // Retain valid local customers (including newly added customers and those without emails)
+      // Retain newly added local customers only if currently pending cloud sync
       for (const lc of localCustomers) {
         const lcEmail = (lc.email || '').toLowerCase().trim();
         const lcId = lc.id ? String(lc.id).trim() : '';
@@ -306,35 +308,17 @@ export function DataProvider({ children }) {
         const lcNameLower = lcName.toLowerCase();
         if (deletedCustIds.includes(lcId) || (lcEmail && deletedCustEmails.includes(lcEmail))) continue;
 
-        if (lcEmail && seenCustEmails.has(lcEmail)) {
-          const existing = authoritativeCusts.find(c => c.email?.toLowerCase().trim() === lcEmail);
-          if (existing) {
-            if (lc.phone && !existing.phone) existing.phone = lc.phone;
-            if (lc.company && !existing.company) existing.company = lc.company;
-            if (lc.name && (!existing.name || existing.name === lcEmail.split('@')[0])) existing.name = lc.name;
-            if (lc.whatsapp && !existing.whatsapp) existing.whatsapp = lc.whatsapp;
-            if (lc.notes && !existing.notes) existing.notes = lc.notes;
-          }
-          continue;
-        }
-
+        if (lcEmail && seenCustEmails.has(lcEmail)) continue;
         if (lcId && seenCustIds.has(lcId)) continue;
+        if (lcNameLower && seenCustNames.has(lcNameLower)) continue;
 
-        if (lcNameLower && seenCustNames.has(lcNameLower)) {
-          const existing = authoritativeCusts.find(c => (c.name || '').trim().toLowerCase() === lcNameLower);
-          if (existing) {
-            if (lc.phone && !existing.phone) existing.phone = lc.phone;
-            if (lc.company && !existing.company) existing.company = lc.company;
-            if (lc.whatsapp && !existing.whatsapp) existing.whatsapp = lc.whatsapp;
-            if (lc.notes && !existing.notes) existing.notes = lc.notes;
-          }
-          continue;
+        // Only keep if created locally in the last 15s and still pending sync
+        if (lc._pendingSync && (Date.now() - (lc._savedAt || 0) < 15000)) {
+          if (lcEmail) seenCustEmails.add(lcEmail);
+          if (lcId) seenCustIds.add(lcId);
+          if (lcNameLower) seenCustNames.add(lcNameLower);
+          authoritativeCusts.push(lc);
         }
-
-        if (lcEmail) seenCustEmails.add(lcEmail);
-        if (lcId) seenCustIds.add(lcId);
-        if (lcNameLower) seenCustNames.add(lcNameLower);
-        authoritativeCusts.push(lc);
       }
 
       // Check for live customer updates
@@ -630,7 +614,19 @@ export function DataProvider({ children }) {
     // Cross-tab broadcast listener for immediate zero-latency cross-admin sync
     if (flocardBus) {
       flocardBus.onmessage = (event) => {
-        if (event?.data?.type) {
+        if (event?.data?.type === 'PURGE_ALL_DATA') {
+          StorageEngine.saveLocalProfiles([]);
+          StorageEngine.saveLocalCustomers([]);
+          StorageEngine.saveLocalOrders([]);
+          StorageEngine.saveLocalInvoices([]);
+          StorageEngine.saveLocalDesigns([]);
+          setProfiles([]);
+          setCustomers([]);
+          setOrders([]);
+          setDesigns([]);
+          refreshAll();
+          syncCloudData();
+        } else if (event?.data?.type) {
           refreshAll();
           syncCloudData();
         }
@@ -1031,6 +1027,8 @@ export function DataProvider({ children }) {
     setOrders([]);
     setProfiles([]);
     refreshAll();
+    await syncCloudData();
+    broadcastSyncChange('PURGE_ALL_DATA', { actorName });
   };
 
   return (

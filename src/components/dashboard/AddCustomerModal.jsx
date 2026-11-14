@@ -104,6 +104,7 @@ export default function AddCustomerModal({
       };
 
       await onSaveCustomer(newCust);
+      onClose();
       handleClose();
     } catch (err) {
       setError(err.message || 'Failed to create customer record.');

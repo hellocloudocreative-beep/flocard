@@ -259,6 +259,7 @@ export default function AdminDashboard({ initialTab = 'overview', initialOrderId
   const [reviewNotes, setReviewNotes] = useState('');
   const [newCustomerModal, setNewCustomerModal] = useState(false);
   const [newProfileModal, setNewProfileModal] = useState(false);
+  const [isCreatingProfile, setIsCreatingProfile] = useState(false);
   const [assignCardModal, setAssignCardModal] = useState(false);
   const [inviteAdminModal, setInviteAdminModal] = useState(false);
   const [newTemplateModal, setNewTemplateModal] = useState(false);
@@ -975,35 +976,40 @@ export default function AdminDashboard({ initialTab = 'overview', initialOrderId
   // Handle Create Profile
   const handleCreateProfile = async (e) => {
     e.preventDefault();
-    if (!newProfForm.name || !newProfForm.slug) return;
-    const cleanSlug = newProfForm.slug.toLowerCase().replace(/[^a-z0-9_-]/g, '');
-    const profilePayload = {
-      name: newProfForm.name,
-      slug: cleanSlug,
-      role: newProfForm.role || '',
-      company: newProfForm.company || '',
-      location: newProfForm.location || '',
-      email: newProfForm.email || '',
-      phone: newProfForm.phone || '',
-      whatsapp: newProfForm.whatsapp || '',
-      bio: newProfForm.bio || '',
-      avatar: newProfForm.avatar || '',
-      logo: newProfForm.logo || '',
-      theme: newProfForm.theme || 'purple',
-      status: newProfForm.status || 'active',
-      isPrivate: newProfForm.status === 'private',
-      portfolio: [],
-      services: []
-    };
-    const created = await saveProfile(profilePayload);
-    setNewProfileModal(false);
-    setNewProfForm({ name: '', slug: '', role: '', company: '', theme: 'purple', location: '', email: '', phone: '', whatsapp: '', bio: '', avatar: '', logo: '', status: 'active' });
-    setFulfillmentToast({
-      title: 'Digital Profile Created',
-      message: `Profile "${profilePayload.name}" created (${profilePayload.status}) at flocard.in/p/${cleanSlug}`
-    });
-    if (created) {
-      setEditingProfile(created);
+    if (!newProfForm.name || !newProfForm.slug || isCreatingProfile) return;
+    setIsCreatingProfile(true);
+    try {
+      const cleanSlug = newProfForm.slug.toLowerCase().replace(/[^a-z0-9_-]/g, '');
+      const profilePayload = {
+        name: newProfForm.name,
+        slug: cleanSlug,
+        role: newProfForm.role || '',
+        company: newProfForm.company || '',
+        location: newProfForm.location || '',
+        email: newProfForm.email || '',
+        phone: newProfForm.phone || '',
+        whatsapp: newProfForm.whatsapp || '',
+        bio: newProfForm.bio || '',
+        avatar: newProfForm.avatar || '',
+        logo: newProfForm.logo || '',
+        theme: newProfForm.theme || 'purple',
+        status: newProfForm.status || 'active',
+        isPrivate: newProfForm.status === 'private',
+        portfolio: [],
+        services: []
+      };
+      await saveProfile(profilePayload);
+      setNewProfileModal(false);
+      setNewProfForm({ name: '', slug: '', role: '', company: '', theme: 'purple', location: '', email: '', phone: '', whatsapp: '', bio: '', avatar: '', logo: '', status: 'active' });
+      setFulfillmentToast({
+        title: 'Digital Profile Created',
+        message: `Profile "${profilePayload.name}" created (${profilePayload.status}) at flocard.in/p/${cleanSlug}`
+      });
+      setTimeout(() => setFulfillmentToast(null), 4000);
+    } catch (err) {
+      console.error('Error creating profile:', err);
+    } finally {
+      setIsCreatingProfile(false);
     }
   };
 
@@ -8058,6 +8064,7 @@ export default function AdminDashboard({ initialTab = 'overview', initialOrderId
         isOpen={newCustomerModal}
         onClose={() => setNewCustomerModal(false)}
         onSaveCustomer={async (newCust) => {
+          setNewCustomerModal(false);
           await saveCustomer(newCust);
           setFulfillmentToast({
             title: 'Customer Added!',
@@ -8294,8 +8301,23 @@ export default function AdminDashboard({ initialTab = 'overview', initialOrderId
                 <button type="button" onClick={() => setNewProfileModal(false)} style={{ padding: '8px 16px', borderRadius: '8px', border: 'var(--adm-card-border)', background: 'none', cursor: 'pointer', fontSize: '0.82rem' }}>
                   Cancel
                 </button>
-                <button type="submit" style={{ padding: '9px 24px', borderRadius: '8px', border: 'none', backgroundColor: '#6B00FF', color: '#FFFFFF', fontWeight: 700, fontSize: '0.84rem', cursor: 'pointer', boxShadow: '0 4px 12px rgba(107, 0, 255, 0.35)' }}>
-                  Create & Save Profile
+                <button
+                  type="submit"
+                  disabled={isCreatingProfile}
+                  style={{
+                    padding: '9px 24px',
+                    borderRadius: '8px',
+                    border: 'none',
+                    backgroundColor: '#6B00FF',
+                    color: '#FFFFFF',
+                    fontWeight: 700,
+                    fontSize: '0.84rem',
+                    cursor: isCreatingProfile ? 'wait' : 'pointer',
+                    boxShadow: '0 4px 12px rgba(107, 0, 255, 0.35)',
+                    opacity: isCreatingProfile ? 0.7 : 1
+                  }}
+                >
+                  {isCreatingProfile ? 'Saving...' : 'Create & Save Profile'}
                 </button>
               </div>
             </form>
