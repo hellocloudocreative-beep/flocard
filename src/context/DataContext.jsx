@@ -89,13 +89,19 @@ export function DataProvider({ children }) {
       let serverData = null;
       try {
         const isApex = typeof window !== 'undefined' && window.location.hostname === 'flocard.in';
-        const host = isApex ? 'www.flocard.in' : (typeof window !== 'undefined' ? window.location.host : '');
-        const apiUrl = host ? `${window.location.protocol}//${host}/api/cloud-sync` : '/api/cloud-sync';
-        const res = await fetch(apiUrl, {
+        const primaryUrl = isApex ? 'https://www.flocard.in/api/cloud-sync' : '/api/cloud-sync';
+        let res = await fetch(primaryUrl, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ action: 'fetchData' })
         });
+        if (!res.ok && typeof window !== 'undefined' && window.location.hostname !== 'www.flocard.in') {
+          res = await fetch('https://www.flocard.in/api/cloud-sync', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ action: 'fetchData' })
+          });
+        }
         if (res.ok) {
           const json = await res.json();
           if (json && json.success) {
@@ -218,7 +224,7 @@ export function DataProvider({ children }) {
         const cloudSlugs = new Set(mappedProfiles.map(p => (p.slug || '').toLowerCase().trim()));
         const cloudIds = new Set(mappedProfiles.map(p => p.id));
 
-        // Only retain local profiles if they were created just now and pending sync
+        // Retain local profiles unless explicitly deleted, and ensure they are persisted to cloud
         for (const lp of localProfiles) {
           const lSlug = (lp.slug || '').toLowerCase().trim();
           const lpId = lp.id ? String(lp.id) : '';
@@ -226,10 +232,9 @@ export function DataProvider({ children }) {
                             (lSlug && (deletedProfileSlugs.includes(lSlug) || deletedProfileIds.includes(lSlug)));
           if (isDeleted) continue;
 
-          if (lp._pendingSync && (Date.now() - (lp._savedAt || 0) < 15000)) {
-            if (lSlug && !cloudSlugs.has(lSlug) && (!lpId || !cloudIds.has(lpId))) {
-              finalProfiles.push(lp);
-            }
+          if (lSlug && !cloudSlugs.has(lSlug) && (!lpId || !cloudIds.has(lpId))) {
+            finalProfiles.push(lp);
+            StorageEngine.syncProfileToCloud(lp).catch(() => {});
           }
         }
 
@@ -336,13 +341,12 @@ export function DataProvider({ children }) {
         if (lcId && seenCustIds.has(lcId)) continue;
         if (lcNameLower && seenCustNames.has(lcNameLower)) continue;
 
-        // Only keep if created locally in the last 15s and still pending sync
-        if (lc._pendingSync && (Date.now() - (lc._savedAt || 0) < 15000)) {
-          if (lcEmail) seenCustEmails.add(lcEmail);
-          if (lcId) seenCustIds.add(lcId);
-          if (lcNameLower) seenCustNames.add(lcNameLower);
-          authoritativeCusts.push(lc);
-        }
+        // Retain local customer unless explicitly deleted, and ensure it is persisted to cloud
+        if (lcEmail) seenCustEmails.add(lcEmail);
+        if (lcId) seenCustIds.add(lcId);
+        if (lcNameLower) seenCustNames.add(lcNameLower);
+        authoritativeCusts.push(lc);
+        StorageEngine.syncCustomerToCloud(lc).catch(() => {});
       }
 
       // Check for live customer updates
@@ -745,14 +749,12 @@ export function DataProvider({ children }) {
       return [updated, ...prev];
     });
     refreshAll();
-    (async () => {
-      try {
-        await syncCloudData();
-        broadcastSyncChange('PROFILE_SAVED', updated);
-      } catch (err) {
-        console.warn('[DataContext] Profile cloud sync note:', err.message);
-      }
-    })();
+    broadcastSyncChange('PROFILE_SAVED', updated);
+    try {
+      await syncCloudData();
+    } catch (err) {
+      console.warn('[DataContext] Profile cloud sync note:', err.message);
+    }
     return updated;
   };
 

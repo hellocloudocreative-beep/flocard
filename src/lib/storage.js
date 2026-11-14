@@ -907,11 +907,11 @@ const memoryCache = new Map();
 // Helper to communicate with server-side cloud sync API (runs with full administrative privileges without browser Origin restrictions)
 async function callCloudSyncApi(action, payload = {}) {
   if (typeof window === 'undefined') return null;
+  const isApex = window.location.hostname === 'flocard.in';
+  const primaryUrl = isApex ? 'https://www.flocard.in/api/cloud-sync' : '/api/cloud-sync';
+
   try {
-    const isApex = window.location.hostname === 'flocard.in';
-    const host = isApex ? 'www.flocard.in' : window.location.host;
-    const apiUrl = host ? `${window.location.protocol}//${host}/api/cloud-sync` : '/api/cloud-sync';
-    const res = await fetch(apiUrl, {
+    const res = await fetch(primaryUrl, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ action, ...payload })
@@ -920,7 +920,21 @@ async function callCloudSyncApi(action, payload = {}) {
       return await res.json();
     }
   } catch (err) {
-    console.warn(`[CloudSync API] ${action} request note:`, err.message);
+    console.warn(`[CloudSync API] primary ${action} note:`, err.message);
+  }
+
+  // Backup fallback to https://www.flocard.in/api/cloud-sync if primary relative path failed
+  if (!isApex && window.location.hostname !== 'www.flocard.in') {
+    try {
+      const res = await fetch('https://www.flocard.in/api/cloud-sync', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action, ...payload })
+      });
+      if (res.ok) {
+        return await res.json();
+      }
+    } catch (_) {}
   }
   return null;
 }
