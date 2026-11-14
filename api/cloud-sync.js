@@ -169,14 +169,14 @@ export default async function handler(req, res) {
       }
 
       case 'deleteCustomer': {
-        const { id, email, slug } = body;
-        if (!id && !email && !slug) return res.status(400).json({ error: 'Missing customer identifier' });
+        const { id, email, slug, name, phone } = body;
+        if (!id && !email && !slug && !name && !phone) return res.status(400).json({ error: 'Missing customer identifier' });
 
         const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
         const targetEmails = new Set();
         if (email) targetEmails.add(email.toLowerCase().trim());
 
-        // Find associated profile by exact id or slug
+        // Find associated profile by exact id, slug, email, or phone
         try {
           if (id && uuidRegex.test(id)) {
             const { data: p } = await adminClient.from('profiles').select('id, user_id, email, slug').or(`id.eq.${id},user_id.eq.${id}`).maybeSingle();
@@ -199,7 +199,7 @@ export default async function handler(req, res) {
           try { await adminClient.auth.admin.deleteUser(id); } catch (_) {}
         }
 
-        // Delete from profiles table by exact id or slug (NEVER by loose name)
+        // Delete permanently from profiles table by exact id, slug, email, phone, or name
         if (id && uuidRegex.test(id)) {
           try { await adminClient.from('profiles').delete().eq('id', id); } catch (_) {}
           try { await adminClient.from('profiles').delete().eq('user_id', id); } catch (_) {}
@@ -208,7 +208,13 @@ export default async function handler(req, res) {
           try { await adminClient.from('profiles').delete().eq('slug', slug); } catch (_) {}
         }
         for (const em of targetEmails) {
-          try { await adminClient.from('profiles').delete().eq('email', em); } catch (_) {}
+          try { await adminClient.from('profiles').delete().ilike('email', em); } catch (_) {}
+        }
+        if (phone) {
+          try { await adminClient.from('profiles').delete().eq('phone', phone); } catch (_) {}
+        }
+        if (name) {
+          try { await adminClient.from('profiles').delete().eq('role', 'customer').ilike('name', name); } catch (_) {}
         }
 
         return res.status(200).json({ success: true });

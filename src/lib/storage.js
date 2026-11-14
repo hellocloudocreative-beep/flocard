@@ -1228,8 +1228,10 @@ export const StorageEngine = {
     StorageEngine.addAuditLog('Profile', `Profile permanently deleted: ${targetSlug || targetId}`, 'You');
     safeDispatchEvent('flocard_profile_updated', { deletedId: targetId, deletedSlug: targetSlug, list });
 
-    // 4. Serverless Cloud Sync
-    callCloudSyncApi('deleteProfile', { id: targetId, slug: targetSlug, email: targetEmail, name: targetName }).catch(() => {});
+    // 4. Serverless Cloud Sync (Awaited to ensure deletion before next sync)
+    try {
+      await callCloudSyncApi('deleteProfile', { id: targetId, slug: targetSlug, email: targetEmail, name: targetName });
+    } catch (_) {}
 
     // 5. Direct Supabase delete if client is available
     try {
@@ -3149,16 +3151,19 @@ export const StorageEngine = {
   },
   deleteCustomer: async (id) => {
     const allCusts = getLocal('customers', INITIAL_CUSTOMERS);
-    const existing = allCusts.find(c => c.id === id || c.email === id);
+    const existing = allCusts.find(c => c.id === id || c.email === id || (c.name && c.name === id));
     const targetId = existing?.id || id;
     const targetEmail = (existing?.email || (typeof id === 'string' && id.includes('@') ? id : '')).toLowerCase().trim();
     const targetSlug = existing?.slug || '';
+    const targetName = existing?.name || '';
+    const targetPhone = existing?.phone || '';
 
     // 1. Purge from local customers
     const list = allCusts.filter(c => {
       const matchId = c.id === targetId || (targetId && c.id === targetId) || (id && c.id === id);
       const matchEmail = targetEmail && c.email && c.email.toLowerCase().trim() === targetEmail;
-      return !matchId && !matchEmail;
+      const matchName = targetName && c.name && c.name.toLowerCase().trim() === targetName.toLowerCase().trim();
+      return !matchId && !matchEmail && !matchName;
     });
     setLocal('customers', list);
 
@@ -3187,8 +3192,16 @@ export const StorageEngine = {
     safeDispatchEvent('flocard_customer_updated', { deletedId: targetId });
     safeDispatchEvent('flocard_profile_updated', { deletedId: targetId, deletedSlug: targetSlug });
 
-    // 4. Call serverless endpoint in background
-    callCloudSyncApi('deleteCustomer', { id: targetId, email: targetEmail, slug: targetSlug }).catch(() => {});
+    // 4. Await serverless deletion so Supabase permanently wipes it before any re-sync
+    try {
+      await callCloudSyncApi('deleteCustomer', {
+        id: targetId,
+        email: targetEmail,
+        slug: targetSlug,
+        name: targetName,
+        phone: targetPhone
+      });
+    } catch (_) {}
 
     // 8. Delete directly from Supabase if client is accessible
     try {
