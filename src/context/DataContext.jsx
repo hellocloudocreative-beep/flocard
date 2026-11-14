@@ -10,12 +10,29 @@ const flocardBus = typeof window !== 'undefined' && typeof BroadcastChannel !== 
   ? new BroadcastChannel('flocard_realtime_sync')
   : null;
 
-export function broadcastSyncChange(type, payload = {}) {
+let globalRealtimeChannel = null;
+
+export function broadcastCloudRealtime(type, payload = {}) {
+  // 1. Same-device cross-tab broadcast (0ms)
   if (flocardBus) {
     try {
       flocardBus.postMessage({ type, payload, timestamp: Date.now() });
     } catch (_) {}
   }
+  // 2. Global cross-device Supabase Realtime WebSocket broadcast (<50ms)
+  if (globalRealtimeChannel) {
+    try {
+      globalRealtimeChannel.send({
+        type: 'broadcast',
+        event: 'flocard_db_change',
+        payload: { type, payload, timestamp: Date.now() }
+      });
+    } catch (_) {}
+  }
+}
+
+export function broadcastSyncChange(type, payload = {}) {
+  broadcastCloudRealtime(type, payload);
 }
 
 const DataContext = createContext();
@@ -71,7 +88,10 @@ export function DataProvider({ children }) {
       // 1. Primary: Serverless Cloud Sync API (bypasses browser RLS restrictions, connects with admin service key)
       let serverData = null;
       try {
-        const res = await fetch('/api/cloud-sync', {
+        const isApex = typeof window !== 'undefined' && window.location.hostname === 'flocard.in';
+        const host = isApex ? 'www.flocard.in' : (typeof window !== 'undefined' ? window.location.host : '');
+        const apiUrl = host ? `${window.location.protocol}//${host}/api/cloud-sync` : '/api/cloud-sync';
+        const res = await fetch(apiUrl, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ action: 'fetchData' })
@@ -96,17 +116,21 @@ export function DataProvider({ children }) {
       let cloudUsers = serverData?.users;
       let cloudInvoices = serverData?.invoices;
 
-      // Fallback: Query client tables directly if serverless endpoint didn't return
+      // Fallback: Query client tables directly using Promise.allSettled so one table never blocks others
       if (!serverData && isSupabaseConfigured && client) {
         try {
-          const [pRes, cRes, dRes] = await Promise.all([
+          const [pSettled, cSettled, dSettled, oSettled, iSettled] = await Promise.allSettled([
             client.from('profiles').select('*').order('created_at', { ascending: false }),
             client.from('nfc_cards').select('*').order('created_at', { ascending: false }),
-            client.from('card_designs').select('*').order('created_at', { ascending: false })
+            client.from('card_designs').select('*').order('created_at', { ascending: false }),
+            client.from('orders').select('*').order('created_at', { ascending: false }),
+            client.from('invoices').select('*').order('created_at', { ascending: false })
           ]);
-          cloudProfiles = pRes.data || [];
-          cloudCards = cRes.data || [];
-          cloudDesigns = dRes.data || [];
+          if (pSettled.status === 'fulfilled' && pSettled.value?.data) cloudProfiles = pSettled.value.data;
+          if (cSettled.status === 'fulfilled' && cSettled.value?.data) cloudCards = cSettled.value.data;
+          if (dSettled.status === 'fulfilled' && dSettled.value?.data) cloudDesigns = dSettled.value.data;
+          if (oSettled.status === 'fulfilled' && oSettled.value?.data) cloudOrders = oSettled.value.data;
+          if (iSettled.status === 'fulfilled' && iSettled.value?.data) cloudInvoices = iSettled.value.data;
         } catch (_) {}
       }
 
@@ -553,6 +577,21 @@ export function DataProvider({ children }) {
 
         realtimeChannel = client
           .channel('cloud-admin-sync')
+          .on('broadcast', { event: 'flocard_db_change' }, (eventData) => {
+            if (eventData?.payload?.type === 'PURGE_ALL_DATA') {
+              StorageEngine.saveLocalProfiles([]);
+              StorageEngine.saveLocalCustomers([]);
+              StorageEngine.saveLocalOrders([]);
+              StorageEngine.saveLocalInvoices([]);
+              StorageEngine.saveLocalDesigns([]);
+              setProfiles([]);
+              setCustomers([]);
+              setOrders([]);
+              setDesigns([]);
+            }
+            refreshAll();
+            syncCloudData();
+          })
           .on('postgres_changes', { event: '*', schema: 'public', table: 'profiles' }, () => {
             syncCloudData();
           })
@@ -566,6 +605,8 @@ export function DataProvider({ children }) {
             syncCloudData();
           })
           .subscribe();
+
+        globalRealtimeChannel = realtimeChannel;
       } catch (err) {
         console.warn('[DataContext] Realtime subscribe error:', err);
       }
@@ -644,6 +685,7 @@ export function DataProvider({ children }) {
         document.removeEventListener('visibilitychange', handleVisibilityChange);
       }
       if (realtimeChannel) {
+        globalRealtimeChannel = null;
         import('../lib/supabase.js').then(({ supabase, supabaseAdmin }) => {
           const client = supabaseAdmin || supabase;
           if (client) client.removeChannel(realtimeChannel);

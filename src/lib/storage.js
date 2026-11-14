@@ -908,7 +908,10 @@ const memoryCache = new Map();
 async function callCloudSyncApi(action, payload = {}) {
   if (typeof window === 'undefined') return null;
   try {
-    const res = await fetch('/api/cloud-sync', {
+    const isApex = window.location.hostname === 'flocard.in';
+    const host = isApex ? 'www.flocard.in' : window.location.host;
+    const apiUrl = host ? `${window.location.protocol}//${host}/api/cloud-sync` : '/api/cloud-sync';
+    const res = await fetch(apiUrl, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ action, ...payload })
