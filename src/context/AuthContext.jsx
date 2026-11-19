@@ -36,8 +36,14 @@ export function AuthProvider({ children }) {
   useEffect(() => {
     if (user) {
       localStorage.setItem('flocard_auth_user', JSON.stringify(user));
+      import('../lib/realtimeManager').then(({ RealtimeManager }) => {
+        RealtimeManager.init(user);
+      }).catch(() => {});
     } else {
       localStorage.removeItem('flocard_auth_user');
+      import('../lib/realtimeManager').then(({ RealtimeManager }) => {
+        RealtimeManager.destroy();
+      }).catch(() => {});
     }
   }, [user]);
 

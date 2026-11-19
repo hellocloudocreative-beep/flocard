@@ -5,12 +5,11 @@
 
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import { StorageEngine } from '../lib/storage';
+import { RealtimeManager } from '../lib/realtimeManager';
 
 const flocardBus = typeof window !== 'undefined' && typeof BroadcastChannel !== 'undefined'
   ? new BroadcastChannel('flocard_realtime_sync')
   : null;
-
-let globalRealtimeChannel = null;
 
 export function broadcastCloudRealtime(type, payload = {}) {
   // 1. Same-device cross-tab broadcast (0ms)
@@ -19,16 +18,10 @@ export function broadcastCloudRealtime(type, payload = {}) {
       flocardBus.postMessage({ type, payload, timestamp: Date.now() });
     } catch (_) {}
   }
-  // 2. Global cross-device Supabase Realtime WebSocket broadcast (<50ms)
-  if (globalRealtimeChannel) {
-    try {
-      globalRealtimeChannel.send({
-        type: 'broadcast',
-        event: 'flocard_db_change',
-        payload: { type, payload, timestamp: Date.now() }
-      });
-    } catch (_) {}
-  }
+  // 2. Centralized Global Realtime WebSocket Manager (<50ms)
+  try {
+    RealtimeManager.broadcast(type, payload);
+  } catch (_) {}
 }
 
 export function broadcastSyncChange(type, payload = {}) {
@@ -680,51 +673,30 @@ export function DataProvider({ children }) {
     // Initial cloud fetch on mount
     syncCloudData();
 
-    // Supabase Realtime subscription for cross-device & cross-admin synchronization
-    let realtimeChannel = null;
-    (async () => {
-      try {
-        const { supabase, supabaseAdmin, isSupabaseConfigured } = await import('../lib/supabase.js');
-        if (!isSupabaseConfigured) return;
-        const client = supabaseAdmin || supabase;
-        if (!client) return;
+    // Initialize Centralized Supabase Realtime Subscription Manager
+    RealtimeManager.init();
 
-        realtimeChannel = client
-          .channel('cloud-admin-sync')
-          .on('broadcast', { event: 'flocard_db_change' }, (eventData) => {
-            if (eventData?.payload?.type === 'PURGE_ALL_DATA') {
-              StorageEngine.saveLocalProfiles([]);
-              StorageEngine.saveLocalCustomers([]);
-              StorageEngine.saveLocalOrders([]);
-              StorageEngine.saveLocalInvoices([]);
-              StorageEngine.saveLocalDesigns([]);
-              setProfiles([]);
-              setCustomers([]);
-              setOrders([]);
-              setDesigns([]);
-            }
-            refreshAll();
-            syncCloudData();
-          })
-          .on('postgres_changes', { event: '*', schema: 'public', table: 'profiles' }, () => {
-            syncCloudData();
-          })
-          .on('postgres_changes', { event: '*', schema: 'public', table: 'nfc_cards' }, () => {
-            syncCloudData();
-          })
-          .on('postgres_changes', { event: '*', schema: 'public', table: 'card_designs' }, () => {
-            syncCloudData();
-          })
-          .on('postgres_changes', { event: '*', schema: 'public', table: 'orders' }, () => {
-            syncCloudData();
-          })
-          .subscribe();
-
-        globalRealtimeChannel = realtimeChannel;
-      } catch (err) {
-        console.warn('[DataContext] Realtime subscribe error:', err);
+    // Subscribe to centralized Realtime Manager for instant Postgres Changes & Broadcasts
+    const unsubscribeRealtime = RealtimeManager.subscribeListener((eventData) => {
+      if (eventData.source === 'trigger_refetch' || eventData.source === 'postgres_changes') {
+        refreshAll();
+        syncCloudData();
+      } else if (eventData.source === 'broadcast') {
+        if (eventData.type === 'PURGE_ALL_DATA') {
+          StorageEngine.saveLocalProfiles([]);
+          StorageEngine.saveLocalCustomers([]);
+          StorageEngine.saveLocalOrders([]);
+          StorageEngine.saveLocalInvoices([]);
+          StorageEngine.saveLocalDesigns([]);
+          setProfiles([]);
+          setCustomers([]);
+          setOrders([]);
+          setDesigns([]);
+        }
+        refreshAll();
+        syncCloudData();
       }
-    })();
+    });
 
     const handleOrderUpdated = (e) => {
       refreshAll();
@@ -788,22 +760,18 @@ export function DataProvider({ children }) {
       };
     }
 
-    // High-frequency background sync polling every 3.5 seconds for instantaneous cross-device data propagation
+    // Lightweight idle fallback polling (every 30 seconds) to conserve Supabase Free tier Egress
     const pollInterval = setInterval(() => {
       syncCloudData();
-    }, 3500);
+    }, 30000);
 
     return () => {
       clearInterval(pollInterval);
+      if (typeof unsubscribeRealtime === 'function') {
+        unsubscribeRealtime();
+      }
       if (typeof document !== 'undefined') {
         document.removeEventListener('visibilitychange', handleVisibilityChange);
-      }
-      if (realtimeChannel) {
-        globalRealtimeChannel = null;
-        import('../lib/supabase.js').then(({ supabase, supabaseAdmin }) => {
-          const client = supabaseAdmin || supabase;
-          if (client) client.removeChannel(realtimeChannel);
-        }).catch(() => {});
       }
       window.removeEventListener('flocard_order_updated', handleOrderUpdated);
       window.removeEventListener('flocard_sales_updated', refreshAll);
@@ -1166,6 +1134,7 @@ export function DataProvider({ children }) {
     const res = StorageEngine.saveProduct(product, role, email);
     if (res.success) {
       refreshAll();
+      broadcastSyncChange('PRODUCT_UPDATED', res.product);
       if (typeof window !== 'undefined') {
         window.dispatchEvent(new CustomEvent('flocard_products_updated', { detail: res.product }));
       }
@@ -1177,6 +1146,7 @@ export function DataProvider({ children }) {
     const res = StorageEngine.reorderProducts(orderedKeysOrIds, role, email);
     if (res.success) {
       refreshAll();
+      broadcastSyncChange('PRODUCT_REORDERED', res.products);
       if (typeof window !== 'undefined') {
         window.dispatchEvent(new CustomEvent('flocard_products_updated', { detail: res.products }));
       }
@@ -1188,6 +1158,7 @@ export function DataProvider({ children }) {
     const res = StorageEngine.toggleProductStatus(editionKeyOrId, newStatus, role, email);
     if (res.success) {
       refreshAll();
+      broadcastSyncChange('PRODUCT_STATUS_TOGGLED', res.product);
       if (typeof window !== 'undefined') {
         window.dispatchEvent(new CustomEvent('flocard_products_updated', { detail: res.product }));
       }
@@ -1198,24 +1169,28 @@ export function DataProvider({ children }) {
   const recordOrderPayment = (params) => {
     const res = StorageEngine.recordOrderPayment(params);
     refreshAll();
+    broadcastSyncChange('ORDER_PAYMENT_RECORDED', params);
     return res;
   };
 
   const recordOrderRefund = (params) => {
     const res = StorageEngine.recordOrderRefund(params);
     refreshAll();
+    broadcastSyncChange('ORDER_REFUND_RECORDED', params);
     return res;
   };
 
   const recordFinancialAdjustment = (params) => {
     const res = StorageEngine.recordFinancialAdjustment(params);
     refreshAll();
+    broadcastSyncChange('FINANCIAL_ADJUSTMENT_RECORDED', params);
     return res;
   };
 
   const saveInvoiceSettings = (settings, email) => {
     const res = StorageEngine.saveInvoiceSettings(settings, email);
     refreshAll();
+    broadcastSyncChange('SETTINGS_UPDATED', settings);
     return res;
   };
 
