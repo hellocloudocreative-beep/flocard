@@ -101,39 +101,6 @@ export function DataProvider({ children }) {
         } catch (_) {}
       }
 
-      if (serverData) {
-        try {
-          // Ingest server-authoritative tombstones from audit logs
-          if (Array.isArray(serverData.tombstones)) {
-            for (const t of serverData.tombstones) {
-              if (!t?.details) continue;
-              try {
-                const parsed = typeof t.details === 'string' ? JSON.parse(t.details) : t.details;
-                if (t.action === 'DELETE_ORDER') {
-                  const oIds = [ ...(parsed.ids || []), ...(parsed.orderReferences || []) ];
-                  for (const oid of oIds) {
-                    if (oid && !deletedOrderIds.includes(oid)) deletedOrderIds.push(oid);
-                  }
-                } else {
-                  if (Array.isArray(parsed.ids)) {
-                    for (const tid of parsed.ids) {
-                      if (tid && !deletedCustIds.includes(tid)) deletedCustIds.push(tid);
-                    }
-                  }
-                  if (Array.isArray(parsed.emails)) {
-                    for (const tem of parsed.emails) {
-                      const cleanEm = (tem || '').toLowerCase().trim();
-                      if (cleanEm && !deletedCustEmails.includes(cleanEm)) deletedCustEmails.push(cleanEm);
-                    }
-                  }
-                  // Do not push slugs to deletedProfileSlugs to avoid collateral filtering of newly created customers
-                }
-              } catch (_) {}
-            }
-          }
-        } catch (_) {}
-      }
-
       const { supabase, supabaseAdmin, isSupabaseConfigured } = await import('../lib/supabase.js');
       const client = supabaseAdmin || supabase;
 
@@ -174,10 +141,7 @@ export function DataProvider({ children }) {
           const cpSlug = (cp.slug || '').toLowerCase().trim();
           const cpName = (cp.name || '').toLowerCase().trim();
           if (!cpSlug) continue;
-
-          const isDeleted = (cp.id && (deletedCustIds.includes(cp.id) || deletedProfileIds.includes(cp.id))) ||
-                            (cp.user_id && deletedCustIds.includes(cp.user_id));
-          if (isDeleted) continue;
+          if (cp.status === 'deleted') continue;
 
           // Include all cloud profiles seamlessly so newly created records appear universally across all tabs
           validSlugs.add(cpSlug);
@@ -271,7 +235,7 @@ export function DataProvider({ children }) {
       for (const u of (cloudUsers || [])) {
         const uEmail = (u.email || '').toLowerCase().trim();
         const rawName = u.user_metadata?.name || u.user_metadata?.full_name || '';
-        if (!uEmail || deletedCustIds.includes(u.id) || deletedCustEmails.includes(uEmail)) continue;
+        if (!uEmail) continue;
         if (uEmail.includes('flocard.in') && u.user_metadata?.role === 'owner') continue;
 
         let cleanName = rawName.trim();
@@ -305,8 +269,10 @@ export function DataProvider({ children }) {
         const cpName = (cp.name || '').trim();
         const cpId = cp.id ? String(cp.id).trim() : '';
 
-        if (deletedCustIds.includes(cpId) || deletedProfileIds.includes(cpId)) continue;
-        if (cpEmail && (deletedCustEmails.includes(cpEmail) || seenCustEmails.has(cpEmail))) {
+        // Skip internal admin profiles
+        if (cpSlug === 'admin' || cpSlug === 'flocard' || (cpEmail.endsWith('@flocard.in') && cp.role !== 'customer')) continue;
+
+        if (cpEmail && seenCustEmails.has(cpEmail)) {
           const existing = authoritativeCusts.find(c => c.email?.toLowerCase().trim() === cpEmail);
           if (existing) {
             if (cp.phone && !existing.phone) existing.phone = cp.phone;
@@ -356,7 +322,6 @@ export function DataProvider({ children }) {
         const oCompany = ord.company || '';
         const oId = ord.customer_id || ord.customerId || (oEmail ? `cust_${oEmail.replace(/[^a-z0-9]/g, '')}` : '');
 
-        if ((oId && deletedCustIds.includes(oId)) || (oEmail && deletedCustEmails.includes(oEmail))) continue;
         if (oEmail && oEmail.endsWith('@flocard.in') && oName.toLowerCase().includes('admin')) continue;
 
         if (oEmail && seenCustEmails.has(oEmail)) {
@@ -399,14 +364,6 @@ export function DataProvider({ children }) {
         const lcSlug = (lc.slug || '').toLowerCase().trim();
         const lcName = (lc.name || '').trim();
         const lcNameLower = lcName.toLowerCase();
-
-        // Never resurrect any customer matching tombstones (deleted ID or exact email)
-        if (
-          (lcId && deletedCustIds.includes(lcId)) ||
-          (lcEmail && deletedCustEmails.includes(lcEmail))
-        ) {
-          continue;
-        }
 
         if (lcEmail && seenCustEmails.has(lcEmail)) continue;
         if (lcId && seenCustIds.has(lcId)) continue;
@@ -478,7 +435,7 @@ export function DataProvider({ children }) {
 
       for (const co of (cloudOrders || [])) {
         const ordRef = co.order_reference || co.id;
-        if (deletedOrderIds.includes(co.id) || deletedOrderIds.includes(ordRef)) continue;
+        if (!ordRef) continue;
 
         seenOrderRefs.add(ordRef);
         if (co.id) seenOrderRefs.add(co.id);
@@ -513,7 +470,7 @@ export function DataProvider({ children }) {
         if (fc.printOrder) {
           const po = fc.printOrder;
           const ref = po.orderReference || po.id;
-          if (ref && !seenOrderRefs.has(ref) && !deletedOrderIds.includes(ref) && !deletedOrderIds.includes(po.id) && !deletedOrderIds.includes(po.orderReference)) {
+          if (ref && !seenOrderRefs.has(ref)) {
             seenOrderRefs.add(ref);
             if (po.id) seenOrderRefs.add(po.id);
             authoritativeOrders.unshift({
@@ -527,7 +484,7 @@ export function DataProvider({ children }) {
       // Incorporate remaining legitimate local orders that were created locally
       for (const lo of localOrders) {
         const ref = lo.orderReference || lo.id;
-        if (!ref || seenOrderRefs.has(ref) || (lo.id && seenOrderRefs.has(lo.id)) || deletedOrderIds.includes(ref) || (lo.id && deletedOrderIds.includes(lo.id))) {
+        if (!ref || seenOrderRefs.has(ref) || (lo.id && seenOrderRefs.has(lo.id))) {
           continue;
         }
         seenOrderRefs.add(ref);
@@ -547,7 +504,7 @@ export function DataProvider({ children }) {
 
         for (const ci of cloudInvoices) {
           const invNo = ci.invoice_number || ci.id;
-          if (!invNo || deletedInvoiceIds.includes(invNo) || deletedInvoiceIds.includes(ci.id)) continue;
+          if (!invNo) continue;
           seenInvNos.add(invNo);
           if (ci.id) seenInvNos.add(ci.id);
 
@@ -570,7 +527,7 @@ export function DataProvider({ children }) {
 
         for (const li of localInvoices) {
           const lNo = li.invoiceNumber || li.id;
-          if (!lNo || deletedInvoiceIds.includes(lNo) || seenInvNos.has(lNo)) continue;
+          if (!lNo || seenInvNos.has(lNo)) continue;
           seenInvNos.add(lNo);
           finalInvoices.push(li);
         }
@@ -586,7 +543,7 @@ export function DataProvider({ children }) {
       if (Array.isArray(cloudCards)) {
         for (const cc of cloudCards) {
           const cCode = cc.card_code || cc.id;
-          if (!cCode || deletedCardIds.includes(cc.id) || deletedCardIds.includes(cCode)) continue;
+          if (!cCode) continue;
           seenCardCodes.add(cCode.toLowerCase());
           if (cc.id) seenCardCodes.add(cc.id.toLowerCase());
 
@@ -653,16 +610,33 @@ export function DataProvider({ children }) {
 
   // Real-time synchronization listeners across browser windows, tabs, and local dispatches
   useEffect(() => {
-    // Clean legacy poisonous name and slug tombstones so newly created customers/profiles are never hidden
+    // Clean legacy poisonous tombstones so newly created customers/profiles are never hidden
     if (typeof window !== 'undefined') {
       try {
         const staleKeys = [
+          'flocard_deleted_cust_ids',
+          'flocard_deleted_cust_emails',
           'flocard_deleted_cust_names',
+          'flocard_deleted_profile_ids',
           'flocard_deleted_profile_slugs',
           'flocard_deleted_profile_names',
-          'flocard_data_v3_flocard_deleted_cust_names',
+          'flocard_deleted_order_ids',
+          'flocard_deleted_invoice_ids',
+          'flocard_deleted_card_ids',
+          'flocard_deleted_design_ids',
+          'flocard_purged_initial_records_v3',
+          'flocard_purged_initial_records_v2',
+          'flocard_purged_initial_records',
+          'flocard_data_v3_flocard_deleted_cust_ids',
+          'flocard_data_v3_flocard_deleted_cust_emails',
+          'flocard_data_v3_flocard_deleted_profile_ids',
           'flocard_data_v3_flocard_deleted_profile_slugs',
+          'flocard_data_v3_flocard_deleted_order_ids',
+          'flocard_data_v3_flocard_deleted_invoice_ids',
+          'flocard_data_v3_flocard_deleted_cust_names',
           'flocard_data_v3_flocard_deleted_profile_names',
+          'flocard_data_flocard_deleted_cust_ids',
+          'flocard_data_flocard_deleted_profile_ids',
           'flocard_data_flocard_deleted_cust_names',
           'flocard_data_flocard_deleted_profile_slugs',
           'flocard_data_flocard_deleted_profile_names'
