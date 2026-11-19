@@ -182,11 +182,7 @@ export function DataProvider({ children }) {
                             (cp.user_id && deletedCustIds.includes(cp.user_id));
           if (isDeleted) continue;
 
-          // Exclude CRM customer records from Digital Profiles list to keep counts accurate & separate
-          if (cp.role === 'customer' && !cp.is_digital_profile && !cp.bio && !cp.tagline) {
-            continue;
-          }
-
+          // Include all cloud profiles seamlessly so newly created records appear universally across all tabs
           validSlugs.add(cpSlug);
           if (cp.id) validIds.add(cp.id);
 
