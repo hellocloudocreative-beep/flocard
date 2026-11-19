@@ -403,12 +403,10 @@ export function DataProvider({ children }) {
         const lcName = (lc.name || '').trim();
         const lcNameLower = lcName.toLowerCase();
 
-        // Never resurrect any customer matching tombstones (deleted ID, email, or profile slug)
+        // Never resurrect any customer matching tombstones (deleted ID or exact email)
         if (
           (lcId && deletedCustIds.includes(lcId)) ||
-          (lcEmail && deletedCustEmails.includes(lcEmail)) ||
-          (lcSlug && deletedProfileSlugs.includes(lcSlug)) ||
-          (lcNameLower && deletedCustNames.includes(lcNameLower))
+          (lcEmail && deletedCustEmails.includes(lcEmail))
         ) {
           continue;
         }

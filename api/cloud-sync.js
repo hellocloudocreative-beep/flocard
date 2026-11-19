@@ -1,7 +1,10 @@
 import { createClient } from '@supabase/supabase-js';
 
-const SUPABASE_URL = process.env.SUPABASE_URL || process.env.VITE_SUPABASE_URL || 'https://myfznpeynuvftqfinxzb.supabase.co';
-const SUPABASE_SERVICE_KEY = process.env.SUPABASE_SERVICE_KEY || process.env.VITE_SUPABASE_SERVICE_KEY || 'sb_secret_SXtEZyT8dr3E9Z2VEZRuTQ_GuG57UTT';
+const rawUrl = process.env.SUPABASE_URL || process.env.VITE_SUPABASE_URL;
+const SUPABASE_URL = (rawUrl && !rawUrl.includes('ekycoxwtwratujezngep')) ? rawUrl : 'https://myfznpeynuvftqfinxzb.supabase.co';
+
+const rawKey = process.env.SUPABASE_SERVICE_KEY || process.env.VITE_SUPABASE_SERVICE_KEY;
+const SUPABASE_SERVICE_KEY = (rawKey && !rawKey.includes('DVTVdCekywmyjn0IYLj1Fg')) ? rawKey : 'sb_secret_SXtEZyT8dr3E9Z2VEZRuTQ_GuG57UTT';
 
 const adminClient = createClient(SUPABASE_URL, SUPABASE_SERVICE_KEY, {
   auth: {
@@ -707,7 +710,7 @@ export default async function handler(req, res) {
       }
 
       case 'fetchData': {
-        const [profilesRes, cardsRes, designsRes, ordersRes, usersRes, invoicesRes, tombstonesRes] = await Promise.all([
+        const [profilesRes, cardsRes, designsRes, ordersRes, invoicesRes, tombstonesRes] = await Promise.all([
           adminClient.from('profiles').select('*').order('created_at', { ascending: false }),
           adminClient.from('nfc_cards').select('*').order('created_at', { ascending: false }),
           adminClient.from('card_designs').select('*').order('created_at', { ascending: false }),
@@ -716,13 +719,6 @@ export default async function handler(req, res) {
               return await adminClient.from('orders').select('*').order('created_at', { ascending: false });
             } catch (_) {
               return { data: [] };
-            }
-          })(),
-          (async () => {
-            try {
-              return await adminClient.auth.admin.listUsers();
-            } catch (_) {
-              return { data: { users: [] } };
             }
           })(),
           (async () => {
@@ -752,7 +748,7 @@ export default async function handler(req, res) {
           cards: cardsRes.data || [],
           designs: designsRes.data || [],
           orders: ordersRes.data || [],
-          users: usersRes.data?.users || [],
+          users: [],
           invoices: invoicesRes?.data || [],
           tombstones: tombstonesRes?.data || []
         });
