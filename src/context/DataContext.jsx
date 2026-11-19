@@ -69,10 +69,7 @@ export function DataProvider({ children }) {
 
       const deletedCustIds = StorageEngine.getDeletedCustomerIds?.() || [];
       const deletedCustEmails = StorageEngine.getDeletedCustomerEmails?.() || [];
-      const deletedCustNames = StorageEngine.getDeletedCustomerNames?.() || [];
       const deletedProfileIds = StorageEngine.getDeletedProfileIds?.() || [];
-      const deletedProfileSlugs = StorageEngine.getDeletedProfileSlugs?.() || [];
-      const deletedProfileNames = StorageEngine.getDeletedProfileNames?.() || [];
       const deletedCardIds = StorageEngine.getDeletedCardIds?.() || [];
       const deletedDesignIds = StorageEngine.getDeletedDesignIds?.() || [];
       const deletedOrderIds = StorageEngine.getDeletedOrderIds?.() || [];
@@ -656,11 +653,23 @@ export function DataProvider({ children }) {
 
   // Real-time synchronization listeners across browser windows, tabs, and local dispatches
   useEffect(() => {
-    // Clean legacy poisonous name-based tombstones so new creations with common names are never hidden
+    // Clean legacy poisonous name and slug tombstones so newly created customers/profiles are never hidden
     if (typeof window !== 'undefined') {
       try {
-        localStorage.removeItem('flocard_deleted_cust_names');
-        localStorage.removeItem('flocard_deleted_profile_names');
+        const staleKeys = [
+          'flocard_deleted_cust_names',
+          'flocard_deleted_profile_slugs',
+          'flocard_deleted_profile_names',
+          'flocard_data_v3_flocard_deleted_cust_names',
+          'flocard_data_v3_flocard_deleted_profile_slugs',
+          'flocard_data_v3_flocard_deleted_profile_names',
+          'flocard_data_flocard_deleted_cust_names',
+          'flocard_data_flocard_deleted_profile_slugs',
+          'flocard_data_flocard_deleted_profile_names'
+        ];
+        for (const k of staleKeys) {
+          localStorage.removeItem(k);
+        }
       } catch (_) {}
     }
 

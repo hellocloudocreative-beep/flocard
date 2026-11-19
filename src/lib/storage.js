@@ -15,6 +15,26 @@ function safeDispatchEvent(name, detail) {
 
 const STORAGE_KEY_PREFIX = 'flocard_data_v3_';
 
+// Purge any stale legacy slug/name-based tombstones on script load
+if (typeof window !== 'undefined' && window.localStorage) {
+  try {
+    const staleKeys = [
+      'flocard_deleted_cust_names',
+      'flocard_deleted_profile_slugs',
+      'flocard_deleted_profile_names',
+      STORAGE_KEY_PREFIX + 'flocard_deleted_cust_names',
+      STORAGE_KEY_PREFIX + 'flocard_deleted_profile_slugs',
+      STORAGE_KEY_PREFIX + 'flocard_deleted_profile_names',
+      'flocard_data_flocard_deleted_cust_names',
+      'flocard_data_flocard_deleted_profile_slugs',
+      'flocard_data_flocard_deleted_profile_names'
+    ];
+    for (const k of staleKeys) {
+      window.localStorage.removeItem(k);
+    }
+  } catch (_) {}
+}
+
 /**
  * Environment detection:
  * Identifies whether code is executing in a local development/testing sandbox (localhost, 127.0.0.1, dev preview)
@@ -1001,7 +1021,7 @@ function setLocal(key, value) {
 export const StorageEngine = {
   // Profiles
   getDeletedProfileIds: () => getLocal('flocard_deleted_profile_ids', []),
-  getDeletedProfileSlugs: () => getLocal('flocard_deleted_profile_slugs', []),
+  getDeletedProfileSlugs: () => [],
   getProfiles: () => {
     const deletedProfileIds = getLocal('flocard_deleted_profile_ids', []);
     const deletedProfileSlugs = getLocal('flocard_deleted_profile_slugs', []);
@@ -3205,8 +3225,9 @@ export const StorageEngine = {
   },
   getDeletedCustomerIds: () => getLocal('flocard_deleted_cust_ids', []),
   getDeletedCustomerEmails: () => getLocal('flocard_deleted_cust_emails', []),
-  getDeletedCustomerNames: () => getLocal('flocard_deleted_cust_names', []),
-  getDeletedProfileNames: () => getLocal('flocard_deleted_profile_names', []),
+  getDeletedCustomerNames: () => [],
+  getDeletedProfileNames: () => [],
+  getDeletedProfileSlugs: () => [],
   saveLocalInvoices: (invoices) => {
     setLocal('invoices', invoices);
     safeDispatchEvent('flocard_invoice_updated', invoices);
