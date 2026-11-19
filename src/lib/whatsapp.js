@@ -470,8 +470,40 @@ export function getManualCustomerWhatsAppUrl(customerOrOrder, customText = '') {
 }
 
 /**
+ * Authoritative bill amount calculator for an order or card configuration
+ * Prioritizes totalAmount, pricing breakdown, and edition base prices.
+ */
+export function getOrderBillAmount(order) {
+  if (!order) return 1899;
+  const raw = Number(
+    order.totalAmount ??
+    order.total_amount ??
+    order.pricing?.totalAmount ??
+    order.pricing?.totalPayable ??
+    order.pricing?.total ??
+    order.pricingBreakdown?.totalAmount ??
+    order.pricing_breakdown?.totalAmount ??
+    order.finalAmount ??
+    order.amount ??
+    0
+  );
+  if (!isNaN(raw) && raw > 0) return raw;
+
+  const edKey = String(order.edition || order.templateType || 'purple').toLowerCase();
+  switch (edKey) {
+    case 'platinum': return 2199;
+    case 'gold': return 2499;
+    case 'metal': return 2999;
+    case 'white': return 1999;
+    case 'purple':
+    default:
+      return 1899;
+  }
+}
+
+/**
  * Generate standard UPI deep-link URL (RFC-compliant upi://pay URI) for an order
- * Prefills the exact order amount so scanning or clicking pre-fills ₹2000 (or exact amount)
+ * Prefills the exact order amount so scanning or clicking pre-fills the exact bill amount
  */
 export function getOrderUpiPaymentUrl(order, customUpiId = null) {
   if (!order) return '';
@@ -487,8 +519,7 @@ export function getOrderUpiPaymentUrl(order, customUpiId = null) {
   }
   if (!upiId) upiId = 'flocard@hdfcbank';
 
-  const rawAmount = Number(order.totalAmount || order.total_amount || order.pricing?.totalPayable || order.pricing?.total || order.unitPrice || 2000);
-  const amount = isNaN(rawAmount) || rawAmount <= 0 ? 2000 : rawAmount;
+  const amount = getOrderBillAmount(order);
   const orderRef = order.orderReference || order.id || 'FLOCARD-ORDER';
   const merchantName = 'FLOCARDS';
 
@@ -517,8 +548,7 @@ export function getOrderWhatsAppPaymentMessage(order, customUpiId = null) {
     'there';
 
   const orderRef = order.orderReference || order.id || 'FLOCARD-ORDER';
-  const rawAmount = Number(order.totalAmount || order.total_amount || order.pricing?.totalPayable || order.pricing?.total || order.unitPrice || 2000);
-  const amount = isNaN(rawAmount) || rawAmount <= 0 ? 2000 : rawAmount;
+  const amount = getOrderBillAmount(order);
   const formattedAmount = amount.toLocaleString('en-IN');
 
   const edition = order.edition

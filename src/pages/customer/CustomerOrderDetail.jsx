@@ -21,13 +21,16 @@ import {
   MapPin,
   Calendar,
   MessageSquare,
-  HelpCircle
+  HelpCircle,
+  QrCode
 } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 import { useData } from '../../context/DataContext';
 import { ORDER_STAGES, EXCEPTION_STAGES, getOrderStageInfo, normalizeOrderStatus } from '../../lib/storage';
 import { EDITIONS, BRAND } from '../../lib/constants';
+import { getOrderBillAmount } from '../../lib/whatsapp';
 import CustomerCardPreview from '../../components/CustomerCardPreview';
+import PaymentQrModal from '../../components/dashboard/PaymentQrModal';
 
 export default function CustomerOrderDetail({ orderId, onBack }) {
   const { user } = useAuth();
@@ -35,6 +38,7 @@ export default function CustomerOrderDetail({ orderId, onBack }) {
 
   const [order, setOrder] = useState(null);
   const [loading, setLoading] = useState(true);
+  const [showPaymentQr, setShowPaymentQr] = useState(false);
 
   // Fetch order data and enforce ownership check
   const loadOrder = () => {
@@ -96,7 +100,23 @@ export default function CustomerOrderDetail({ orderId, onBack }) {
           <span>Back to All Orders</span>
         </button>
 
-        <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '10px', flexWrap: 'wrap' }}>
+          <button
+            type="button"
+            onClick={() => setShowPaymentQr(true)}
+            className="btn btn-secondary btn-sm"
+            style={{
+              gap: '6px',
+              backgroundColor: 'rgba(107, 0, 255, 0.1)',
+              color: 'var(--accent-purple)',
+              borderColor: 'rgba(107, 0, 255, 0.3)'
+            }}
+            title="Open Instant UPI Payment QR Code"
+          >
+            <QrCode size={14} />
+            <span>Pay ₹{getOrderBillAmount(order).toLocaleString('en-IN')} (QR)</span>
+          </button>
+
           <span style={{ fontSize: '0.8rem', color: 'var(--text-secondary)' }}>Order Reference:</span>
           <span
             style={{
@@ -434,6 +454,24 @@ export default function CustomerOrderDetail({ orderId, onBack }) {
               <span style={{ color: 'var(--text-primary)' }}>{order.quantity || 1} Custom Card</span>
             </div>
 
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '1px solid var(--border-color)', paddingBottom: '8px' }}>
+              <span style={{ color: 'var(--text-secondary)' }}>Bill Amount</span>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                <strong style={{ color: 'var(--accent-purple)', fontSize: '0.92rem' }}>
+                  ₹{getOrderBillAmount(order).toLocaleString('en-IN')}
+                </strong>
+                <button
+                  type="button"
+                  onClick={() => setShowPaymentQr(true)}
+                  className="btn btn-secondary btn-xs"
+                  style={{ gap: '4px', padding: '3px 8px', fontSize: '0.72rem', backgroundColor: 'rgba(107, 0, 255, 0.1)', color: 'var(--accent-purple)' }}
+                >
+                  <QrCode size={12} />
+                  <span>Pay QR</span>
+                </button>
+              </div>
+            </div>
+
             <div style={{ display: 'flex', justifyContent: 'space-between', paddingTop: '4px' }}>
               <span style={{ color: 'var(--text-secondary)' }}>Shipping Destination</span>
               <span style={{ color: 'var(--text-primary)', textAlign: 'right', maxWidth: '240px' }}>
@@ -579,6 +617,13 @@ export default function CustomerOrderDetail({ orderId, onBack }) {
           </div>
         </div>
       </div>
+
+      {/* Payment QR Modal */}
+      <PaymentQrModal
+        isOpen={showPaymentQr}
+        order={order}
+        onClose={() => setShowPaymentQr(false)}
+      />
     </div>
   );
 }

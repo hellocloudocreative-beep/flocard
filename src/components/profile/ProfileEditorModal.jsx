@@ -439,6 +439,49 @@ export default function ProfileEditorModal({
     }
   };
 
+  // Upload Portfolio PDF Document
+  const handlePortfolioPdfUpload = async (index, e) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    if (file.type !== 'application/pdf' && !file.name.toLowerCase().endsWith('.pdf')) {
+      setUploadError('Please select a valid PDF document (.pdf).');
+      return;
+    }
+    setUploadError('');
+    setIsUploading(true);
+    try {
+      const url = await uploadImage(file, 'portfolio', customer?.id || 'anon', formData);
+      setFormData(prev => {
+        const next = [...(prev.portfolio || [])];
+        next[index] = {
+          ...next[index],
+          pdfUrl: url,
+          pdfName: file.name,
+          pdfSizeBytes: file.size
+        };
+        return { ...prev, portfolio: next };
+      });
+    } catch (err) {
+      setUploadError(err.message || 'Portfolio PDF document upload failed.');
+    } finally {
+      setIsUploading(false);
+      e.target.value = '';
+    }
+  };
+
+  const handleRemovePortfolioPdf = (index) => {
+    setFormData(prev => {
+      const next = [...(prev.portfolio || [])];
+      next[index] = {
+        ...next[index],
+        pdfUrl: '',
+        pdfName: '',
+        pdfSizeBytes: 0
+      };
+      return { ...prev, portfolio: next };
+    });
+  };
+
   // Upload Service Image
   const handleServiceImageUpload = async (index, e) => {
     const file = e.target.files?.[0];
@@ -2511,6 +2554,8 @@ export default function ProfileEditorModal({
                             category: 'Design & Tech',
                             description: '',
                             image: '/assets/cardbg-purple.png',
+                            pdfUrl: '',
+                            pdfName: '',
                             link: ''
                           });
                           setFormData({ ...formData, portfolio: next });
@@ -2523,7 +2568,7 @@ export default function ProfileEditorModal({
                       </button>
                     </div>
 
-                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(260px, 1fr))', gap: '14px' }}>
+                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: '14px' }}>
                       {(formData.portfolio || []).map((item, idx) => (
                         <div
                           key={item.id || idx}
@@ -2560,7 +2605,7 @@ export default function ProfileEditorModal({
                               }}
                             >
                               <Upload size={12} />
-                              <span>Replace</span>
+                              <span>Replace Image</span>
                               <input
                                 type="file"
                                 style={{ display: 'none' }}
@@ -2568,6 +2613,115 @@ export default function ProfileEditorModal({
                                 onChange={(e) => handlePortfolioImageUpload(idx, e)}
                               />
                             </label>
+                          </div>
+
+                          {/* Attached PDF Document Row */}
+                          <div
+                            style={{
+                              padding: '8px 10px',
+                              borderRadius: '8px',
+                              backgroundColor: item.pdfUrl ? 'rgba(239, 68, 68, 0.08)' : 'rgba(255, 255, 255, 0.03)',
+                              border: `1px dashed ${item.pdfUrl ? 'rgba(239, 68, 68, 0.35)' : 'var(--border-color)'}`,
+                              display: 'flex',
+                              alignItems: 'center',
+                              justifyContent: 'space-between',
+                              gap: '8px'
+                            }}
+                          >
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', overflow: 'hidden' }}>
+                              <FileText size={16} style={{ color: item.pdfUrl ? '#EF4444' : 'var(--text-secondary)', flexShrink: 0 }} />
+                              <div style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                                {item.pdfUrl ? (
+                                  <span style={{ fontSize: '0.76rem', fontWeight: 600, color: '#EF4444' }}>
+                                    {item.pdfName || 'Attached Document.pdf'}
+                                  </span>
+                                ) : (
+                                  <span style={{ fontSize: '0.74rem', color: 'var(--text-secondary)' }}>
+                                    No PDF attached
+                                  </span>
+                                )}
+                              </div>
+                            </div>
+
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '6px', flexShrink: 0 }}>
+                              {item.pdfUrl ? (
+                                <>
+                                  <a
+                                    href={item.pdfUrl}
+                                    target="_blank"
+                                    rel="noopener noreferrer"
+                                    style={{
+                                      fontSize: '0.72rem',
+                                      color: 'var(--brand-purple)',
+                                      textDecoration: 'none',
+                                      display: 'inline-flex',
+                                      alignItems: 'center',
+                                      gap: '3px',
+                                      fontWeight: 600
+                                    }}
+                                  >
+                                    <span>View</span>
+                                    <ExternalLink size={11} />
+                                  </a>
+                                  <label
+                                    style={{
+                                      fontSize: '0.72rem',
+                                      color: 'var(--text-secondary)',
+                                      cursor: 'pointer',
+                                      textDecoration: 'underline'
+                                    }}
+                                  >
+                                    Replace
+                                    <input
+                                      type="file"
+                                      style={{ display: 'none' }}
+                                      accept="application/pdf,.pdf"
+                                      onChange={(e) => handlePortfolioPdfUpload(idx, e)}
+                                    />
+                                  </label>
+                                  <button
+                                    type="button"
+                                    onClick={() => handleRemovePortfolioPdf(idx)}
+                                    title="Remove PDF"
+                                    style={{
+                                      background: 'none',
+                                      border: 'none',
+                                      color: '#F87171',
+                                      cursor: 'pointer',
+                                      padding: '2px',
+                                      display: 'flex',
+                                      alignItems: 'center'
+                                    }}
+                                  >
+                                    <X size={13} />
+                                  </button>
+                                </>
+                              ) : (
+                                <label
+                                  style={{
+                                    fontSize: '0.73rem',
+                                    fontWeight: 600,
+                                    color: '#EF4444',
+                                    cursor: 'pointer',
+                                    display: 'inline-flex',
+                                    alignItems: 'center',
+                                    gap: '4px',
+                                    backgroundColor: 'rgba(239, 68, 68, 0.12)',
+                                    padding: '4px 8px',
+                                    borderRadius: '6px'
+                                  }}
+                                >
+                                  <Upload size={11} />
+                                  <span>Attach PDF</span>
+                                  <input
+                                    type="file"
+                                    style={{ display: 'none' }}
+                                    accept="application/pdf,.pdf"
+                                    onChange={(e) => handlePortfolioPdfUpload(idx, e)}
+                                  />
+                                </label>
+                              )}
+                            </div>
                           </div>
 
                           <input
@@ -2615,7 +2769,7 @@ export default function ProfileEditorModal({
                             style={{ alignSelf: 'flex-end', background: 'none', border: 'none', color: '#F87171', cursor: 'pointer', fontSize: '0.76rem', display: 'flex', alignItems: 'center', gap: '4px' }}
                           >
                             <Trash2 size={13} />
-                            <span>Remove</span>
+                            <span>Remove Project</span>
                           </button>
                         </div>
                       ))}

@@ -26,14 +26,16 @@ const BUCKETS = {
   service: 'portfolio',
   banner: 'banners',
   video: 'uploads',
+  pdf: 'portfolio',
+  document: 'portfolio',
   general: 'uploads',
 };
 
 /**
- * Upload an asset file (image or short video) to Supabase Storage.
+ * Upload an asset file (image, PDF document, or short video) to Supabase Storage.
  *
  * @param {File} file               - The raw File object from an <input type="file">
- * @param {'avatar'|'logo'|'portfolio'|'service'|'banner'|'video'|'general'} type - Which bucket
+ * @param {'avatar'|'logo'|'portfolio'|'service'|'banner'|'video'|'pdf'|'document'|'general'} type - Which bucket
  * @param {string} [ownerId]        - User / customer ID used to namespace the path
  * @param {object} [profile]        - Current profile for quota enforcement
  * @returns {Promise<string>}       - Permanent Public URL or base64 data-URL
@@ -48,12 +50,13 @@ export async function uploadImage(file, type = 'general', ownerId = 'anon', prof
 
   const isVideo = file.type?.startsWith('video/') || /\.(mp4|webm)$/i.test(file.name || '');
   const isImage = file.type?.startsWith('image/') || /\.(png|jpe?g|svg|webp|gif|bmp|avif)$/i.test(file.name || '');
+  const isPdf = file.type === 'application/pdf' || /\.pdf$/i.test(file.name || '');
 
-  if (!isImage && !isVideo) {
-    throw new Error('Please select a valid image (PNG, JPG, WebP) or video (MP4, WebM) file.');
+  if (!isImage && !isVideo && !isPdf) {
+    throw new Error('Please select a valid image (PNG, JPG, WebP), video (MP4, WebM), or PDF document (.pdf).');
   }
 
-  // 2. Client-side compression for images only (skip for video or SVG)
+  // 2. Client-side compression for images only (skip for PDF, video or SVG)
   let compressedDataUrl = '';
   if (isImage && !file.type?.includes('svg')) {
     const maxDims = {
@@ -79,7 +82,7 @@ export async function uploadImage(file, type = 'general', ownerId = 'anon', prof
   // Uses authenticated client or service client, falling back gracefully
   const storageClient = supabaseAdmin || (isSupabaseConfigured ? supabase : null);
   const bucket = BUCKETS[type] || BUCKETS.general;
-  const ext = (file.name || 'asset').split('.').pop().toLowerCase() || (isVideo ? 'mp4' : 'jpg');
+  const ext = (file.name || 'asset').split('.').pop().toLowerCase() || (isPdf ? 'pdf' : isVideo ? 'mp4' : 'jpg');
   const cleanOwner = (ownerId || 'admin').replace(/[^a-zA-Z0-9_-]/g, '_');
   const path = `${cleanOwner}/${Date.now()}_${Math.random().toString(36).slice(2, 8)}.${ext}`;
 
@@ -94,9 +97,11 @@ export async function uploadImage(file, type = 'general', ownerId = 'anon', prof
         }
       }
 
-      const contentType = isVideo
-        ? (file.type || 'video/mp4')
-        : (uploadBlob.type || file.type || 'image/jpeg');
+      const contentType = isPdf
+        ? 'application/pdf'
+        : isVideo
+          ? (file.type || 'video/mp4')
+          : (uploadBlob.type || file.type || 'image/jpeg');
 
       const uploadPromise = storageClient.storage
         .from(bucket)

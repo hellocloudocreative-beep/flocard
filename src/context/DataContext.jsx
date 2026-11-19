@@ -106,6 +106,41 @@ export function DataProvider({ children }) {
           const json = await res.json();
           if (json && json.success) {
             serverData = json;
+
+            // Ingest server-authoritative tombstones from audit logs
+            if (Array.isArray(serverData.tombstones)) {
+              for (const t of serverData.tombstones) {
+                if (!t?.details) continue;
+                try {
+                  const parsed = typeof t.details === 'string' ? JSON.parse(t.details) : t.details;
+                  if (Array.isArray(parsed.ids)) {
+                    for (const tid of parsed.ids) {
+                      if (tid && !deletedCustIds.includes(tid)) deletedCustIds.push(tid);
+                    }
+                  }
+                  if (Array.isArray(parsed.emails)) {
+                    for (const tem of parsed.emails) {
+                      const cleanEm = (tem || '').toLowerCase().trim();
+                      if (cleanEm && !deletedCustEmails.includes(cleanEm)) deletedCustEmails.push(cleanEm);
+                    }
+                  }
+                  if (Array.isArray(parsed.slugs)) {
+                    for (const tsl of parsed.slugs) {
+                      const cleanSl = (tsl || '').toLowerCase().trim();
+                      if (cleanSl && !deletedProfileSlugs.includes(cleanSl)) deletedProfileSlugs.push(cleanSl);
+                    }
+                  }
+                } catch (_) {}
+              }
+
+              // Persist tombstones to localStorage for seamless offline & cross-refresh consistency
+              if (typeof window !== 'undefined' && window.localStorage) {
+                try {
+                  localStorage.setItem('flocard_data_flocard_deleted_cust_ids', JSON.stringify(deletedCustIds));
+                  localStorage.setItem('flocard_data_flocard_deleted_cust_emails', JSON.stringify(deletedCustEmails));
+                } catch (_) {}
+              }
+            }
           }
         }
       } catch (apiErr) {
@@ -329,24 +364,36 @@ export function DataProvider({ children }) {
         }
       }
 
-      // Retain newly added local customers only if currently pending cloud sync
+      // Retain newly added local customers only if legitimately pending cloud sync and never marked as deleted
       for (const lc of localCustomers) {
         const lcEmail = (lc.email || '').toLowerCase().trim();
         const lcId = lc.id ? String(lc.id).trim() : '';
+        const lcSlug = (lc.slug || '').toLowerCase().trim();
         const lcName = (lc.name || '').trim();
         const lcNameLower = lcName.toLowerCase();
-        if (deletedCustIds.includes(lcId) || (lcEmail && deletedCustEmails.includes(lcEmail))) continue;
+
+        // Never resurrect any customer matching tombstones (deleted ID, email, or profile slug)
+        if (
+          (lcId && deletedCustIds.includes(lcId)) ||
+          (lcEmail && deletedCustEmails.includes(lcEmail)) ||
+          (lcSlug && deletedProfileSlugs.includes(lcSlug))
+        ) {
+          continue;
+        }
 
         if (lcEmail && seenCustEmails.has(lcEmail)) continue;
         if (lcId && seenCustIds.has(lcId)) continue;
         if (lcNameLower && seenCustNames.has(lcNameLower)) continue;
 
-        // Retain local customer unless explicitly deleted, and ensure it is persisted to cloud
-        if (lcEmail) seenCustEmails.add(lcEmail);
-        if (lcId) seenCustIds.add(lcId);
-        if (lcNameLower) seenCustNames.add(lcNameLower);
-        authoritativeCusts.push(lc);
-        StorageEngine.syncCustomerToCloud(lc).catch(() => {});
+        // Retain local customer ONLY if pending local sync or freshly created offline
+        const isPendingLocal = lc._pendingSync || lc.isLocalOnly || (lc.createdAt && (Date.now() - new Date(lc.createdAt).getTime()) < 5 * 60 * 1000);
+        if (isPendingLocal) {
+          if (lcEmail) seenCustEmails.add(lcEmail);
+          if (lcId) seenCustIds.add(lcId);
+          if (lcNameLower) seenCustNames.add(lcNameLower);
+          authoritativeCusts.push(lc);
+          StorageEngine.syncCustomerToCloud(lc).catch(() => {});
+        }
       }
 
       // Check for live customer updates
@@ -401,6 +448,7 @@ export function DataProvider({ children }) {
       }
 
       // 4. Reconcile Orders
+      const localOrders = StorageEngine.getOrders();
       const authoritativeOrders = [];
       const seenOrderRefs = new Set();
 
@@ -411,18 +459,21 @@ export function DataProvider({ children }) {
         seenOrderRefs.add(ordRef);
         if (co.id) seenOrderRefs.add(co.id);
 
+        const existingLocal = localOrders.find(lo => (lo.orderReference && lo.orderReference === ordRef) || lo.id === co.id || lo.id === ordRef);
+
         authoritativeOrders.push({
+          ...(existingLocal || {}),
           id: co.id || ordRef,
           orderReference: ordRef,
-          customerName: co.customer_name || 'Valued Client',
-          customerEmail: co.customer_email || '',
-          customerPhone: co.customer_phone || '',
-          company: co.company || '',
-          status: co.status || 'new_order',
-          shippingAddress: co.shipping_address || '',
-          totalAmount: Number(co.total_amount || 0),
-          createdAt: co.created_at,
-          updatedAt: co.updated_at || co.created_at
+          customerName: co.customer_name || existingLocal?.customerName || 'Valued Client',
+          customerEmail: co.customer_email || existingLocal?.customerEmail || '',
+          customerPhone: co.customer_phone || existingLocal?.customerPhone || '',
+          company: co.company || existingLocal?.company || '',
+          status: co.status || existingLocal?.status || 'new_order',
+          shippingAddress: co.shipping_address || existingLocal?.shippingAddress || '',
+          totalAmount: Number(co.total_amount || existingLocal?.totalAmount || 0),
+          createdAt: co.created_at || existingLocal?.createdAt,
+          updatedAt: co.updated_at || co.created_at || existingLocal?.updatedAt
         });
       }
 
@@ -438,6 +489,18 @@ export function DataProvider({ children }) {
             authoritativeOrders.unshift(po);
           }
         }
+      }
+
+      // Incorporate remaining legitimate local orders that were created locally
+      for (const lo of localOrders) {
+        const ref = lo.orderReference || lo.id;
+        if (!ref || seenOrderRefs.has(ref) || (lo.id && seenOrderRefs.has(lo.id)) || deletedOrderIds.includes(ref) || (lo.id && deletedOrderIds.includes(lo.id))) {
+          continue;
+        }
+        seenOrderRefs.add(ref);
+        if (lo.id) seenOrderRefs.add(lo.id);
+        authoritativeOrders.push(lo);
+        callCloudSyncApi('syncOrder', { order: lo }).catch(() => {});
       }
 
       if (serverData && (cloudOrders?.length > 0 || authoritativeOrders.length > 0)) {
@@ -882,9 +945,13 @@ export function DataProvider({ children }) {
     return order;
   };
 
-  const submitPrintOrder = (payload) => {
+  const submitPrintOrder = async (payload) => {
     const order = StorageEngine.submitPrintOrder(payload);
     refreshAll();
+    try {
+      await syncCloudData();
+    } catch (_) {}
+    broadcastSyncChange('PRINT_ORDER_SUBMITTED', order);
     return order;
   };
 
@@ -979,12 +1046,32 @@ export function DataProvider({ children }) {
     return updated;
   };
 
-  const deleteCustomer = async (id) => {
-    setCustomers(prev => prev.filter(c => c.id !== id && c.email !== id && c.name !== id));
-    await StorageEngine.deleteCustomer(id);
+  const deleteCustomer = async (idOrCust) => {
+    const isObj = idOrCust && typeof idOrCust === 'object';
+    const targetId = isObj ? (idOrCust.id || idOrCust.userId) : idOrCust;
+    const targetEmail = (isObj ? idOrCust.email : (typeof idOrCust === 'string' && idOrCust.includes('@') ? idOrCust : '') || '').toLowerCase().trim();
+    const targetName = (isObj ? idOrCust.name : '') || '';
+    const targetSlug = (isObj ? idOrCust.slug : '') || '';
+
+    setCustomers(prev => prev.filter(c => {
+      if (targetId && c.id === targetId) return false;
+      if (targetEmail && c.email && c.email.toLowerCase().trim() === targetEmail) return false;
+      if (targetName && c.name && c.name.toLowerCase().trim() === targetName.toLowerCase().trim()) return false;
+      return true;
+    }));
+    setProfiles(prev => prev.filter(p => {
+      if (targetId && (p.id === targetId || p.userId === targetId)) return false;
+      if (targetEmail && p.email && p.email.toLowerCase().trim() === targetEmail) return false;
+      if (targetSlug && p.slug && p.slug.toLowerCase().trim() === targetSlug.toLowerCase().trim()) return false;
+      return true;
+    }));
+
+    await StorageEngine.deleteCustomer(idOrCust);
     refreshAll();
-    await syncCloudData();
-    broadcastSyncChange('CUSTOMER_DELETED', { id });
+    try {
+      await syncCloudData();
+    } catch (_) {}
+    broadcastSyncChange('CUSTOMER_DELETED', { id: targetId, email: targetEmail, slug: targetSlug });
   };
 
   const saveTemplate = (template) => {

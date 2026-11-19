@@ -8,7 +8,7 @@
    ========================================================================== */
 
 import React, { useState } from 'react';
-import { Briefcase, ExternalLink, X, Maximize2, Sparkles } from 'lucide-react';
+import { Briefcase, ExternalLink, X, Maximize2, Sparkles, FileText, Download } from 'lucide-react';
 
 export default function PortfolioSection({
   portfolio = [],
@@ -19,7 +19,7 @@ export default function PortfolioSection({
   const [selectedItem, setSelectedItem] = useState(null);
 
   const published = Array.isArray(portfolio)
-    ? portfolio.filter(item => Boolean(item && item.image))
+    ? portfolio.filter(item => Boolean(item && (item.image || item.pdfUrl)))
     : [];
 
   if (published.length === 0) {
@@ -109,17 +109,63 @@ export default function PortfolioSection({
               e.currentTarget.style.boxShadow = isLight ? '0 4px 16px rgba(0,0,0,0.04)' : '0 8px 24px rgba(0,0,0,0.3)';
             }}
           >
-            <img
-              src={item.image}
-              alt={item.title || 'Portfolio work'}
-              loading="lazy"
-              style={{
-                width: '100%',
-                height: '100%',
-                objectFit: 'cover',
-                display: 'block'
-              }}
-            />
+            {/* PDF Indicator Badge */}
+            {item.pdfUrl && (
+              <div
+                style={{
+                  position: 'absolute',
+                  top: '10px',
+                  right: '10px',
+                  zIndex: 3,
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  gap: '4px',
+                  padding: '4px 8px',
+                  borderRadius: '9999px',
+                  backgroundColor: 'rgba(239, 68, 68, 0.92)',
+                  color: '#FFFFFF',
+                  fontSize: '0.66rem',
+                  fontWeight: 800,
+                  letterSpacing: '0.04em',
+                  boxShadow: '0 4px 12px rgba(0,0,0,0.3)',
+                  backdropFilter: 'blur(8px)'
+                }}
+              >
+                <FileText size={11} />
+                <span>PDF</span>
+              </div>
+            )}
+
+            {item.image ? (
+              <img
+                src={item.image}
+                alt={item.title || 'Portfolio work'}
+                loading="lazy"
+                style={{
+                  width: '100%',
+                  height: '100%',
+                  objectFit: 'cover',
+                  display: 'block'
+                }}
+              />
+            ) : (
+              <div
+                style={{
+                  width: '100%',
+                  height: '100%',
+                  display: 'flex',
+                  flexDirection: 'column',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  gap: '8px',
+                  background: 'linear-gradient(135deg, #1E1238 0%, #0F091C 100%)',
+                  color: '#EF4444'
+                }}
+              >
+                <FileText size={36} />
+                <span style={{ fontSize: '0.74rem', fontWeight: 600, color: '#FFFFFF' }}>PDF Document</span>
+              </div>
+            )}
 
             {/* Dark overlay with metadata */}
             <div
@@ -219,18 +265,34 @@ export default function PortfolioSection({
               <X size={18} />
             </button>
 
-            {/* Image */}
-            <div style={{ width: '100%', maxHeight: '480px', overflow: 'hidden', backgroundColor: '#000000' }}>
-              <img
-                src={selectedItem.image}
-                alt={selectedItem.title}
-                style={{
-                  width: '100%',
-                  maxHeight: '480px',
-                  objectFit: 'contain',
-                  display: 'block'
-                }}
-              />
+            {/* Image or PDF Document Cover */}
+            <div style={{ width: '100%', maxHeight: '480px', minHeight: selectedItem.image ? 'auto' : '220px', overflow: 'hidden', backgroundColor: '#000000', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+              {selectedItem.image ? (
+                <img
+                  src={selectedItem.image}
+                  alt={selectedItem.title}
+                  style={{
+                    width: '100%',
+                    maxHeight: '480px',
+                    objectFit: 'contain',
+                    display: 'block'
+                  }}
+                />
+              ) : (
+                <div style={{ padding: '40px 20px', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '12px', textAlign: 'center' }}>
+                  <div style={{ width: '64px', height: '64px', borderRadius: '18px', backgroundColor: 'rgba(239, 68, 68, 0.15)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#EF4444' }}>
+                    <FileText size={32} />
+                  </div>
+                  <div>
+                    <h4 style={{ margin: '0 0 4px', fontSize: '1.1rem', color: '#FFFFFF', fontWeight: 700 }}>
+                      {selectedItem.pdfName || 'Project PDF Document'}
+                    </h4>
+                    <p style={{ margin: 0, fontSize: '0.8rem', color: '#94A3B8' }}>
+                      Click below to view or download the attached document
+                    </p>
+                  </div>
+                </div>
+              )}
             </div>
 
             {/* Details */}
@@ -249,28 +311,56 @@ export default function PortfolioSection({
                 </p>
               )}
 
-              {selectedItem.link && (
-                <a
-                  href={selectedItem.link}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  style={{
-                    display: 'inline-flex',
-                    alignItems: 'center',
-                    gap: '6px',
-                    padding: '9px 18px',
-                    borderRadius: '9999px',
-                    backgroundColor: accentColor,
-                    color: '#FFFFFF',
-                    textDecoration: 'none',
-                    fontSize: '0.84rem',
-                    fontWeight: 700
-                  }}
-                >
-                  <span>View Project</span>
-                  <ExternalLink size={14} />
-                </a>
-              )}
+              <div style={{ display: 'flex', flexWrap: 'wrap', gap: '10px', alignItems: 'center' }}>
+                {selectedItem.pdfUrl && (
+                  <a
+                    href={selectedItem.pdfUrl}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    style={{
+                      display: 'inline-flex',
+                      alignItems: 'center',
+                      gap: '8px',
+                      padding: '9px 18px',
+                      borderRadius: '9999px',
+                      backgroundColor: '#EF4444',
+                      color: '#FFFFFF',
+                      textDecoration: 'none',
+                      fontSize: '0.84rem',
+                      fontWeight: 700,
+                      boxShadow: '0 4px 14px rgba(239, 68, 68, 0.35)',
+                      transition: 'transform 0.15s ease'
+                    }}
+                  >
+                    <FileText size={15} />
+                    <span>{selectedItem.pdfName ? `Open PDF (${selectedItem.pdfName})` : 'Open PDF Document'}</span>
+                    <ExternalLink size={13} />
+                  </a>
+                )}
+
+                {selectedItem.link && (
+                  <a
+                    href={selectedItem.link}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    style={{
+                      display: 'inline-flex',
+                      alignItems: 'center',
+                      gap: '6px',
+                      padding: '9px 18px',
+                      borderRadius: '9999px',
+                      backgroundColor: accentColor,
+                      color: '#FFFFFF',
+                      textDecoration: 'none',
+                      fontSize: '0.84rem',
+                      fontWeight: 700
+                    }}
+                  >
+                    <span>View Project</span>
+                    <ExternalLink size={14} />
+                  </a>
+                )}
+              </div>
             </div>
           </div>
         </div>

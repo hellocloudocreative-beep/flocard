@@ -112,6 +112,7 @@ export function validateUploadQuota({
   // 1. Validate MIME type
   const isVideo = file.type?.startsWith('video/') || /\.(mp4|webm)$/i.test(file.name || '');
   const isImage = file.type?.startsWith('image/') || /\.(png|jpe?g|webp|svg|gif)$/i.test(file.name || '');
+  const isPdf = file.type === 'application/pdf' || /\.pdf$/i.test(file.name || '');
 
   if (type === 'banner' && isVideo) {
     if (!quotas.allowedVideoMimes.includes(file.type) && !/\.(mp4|webm)$/i.test(file.name || '')) {
@@ -120,9 +121,14 @@ export function validateUploadQuota({
     if (fileSizeMb > quotas.maxBannerVideoSizeMb) {
       throw new Error(`Banner video exceeds maximum allowed limit of ${quotas.maxBannerVideoSizeMb} MB. Current: ${fileSizeMb.toFixed(1)} MB.`);
     }
+  } else if ((type === 'portfolio' || type === 'pdf' || type === 'document') && isPdf) {
+    const maxPdfMb = quotas.maxUploadSizeMb ? Math.max(quotas.maxUploadSizeMb, 15) : 15;
+    if (fileSizeMb > maxPdfMb) {
+      throw new Error(`PDF document exceeds maximum allowed limit of ${maxPdfMb} MB. Current: ${fileSizeMb.toFixed(1)} MB.`);
+    }
   } else {
     if (!isImage) {
-      throw new Error('Invalid file format. Please upload a valid image (PNG, JPG, WebP, SVG).');
+      throw new Error('Invalid file format. Please upload a valid image (PNG, JPG, WebP) or PDF document (.pdf).');
     }
     const maxSingleMb = type === 'banner' ? quotas.maxBannerSizeMb : quotas.maxUploadSizeMb;
     if (fileSizeMb > maxSingleMb) {

@@ -24,7 +24,8 @@ import {
   Copy,
   ChevronRight,
   Maximize2,
-  Zap
+  Zap,
+  FileText
 } from 'lucide-react';
 import {
   PhoneIcon,
@@ -1146,18 +1147,44 @@ export default function ExpandedPortfolioView({
               <p style={{ margin: '0 0 18px', fontSize: '0.86rem', color: '#D5C9E5', lineHeight: 1.55 }}>
                 {selectedProject.description}
               </p>
-              {selectedProject.link && (
-                <a
-                  href={selectedProject.link}
-                  target="_blank"
-                  rel="noreferrer"
-                  className="btn btn-primary btn-sm"
-                  style={{ gap: '6px' }}
-                >
-                  <span>Visit Project Website</span>
-                  <ExternalLink size={14} />
-                </a>
-              )}
+              <div style={{ display: 'flex', flexWrap: 'wrap', gap: '10px', alignItems: 'center' }}>
+                {selectedProject.pdfUrl && (
+                  <a
+                    href={selectedProject.pdfUrl}
+                    target="_blank"
+                    rel="noreferrer"
+                    style={{
+                      display: 'inline-flex',
+                      alignItems: 'center',
+                      gap: '6px',
+                      padding: '8px 16px',
+                      borderRadius: '9999px',
+                      backgroundColor: '#EF4444',
+                      color: '#FFFFFF',
+                      textDecoration: 'none',
+                      fontSize: '0.84rem',
+                      fontWeight: 700,
+                      boxShadow: '0 4px 12px rgba(239, 68, 68, 0.35)'
+                    }}
+                  >
+                    <FileText size={14} />
+                    <span>{selectedProject.pdfName ? `Open PDF (${selectedProject.pdfName})` : 'Open PDF Document'}</span>
+                    <ExternalLink size={13} />
+                  </a>
+                )}
+                {selectedProject.link && (
+                  <a
+                    href={selectedProject.link}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="btn btn-primary btn-sm"
+                    style={{ gap: '6px' }}
+                  >
+                    <span>Visit Project Website</span>
+                    <ExternalLink size={14} />
+                  </a>
+                )}
+              </div>
             </div>
           </div>
         </div>

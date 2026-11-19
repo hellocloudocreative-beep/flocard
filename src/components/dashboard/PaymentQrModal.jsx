@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { X, QrCode, Copy, Check, MessageCircle, ExternalLink, Download, Printer, ShieldCheck, Sparkles, RefreshCw } from 'lucide-react';
 import { generateQrDataUrl } from '../../lib/qr';
-import { getOrderUpiPaymentUrl, getOrderWhatsAppPaymentDetailsUrl, getOrderWhatsAppPaymentMessage } from '../../lib/whatsapp';
+import { getOrderUpiPaymentUrl, getOrderWhatsAppPaymentDetailsUrl, getOrderWhatsAppPaymentMessage, getOrderBillAmount } from '../../lib/whatsapp';
 
 export default function PaymentQrModal({
   isOpen,
@@ -20,8 +20,7 @@ export default function PaymentQrModal({
   const orderRef = order?.orderReference || order?.id || 'FLOCARD-ORDER';
   const customerName = order?.customerName || order?.name || order?.customerDetails?.name || 'Customer';
   const customerPhone = order?.customerPhone || order?.phone || order?.customerDetails?.phone || '';
-  const rawAmount = Number(order?.totalAmount || order?.total_amount || order?.pricing?.totalPayable || order?.pricing?.total || order?.unitPrice || 2000);
-  const amount = isNaN(rawAmount) || rawAmount <= 0 ? 2000 : rawAmount;
+  const amount = getOrderBillAmount(order);
   const formattedAmount = amount.toLocaleString('en-IN');
   const edition = order?.edition ? `${String(order.edition).toUpperCase()} Edition` : (order?.productName || 'FLOCARD NFC Smart Card');
 

@@ -1079,15 +1079,17 @@ export default function AdminDashboard({ initialTab = 'overview', initialOrderId
     }
   };
 
-  const handleDeleteCustomer = (id) => {
-    const cust = customers.find(c => c.id === id);
+  const handleDeleteCustomer = (idOrCust) => {
+    const isObj = idOrCust && typeof idOrCust === 'object';
+    const cust = isObj ? idOrCust : customers.find(c => c.id === idOrCust || c.email === idOrCust);
+    const id = cust?.id || (isObj ? idOrCust.id : idOrCust);
     setDeleteConfirmState({
       title: 'Delete Customer Account',
       itemName: cust ? `${cust.name || cust.email} (${cust.phone || id})` : `Customer ID: ${id}`,
       message: 'Are you sure you want to delete this customer? This will remove their record across all devices.',
       onConfirm: async () => {
         setDeleteConfirmState(null);
-        await deleteCustomer(id);
+        await deleteCustomer(cust || id);
         if (editingCustomer?.id === id) setEditingCustomer(null);
         setFulfillmentToast({
           title: 'Customer Deleted',
@@ -4224,7 +4226,7 @@ export default function AdminDashboard({ initialTab = 'overview', initialOrderId
                             </button>
                             <button
                               type="button"
-                              onClick={() => handleDeleteCustomer(c.id)}
+                              onClick={() => handleDeleteCustomer(c)}
                               title="Delete Customer"
                               style={{
                                 display: 'inline-flex',
@@ -4359,7 +4361,7 @@ export default function AdminDashboard({ initialTab = 'overview', initialOrderId
                         </button>
                         <button
                           type="button"
-                          onClick={() => handleDeleteCustomer(c.id)}
+                          onClick={() => handleDeleteCustomer(c)}
                           style={{
                             padding: '9px 14px',
                             borderRadius: '8px',
@@ -8556,7 +8558,7 @@ export default function AdminDashboard({ initialTab = 'overview', initialOrderId
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: '16px', paddingTop: '14px', borderTop: 'var(--adm-divider)' }}>
                 <button
                   type="button"
-                  onClick={() => handleDeleteCustomer(editingCustomer.id)}
+                  onClick={() => handleDeleteCustomer(editingCustomer)}
                   style={{ padding: '8px 14px', borderRadius: '8px', border: '1px solid #FEE2E2', backgroundColor: '#FEF2F2', color: '#DC4545', fontSize: '0.8rem', fontWeight: 600, cursor: 'pointer' }}
                 >
                   Delete Customer

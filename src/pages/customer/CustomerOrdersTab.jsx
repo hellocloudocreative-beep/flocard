@@ -3,7 +3,7 @@
    Displays authenticated customer's orders with fulfillment progress and tracking links.
    ========================================================================== */
 
-import React from 'react';
+import React, { useState } from 'react';
 import {
   Package,
   Clock,
@@ -13,12 +13,16 @@ import {
   CheckCircle2,
   AlertTriangle,
   Sparkles,
-  Calendar
+  Calendar,
+  QrCode
 } from 'lucide-react';
 import { EDITIONS } from '../../lib/constants';
 import { ORDER_STAGES, EXCEPTION_STAGES, getOrderStageInfo, normalizeOrderStatus } from '../../lib/storage';
+import { getOrderBillAmount } from '../../lib/whatsapp';
+import PaymentQrModal from '../../components/dashboard/PaymentQrModal';
 
 export default function CustomerOrdersTab({ orders = [], onViewOrder }) {
+  const [paymentQrOrder, setPaymentQrOrder] = useState(null);
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
       {/* Top Header */}
@@ -224,25 +228,50 @@ export default function CustomerOrdersTab({ orders = [], onViewOrder }) {
                         <span>Tracking: {order.trackingNumber} ({order.carrierName || 'Courier'})</span>
                       </span>
                     ) : (
-                      <span>NFC Chip: <strong>NXP NTAG216 (888 Bytes)</strong></span>
+                      <span>Bill Amount: <strong style={{ color: 'var(--accent-purple)' }}>₹{getOrderBillAmount(order).toLocaleString('en-IN')}</strong></span>
                     )}
                   </div>
 
-                  <button
-                    type="button"
-                    onClick={() => onViewOrder(order.id)}
-                    className="btn btn-primary btn-sm"
-                    style={{ gap: '6px' }}
-                  >
-                    <span>View Journey Details</span>
-                    <ArrowRight size={14} />
-                  </button>
+                  <div style={{ display: 'inline-flex', alignItems: 'center', gap: '8px' }}>
+                    <button
+                      type="button"
+                      onClick={() => setPaymentQrOrder(order)}
+                      className="btn btn-secondary btn-sm"
+                      style={{
+                        gap: '6px',
+                        backgroundColor: 'rgba(107, 0, 255, 0.1)',
+                        color: 'var(--accent-purple)',
+                        borderColor: 'rgba(107, 0, 255, 0.3)'
+                      }}
+                      title="Open Instant UPI Payment QR Code"
+                    >
+                      <QrCode size={14} />
+                      <span>Pay ₹{getOrderBillAmount(order).toLocaleString('en-IN')} (QR)</span>
+                    </button>
+
+                    <button
+                      type="button"
+                      onClick={() => onViewOrder(order.id)}
+                      className="btn btn-primary btn-sm"
+                      style={{ gap: '6px' }}
+                    >
+                      <span>View Journey Details</span>
+                      <ArrowRight size={14} />
+                    </button>
+                  </div>
                 </div>
               </div>
             );
           })}
         </div>
       )}
+
+      {/* Dynamic Payment QR Modal */}
+      <PaymentQrModal
+        isOpen={Boolean(paymentQrOrder)}
+        order={paymentQrOrder}
+        onClose={() => setPaymentQrOrder(null)}
+      />
     </div>
   );
 }

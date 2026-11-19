@@ -399,12 +399,17 @@ export default function PhoneProfileMockup({ profile, scale = 1, className = '' 
                     }}
                   >
                     {item.image ? (
-                      <div style={{ width: '100%', height: '62px', borderRadius: '8px', overflow: 'hidden', background: '#08060d' }}>
+                      <div style={{ width: '100%', height: '62px', borderRadius: '8px', overflow: 'hidden', background: '#08060d', position: 'relative' }}>
                         <img
                           src={item.image}
                           alt={item.title}
                           style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }}
                         />
+                        {item.pdfUrl && (
+                          <div style={{ position: 'absolute', top: '3px', right: '3px', padding: '1px 4px', borderRadius: '4px', backgroundColor: '#EF4444', color: '#FFFFFF', fontSize: '0.52rem', fontWeight: 800 }}>
+                            PDF
+                          </div>
+                        )}
                       </div>
                     ) : (
                       <div
@@ -412,16 +417,16 @@ export default function PhoneProfileMockup({ profile, scale = 1, className = '' 
                           width: '100%',
                           height: '52px',
                           borderRadius: '8px',
-                          background: 'linear-gradient(135deg, rgba(107, 0, 255, 0.25) 0%, rgba(32, 11, 59, 0.6) 100%)',
+                          background: item.pdfUrl ? 'linear-gradient(135deg, rgba(239, 68, 68, 0.3) 0%, rgba(32, 11, 59, 0.6) 100%)' : 'linear-gradient(135deg, rgba(107, 0, 255, 0.25) 0%, rgba(32, 11, 59, 0.6) 100%)',
                           display: 'flex',
                           alignItems: 'center',
                           justifyContent: 'center',
-                          color: '#C4B5FD',
+                          color: item.pdfUrl ? '#FCA5A5' : '#C4B5FD',
                           fontSize: '0.65rem',
                           fontWeight: 700
                         }}
                       >
-                        FLOCARD
+                        {item.pdfUrl ? 'PDF DOC' : 'FLOCARD'}
                       </div>
                     )}
                     <div style={{ fontSize: '0.58rem', color: 'var(--accent-purple)', fontWeight: 700, textTransform: 'uppercase', marginTop: '2px' }}>

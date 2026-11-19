@@ -176,49 +176,132 @@ export default async function handler(req, res) {
         const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
         const targetEmails = new Set();
         if (email) targetEmails.add(email.toLowerCase().trim());
+        const targetIds = new Set();
+        if (id) targetIds.add(String(id).trim());
+        const targetSlugs = new Set();
+        if (slug) targetSlugs.add(String(slug).trim().toLowerCase());
+        const targetPhones = new Set();
+        if (phone) targetPhones.add(String(phone).trim());
+        const targetNames = new Set();
+        if (name) targetNames.add(String(name).trim());
 
-        // Find associated profile by exact id, slug, email, or phone
+        // Find associated profile by exact id, user_id, slug, email, phone, or name
         try {
           if (id && uuidRegex.test(id)) {
-            const { data: p } = await adminClient.from('profiles').select('id, user_id, email, slug').or(`id.eq.${id},user_id.eq.${id}`).maybeSingle();
-            if (p?.email) targetEmails.add(p.email.toLowerCase().trim());
-            if (p?.user_id && uuidRegex.test(p.user_id)) {
-              try { await adminClient.auth.admin.deleteUser(p.user_id); } catch (_) {}
+            const { data: pList } = await adminClient.from('profiles').select('id, user_id, email, slug, phone, name').or(`id.eq.${id},user_id.eq.${id}`);
+            for (const p of (pList || [])) {
+              if (p?.email) targetEmails.add(p.email.toLowerCase().trim());
+              if (p?.id) targetIds.add(String(p.id));
+              if (p?.user_id) targetIds.add(String(p.user_id));
+              if (p?.slug) targetSlugs.add(String(p.slug).toLowerCase());
+              if (p?.phone) targetPhones.add(String(p.phone).trim());
             }
           }
           if (slug) {
-            const { data: p } = await adminClient.from('profiles').select('id, user_id, email, slug').eq('slug', slug).maybeSingle();
-            if (p?.email) targetEmails.add(p.email.toLowerCase().trim());
-            if (p?.user_id && uuidRegex.test(p.user_id)) {
-              try { await adminClient.auth.admin.deleteUser(p.user_id); } catch (_) {}
+            const { data: pList } = await adminClient.from('profiles').select('id, user_id, email, slug, phone, name').eq('slug', slug);
+            for (const p of (pList || [])) {
+              if (p?.email) targetEmails.add(p.email.toLowerCase().trim());
+              if (p?.id) targetIds.add(String(p.id));
+              if (p?.user_id) targetIds.add(String(p.user_id));
+              if (p?.slug) targetSlugs.add(String(p.slug).toLowerCase());
+              if (p?.phone) targetPhones.add(String(p.phone).trim());
+            }
+          }
+          if (email) {
+            const { data: pList } = await adminClient.from('profiles').select('id, user_id, email, slug, phone, name').ilike('email', email.trim());
+            for (const p of (pList || [])) {
+              if (p?.email) targetEmails.add(p.email.toLowerCase().trim());
+              if (p?.id) targetIds.add(String(p.id));
+              if (p?.user_id) targetIds.add(String(p.user_id));
+              if (p?.slug) targetSlugs.add(String(p.slug).toLowerCase());
+              if (p?.phone) targetPhones.add(String(p.phone).trim());
+            }
+          }
+          if (phone) {
+            const { data: pList } = await adminClient.from('profiles').select('id, user_id, email, slug, phone, name').eq('phone', phone.trim());
+            for (const p of (pList || [])) {
+              if (p?.email) targetEmails.add(p.email.toLowerCase().trim());
+              if (p?.id) targetIds.add(String(p.id));
+              if (p?.user_id) targetIds.add(String(p.user_id));
+              if (p?.slug) targetSlugs.add(String(p.slug).toLowerCase());
+            }
+          }
+          if (name) {
+            const { data: pList } = await adminClient.from('profiles').select('id, user_id, email, slug, phone, name').eq('role', 'customer').ilike('name', name.trim());
+            for (const p of (pList || [])) {
+              if (p?.email) targetEmails.add(p.email.toLowerCase().trim());
+              if (p?.id) targetIds.add(String(p.id));
+              if (p?.user_id) targetIds.add(String(p.user_id));
+              if (p?.slug) targetSlugs.add(String(p.slug).toLowerCase());
             }
           }
         } catch (_) {}
 
-        // Delete from Supabase Auth by direct id if UUID
-        if (id && uuidRegex.test(id)) {
-          try { await adminClient.auth.admin.deleteUser(id); } catch (_) {}
-        }
+        // Delete permanently from Supabase Auth by matching user ID or matching email
+        try {
+          const { data: usersData } = await adminClient.auth.admin.listUsers();
+          if (usersData?.users) {
+            for (const u of usersData.users) {
+              const uEmail = (u.email || '').toLowerCase().trim();
+              const uId = String(u.id);
+              if (targetEmails.has(uEmail) || targetIds.has(uId)) {
+                try {
+                  await adminClient.auth.admin.deleteUser(u.id);
+                } catch (_) {}
+              }
+            }
+          }
+        } catch (_) {}
 
-        // Delete permanently from profiles table by exact id, slug, email, phone, or name
-        if (id && uuidRegex.test(id)) {
-          try { await adminClient.from('profiles').delete().eq('id', id); } catch (_) {}
-          try { await adminClient.from('profiles').delete().eq('user_id', id); } catch (_) {}
+        // Delete permanently from profiles table by exact id, user_id, slug, email, phone, or customer name
+        for (const tId of targetIds) {
+          if (uuidRegex.test(tId)) {
+            try { await adminClient.from('profiles').delete().eq('id', tId); } catch (_) {}
+            try { await adminClient.from('profiles').delete().eq('user_id', tId); } catch (_) {}
+          }
         }
-        if (slug) {
-          try { await adminClient.from('profiles').delete().eq('slug', slug); } catch (_) {}
+        for (const tSlug of targetSlugs) {
+          try { await adminClient.from('profiles').delete().eq('slug', tSlug); } catch (_) {}
         }
         for (const em of targetEmails) {
           try { await adminClient.from('profiles').delete().ilike('email', em); } catch (_) {}
         }
-        if (phone) {
-          try { await adminClient.from('profiles').delete().eq('phone', phone); } catch (_) {}
+        for (const ph of targetPhones) {
+          try { await adminClient.from('profiles').delete().eq('phone', ph); } catch (_) {}
         }
-        if (name) {
-          try { await adminClient.from('profiles').delete().eq('role', 'customer').ilike('name', name); } catch (_) {}
+        for (const nm of targetNames) {
+          try { await adminClient.from('profiles').delete().eq('role', 'customer').ilike('name', nm); } catch (_) {}
         }
 
-        return res.status(200).json({ success: true });
+        // Record permanent tombstone in audit_logs so every device on refresh respects this deletion
+        try {
+          const tombstonePayload = JSON.stringify({
+            ids: Array.from(targetIds),
+            emails: Array.from(targetEmails),
+            slugs: Array.from(targetSlugs),
+            phones: Array.from(targetPhones),
+            names: Array.from(targetNames),
+            deletedAt: new Date().toISOString()
+          });
+
+          await adminClient.from('audit_logs').insert({
+            action: 'DELETE_CUSTOMER',
+            entity: 'customer',
+            actor_email: 'admin@flocard.in',
+            details: tombstonePayload
+          });
+        } catch (auditErr) {
+          console.warn('[deleteCustomer] audit_logs insert note:', auditErr.message);
+        }
+
+        return res.status(200).json({
+          success: true,
+          deleted: {
+            ids: Array.from(targetIds),
+            emails: Array.from(targetEmails),
+            slugs: Array.from(targetSlugs)
+          }
+        });
       }
 
       case 'deleteProfile': {
@@ -471,7 +554,7 @@ export default async function handler(req, res) {
       }
 
       case 'fetchData': {
-        const [profilesRes, cardsRes, designsRes, ordersRes, usersRes, invoicesRes] = await Promise.all([
+        const [profilesRes, cardsRes, designsRes, ordersRes, usersRes, invoicesRes, tombstonesRes] = await Promise.all([
           adminClient.from('profiles').select('*').order('created_at', { ascending: false }),
           adminClient.from('nfc_cards').select('*').order('created_at', { ascending: false }),
           adminClient.from('card_designs').select('*').order('created_at', { ascending: false }),
@@ -495,6 +578,18 @@ export default async function handler(req, res) {
             } catch (_) {
               return { data: [] };
             }
+          })(),
+          (async () => {
+            try {
+              return await adminClient
+                .from('audit_logs')
+                .select('action, details, created_at')
+                .eq('action', 'DELETE_CUSTOMER')
+                .order('created_at', { ascending: false })
+                .limit(200);
+            } catch (_) {
+              return { data: [] };
+            }
           })()
         ]);
 
@@ -505,7 +600,8 @@ export default async function handler(req, res) {
           designs: designsRes.data || [],
           orders: ordersRes.data || [],
           users: usersRes.data?.users || [],
-          invoices: invoicesRes?.data || []
+          invoices: invoicesRes?.data || [],
+          tombstones: tombstonesRes?.data || []
         });
       }
 

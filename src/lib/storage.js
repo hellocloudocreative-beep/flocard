@@ -2136,8 +2136,9 @@ export const StorageEngine = {
       cust.totalDesigns = (cust.totalDesigns || 0) + 1;
       cust.phone = customerPhone || cust.phone;
       setLocal('customers', customers);
+      StorageEngine.syncCustomerToCloud(cust);
     } else {
-      customers.unshift({
+      const newCust = {
         id: newOrder.customerId,
         name: customerName,
         email: customerEmail,
@@ -2148,8 +2149,10 @@ export const StorageEngine = {
         totalDesigns: 1,
         status: 'active',
         joinedDate: new Date().toISOString().split('T')[0]
-      });
+      };
+      customers.unshift(newCust);
       setLocal('customers', customers);
+      StorageEngine.syncCustomerToCloud(newCust);
     }
 
     // Link design status back to order and attach authoritative print order snapshot
@@ -2452,6 +2455,7 @@ export const StorageEngine = {
     } catch (_) {}
 
     // Sync status directly to native Supabase orders table
+    callCloudSyncApi('syncOrder', { order }).catch(() => {});
     (async () => {
       try {
         const { supabase, supabaseAdmin, isSupabaseConfigured } = await import('./supabase.js');
@@ -3166,18 +3170,20 @@ export const StorageEngine = {
     setLocal('invoices', invoices);
     safeDispatchEvent('flocard_invoice_updated', invoices);
   },
-  deleteCustomer: async (id) => {
+  deleteCustomer: async (idOrCust) => {
+    const isObj = idOrCust && typeof idOrCust === 'object';
+    const rawId = isObj ? (idOrCust.id || idOrCust.userId) : idOrCust;
     const allCusts = getLocal('customers', INITIAL_CUSTOMERS);
-    const existing = allCusts.find(c => c.id === id || c.email === id || (c.name && c.name === id));
-    const targetId = existing?.id || id;
-    const targetEmail = (existing?.email || (typeof id === 'string' && id.includes('@') ? id : '')).toLowerCase().trim();
-    const targetSlug = existing?.slug || '';
-    const targetName = existing?.name || '';
-    const targetPhone = existing?.phone || '';
+    const existing = isObj ? idOrCust : allCusts.find(c => c.id === rawId || c.email === rawId || (c.name && c.name === rawId));
+    const targetId = isObj ? (idOrCust.id || idOrCust.userId || existing?.id) : (existing?.id || rawId);
+    const targetEmail = (isObj ? (idOrCust.email || existing?.email || '') : (existing?.email || (typeof rawId === 'string' && rawId.includes('@') ? rawId : ''))).toLowerCase().trim();
+    const targetSlug = isObj ? (idOrCust.slug || existing?.slug || '') : (existing?.slug || '');
+    const targetName = isObj ? (idOrCust.name || existing?.name || '') : (existing?.name || '');
+    const targetPhone = isObj ? (idOrCust.phone || existing?.phone || '') : (existing?.phone || '');
 
     // 1. Purge from local customers
     const list = allCusts.filter(c => {
-      const matchId = c.id === targetId || (targetId && c.id === targetId) || (id && c.id === id);
+      const matchId = (targetId && c.id === targetId) || (rawId && c.id === rawId);
       const matchEmail = targetEmail && c.email && c.email.toLowerCase().trim() === targetEmail;
       const matchName = targetName && c.name && c.name.toLowerCase().trim() === targetName.toLowerCase().trim();
       return !matchId && !matchEmail && !matchName;
@@ -3193,7 +3199,7 @@ export const StorageEngine = {
     });
     setLocal('profiles', profiles);
 
-    // 3. Record tombstones by ID and Email only (never by loose customer name string)
+    // 3. Record tombstones by ID, Email, and Slug
     const tombstoneIds = getLocal('flocard_deleted_cust_ids', []);
     if (targetId && !tombstoneIds.includes(targetId)) tombstoneIds.push(targetId);
     if (id && !tombstoneIds.includes(id)) tombstoneIds.push(id);
@@ -3203,6 +3209,14 @@ export const StorageEngine = {
     if (targetEmail && !tombstoneEmails.includes(targetEmail)) {
       tombstoneEmails.push(targetEmail);
       setLocal('flocard_deleted_cust_emails', tombstoneEmails);
+    }
+
+    if (targetSlug) {
+      const tombstoneSlugs = getLocal('flocard_deleted_profile_slugs', []);
+      if (!tombstoneSlugs.includes(targetSlug)) {
+        tombstoneSlugs.push(targetSlug);
+        setLocal('flocard_deleted_profile_slugs', tombstoneSlugs);
+      }
     }
 
     StorageEngine.addAuditLog('Customer', `Customer record deleted: ${existing?.name || targetId}`, 'You');
@@ -3904,6 +3918,7 @@ export const StorageEngine = {
     }
 
     setLocal('orders', orders);
+    callCloudSyncApi('syncOrder', { order }).catch(() => {});
     StorageEngine.addAuditLog(
       'Payment Status Update',
       `Order ${order.orderReference} payment updated from ${prevPayment} to ${paymentStatus} by ${actorUser?.name || 'Administrator'}`,
