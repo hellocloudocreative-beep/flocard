@@ -113,21 +113,28 @@ export function DataProvider({ children }) {
                 if (!t?.details) continue;
                 try {
                   const parsed = typeof t.details === 'string' ? JSON.parse(t.details) : t.details;
-                  if (Array.isArray(parsed.ids)) {
-                    for (const tid of parsed.ids) {
-                      if (tid && !deletedCustIds.includes(tid)) deletedCustIds.push(tid);
+                  if (t.action === 'DELETE_ORDER') {
+                    const oIds = [ ...(parsed.ids || []), ...(parsed.orderReferences || []) ];
+                    for (const oid of oIds) {
+                      if (oid && !deletedOrderIds.includes(oid)) deletedOrderIds.push(oid);
                     }
-                  }
-                  if (Array.isArray(parsed.emails)) {
-                    for (const tem of parsed.emails) {
-                      const cleanEm = (tem || '').toLowerCase().trim();
-                      if (cleanEm && !deletedCustEmails.includes(cleanEm)) deletedCustEmails.push(cleanEm);
+                  } else {
+                    if (Array.isArray(parsed.ids)) {
+                      for (const tid of parsed.ids) {
+                        if (tid && !deletedCustIds.includes(tid)) deletedCustIds.push(tid);
+                      }
                     }
-                  }
-                  if (Array.isArray(parsed.slugs)) {
-                    for (const tsl of parsed.slugs) {
-                      const cleanSl = (tsl || '').toLowerCase().trim();
-                      if (cleanSl && !deletedProfileSlugs.includes(cleanSl)) deletedProfileSlugs.push(cleanSl);
+                    if (Array.isArray(parsed.emails)) {
+                      for (const tem of parsed.emails) {
+                        const cleanEm = (tem || '').toLowerCase().trim();
+                        if (cleanEm && !deletedCustEmails.includes(cleanEm)) deletedCustEmails.push(cleanEm);
+                      }
+                    }
+                    if (Array.isArray(parsed.slugs)) {
+                      for (const tsl of parsed.slugs) {
+                        const cleanSl = (tsl || '').toLowerCase().trim();
+                        if (cleanSl && !deletedProfileSlugs.includes(cleanSl)) deletedProfileSlugs.push(cleanSl);
+                      }
                     }
                   }
                 } catch (_) {}
@@ -138,6 +145,7 @@ export function DataProvider({ children }) {
                 try {
                   localStorage.setItem('flocard_data_flocard_deleted_cust_ids', JSON.stringify(deletedCustIds));
                   localStorage.setItem('flocard_data_flocard_deleted_cust_emails', JSON.stringify(deletedCustEmails));
+                  localStorage.setItem('flocard_data_flocard_deleted_order_ids', JSON.stringify(deletedOrderIds));
                 } catch (_) {}
               }
             }
@@ -364,6 +372,51 @@ export function DataProvider({ children }) {
         }
       }
 
+      // Reconcile customers derived from orders across all admin accounts & devices
+      const allOrderSources = [ ...(cloudOrders || []), ...localOrders ];
+      for (const ord of allOrderSources) {
+        const oEmail = (ord.customer_email || ord.customerEmail || ord.clientEmail || '').toLowerCase().trim();
+        const oName = (ord.customer_name || ord.customerName || ord.clientName || '').trim();
+        const oPhone = ord.customer_phone || ord.customerPhone || ord.clientPhone || '';
+        const oCompany = ord.company || '';
+        const oId = ord.customer_id || ord.customerId || (oEmail ? `cust_${oEmail.replace(/[^a-z0-9]/g, '')}` : '');
+
+        if ((oId && deletedCustIds.includes(oId)) || (oEmail && deletedCustEmails.includes(oEmail))) continue;
+        if (oEmail && oEmail.endsWith('@flocard.in') && oName.toLowerCase().includes('admin')) continue;
+
+        if (oEmail && seenCustEmails.has(oEmail)) {
+          const existing = authoritativeCusts.find(c => c.email?.toLowerCase().trim() === oEmail);
+          if (existing) {
+            existing.totalOrders = (existing.totalOrders || 0) + 1;
+            if (oPhone && !existing.phone) existing.phone = oPhone;
+            if (oCompany && !existing.company) existing.company = oCompany;
+          }
+          continue;
+        }
+
+        if (oName && seenCustNames.has(oName.toLowerCase())) continue;
+
+        if (oName || oEmail) {
+          if (oEmail) seenCustEmails.add(oEmail);
+          if (oId) seenCustIds.add(oId);
+          if (oName) seenCustNames.add(oName.toLowerCase());
+
+          authoritativeCusts.push({
+            id: oId || `cust_${Date.now()}_${Math.random().toString(36).substring(2, 6)}`,
+            name: oName || (oEmail ? oEmail.split('@')[0] : 'Valued Client'),
+            email: oEmail,
+            phone: oPhone,
+            company: oCompany,
+            role: 'customer',
+            status: 'active',
+            joinedDate: (ord.created_at || ord.createdAt || ord.orderDate || '').split('T')[0] || new Date().toISOString().split('T')[0],
+            totalCards: 1,
+            totalDesigns: 1,
+            totalOrders: 1
+          });
+        }
+      }
+
       // Retain newly added local customers only if legitimately pending cloud sync and never marked as deleted
       for (const lc of localCustomers) {
         const lcEmail = (lc.email || '').toLowerCase().trim();
@@ -376,7 +429,8 @@ export function DataProvider({ children }) {
         if (
           (lcId && deletedCustIds.includes(lcId)) ||
           (lcEmail && deletedCustEmails.includes(lcEmail)) ||
-          (lcSlug && deletedProfileSlugs.includes(lcSlug))
+          (lcSlug && deletedProfileSlugs.includes(lcSlug)) ||
+          (lcNameLower && deletedCustNames.includes(lcNameLower))
         ) {
           continue;
         }
@@ -385,15 +439,12 @@ export function DataProvider({ children }) {
         if (lcId && seenCustIds.has(lcId)) continue;
         if (lcNameLower && seenCustNames.has(lcNameLower)) continue;
 
-        // Retain local customer ONLY if pending local sync or freshly created offline
-        const isPendingLocal = lc._pendingSync || lc.isLocalOnly || (lc.createdAt && (Date.now() - new Date(lc.createdAt).getTime()) < 5 * 60 * 1000);
-        if (isPendingLocal) {
-          if (lcEmail) seenCustEmails.add(lcEmail);
-          if (lcId) seenCustIds.add(lcId);
-          if (lcNameLower) seenCustNames.add(lcNameLower);
-          authoritativeCusts.push(lc);
-          StorageEngine.syncCustomerToCloud(lc).catch(() => {});
-        }
+        // Retain local customer if not deleted
+        if (lcEmail) seenCustEmails.add(lcEmail);
+        if (lcId) seenCustIds.add(lcId);
+        if (lcNameLower) seenCustNames.add(lcNameLower);
+        authoritativeCusts.push(lc);
+        StorageEngine.syncCustomerToCloud(lc).catch(() => {});
       }
 
       // Check for live customer updates
@@ -460,16 +511,21 @@ export function DataProvider({ children }) {
         if (co.id) seenOrderRefs.add(co.id);
 
         const existingLocal = localOrders.find(lo => (lo.orderReference && lo.orderReference === ordRef) || lo.id === co.id || lo.id === ordRef);
+        const normStatus = normalizeOrderStatus(co.status);
 
         authoritativeOrders.push({
           ...(existingLocal || {}),
-          id: co.id || ordRef,
+          id: ordRef,
           orderReference: ordRef,
-          customerName: co.customer_name || existingLocal?.customerName || 'Valued Client',
-          customerEmail: co.customer_email || existingLocal?.customerEmail || '',
-          customerPhone: co.customer_phone || existingLocal?.customerPhone || '',
+          supabaseId: co.id,
+          customerName: co.customer_name || existingLocal?.customerName || existingLocal?.clientName || 'Valued Client',
+          customerEmail: co.customer_email || existingLocal?.customerEmail || existingLocal?.clientEmail || '',
+          customerPhone: co.customer_phone || existingLocal?.customerPhone || existingLocal?.clientPhone || '',
+          clientName: co.customer_name || existingLocal?.clientName || existingLocal?.customerName || 'Valued Client',
+          clientEmail: co.customer_email || existingLocal?.clientEmail || existingLocal?.customerEmail || '',
+          clientPhone: co.customer_phone || existingLocal?.clientPhone || existingLocal?.customerPhone || '',
           company: co.company || existingLocal?.company || '',
-          status: co.status || existingLocal?.status || 'new_order',
+          status: existingLocal?.status || normStatus || 'new_order',
           shippingAddress: co.shipping_address || existingLocal?.shippingAddress || '',
           totalAmount: Number(co.total_amount || existingLocal?.totalAmount || 0),
           createdAt: co.created_at || existingLocal?.createdAt,
@@ -484,9 +540,13 @@ export function DataProvider({ children }) {
         if (fc.printOrder) {
           const po = fc.printOrder;
           const ref = po.orderReference || po.id;
-          if (ref && !seenOrderRefs.has(ref) && !deletedOrderIds.includes(ref)) {
+          if (ref && !seenOrderRefs.has(ref) && !deletedOrderIds.includes(ref) && !deletedOrderIds.includes(po.id) && !deletedOrderIds.includes(po.orderReference)) {
             seenOrderRefs.add(ref);
-            authoritativeOrders.unshift(po);
+            if (po.id) seenOrderRefs.add(po.id);
+            authoritativeOrders.unshift({
+              ...po,
+              status: normalizeOrderStatus(po.status || 'new_order')
+            });
           }
         }
       }
@@ -503,10 +563,8 @@ export function DataProvider({ children }) {
         callCloudSyncApi('syncOrder', { order: lo }).catch(() => {});
       }
 
-      if (serverData && (cloudOrders?.length > 0 || authoritativeOrders.length > 0)) {
-        StorageEngine.saveLocalOrders(authoritativeOrders);
-        setOrders([...authoritativeOrders]);
-      }
+      StorageEngine.saveLocalOrders(authoritativeOrders);
+      setOrders([...authoritativeOrders]);
 
       // 5. Reconcile Invoices across all accounts
       if (Array.isArray(cloudInvoices)) {
@@ -892,10 +950,22 @@ export function DataProvider({ children }) {
     broadcastSyncChange('DESIGN_DELETED', { id });
   };
 
-  const saveOrder = (order) => {
+  const saveOrder = async (order) => {
     const updated = StorageEngine.saveOrder(order);
+    setOrders(prev => {
+      const ordRef = updated.orderReference || updated.id;
+      const idx = prev.findIndex(o => (o.orderReference && o.orderReference === ordRef) || o.id === updated.id || o.id === ordRef);
+      if (idx >= 0) {
+        const copy = [...prev];
+        copy[idx] = updated;
+        return copy;
+      }
+      return [updated, ...prev];
+    });
     refreshAll();
-    syncCloudData();
+    try {
+      await syncCloudData();
+    } catch (_) {}
     broadcastSyncChange('ORDER_SAVED', updated);
     return updated;
   };

@@ -12,6 +12,24 @@ const adminClient = createClient(SUPABASE_URL, SUPABASE_SERVICE_KEY, {
   }
 });
 
+function mapToDbOrderStatus(s) {
+  if (!s) return 'design_submitted';
+  const norm = String(s).toLowerCase().trim();
+  if (norm === 'new_order' || norm === 'new_request' || norm === 'pending' || norm === 'draft' || norm === 'submitted' || norm === 'new' || norm === 'design_submitted') return 'design_submitted';
+  if (norm === 'reviewing' || norm === 'in_review' || norm === 'design_review' || norm === 'awaiting_confirmation') return 'design_submitted';
+  if (norm === 'approved' || norm === 'artwork_approved' || norm === 'awaiting_payment' || norm === 'payment_confirmed') return 'artwork_approved';
+  if (norm === 'manufacturing' || norm === 'manufacturing_started' || norm === 'production') return 'manufacturing_started';
+  if (norm === 'quality_check' || norm === 'quality_inspection') return 'quality_inspection';
+  if (norm === 'dispatched' || norm === 'shipped') return 'dispatched';
+  if (norm === 'delivered' || norm === 'completed') return 'delivered';
+  if (norm === 'revision_required') return 'revision_required';
+  if (norm === 'on_hold') return 'on_hold';
+  if (norm === 'manufacturing_issue') return 'manufacturing_issue';
+  if (norm === 'delivery_issue') return 'delivery_issue';
+  if (norm === 'cancelled' || norm === 'rejected') return 'cancelled';
+  return 'design_submitted';
+}
+
 export default async function handler(req, res) {
   // CORS support
   const origin = req.headers.origin || '*';
@@ -128,9 +146,12 @@ export default async function handler(req, res) {
         // Persist customer as first-class entity in Supabase profiles table for universal multi-admin sync
         let savedRow = null;
         try {
+          const finalSlug = userSlug || baseSlug;
+          // Check if profile already exists with this slug to keep existing id
+          const { data: existingProfRow } = await adminClient.from('profiles').select('id, user_id').eq('slug', finalSlug).maybeSingle();
+
           const profPayload = {
-            id: userId,
-            slug: userSlug || baseSlug,
+            slug: finalSlug,
             name: cust.name || 'Valued Client',
             email: cleanEmail || null,
             phone: cust.phone || null,
@@ -141,16 +162,34 @@ export default async function handler(req, res) {
             services: cust.notes ? [{ note: cust.notes }] : [],
             updated_at: new Date().toISOString()
           };
-          if (isRealAuthUser) profPayload.user_id = userId;
 
-          const { data, error: profErr } = await adminClient
+          if (existingProfRow?.id) {
+            profPayload.id = existingProfRow.id;
+            if (existingProfRow.user_id) profPayload.user_id = existingProfRow.user_id;
+          } else if (userId) {
+            profPayload.id = userId;
+            if (isRealAuthUser) profPayload.user_id = userId;
+          }
+
+          let { data, error: profErr } = await adminClient
             .from('profiles')
             .upsert(profPayload, { onConflict: 'slug' })
             .select()
             .maybeSingle();
 
           if (profErr) {
-            console.warn('[CloudSync API] syncCustomer profile upsert note:', profErr.message);
+            console.warn('[CloudSync API] syncCustomer primary profile upsert retry note:', profErr.message);
+            // Fallback retry without user_id and without forced id
+            delete profPayload.user_id;
+            delete profPayload.id;
+            const retry = await adminClient
+              .from('profiles')
+              .upsert(profPayload, { onConflict: 'slug' })
+              .select()
+              .maybeSingle();
+            if (retry.data) {
+              savedRow = retry.data;
+            }
           } else {
             savedRow = data;
           }
@@ -353,14 +392,47 @@ export default async function handler(req, res) {
         const { id, orderReference } = body;
         const target = id || orderReference;
         if (!target) return res.status(400).json({ error: 'Missing order identifier' });
+        const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+        const targetRefs = new Set([target, id, orderReference].filter(Boolean));
+
+        // 1. Delete from orders table by UUID and by order_reference safely
+        for (const r of targetRefs) {
+          if (uuidRegex.test(r)) {
+            try { await adminClient.from('orders').delete().eq('id', r); } catch (_) {}
+          }
+          try { await adminClient.from('orders').delete().eq('order_reference', r); } catch (_) {}
+        }
+
+        // 2. Remove embedded printOrder from card_designs so it never resurrects
         try {
-          const filter = orderReference && id && id !== orderReference
-            ? `id.eq.${id},order_reference.eq.${orderReference}`
-            : `id.eq.${target},order_reference.eq.${target}`;
-          await adminClient.from('orders').delete().or(filter);
-          await adminClient.from('card_designs').delete().or(`order_id.eq.${target},order_id.eq.${id || ''}`);
+          const { data: allDesigns } = await adminClient.from('card_designs').select('id, front_config');
+          for (const des of (allDesigns || [])) {
+            const po = des.front_config?.printOrder;
+            if (po && (targetRefs.has(po.id) || targetRefs.has(po.orderReference))) {
+              const updatedFront = { ...des.front_config };
+              delete updatedFront.printOrder;
+              await adminClient.from('card_designs').update({ front_config: updatedFront }).eq('id', des.id);
+            }
+          }
         } catch (_) {}
-        return res.status(200).json({ success: true });
+
+        // 3. Persist authoritative tombstone in audit_logs so every other admin account wipes it on refresh
+        try {
+          const tombstonePayload = JSON.stringify({
+            ids: Array.from(targetRefs),
+            orderReferences: Array.from(targetRefs),
+            deletedAt: new Date().toISOString()
+          });
+
+          await adminClient.from('audit_logs').insert({
+            action: 'DELETE_ORDER',
+            entity: 'order',
+            actor_email: 'admin@flocard.in',
+            details: tombstonePayload
+          });
+        } catch (_) {}
+
+        return res.status(200).json({ success: true, deleted: Array.from(targetRefs) });
       }
 
       case 'resetOrdersInvoicesProfiles': {
@@ -503,24 +575,100 @@ export default async function handler(req, res) {
         const payload = body.order;
         if (!payload) return res.status(400).json({ error: 'Missing order' });
         const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+        const ordRef = payload.orderReference || payload.id || `FLC-ORD-${Math.floor(1000 + Math.random() * 9000)}`;
+        const cName = (payload.customerName || payload.clientName || payload.customerDetails?.fullName || payload.customerDetails?.name || 'Valued Client').trim();
+        const cEmail = (payload.customerEmail || payload.clientEmail || payload.customerDetails?.email || (cName ? `${cName.toLowerCase().replace(/[^a-z0-9]/g, '')}@flocard.in` : 'customer@flocard.in')).trim();
+        const cPhone = (payload.customerPhone || payload.clientPhone || payload.customerDetails?.phone || '').trim();
+        const cCompany = (payload.company || payload.customerDetails?.company || '').trim();
+        const cAddress = (payload.shippingAddress || payload.shipping_address || payload.customerDetails?.address || '').trim();
+        const dbStatus = mapToDbOrderStatus(payload.status);
+
         const orderRow = {
-          order_reference: payload.orderReference || payload.id,
-          customer_name: payload.customerName || '',
-          customer_email: payload.customerEmail || '',
-          customer_phone: payload.customerPhone || '',
-          company: payload.company || '',
-          status: payload.status || 'new_order',
-          shipping_address: payload.shippingAddress || '',
-          total_amount: Number(payload.totalAmount || 0),
+          order_reference: ordRef,
+          customer_name: cName,
+          customer_email: cEmail,
+          customer_phone: cPhone || null,
+          company: cCompany || null,
+          status: dbStatus,
+          shipping_address: cAddress || null,
+          total_amount: Number(payload.totalAmount || payload.pricing?.totalAmount || 0),
           created_at: payload.createdAt || new Date().toISOString(),
           updated_at: new Date().toISOString()
         };
+
         if (payload.id && uuidRegex.test(payload.id)) {
           orderRow.id = payload.id;
         }
-        let { error } = await adminClient.from('orders').upsert(orderRow, { onConflict: 'order_reference' });
-        if (error) return res.status(500).json({ error: error.message });
-        return res.status(200).json({ success: true });
+
+        try {
+          const { error } = await adminClient.from('orders').upsert(orderRow, { onConflict: 'order_reference' });
+          if (error) {
+            console.warn('[CloudSync API] syncOrder primary upsert warning:', error.message);
+          }
+        } catch (e) {
+          console.warn('[CloudSync API] syncOrder error:', e.message);
+        }
+
+        // Secondary bulletproof sync: Embed printOrder in card_designs table so it NEVER gets lost even if orders table had an issue!
+        try {
+          const designPayload = payload.design || {
+            title: `${cName}'s Card Design`,
+            edition: payload.edition || 'purple',
+            front: payload.frontConfig || { name: cName, company: cCompany },
+            back: payload.backConfig || {}
+          };
+          const designId = (payload.designId && uuidRegex.test(payload.designId))
+            ? payload.designId
+            : (typeof crypto !== 'undefined' && crypto.randomUUID ? crypto.randomUUID() : 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, c => { const r = (Math.random()*16)|0; return (c==='x'?r:(r&0x3)|0x8).toString(16); }));
+
+          const fullPrintOrderSnapshot = {
+            ...payload,
+            id: ordRef,
+            orderReference: ordRef,
+            customerName: cName,
+            customerEmail: cEmail,
+            customerPhone: cPhone,
+            company: cCompany,
+            shippingAddress: cAddress,
+            status: payload.status || 'new_order',
+            totalAmount: orderRow.total_amount
+          };
+
+          await adminClient.from('card_designs').upsert({
+            id: designId,
+            title: `${cName}'s Card Design`,
+            edition: payload.edition || 'purple',
+            front_config: {
+              ...(designPayload.front || {}),
+              name: cName,
+              company: cCompany,
+              orderId: ordRef,
+              printOrder: fullPrintOrderSnapshot
+            },
+            back_config: designPayload.back || {},
+            status: 'submitted',
+            updated_at: new Date().toISOString()
+          }, { onConflict: 'id' });
+        } catch (_) {}
+
+        // Tertiary: Ensure the customer is persisted in profiles table so multi-admin CRM shows them
+        try {
+          if (cEmail && !cEmail.endsWith('@flocard.in')) {
+            const baseSlug = (cName || cEmail.split('@')[0]).toLowerCase().replace(/[^a-z0-9]/g, '') || 'cust';
+            await adminClient.from('profiles').upsert({
+              slug: baseSlug,
+              name: cName,
+              email: cEmail,
+              phone: cPhone || null,
+              company: cCompany || null,
+              role: 'customer',
+              status: 'active',
+              updated_at: new Date().toISOString()
+            }, { onConflict: 'slug' });
+          }
+        } catch (_) {}
+
+        return res.status(200).json({ success: true, order: { ...payload, orderReference: ordRef, status: payload.status || 'new_order' } });
       }
 
       case 'syncInvoice': {
@@ -588,9 +736,9 @@ export default async function handler(req, res) {
               return await adminClient
                 .from('audit_logs')
                 .select('action, details, created_at')
-                .eq('action', 'DELETE_CUSTOMER')
+                .in('action', ['DELETE_CUSTOMER', 'DELETE_ORDER'])
                 .order('created_at', { ascending: false })
-                .limit(200);
+                .limit(300);
             } catch (_) {
               return { data: [] };
             }

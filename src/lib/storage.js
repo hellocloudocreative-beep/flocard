@@ -1697,12 +1697,24 @@ export const StorageEngine = {
   saveOrder: (order) => {
     const list = getLocal('orders', INITIAL_ORDERS);
     const index = list.findIndex(o => o.id === order.id);
+    const cName = (order.customerName || order.clientName || order.customerDetails?.fullName || order.customerDetails?.name || '').trim();
+    const cEmail = (order.customerEmail || order.clientEmail || order.customerDetails?.email || '').trim();
+    const cPhone = (order.customerPhone || order.clientPhone || order.customerDetails?.phone || '').trim();
+    const cCompany = (order.company || order.customerDetails?.company || '').trim();
+
     let saved;
     if (index >= 0) {
       const existing = list[index];
       saved = normalizeOrderFinancials({
         ...existing,
         ...order,
+        customerName: cName || existing.customerName || existing.clientName || 'Valued Client',
+        customerEmail: cEmail || existing.customerEmail || existing.clientEmail || '',
+        customerPhone: cPhone || existing.customerPhone || existing.clientPhone || '',
+        clientName: cName || existing.clientName || existing.customerName || 'Valued Client',
+        clientEmail: cEmail || existing.clientEmail || existing.customerEmail || '',
+        clientPhone: cPhone || existing.clientPhone || existing.customerPhone || '',
+        company: cCompany || existing.company || '',
         originalDesign: existing.originalDesign || order.originalDesign || existing.design || order.design,
         editedDesign: order.editedDesign !== undefined ? order.editedDesign : existing.editedDesign,
         approvedVersion: order.approvedVersion || existing.approvedVersion || 'original',
@@ -1712,11 +1724,18 @@ export const StorageEngine = {
       });
       list[index] = saved;
     } else {
-      const orderRef = order.orderReference || `FLC-ORD-${Math.floor(1000 + Math.random() * 9000)}`;
+      const orderRef = order.orderReference || order.id || `FLC-ORD-${Math.floor(1000 + Math.random() * 9000)}`;
       saved = normalizeOrderFinancials({
         ...order,
         id: order.id || orderRef,
         orderReference: orderRef,
+        customerName: cName || 'Valued Client',
+        customerEmail: cEmail || '',
+        customerPhone: cPhone || '',
+        clientName: cName || 'Valued Client',
+        clientEmail: cEmail || '',
+        clientPhone: cPhone || '',
+        company: cCompany || '',
         originalDesign: order.originalDesign || order.design,
         editedDesign: order.editedDesign || null,
         approvedVersion: order.approvedVersion || 'original',
@@ -1730,6 +1749,12 @@ export const StorageEngine = {
       list.unshift(saved);
     }
     setLocal('orders', list);
+
+    // Remove from tombstone lists so newly created or updated order is never treated as deleted
+    const targetRef = saved.orderReference || saved.id;
+    const delOrderIds = getLocal('flocard_deleted_order_ids', []).filter(id => id !== targetRef && id !== saved.id);
+    setLocal('flocard_deleted_order_ids', delOrderIds);
+
     try {
       const designsList = getLocal('designs', INITIAL_DESIGNS);
       const linkedD = designsList.find(d => d.id === saved.designId || d.orderId === saved.id || d.orderId === saved.orderReference);
@@ -2267,15 +2292,23 @@ export const StorageEngine = {
         if (!client) return;
 
         const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+        const dbStatus = normalizeOrderStatus(newOrder.status) === 'delivered' ? 'delivered'
+          : normalizeOrderStatus(newOrder.status) === 'dispatched' ? 'dispatched'
+          : normalizeOrderStatus(newOrder.status) === 'approved' ? 'artwork_approved'
+          : normalizeOrderStatus(newOrder.status) === 'manufacturing' ? 'manufacturing_started'
+          : normalizeOrderStatus(newOrder.status) === 'quality_check' ? 'quality_inspection'
+          : normalizeOrderStatus(newOrder.status) === 'cancelled' ? 'cancelled'
+          : 'design_submitted';
+
         const orderRow = {
           order_reference: newOrder.orderReference,
-          customer_name: newOrder.customerName,
-          customer_email: newOrder.customerEmail,
-          customer_phone: newOrder.customerPhone,
-          company: newOrder.company,
-          status: newOrder.status,
-          shipping_address: newOrder.shippingAddress,
-          total_amount: newOrder.totalAmount,
+          customer_name: newOrder.customerName || 'Valued Client',
+          customer_email: newOrder.customerEmail || 'order@flocard.in',
+          customer_phone: newOrder.customerPhone || null,
+          company: newOrder.company || null,
+          status: dbStatus,
+          shipping_address: newOrder.shippingAddress || null,
+          total_amount: Number(newOrder.totalAmount || 0),
           created_at: newOrder.createdAt,
           updated_at: newOrder.updatedAt
         };
@@ -3146,13 +3179,20 @@ export const StorageEngine = {
     });
     let saved;
     if (index >= 0) {
-      list[index] = { ...list[index], ...cust, updatedAt: new Date().toISOString() };
+      list[index] = {
+        ...list[index],
+        ...cust,
+        _pendingSync: true,
+        updatedAt: new Date().toISOString()
+      };
       saved = list[index];
     } else {
       saved = {
         ...cust,
         id: cust.id || `cust_${Date.now()}`,
         status: cust.status || 'active',
+        _pendingSync: true,
+        createdAt: cust.createdAt || new Date().toISOString(),
         joinedDate: cust.joinedDate || new Date().toISOString().split('T')[0]
       };
       list.unshift(saved);
@@ -3170,6 +3210,7 @@ export const StorageEngine = {
 
     StorageEngine.addAuditLog('Customer', `Customer record saved: ${cust.name || 'New Customer'}`, 'You');
     safeDispatchEvent('flocard_customer_updated', saved);
+    StorageEngine.syncCustomerToCloud(saved).catch(() => {});
     return saved;
   },
   getDeletedCustomerIds: () => getLocal('flocard_deleted_cust_ids', []),
@@ -3212,7 +3253,7 @@ export const StorageEngine = {
     // 3. Record tombstones by ID, Email, and Slug
     const tombstoneIds = getLocal('flocard_deleted_cust_ids', []);
     if (targetId && !tombstoneIds.includes(targetId)) tombstoneIds.push(targetId);
-    if (id && !tombstoneIds.includes(id)) tombstoneIds.push(id);
+    if (rawId && !tombstoneIds.includes(rawId)) tombstoneIds.push(rawId);
     setLocal('flocard_deleted_cust_ids', tombstoneIds);
 
     const tombstoneEmails = getLocal('flocard_deleted_cust_emails', []);

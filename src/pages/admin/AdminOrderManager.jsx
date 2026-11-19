@@ -235,7 +235,7 @@ export default function AdminOrderManager({ initialOrderId = null }) {
   const [actionSuccess, setActionSuccess] = useState('');
 
   // Handle creation of new order from admin (WhatsApp vs Website)
-  const handleCreateOrder = (e) => {
+  const handleCreateOrder = async (e) => {
     e.preventDefault();
     setAddOrderError('');
     setAddOrderSuccess('');
@@ -346,6 +346,9 @@ export default function AdminOrderManager({ initialOrderId = null }) {
       customerName: clientName,
       customerEmail: clientEmail,
       customerPhone: clientPhone,
+      clientName,
+      clientEmail,
+      clientPhone,
       company: newOrderForm.company.trim(),
       role: newOrderForm.role.trim(),
       tagline: newOrderForm.tagline.trim(),
@@ -378,7 +381,29 @@ export default function AdminOrderManager({ initialOrderId = null }) {
       updatedAt: new Date().toISOString()
     };
 
-    saveOrder(orderObj);
+    // Embed printOrder into designRecord so it is redundantly preserved across all accounts & devices
+    designRecord.front = {
+      ...designRecord.front,
+      orderId: orderRef,
+      printOrder: { ...orderObj }
+    };
+    if (StorageEngine?.saveDesign) {
+      StorageEngine.saveDesign(designRecord);
+    }
+
+    // Ensure customer account is automatically created & synced to profiles across all admin dashboards
+    if (saveCustomer && clientName) {
+      saveCustomer({
+        name: clientName,
+        email: clientEmail,
+        phone: clientPhone,
+        company: newOrderForm.company.trim(),
+        role: 'customer',
+        status: 'active'
+      }).catch?.(() => {});
+    }
+
+    await saveOrder(orderObj);
 
     // Automatically queue WhatsApp Order Confirmation
     if (orderObj.customerPhone) {
