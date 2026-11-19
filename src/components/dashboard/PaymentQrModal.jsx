@@ -3,6 +3,32 @@ import { X, QrCode, Copy, Check, MessageCircle, ExternalLink, Download, Printer,
 import { generateQrDataUrl } from '../../lib/qr';
 import { getOrderUpiPaymentUrl, getOrderWhatsAppPaymentDetailsUrl, getOrderWhatsAppPaymentMessage, getOrderBillAmount } from '../../lib/whatsapp';
 
+function drawRoundedRect(ctx, x, y, width, height, radius) {
+  ctx.beginPath();
+  ctx.moveTo(x + radius, y);
+  ctx.lineTo(x + width - radius, y);
+  ctx.quadraticCurveTo(x + width, y, x + width, y + radius);
+  ctx.lineTo(x + width, y + height - radius);
+  ctx.quadraticCurveTo(x + width, y + height, x + width - radius, y + height);
+  ctx.lineTo(x + radius, y + height);
+  ctx.quadraticCurveTo(x, y + height, x, y + height - radius);
+  ctx.lineTo(x, y + radius);
+  ctx.quadraticCurveTo(x, y, x + radius, y);
+  ctx.closePath();
+}
+
+function drawRoundedTopRect(ctx, x, y, width, height, radius) {
+  ctx.beginPath();
+  ctx.moveTo(x + radius, y);
+  ctx.lineTo(x + width - radius, y);
+  ctx.quadraticCurveTo(x + width, y, x + width, y + radius);
+  ctx.lineTo(x + width, y + height);
+  ctx.lineTo(x, y + height);
+  ctx.lineTo(x, y + radius);
+  ctx.quadraticCurveTo(x, y, x + radius, y);
+  ctx.closePath();
+}
+
 export default function PaymentQrModal({
   isOpen,
   onClose,
@@ -13,6 +39,7 @@ export default function PaymentQrModal({
   const [loading, setLoading] = useState(true);
   const [copiedLink, setCopiedLink] = useState(false);
   const [copiedUpi, setCopiedUpi] = useState(false);
+  const [downloadingSlip, setDownloadingSlip] = useState(false);
   const [customUpiId, setCustomUpiId] = useState('');
   const [isEditingUpi, setIsEditingUpi] = useState(false);
 
@@ -85,14 +112,248 @@ export default function PaymentQrModal({
     setTimeout(() => setCopiedUpi(false), 2200);
   };
 
-  const handleDownloadQr = () => {
+  const handleDownloadQr = async () => {
     if (!qrDataUrl) return;
-    const a = document.createElement('a');
-    a.href = qrDataUrl;
-    a.download = `FLOCARD-Payment-QR-${orderRef}-INR-${amount}.png`;
-    document.body.appendChild(a);
-    a.click();
-    document.body.removeChild(a);
+    setDownloadingSlip(true);
+
+    try {
+      const slipDataUrl = await new Promise((resolve, reject) => {
+        const img = new Image();
+        img.crossOrigin = 'anonymous';
+        img.onload = () => {
+          try {
+            const canvas = document.createElement('canvas');
+            const w = 800;
+            const h = 1180;
+            canvas.width = w;
+            canvas.height = h;
+            const ctx = canvas.getContext('2d');
+            if (!ctx) throw new Error('Could not get 2D canvas context');
+
+            // 1. Crisp canvas background
+            ctx.fillStyle = '#F8FAFC';
+            ctx.fillRect(0, 0, w, h);
+
+            // 2. Main voucher card
+            const cardX = 30;
+            const cardY = 30;
+            const cardW = 740;
+            const cardH = 1120;
+            const cardR = 24;
+
+            drawRoundedRect(ctx, cardX, cardY, cardW, cardH, cardR);
+            ctx.fillStyle = '#FFFFFF';
+            ctx.fill();
+            ctx.strokeStyle = '#E2E8F0';
+            ctx.lineWidth = 2;
+            ctx.stroke();
+
+            // 3. Purple Header Banner
+            const headerH = 145;
+            drawRoundedTopRect(ctx, cardX, cardY, cardW, headerH, cardR);
+            const grad = ctx.createLinearGradient(cardX, cardY, cardX + cardW, cardY + headerH);
+            grad.addColorStop(0, '#581C87');
+            grad.addColorStop(0.5, '#6B00FF');
+            grad.addColorStop(1, '#7C3AED');
+            ctx.fillStyle = grad;
+            ctx.fill();
+
+            // Header Texts
+            ctx.textAlign = 'center';
+            ctx.fillStyle = '#FFFFFF';
+            ctx.font = '900 32px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif';
+            ctx.fillText('FLOCARDS', w / 2, cardY + 54);
+
+            ctx.fillStyle = '#E9D5FF';
+            ctx.font = '700 13px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif';
+            ctx.fillText('OFFICIAL PAYMENT SLIP & QR VOUCHER', w / 2, cardY + 84);
+
+            ctx.fillStyle = 'rgba(255, 255, 255, 0.9)';
+            ctx.font = '500 13px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif';
+            ctx.fillText('Scan and pay instantly using Google Pay, PhonePe, Paytm, or BHIM', w / 2, cardY + 114);
+
+            // 4. Order Information Container
+            const infoX = 60;
+            const infoY = 195;
+            const infoW = 680;
+            const infoH = 105;
+            drawRoundedRect(ctx, infoX, infoY, infoW, infoH, 14);
+            ctx.fillStyle = '#F8FAFC';
+            ctx.fill();
+            ctx.strokeStyle = '#E2E8F0';
+            ctx.lineWidth = 1.5;
+            ctx.stroke();
+
+            // Left: Order Ref & Customer
+            ctx.textAlign = 'left';
+            ctx.fillStyle = '#64748B';
+            ctx.font = '700 11px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif';
+            ctx.fillText('ORDER REFERENCE', infoX + 24, infoY + 30);
+
+            ctx.fillStyle = '#1E293B';
+            ctx.font = '800 18px monospace';
+            ctx.fillText(`#${orderRef}`, infoX + 24, infoY + 55);
+
+            ctx.fillStyle = '#64748B';
+            ctx.font = '700 11px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif';
+            ctx.fillText('CUSTOMER', infoX + 24, infoY + 85);
+
+            ctx.fillStyle = '#1E293B';
+            ctx.font = '600 13.5px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif';
+            const custDisplay = customerPhone ? `${customerName} (${customerPhone})` : customerName;
+            ctx.fillText(custDisplay.length > 32 ? custDisplay.substring(0, 30) + '...' : custDisplay, infoX + 95, infoY + 85);
+
+            // Right: Product / Edition & Date
+            const rightColX = infoX + 380;
+            ctx.fillStyle = '#64748B';
+            ctx.font = '700 11px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif';
+            ctx.fillText('PRODUCT / EDITION', rightColX, infoY + 30);
+
+            ctx.fillStyle = '#6B00FF';
+            ctx.font = '800 15px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif';
+            ctx.fillText(edition, rightColX, infoY + 55);
+
+            ctx.fillStyle = '#64748B';
+            ctx.font = '700 11px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif';
+            ctx.fillText('GENERATED DATE', rightColX, infoY + 85);
+
+            ctx.fillStyle = '#334155';
+            ctx.font = '600 13px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif';
+            const todayStr = new Date().toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' });
+            ctx.fillText(todayStr, rightColX + 115, infoY + 85);
+
+            // 5. Bill Amount Highlight Box
+            const amtX = 60;
+            const amtY = 320;
+            const amtW = 680;
+            const amtH = 96;
+            drawRoundedRect(ctx, amtX, amtY, amtW, amtH, 14);
+            ctx.fillStyle = '#FAF5FF';
+            ctx.fill();
+            ctx.strokeStyle = '#D8B4FE';
+            ctx.lineWidth = 1.5;
+            ctx.stroke();
+
+            ctx.textAlign = 'center';
+            ctx.fillStyle = '#7C3AED';
+            ctx.font = '800 11.5px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif';
+            ctx.fillText('TOTAL PAYABLE AMOUNT', w / 2, amtY + 28);
+
+            ctx.fillStyle = '#6B00FF';
+            ctx.font = '900 38px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif';
+            ctx.fillText(`₹${formattedAmount}`, w / 2, amtY + 68);
+
+            ctx.fillStyle = '#6B7280';
+            ctx.font = '500 11.5px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif';
+            ctx.fillText('Amount & order reference are automatically pre-filled in UPI apps', w / 2, amtY + 88);
+
+            // 6. QR Code Card Container
+            const qrCardX = 175;
+            const qrCardY = 435;
+            const qrCardW = 450;
+            const qrCardH = 490;
+            drawRoundedRect(ctx, qrCardX, qrCardY, qrCardW, qrCardH, 18);
+            ctx.fillStyle = '#FFFFFF';
+            ctx.fill();
+            ctx.strokeStyle = '#7C3AED';
+            ctx.lineWidth = 2;
+            ctx.stroke();
+
+            // Draw QR Image
+            const qrImgSize = 360;
+            const qrImgX = (w - qrImgSize) / 2;
+            const qrImgY = qrCardY + 22;
+            ctx.drawImage(img, qrImgX, qrImgY, qrImgSize, qrImgSize);
+
+            // UPI ID Pill
+            const upiPillX = qrCardX + 30;
+            const upiPillY = qrCardY + 400;
+            const upiPillW = qrCardW - 60;
+            const upiPillH = 44;
+            drawRoundedRect(ctx, upiPillX, upiPillY, upiPillW, upiPillH, 10);
+            ctx.fillStyle = '#F3F4F6';
+            ctx.fill();
+            ctx.strokeStyle = '#D1D5DB';
+            ctx.lineWidth = 1;
+            ctx.stroke();
+
+            ctx.textAlign = 'center';
+            ctx.fillStyle = '#1E293B';
+            ctx.font = '800 15px monospace';
+            ctx.fillText(`UPI ID: ${activeUpiId}`, w / 2, upiPillY + 28);
+
+            ctx.fillStyle = '#10B981';
+            ctx.font = '700 12px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif';
+            ctx.fillText('● Verified Merchant • Instant Payment Settlement', w / 2, qrCardY + 470);
+
+            // 7. Supported Apps Bar
+            const appsX = 60;
+            const appsY = 945;
+            const appsW = 680;
+            const appsH = 54;
+            drawRoundedRect(ctx, appsX, appsY, appsW, appsH, 12);
+            ctx.fillStyle = '#F8FAFC';
+            ctx.fill();
+            ctx.strokeStyle = '#E2E8F0';
+            ctx.lineWidth = 1.5;
+            ctx.stroke();
+
+            ctx.textAlign = 'center';
+            ctx.fillStyle = '#94A3B8';
+            ctx.font = '700 10px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif';
+            ctx.fillText('SUPPORTED PAYMENT METHODS', w / 2, appsY + 21);
+
+            ctx.fillStyle = '#334155';
+            ctx.font = '700 13px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif';
+            ctx.fillText('Google Pay  •  PhonePe  •  Paytm  •  BHIM  •  CRED  •  Any UPI App', w / 2, appsY + 42);
+
+            // 8. Security & Footer Note
+            ctx.strokeStyle = '#E2E8F0';
+            ctx.lineWidth = 1;
+            ctx.beginPath();
+            ctx.moveTo(80, 1020);
+            ctx.lineTo(720, 1020);
+            ctx.stroke();
+
+            ctx.fillStyle = '#10B981';
+            ctx.font = '700 13px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif';
+            ctx.fillText('✔ 100% Secure Transaction & Immediate Order Processing', w / 2, 1048);
+
+            ctx.fillStyle = '#64748B';
+            ctx.font = '500 11.5px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif';
+            ctx.fillText('Please do not modify the pre-filled amount to ensure automated order reconciliation.', w / 2, 1072);
+
+            ctx.fillStyle = '#6B00FF';
+            ctx.font = '700 12px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif';
+            ctx.fillText('FLOCARDS INDIA  •  www.flocard.in  •  Official Print Production Voucher', w / 2, 1098);
+
+            resolve(canvas.toDataURL('image/png', 1.0));
+          } catch (err) {
+            reject(err);
+          }
+        };
+        img.onerror = () => reject(new Error('Failed to load QR image on canvas'));
+        img.src = qrDataUrl;
+      });
+
+      const a = document.createElement('a');
+      a.href = slipDataUrl;
+      a.download = `FLOCARD-Payment-Slip-${orderRef}-INR-${amount}.png`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+    } catch (err) {
+      console.error('Failed to generate payment slip PNG:', err);
+      // Fallback to raw QR download if canvas fails for any unexpected reason
+      const a = document.createElement('a');
+      a.href = qrDataUrl;
+      a.download = `FLOCARD-Payment-QR-${orderRef}-INR-${amount}.png`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+    } finally {
+      setDownloadingSlip(false);
+    }
   };
 
   const handlePrint = () => {
@@ -102,25 +363,74 @@ export default function PaymentQrModal({
       <!DOCTYPE html>
       <html>
         <head>
-          <title>Payment QR - ${orderRef}</title>
+          <title>Payment Slip - ${orderRef}</title>
           <style>
-            body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; text-align: center; padding: 40px; color: #111; }
-            .card { max-width: 420px; margin: 0 auto; border: 2px solid #6B00FF; border-radius: 16px; padding: 24px; }
-            h2 { color: #6B00FF; margin: 0 0 4px 0; }
-            .amount { font-size: 32px; font-weight: 800; color: #111; margin: 12px 0; }
-            img { width: 280px; height: 280px; margin: 12px 0; border: 1px solid #ddd; border-radius: 12px; }
-            .note { font-size: 13px; color: #666; margin-top: 14px; }
+            body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background: #f8fafc; margin: 0; padding: 24px; color: #111; }
+            .card { max-width: 520px; margin: 0 auto; background: #fff; border: 2px solid #6B00FF; border-radius: 20px; overflow: hidden; box-shadow: 0 10px 30px rgba(0,0,0,0.08); text-align: center; }
+            .header { background: linear-gradient(135deg, #581C87 0%, #6B00FF 100%); color: #fff; padding: 24px 20px 20px; }
+            .header h2 { margin: 0; font-size: 26px; font-weight: 900; letter-spacing: 1px; }
+            .header .sub { font-size: 11px; font-weight: 700; color: #e9d5ff; margin-top: 4px; letter-spacing: 0.5px; }
+            .header .inst { font-size: 12px; color: rgba(255,255,255,0.85); margin-top: 6px; }
+            .body { padding: 20px; }
+            .info-box { background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 12px; padding: 12px 16px; margin-bottom: 16px; text-align: left; }
+            .row { display: flex; justify-content: space-between; margin-bottom: 8px; font-size: 13px; }
+            .row:last-child { margin-bottom: 0; }
+            .lbl { font-size: 10px; font-weight: 700; color: #64748b; text-transform: uppercase; }
+            .val { font-weight: 700; color: #1e293b; }
+            .amt-box { background: #faf5ff; border: 2px solid #d8b4fe; border-radius: 12px; padding: 12px; margin-bottom: 16px; }
+            .amt-title { font-size: 11px; font-weight: 800; color: #7c3aed; }
+            .amt-num { font-size: 34px; font-weight: 900; color: #6B00FF; margin: 4px 0; }
+            .amt-sub { font-size: 11px; color: #6b7280; }
+            .qr-wrap { display: inline-block; background: #fff; padding: 12px; border: 2px solid #6B00FF; border-radius: 16px; margin: 6px 0 14px; }
+            .qr-wrap img { width: 240px; height: 240px; display: block; }
+            .upi-pill { display: inline-block; background: #f1f5f9; border: 1px solid #cbd5e1; border-radius: 8px; padding: 6px 14px; font-size: 13px; font-family: monospace; font-weight: 700; color: #1e293b; }
+            .verified { font-size: 11px; font-weight: 700; color: #10b981; margin-top: 6px; }
+            .apps { background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 10px; padding: 8px; font-size: 11px; color: #475569; font-weight: 600; margin-top: 14px; }
+            .footer { font-size: 10.5px; color: #94a3b8; margin-top: 14px; border-top: 1px solid #e2e8f0; padding-top: 10px; }
           </style>
         </head>
         <body>
           <div class="card">
-            <h2>FLOCARDS OFFICIAL PAYMENT</h2>
-            <p style="margin: 4px 0; font-size: 14px; color: #555;">Order: <strong>${orderRef}</strong></p>
-            <p style="margin: 2px 0; font-size: 14px; color: #555;">Customer: <strong>${customerName}</strong></p>
-            <div class="amount">₹${formattedAmount}</div>
-            <img src="${qrDataUrl}" alt="Payment QR" />
-            <p style="font-size: 14px; font-weight: 600; margin: 6px 0;">UPI ID: ${activeUpiId}</p>
-            <div class="note">Scan with Google Pay, PhonePe, Paytm, or BHIM. Amount ₹${formattedAmount} is pre-filled.</div>
+            <div class="header">
+              <h2>FLOCARDS</h2>
+              <div class="sub">OFFICIAL PAYMENT SLIP & QR VOUCHER</div>
+              <div class="inst">Scan with Google Pay, PhonePe, Paytm, or BHIM</div>
+            </div>
+            <div class="body">
+              <div class="info-box">
+                <div class="row">
+                  <div><div class="lbl">ORDER REFERENCE</div><div class="val">#${orderRef}</div></div>
+                  <div style="text-align: right;"><div class="lbl">EDITION</div><div class="val" style="color:#6B00FF;">${edition}</div></div>
+                </div>
+                <div class="row">
+                  <div><div class="lbl">CUSTOMER</div><div class="val">${customerName}${customerPhone ? ` (${customerPhone})` : ''}</div></div>
+                  <div style="text-align: right;"><div class="lbl">DATE</div><div class="val">${new Date().toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' })}</div></div>
+                </div>
+              </div>
+
+              <div class="amt-box">
+                <div class="amt-title">TOTAL PAYABLE AMOUNT</div>
+                <div class="amt-num">₹${formattedAmount}</div>
+                <div class="amt-sub">Amount & reference pre-filled in UPI apps</div>
+              </div>
+
+              <div class="qr-wrap">
+                <img src="${qrDataUrl}" alt="Payment QR Code" />
+              </div>
+
+              <div>
+                <div class="upi-pill">UPI ID: ${activeUpiId}</div>
+                <div class="verified">● 100% Verified FLOCARDS Merchant Account</div>
+              </div>
+
+              <div class="apps">
+                Supported: Google Pay • PhonePe • Paytm • BHIM • CRED • Any UPI App
+              </div>
+
+              <div class="footer">
+                ✔ 100% Secure Transaction • www.flocard.in • hello@flocard.in
+              </div>
+            </div>
           </div>
           <script>
             window.onload = function() { window.print(); window.close(); }
@@ -513,6 +823,7 @@ export default function PaymentQrModal({
             <button
               type="button"
               onClick={handleDownloadQr}
+              disabled={downloadingSlip || !qrDataUrl}
               style={{
                 display: 'inline-flex',
                 alignItems: 'center',
@@ -524,11 +835,17 @@ export default function PaymentQrModal({
                 color: textSecondary,
                 fontSize: '0.74rem',
                 fontWeight: 600,
-                cursor: 'pointer'
+                cursor: downloadingSlip ? 'wait' : 'pointer',
+                opacity: downloadingSlip ? 0.7 : 1
               }}
+              title="Download complete branded payment voucher with order details as PNG"
             >
-              <Download size={13} />
-              <span>Download PNG</span>
+              {downloadingSlip ? (
+                <RefreshCw size={13} className="animate-spin" />
+              ) : (
+                <Download size={13} />
+              )}
+              <span>{downloadingSlip ? 'Generating Slip...' : 'Download Slip (PNG)'}</span>
             </button>
 
             <button
