@@ -501,23 +501,32 @@ export function getOrderBillAmount(order) {
   }
 }
 
+export function getConfiguredUpiId(fallback = 'flocard@hdfcbank') {
+  if (typeof window === 'undefined') return fallback;
+  try {
+    const rawV3 = localStorage.getItem('flocard_data_v3_invoice_settings');
+    if (rawV3) {
+      const p = JSON.parse(rawV3);
+      if (p?.upiId && String(p.upiId).trim()) return String(p.upiId).trim();
+    }
+  } catch (_) {}
+  try {
+    const rawLegacy = localStorage.getItem('flocard_invoice_settings');
+    if (rawLegacy) {
+      const p = JSON.parse(rawLegacy);
+      if (p?.upiId && String(p.upiId).trim()) return String(p.upiId).trim();
+    }
+  } catch (_) {}
+  return fallback;
+}
+
 /**
  * Generate standard UPI deep-link URL (RFC-compliant upi://pay URI) for an order
  * Prefills the exact order amount so scanning or clicking pre-fills the exact bill amount
  */
 export function getOrderUpiPaymentUrl(order, customUpiId = null) {
   if (!order) return '';
-  let upiId = customUpiId || order.upiId || order.paymentConfig?.upiId;
-  if (!upiId) {
-    try {
-      const stored = localStorage.getItem('flocard_invoice_settings');
-      if (stored) {
-        const parsed = JSON.parse(stored);
-        if (parsed.upiId) upiId = parsed.upiId;
-      }
-    } catch (_) {}
-  }
-  if (!upiId) upiId = 'flocard@hdfcbank';
+  let upiId = customUpiId || order.upiId || order.paymentConfig?.upiId || getConfiguredUpiId();
 
   const amount = getOrderBillAmount(order);
   const orderRef = order.orderReference || order.id || 'FLOCARD-ORDER';
@@ -555,17 +564,7 @@ export function getOrderWhatsAppPaymentMessage(order, customUpiId = null) {
     ? `${String(order.edition).toUpperCase()} Edition`
     : (order.productName || 'FLOCARD NFC Smart Card');
 
-  let upiId = customUpiId || order.upiId || order.paymentConfig?.upiId;
-  if (!upiId) {
-    try {
-      const stored = localStorage.getItem('flocard_invoice_settings');
-      if (stored) {
-        const parsed = JSON.parse(stored);
-        if (parsed.upiId) upiId = parsed.upiId;
-      }
-    } catch (_) {}
-  }
-  if (!upiId) upiId = 'flocard@hdfcbank';
+  let upiId = customUpiId || order.upiId || order.paymentConfig?.upiId || getConfiguredUpiId();
 
   const upiPayUrl = getOrderUpiPaymentUrl(order, upiId);
 

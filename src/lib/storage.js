@@ -2938,6 +2938,11 @@ export const StorageEngine = {
     const current = StorageEngine.getInvoiceSettings();
     const updated = { ...current, ...settings };
     setLocal('invoice_settings', updated);
+    if (typeof localStorage !== 'undefined') {
+      try {
+        localStorage.setItem('flocard_invoice_settings', JSON.stringify(updated));
+      } catch (_) {}
+    }
     StorageEngine.addAuditLog('Invoice Settings', 'Tax invoice billing and GST configuration updated', adminEmail);
     if (typeof window !== 'undefined') {
       window.dispatchEvent(new CustomEvent('flocard_invoice_settings_updated', { detail: updated }));

@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { X, QrCode, Copy, Check, MessageCircle, ExternalLink, Download, Printer, ShieldCheck, Sparkles, RefreshCw } from 'lucide-react';
 import { generateQrDataUrl } from '../../lib/qr';
-import { getOrderUpiPaymentUrl, getOrderWhatsAppPaymentDetailsUrl, getOrderWhatsAppPaymentMessage, getOrderBillAmount } from '../../lib/whatsapp';
+import { getOrderUpiPaymentUrl, getOrderWhatsAppPaymentDetailsUrl, getOrderWhatsAppPaymentMessage, getOrderBillAmount, getConfiguredUpiId } from '../../lib/whatsapp';
 
 function drawRoundedRect(ctx, x, y, width, height, radius) {
   ctx.beginPath();
@@ -40,8 +40,31 @@ export default function PaymentQrModal({
   const [copiedLink, setCopiedLink] = useState(false);
   const [copiedUpi, setCopiedUpi] = useState(false);
   const [downloadingSlip, setDownloadingSlip] = useState(false);
-  const [customUpiId, setCustomUpiId] = useState('');
-  const [isEditingUpi, setIsEditingUpi] = useState(false);
+  const [activeUpiId, setActiveUpiId] = useState(() => order?.upiId || order?.paymentConfig?.upiId || getConfiguredUpiId());
+
+  // Subscribe to real-time Settings changes so any update in Settings reflects immediately
+  useEffect(() => {
+    const handleSettingsUpdate = (e) => {
+      const newUpi = e?.detail?.upiId || getConfiguredUpiId();
+      if (newUpi) setActiveUpiId(String(newUpi).trim());
+    };
+    if (typeof window !== 'undefined') {
+      window.addEventListener('flocard_invoice_settings_updated', handleSettingsUpdate);
+    }
+    return () => {
+      if (typeof window !== 'undefined') {
+        window.removeEventListener('flocard_invoice_settings_updated', handleSettingsUpdate);
+      }
+    };
+  }, []);
+
+  // Update when modal opens
+  useEffect(() => {
+    if (isOpen) {
+      const configured = order?.upiId || order?.paymentConfig?.upiId || getConfiguredUpiId();
+      setActiveUpiId(configured);
+    }
+  }, [isOpen, order]);
 
   // Fallback defaults
   const orderRef = order?.orderReference || order?.id || 'FLOCARD-ORDER';
@@ -50,18 +73,6 @@ export default function PaymentQrModal({
   const amount = getOrderBillAmount(order);
   const formattedAmount = amount.toLocaleString('en-IN');
   const edition = order?.edition ? `${String(order.edition).toUpperCase()} Edition` : (order?.productName || 'FLOCARD NFC Smart Card');
-
-  // Determine active UPI ID
-  const activeUpiId = customUpiId || order?.upiId || order?.paymentConfig?.upiId || (() => {
-    try {
-      const stored = localStorage.getItem('flocard_invoice_settings');
-      if (stored) {
-        const parsed = JSON.parse(stored);
-        if (parsed.upiId) return parsed.upiId;
-      }
-    } catch (_) {}
-    return 'flocard@hdfcbank';
-  })();
 
   const upiPayUrl = order ? getOrderUpiPaymentUrl(order, activeUpiId) : '';
   const waUrl = order ? getOrderWhatsAppPaymentDetailsUrl(order, activeUpiId) : null;
@@ -679,67 +690,16 @@ export default function PaymentQrModal({
           >
             <div style={{ flex: 1 }}>
               <div style={{ fontSize: '0.7rem', color: textMuted, fontWeight: 600, marginBottom: '2px' }}>
-                Payee UPI ID:
+                Official Payee UPI ID:
               </div>
-              {isEditingUpi ? (
-                <div style={{ display: 'flex', gap: '6px' }}>
-                  <input
-                    type="text"
-                    value={customUpiId}
-                    onChange={(e) => setCustomUpiId(e.target.value.trim())}
-                    placeholder="merchant@okhdfcbank"
-                    style={{
-                      flex: 1,
-                      padding: '5px 8px',
-                      borderRadius: '6px',
-                      border: '1px solid #6B00FF',
-                      backgroundColor: isLight ? '#FFFFFF' : '#110C1D',
-                      color: textPrimary,
-                      fontSize: '0.8rem'
-                    }}
-                  />
-                  <button
-                    type="button"
-                    onClick={() => setIsEditingUpi(false)}
-                    style={{
-                      padding: '5px 10px',
-                      borderRadius: '6px',
-                      backgroundColor: '#6B00FF',
-                      color: '#FFF',
-                      border: 'none',
-                      fontSize: '0.72rem',
-                      fontWeight: 700,
-                      cursor: 'pointer'
-                    }}
-                  >
-                    Done
-                  </button>
-                </div>
-              ) : (
-                <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-                  <span style={{ fontFamily: 'monospace', fontWeight: 800, color: textPrimary, fontSize: '0.88rem' }}>
-                    {activeUpiId}
-                  </span>
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setCustomUpiId(activeUpiId);
-                      setIsEditingUpi(true);
-                    }}
-                    style={{
-                      background: 'none',
-                      border: 'none',
-                      color: '#6B00FF',
-                      fontSize: '0.72rem',
-                      cursor: 'pointer',
-                      padding: '2px 4px',
-                      textDecoration: 'underline'
-                    }}
-                  >
-                    Edit
-                  </button>
-                </div>
-              )}
+              <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
+                <span style={{ fontFamily: 'monospace', fontWeight: 800, color: textPrimary, fontSize: '0.92rem' }}>
+                  {activeUpiId}
+                </span>
+                <span style={{ fontSize: '0.66rem', fontWeight: 700, padding: '2px 8px', borderRadius: '4px', backgroundColor: 'rgba(107, 0, 255, 0.1)', color: '#A855F7', border: '1px solid rgba(107, 0, 255, 0.25)' }}>
+                  Configured in Settings
+                </span>
+              </div>
             </div>
 
             <button

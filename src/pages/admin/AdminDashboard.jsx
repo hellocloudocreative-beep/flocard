@@ -79,7 +79,8 @@ import {
   Edit3,
   Lock,
   User,
-  Archive
+  Archive,
+  Save
 } from 'lucide-react';
 import { useData } from '../../context/DataContext';
 import { useAuth } from '../../context/AuthContext';
@@ -191,7 +192,9 @@ export default function AdminDashboard({ initialTab = 'overview', initialOrderId
     refreshAll,
     syncCloudData,
     isCloudSyncing,
-    lastCloudSyncTime
+    lastCloudSyncTime,
+    invoiceSettings,
+    saveInvoiceSettings
   } = useData();
 
   // Navigation & UI State
@@ -380,6 +383,54 @@ export default function AdminDashboard({ initialTab = 'overview', initialOrderId
     } finally {
       setIsUpdatingStatus(false);
     }
+  };
+
+  // Official UPI Payment Gateway Configuration State
+  const [upiSettingsState, setUpiSettingsState] = useState(() => ({
+    upiId: invoiceSettings?.upiId || 'flocard@hdfcbank',
+    accountName: invoiceSettings?.accountName || 'FLOCARD TECHNOLOGIES PRIVATE LIMITED',
+    bankName: invoiceSettings?.bankName || 'HDFC Bank Ltd',
+    ifsc: invoiceSettings?.ifsc || 'HDFC0001234'
+  }));
+  const [upiSettingsSaved, setUpiSettingsSaved] = useState(false);
+
+  useEffect(() => {
+    if (invoiceSettings?.upiId) {
+      setUpiSettingsState(prev => ({
+        ...prev,
+        upiId: invoiceSettings.upiId,
+        accountName: invoiceSettings.accountName || prev.accountName,
+        bankName: invoiceSettings.bankName || prev.bankName,
+        ifsc: invoiceSettings.ifsc || prev.ifsc
+      }));
+    }
+  }, [invoiceSettings]);
+
+  const handleSaveUpiSettings = (e) => {
+    if (e && e.preventDefault) e.preventDefault();
+    const cleanUpi = (upiSettingsState.upiId || '').trim();
+    if (!cleanUpi || !cleanUpi.includes('@')) {
+      alert('Please enter a valid UPI ID (e.g. merchant@bank)');
+      return;
+    }
+    saveInvoiceSettings({
+      ...(invoiceSettings || {}),
+      upiId: cleanUpi,
+      accountName: upiSettingsState.accountName,
+      bankName: upiSettingsState.bankName,
+      ifsc: upiSettingsState.ifsc
+    }, user?.email || 'admin@flocard.in');
+
+    setUpiSettingsSaved(true);
+    setFulfillmentToast({
+      title: 'UPI Gateway Settings Saved',
+      message: `Official UPI ID updated to "${cleanUpi}". All QR slips, PNG downloads, and payment links now strictly use this UPI ID.`,
+      type: 'success'
+    });
+    setTimeout(() => {
+      setUpiSettingsSaved(false);
+      setFulfillmentToast(null);
+    }, 4500);
   };
 
   // Edit Object States
@@ -7490,6 +7541,158 @@ export default function AdminDashboard({ initialTab = 'overview', initialOrderId
                     </div>
                   </div>
                 </div>
+              </div>
+
+              {/* Card: Official UPI Payment Gateway & QR Configuration */}
+              <div style={{ backgroundColor: 'var(--adm-card-bg)', borderRadius: '16px', border: 'var(--adm-card-border)', padding: '24px' }}>
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '20px', flexWrap: 'wrap', gap: '12px' }}>
+                  <div>
+                    <h3 style={{ margin: 0, fontSize: '1.1rem', fontWeight: 700, color: 'var(--adm-text-primary)', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                      <QrCode size={18} color="#6B00FF" />
+                      <span>Official UPI Payment Gateway &amp; QR Configuration</span>
+                    </h3>
+                    <p style={{ margin: '3px 0 0', fontSize: '0.8rem', color: 'var(--adm-text-secondary)' }}>
+                      Authoritative Payee UPI ID used across all customer payment QR slips, PNG downloads, WhatsApp payment messages, and order bills.
+                    </p>
+                  </div>
+                  <span style={{ fontSize: '0.74rem', padding: '4px 12px', borderRadius: '9999px', backgroundColor: 'rgba(16, 185, 129, 0.12)', color: '#10B981', fontWeight: 700, border: '1px solid rgba(16, 185, 129, 0.3)' }}>
+                    Active Payee: {upiSettingsState.upiId || 'flocard@hdfcbank'}
+                  </span>
+                </div>
+
+                <form onSubmit={handleSaveUpiSettings} style={{ display: 'flex', flexDirection: 'column', gap: '18px' }}>
+                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: '16px' }}>
+                    <div>
+                      <label style={{ display: 'block', fontSize: '0.76rem', fontWeight: 700, color: 'var(--adm-text-secondary)', marginBottom: '6px', textTransform: 'uppercase' }}>
+                        Official Payee UPI ID *
+                      </label>
+                      <input
+                        type="text"
+                        required
+                        value={upiSettingsState.upiId}
+                        onChange={(e) => setUpiSettingsState({ ...upiSettingsState, upiId: e.target.value.trim() })}
+                        placeholder="e.g. flocard@hdfcbank or business@okhdfcbank"
+                        style={{
+                          width: '100%',
+                          padding: '10px 14px',
+                          borderRadius: '10px',
+                          border: '1px solid var(--adm-card-border)',
+                          backgroundColor: 'var(--adm-search-bg)',
+                          color: 'var(--adm-text-primary)',
+                          fontFamily: 'monospace',
+                          fontSize: '0.9rem',
+                          fontWeight: 700,
+                          outline: 'none',
+                          boxSizing: 'border-box'
+                        }}
+                      />
+                      <span style={{ fontSize: '0.7rem', color: 'var(--adm-text-secondary)', marginTop: '4px', display: 'block' }}>
+                        All generated QR codes and payment vouchers strictly encode this exact UPI ID.
+                      </span>
+                    </div>
+
+                    <div>
+                      <label style={{ display: 'block', fontSize: '0.76rem', fontWeight: 700, color: 'var(--adm-text-secondary)', marginBottom: '6px', textTransform: 'uppercase' }}>
+                        Payee / Business Legal Name
+                      </label>
+                      <input
+                        type="text"
+                        value={upiSettingsState.accountName}
+                        onChange={(e) => setUpiSettingsState({ ...upiSettingsState, accountName: e.target.value })}
+                        placeholder="FLOCARD TECHNOLOGIES PRIVATE LIMITED"
+                        style={{
+                          width: '100%',
+                          padding: '10px 14px',
+                          borderRadius: '10px',
+                          border: '1px solid var(--adm-card-border)',
+                          backgroundColor: 'var(--adm-search-bg)',
+                          color: 'var(--adm-text-primary)',
+                          fontSize: '0.84rem',
+                          fontWeight: 600,
+                          outline: 'none',
+                          boxSizing: 'border-box'
+                        }}
+                      />
+                    </div>
+
+                    <div>
+                      <label style={{ display: 'block', fontSize: '0.76rem', fontWeight: 700, color: 'var(--adm-text-secondary)', marginBottom: '6px', textTransform: 'uppercase' }}>
+                        Bank Name
+                      </label>
+                      <input
+                        type="text"
+                        value={upiSettingsState.bankName}
+                        onChange={(e) => setUpiSettingsState({ ...upiSettingsState, bankName: e.target.value })}
+                        placeholder="HDFC Bank Ltd"
+                        style={{
+                          width: '100%',
+                          padding: '10px 14px',
+                          borderRadius: '10px',
+                          border: '1px solid var(--adm-card-border)',
+                          backgroundColor: 'var(--adm-search-bg)',
+                          color: 'var(--adm-text-primary)',
+                          fontSize: '0.84rem',
+                          outline: 'none',
+                          boxSizing: 'border-box'
+                        }}
+                      />
+                    </div>
+
+                    <div>
+                      <label style={{ display: 'block', fontSize: '0.76rem', fontWeight: 700, color: 'var(--adm-text-secondary)', marginBottom: '6px', textTransform: 'uppercase' }}>
+                        IFSC Code
+                      </label>
+                      <input
+                        type="text"
+                        value={upiSettingsState.ifsc}
+                        onChange={(e) => setUpiSettingsState({ ...upiSettingsState, ifsc: e.target.value.toUpperCase() })}
+                        placeholder="HDFC0001234"
+                        style={{
+                          width: '100%',
+                          padding: '10px 14px',
+                          borderRadius: '10px',
+                          border: '1px solid var(--adm-card-border)',
+                          backgroundColor: 'var(--adm-search-bg)',
+                          color: 'var(--adm-text-primary)',
+                          fontFamily: 'monospace',
+                          fontSize: '0.84rem',
+                          outline: 'none',
+                          boxSizing: 'border-box'
+                        }}
+                      />
+                    </div>
+                  </div>
+
+                  <div style={{ padding: '14px 18px', borderRadius: '10px', backgroundColor: 'rgba(107, 0, 255, 0.08)', border: '1px solid rgba(107, 0, 255, 0.25)', display: 'flex', alignItems: 'center', gap: '12px' }}>
+                    <ShieldCheck size={20} color="#6B00FF" style={{ flexShrink: 0 }} />
+                    <div style={{ fontSize: '0.78rem', color: 'var(--adm-text-secondary)', lineHeight: 1.5 }}>
+                      <strong style={{ color: '#6B00FF' }}>Strict Settings Guarantee:</strong> Changing the UPI ID here immediately updates all QR vouchers, "Download PNG" payment slips, and WhatsApp payment links. The previous UPI ID is permanently replaced and will never appear.
+                    </div>
+                  </div>
+
+                  <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '10px' }}>
+                    <button
+                      type="submit"
+                      style={{
+                        padding: '10px 24px',
+                        borderRadius: '10px',
+                        backgroundColor: '#6B00FF',
+                        color: '#FFFFFF',
+                        border: 'none',
+                        fontSize: '0.82rem',
+                        fontWeight: 700,
+                        cursor: 'pointer',
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: '6px',
+                        boxShadow: '0 4px 14px rgba(107, 0, 255, 0.35)'
+                      }}
+                    >
+                      {upiSettingsSaved ? <Check size={16} /> : <Save size={16} />}
+                      <span>{upiSettingsSaved ? 'Settings Saved!' : 'Save UPI Gateway Settings'}</span>
+                    </button>
+                  </div>
+                </form>
               </div>
 
               {/* Card 2: Meta WhatsApp Business API Cloud Integration */}
