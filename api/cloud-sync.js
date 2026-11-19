@@ -350,11 +350,15 @@ export default async function handler(req, res) {
       }
 
       case 'deleteOrder': {
-        const { id } = body;
-        if (!id) return res.status(400).json({ error: 'Missing order identifier' });
+        const { id, orderReference } = body;
+        const target = id || orderReference;
+        if (!target) return res.status(400).json({ error: 'Missing order identifier' });
         try {
-          await adminClient.from('orders').delete().or(`id.eq.${id},order_reference.eq.${id}`);
-          await adminClient.from('card_designs').delete().eq('order_id', id);
+          const filter = orderReference && id && id !== orderReference
+            ? `id.eq.${id},order_reference.eq.${orderReference}`
+            : `id.eq.${target},order_reference.eq.${target}`;
+          await adminClient.from('orders').delete().or(filter);
+          await adminClient.from('card_designs').delete().or(`order_id.eq.${target},order_id.eq.${id || ''}`);
         } catch (_) {}
         return res.status(200).json({ success: true });
       }

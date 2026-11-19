@@ -2496,39 +2496,44 @@ export const StorageEngine = {
   },
 
   getDeletedOrderIds: () => getLocal('flocard_deleted_order_ids', []),
-  deleteOrder: async (orderId, actorUser = null) => {
+  deleteOrder: async (orderIdOrObj, actorUser = null) => {
     const isElevated = !actorUser || isElevatedUser(actorUser);
     if (!isElevated) {
       throw new Error('Unauthorized: Only administrators can delete orders.');
     }
-    const orders = getLocal('orders', INITIAL_ORDERS).filter(o => o.id !== orderId && o.orderReference !== orderId);
+    const isObj = orderIdOrObj && typeof orderIdOrObj === 'object';
+    const allOrders = getLocal('orders', INITIAL_ORDERS);
+    const existing = isObj ? orderIdOrObj : allOrders.find(o => o.id === orderIdOrObj || o.orderReference === orderIdOrObj);
+    const targetId = existing?.id || (isObj ? orderIdOrObj.id : orderIdOrObj);
+    const targetRef = existing?.orderReference || (isObj ? orderIdOrObj.orderReference : orderIdOrObj);
+
+    const orders = allOrders.filter(o => o.id !== targetId && o.orderReference !== targetRef && o.id !== targetRef && o.orderReference !== targetId);
     setLocal('orders', orders);
 
     // Also purge associated invoices
-    const invoices = getLocal('invoices', []).filter(inv => inv.orderId !== orderId && inv.orderReference !== orderId);
+    const invoices = getLocal('invoices', []).filter(inv => inv.orderId !== targetId && inv.orderReference !== targetRef && inv.orderId !== targetRef && inv.orderReference !== targetId);
     setLocal('invoices', invoices);
 
     // Save tombstone
     const tombstoneIds = getLocal('flocard_deleted_order_ids', []);
-    if (orderId && !tombstoneIds.includes(orderId)) {
-      tombstoneIds.push(orderId);
-      setLocal('flocard_deleted_order_ids', tombstoneIds);
-    }
+    if (targetId && !tombstoneIds.includes(targetId)) tombstoneIds.push(targetId);
+    if (targetRef && !tombstoneIds.includes(targetRef)) tombstoneIds.push(targetRef);
+    setLocal('flocard_deleted_order_ids', tombstoneIds);
 
-    StorageEngine.addAuditLog('Order Fulfillment', `Order deleted: ${orderId}`, actorUser?.name || 'Administrator');
+    StorageEngine.addAuditLog('Order Fulfillment', `Order deleted: ${targetRef || targetId}`, actorUser?.name || 'Administrator');
     if (typeof window !== 'undefined') {
-      window.dispatchEvent(new CustomEvent('flocard_order_updated', { detail: { deletedId: orderId, orders } }));
+      window.dispatchEvent(new CustomEvent('flocard_order_updated', { detail: { deletedId: targetId, deletedRef: targetRef, orders } }));
     }
 
     // Call serverless cloud sync
-    callCloudSyncApi('deleteOrder', { id: orderId }).catch(() => {});
+    callCloudSyncApi('deleteOrder', { id: targetId, orderReference: targetRef }).catch(() => {});
 
     // Direct delete from Supabase if client is accessible
     try {
       const { supabase, supabaseAdmin, isSupabaseConfigured } = await import('./supabase.js');
       if (isSupabaseConfigured && (supabaseAdmin || supabase)) {
         const client = supabaseAdmin || supabase;
-        try { await client.from('orders').delete().or(`id.eq.${orderId},order_reference.eq.${orderId}`); } catch (_) {}
+        try { await client.from('orders').delete().or(`id.eq.${targetId},order_reference.eq.${targetRef}`); } catch (_) {}
       }
     } catch (_) {}
     return true;

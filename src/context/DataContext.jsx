@@ -924,18 +924,28 @@ export function DataProvider({ children }) {
     return result;
   };
 
-  const deleteOrder = async (id, actorUser) => {
-    const res = await StorageEngine.deleteOrder(id, actorUser);
-    setOrders(prev => prev.filter(o => o.id !== id && o.orderReference !== id));
+  const deleteOrder = async (idOrOrder, actorUser) => {
+    const isObj = idOrOrder && typeof idOrOrder === 'object';
+    const targetId = isObj ? (idOrOrder.id || idOrOrder.orderReference) : idOrOrder;
+    const targetRef = isObj ? (idOrOrder.orderReference || idOrOrder.id) : idOrOrder;
+
+    setOrders(prev => prev.filter(o => o.id !== targetId && o.orderReference !== targetRef && o.id !== targetRef && o.orderReference !== targetId));
+    const res = await StorageEngine.deleteOrder(idOrOrder, actorUser);
     refreshAll();
-    await syncCloudData();
-    broadcastSyncChange('ORDER_DELETED', { id });
+    try {
+      await syncCloudData();
+    } catch (_) {}
+    broadcastSyncChange('ORDER_DELETED', { id: targetId, orderReference: targetRef });
     return res;
   };
 
-  const deleteInvoice = (id) => {
+  const deleteInvoice = async (id) => {
     const res = StorageEngine.deleteInvoice(id);
     refreshAll();
+    try {
+      await syncCloudData();
+    } catch (_) {}
+    broadcastSyncChange('INVOICE_DELETED', { id });
     return res;
   };
 
@@ -1004,15 +1014,23 @@ export function DataProvider({ children }) {
     return updated;
   };
 
-  const saveInvoice = (invoice) => {
+  const saveInvoice = async (invoice) => {
     const saved = StorageEngine.saveInvoice(invoice);
     refreshAll();
+    try {
+      await syncCloudData();
+    } catch (_) {}
+    broadcastSyncChange('INVOICE_SAVED', saved);
     return saved;
   };
 
-  const assignDesignToOrder = (designId, notes, adminUser) => {
+  const assignDesignToOrder = async (designId, notes, adminUser) => {
     const res = StorageEngine.assignDesignToOrder(designId, notes, adminUser);
     refreshAll();
+    try {
+      await syncCloudData();
+    } catch (_) {}
+    broadcastSyncChange('DESIGN_ASSIGNED_TO_ORDER', { designId });
     return res;
   };
 
