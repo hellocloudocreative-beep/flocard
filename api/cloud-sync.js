@@ -159,6 +159,7 @@ export default async function handler(req, res) {
             company: cust.company || null,
             role: 'customer',
             status: cust.status || 'active',
+            theme: 'purple',
             services: cust.notes ? [{ note: cust.notes }] : [],
             updated_at: new Date().toISOString()
           };

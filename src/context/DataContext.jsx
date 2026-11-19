@@ -87,72 +87,61 @@ export function DataProvider({ children }) {
 
       // 1. Primary: Serverless Cloud Sync API (bypasses browser RLS restrictions, connects with admin service key)
       let serverData = null;
-      try {
-        const isApex = typeof window !== 'undefined' && window.location.hostname === 'flocard.in';
-        const primaryUrl = isApex ? 'https://www.flocard.in/api/cloud-sync' : '/api/cloud-sync';
-        let res = await fetch(primaryUrl, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ action: 'fetchData' })
-        });
-        if (!res.ok && typeof window !== 'undefined' && window.location.hostname !== 'www.flocard.in') {
-          res = await fetch('https://www.flocard.in/api/cloud-sync', {
+      const syncEndpoints = [
+        '/api/cloud-sync',
+        typeof window !== 'undefined' && window.location?.origin ? `${window.location.origin}/api/cloud-sync` : null,
+        'https://flocard.in/api/cloud-sync',
+        'https://www.flocard.in/api/cloud-sync'
+      ].filter(Boolean);
+
+      for (const url of syncEndpoints) {
+        try {
+          const res = await fetch(url, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ action: 'fetchData' })
           });
-        }
-        if (res.ok) {
-          const json = await res.json();
-          if (json && json.success) {
-            serverData = json;
-
-            // Ingest server-authoritative tombstones from audit logs
-            if (Array.isArray(serverData.tombstones)) {
-              for (const t of serverData.tombstones) {
-                if (!t?.details) continue;
-                try {
-                  const parsed = typeof t.details === 'string' ? JSON.parse(t.details) : t.details;
-                  if (t.action === 'DELETE_ORDER') {
-                    const oIds = [ ...(parsed.ids || []), ...(parsed.orderReferences || []) ];
-                    for (const oid of oIds) {
-                      if (oid && !deletedOrderIds.includes(oid)) deletedOrderIds.push(oid);
-                    }
-                  } else {
-                    if (Array.isArray(parsed.ids)) {
-                      for (const tid of parsed.ids) {
-                        if (tid && !deletedCustIds.includes(tid)) deletedCustIds.push(tid);
-                      }
-                    }
-                    if (Array.isArray(parsed.emails)) {
-                      for (const tem of parsed.emails) {
-                        const cleanEm = (tem || '').toLowerCase().trim();
-                        if (cleanEm && !deletedCustEmails.includes(cleanEm)) deletedCustEmails.push(cleanEm);
-                      }
-                    }
-                    if (Array.isArray(parsed.slugs)) {
-                      for (const tsl of parsed.slugs) {
-                        const cleanSl = (tsl || '').toLowerCase().trim();
-                        if (cleanSl && !deletedProfileSlugs.includes(cleanSl)) deletedProfileSlugs.push(cleanSl);
-                      }
-                    }
-                  }
-                } catch (_) {}
-              }
-
-              // Persist tombstones to localStorage for seamless offline & cross-refresh consistency
-              if (typeof window !== 'undefined' && window.localStorage) {
-                try {
-                  localStorage.setItem('flocard_data_flocard_deleted_cust_ids', JSON.stringify(deletedCustIds));
-                  localStorage.setItem('flocard_data_flocard_deleted_cust_emails', JSON.stringify(deletedCustEmails));
-                  localStorage.setItem('flocard_data_flocard_deleted_order_ids', JSON.stringify(deletedOrderIds));
-                } catch (_) {}
-              }
+          if (res.ok) {
+            const json = await res.json();
+            if (json && json.success) {
+              serverData = json;
+              break;
             }
           }
-        }
-      } catch (apiErr) {
-        // Fallback to client query
+        } catch (_) {}
+      }
+
+      if (serverData) {
+        try {
+          // Ingest server-authoritative tombstones from audit logs
+          if (Array.isArray(serverData.tombstones)) {
+            for (const t of serverData.tombstones) {
+              if (!t?.details) continue;
+              try {
+                const parsed = typeof t.details === 'string' ? JSON.parse(t.details) : t.details;
+                if (t.action === 'DELETE_ORDER') {
+                  const oIds = [ ...(parsed.ids || []), ...(parsed.orderReferences || []) ];
+                  for (const oid of oIds) {
+                    if (oid && !deletedOrderIds.includes(oid)) deletedOrderIds.push(oid);
+                  }
+                } else {
+                  if (Array.isArray(parsed.ids)) {
+                    for (const tid of parsed.ids) {
+                      if (tid && !deletedCustIds.includes(tid)) deletedCustIds.push(tid);
+                    }
+                  }
+                  if (Array.isArray(parsed.emails)) {
+                    for (const tem of parsed.emails) {
+                      const cleanEm = (tem || '').toLowerCase().trim();
+                      if (cleanEm && !deletedCustEmails.includes(cleanEm)) deletedCustEmails.push(cleanEm);
+                    }
+                  }
+                  // Do not push slugs to deletedProfileSlugs to avoid collateral filtering of newly created customers
+                }
+              } catch (_) {}
+            }
+          }
+        } catch (_) {}
       }
 
       const { supabase, supabaseAdmin, isSupabaseConfigured } = await import('../lib/supabase.js');
